@@ -181,7 +181,9 @@ function banner() {
 D.views.portal = function () {
   var S = D.S, tiles = D.visibleTiles();
   var main = tiles.filter(function (t) { return !t.more; }), more = tiles.filter(function (t) { return t.more; });
-  function tile(t) { return '<button class="tile" data-act="go" data-v="' + t.id + '"><span class="ic">' + D.ic(t.icon, 22) + "</span><b>" + esc(t.name) + (t.ext ? " ↗" : "") + "</b><p>" + esc(t.desc) + "</p></button>"; }
+  function tile(t) { return '<button class="tile" data-act="go" data-v="' + t.id + '"><span class="ic">' + D.ic(t.icon, 22) + "</span><b>" + esc(t.name) + (t.ext ? " ↗" : "") + '</b><p class="hide-sm">' + esc(t.desc) + "</p>" + (SHORT[t.id] ? '<p class="tshort">' + esc(SHORT[t.id]) + "</p>" : "") + "</button>"; }
+  // Phone tiles have room for a few words only.
+  var SHORT = { tasks: "Your tasks", calendar: "Practices and events", here: "Attendance and hours", snacks: "Snack sign-up", parts: "Request and find parts", skills: "Training and sign-offs", kickoff: "Game strategy", schedule: "Your event roles", pit: "Checklists and batteries", scouting: "Match forms", onshape: "Robot CAD", github: "Robot code", drive: "Shared files", admin: "Accounts and groups", handbook: "Team rules and info" };
   var greet = (D.greetings && D.greetings[S.role]) || "Welcome back.";
   var act = S.role === "parent" ? "" : '<div class="card"><div class="row between"><h2>Recent activity</h2><span class="small mute">Everyone sees who did what</span></div><div class="list">' +
     S.activity.slice(0, 7).map(function (a) { return '<div class="li actli"><span class="pill">' + esc(D.APPNAME[a.app]) + '</span><span class="grow"><b>' + esc(a.who) + "</b> " + esc(a.what) + '</span><span class="who">' + esc(a.when) + "</span></div>"; }).join("") + "</div></div>";
