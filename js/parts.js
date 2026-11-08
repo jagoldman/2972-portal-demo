@@ -142,7 +142,7 @@ function requests() {
   return '<div class="card"><div class="row between">' + chips + '<label class="row small" style="font-weight:600"><button class="toggle" data-act="pmine" aria-pressed="' + p.mine + '" aria-label="Only my requests"></button> Only mine</label></div>' +
     '<div class="field"><input id="p-q" class="inp" data-input="pq" placeholder="Search part, SKU, vendor or person" value="' + esc(p.q) + '" aria-label="Search requests"></div>' +
     '<div class="list">' + (rows.length ? rows.map(function (r) {
-      return '<button class="li click" data-act="preq" data-v="' + r.id + '"><span class="grow"><b>' + esc(r.name) + "</b><br><span class=\"who\">" + esc(r.vendor) + " · " + qtyText(r) + " · " + money(total(r)) + " · " + esc(r.by) + " · " + esc(r.sub) + (r.need ? " · need by " + fmt(r.need) : "") + "</span></span>" + priPill(r.pri) + statusPill(r.status) + "</button>";
+      return '<button class="li click rli" data-act="preq" data-v="' + r.id + '"><span class="grow"><b>' + esc(r.name) + "</b><br><span class=\"who\">" + esc(r.vendor) + " · " + qtyText(r) + " · " + money(total(r)) + " · " + esc(r.by) + " · " + esc(r.sub) + (r.need ? " · need by " + fmt(r.need) : "") + "</span></span>" + priPill(r.pri) + statusPill(r.status) + "</button>";
     }).join("") : '<div class="empty">Nothing here.</div>') + "</div></div>";
 }
 D.drawers.preq = function (d) {
