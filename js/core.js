@@ -233,7 +233,7 @@ D.render = function () {
   if (activeId) { var el = document.getElementById(activeId); if (el && (el.tagName === "INPUT" || el.tagName === "TEXTAREA")) { el.focus(); try { if (selStart != null) el.setSelectionRange(selStart, selStart); } catch (e) {} } }
 };
 // On phones the tab row scrolls sideways; keep the selected tab in view.
-D.after.push(function () { var t = document.querySelector('.topbar .tabs .tab[aria-pressed="true"]'), row = t && t.parentElement; if (row && row.scrollWidth > row.clientWidth) row.scrollLeft = Math.max(0, t.offsetLeft - row.offsetLeft - 16); });
+D.after.push(function () { var t = document.querySelector('.topbar .tabs .tab[aria-pressed="true"]'), row = t && t.parentElement; if (!row || row.scrollWidth <= row.clientWidth) return; var l = t.offsetLeft - row.offsetLeft, r = l + t.offsetWidth + 32; if (r > row.clientWidth) row.scrollLeft = r - row.clientWidth; else row.scrollLeft = 0; });
 
 /* ---------- Shell actions ---------- */
 var A = D.acts;
