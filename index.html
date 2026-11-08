@@ -154,7 +154,7 @@ td.wrap { white-space: normal; min-width: 180px; }
 .tile .ext { font-size: .7rem; color: var(--mute); font-family: var(--mono); }
 
 /* Drawer and modal */
-.drawer { position: fixed; z-index: 55; top: 0; right: 0; bottom: 0; width: min(520px, 100vw); background: var(--surface); border-left: 1px solid var(--line-2); box-shadow: -20px 0 50px rgba(0,0,0,.2); overflow-y: auto; padding-block: calc(16px + env(safe-area-inset-top, 0px)) calc(32px + env(safe-area-inset-bottom, 0px)); padding-left: 20px; padding-right: max(20px, env(safe-area-inset-right, 0px)); display: grid; gap: 16px; align-content: start; }
+.drawer { position: fixed; z-index: 55; top: 0; right: 0; bottom: 0; width: min(520px, 100vw); background: var(--surface); border-left: 1px solid var(--line-2); box-shadow: -20px 0 50px rgba(0,0,0,.2); overflow-y: auto; padding-block: calc(16px + env(safe-area-inset-top, 0px)) calc(32px + env(safe-area-inset-bottom, 0px)); padding-left: 20px; padding-right: max(20px, env(safe-area-inset-right, 0px)); display: grid; grid-auto-rows: max-content; gap: 16px; align-content: start; }
 .drawer-scrim, .modal-scrim { position: fixed; inset: 0; z-index: 54; background: rgba(0,0,0,.35); border: 0; }
 .modal { position: fixed; z-index: 56; left: 50%; top: 50%; transform: translate(-50%,-50%); width: min(560px, calc(100vw - 32px)); max-height: calc(100vh - 64px); overflow-y: auto; background: var(--surface); border: 1px solid var(--line-2); border-radius: 14px; padding: 20px; display: grid; gap: 14px; box-shadow: 0 30px 80px rgba(0,0,0,.35); }
 .xbtn { border: 0; background: var(--surface-2); border-radius: 8px; width: 34px; height: 34px; font-size: 1.1rem; flex: none; }
