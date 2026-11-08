@@ -4,6 +4,7 @@
 var D = window.D = { views: {}, acts: {}, inits: [], drawers: {}, modals: {}, changes: {}, inputs: {}, after: [] };
 
 var ICON = {
+  apps: "M5 5h.01M12 5h.01M19 5h.01M5 12h.01M12 12h.01M19 12h.01M5 19h.01M12 19h.01M19 19h.01",
   home: "M4 4h7v7H4zM13 4h7v7h-7zM4 13h7v7H4zM13 13h7v7h-7z",
   tasks: "M9 6h11M9 12h11M9 18h11M4 6l1 1 2-2M4 12l1 1 2-2M4 18l1 1 2-2",
   calendar: "M4 6h16v14H4zM4 10h16M9 3v4M15 3v4",
@@ -60,9 +61,9 @@ D.TILES = [
   { id: "schedule", name: "Schedule", icon: "schedule", svc: "compete./schedule", desc: "Who does which role at the event.", modes: ["competition"], groups: BUILDERS },
   { id: "pit", name: "Pit", icon: "pit", svc: "compete./pit", desc: "Match checklists, issues and batteries.", modes: ["competition"], groups: BUILDERS },
   { id: "scouting", name: "Scouting", icon: "scouting", svc: "compete./scouting", desc: "Match forms, assignments, stats and pick list.", modes: ["competition"], groups: BUILDERS },
-  { id: "onshape", name: "Onshape", icon: "onshape", svc: "link", desc: "Robot CAD.", modes: ["build"], groups: BUILDERS, ext: true },
-  { id: "github", name: "GitHub", icon: "github", svc: "link", desc: "Robot code for every season.", modes: ["build"], groups: BUILDERS, ext: true },
-  { id: "drive", name: "Team Drive", icon: "drive", svc: "link", desc: "Shared files.", modes: ["build"], groups: BUILDERS, ext: true },
+  { id: "onshape", name: "Onshape", icon: "onshape", svc: "link", desc: "Robot CAD.", modes: ["build"], groups: BUILDERS, more: true, ext: true },
+  { id: "github", name: "GitHub", icon: "github", svc: "link", desc: "Robot code for every season.", modes: ["build"], groups: BUILDERS, more: true, ext: true },
+  { id: "drive", name: "Team Drive", icon: "drive", svc: "link", desc: "Shared files.", modes: ["build"], groups: BUILDERS, more: true, ext: true },
   { id: "admin", name: "Admin", icon: "admin", svc: "admin.", desc: "Approve accounts and manage groups.", modes: ["build"], groups: ["admin"], more: true, ext: true },
   { id: "handbook", name: "Team Handbook", icon: "more", svc: "link", desc: "Student, family and mentor handbook.", modes: ["build"], groups: ALL, more: true, ext: true }
 ];
@@ -99,6 +100,13 @@ D.go = function (route) {
   try { if (location.hash !== "#" + route) history.replaceState(null, "", "#" + route); } catch (e) {}
   D.render(); window.scrollTo(0, 0);
 };
+D.appHref = function (route) {
+  var url = new URL(location.href);
+  url.hash = route;
+  url.searchParams.set("role", D.S.role);
+  url.searchParams.set("mode", D.S.mode);
+  return esc(url.href);
+};
 D.tab = function (app, def) { return D.S.tabs[app] || def; };
 D.tabsFor = function (app, list, def) {
   var cur = D.tab(app, def || list[0][0]);
@@ -134,18 +142,18 @@ function demobar() {
 function appbar() {
   var S = D.S, unread = D.myNotices().filter(function (n) { return !n.read; }).length;
   var cur = D.tile(S.route), here = S.route === "account" ? "Account" : cur ? cur.name : "";
-  return '<header class="appbar"><button class="appsbtn" data-act="apps" aria-expanded="' + !!S.appsOpen + '" aria-label="All apps">' + D.ic("home", 18) + '<span class="hide-sm">Apps</span><span aria-hidden="true">▾</span></button>' +
-    '<button class="brand" data-act="go" data-v="portal"><span class="badge-2972">2972</span><span class="hide-sm">Gears &amp; Buccaneers</span></button>' +
+  return '<header class="appbar"><button class="appsbtn" data-act="apps" aria-expanded="' + !!S.appsOpen + '" aria-label="All apps">' + D.ic("apps", 18) + '<span class="hide-sm">Apps</span><span aria-hidden="true">▾</span></button>' +
+    '<a class="brand" href="' + D.appHref("portal") + '" target="_blank" rel="noopener noreferrer" aria-label="Portal home (opens in a new tab)"><span class="badge-2972">2972</span><span class="hide-sm">Gears &amp; Buccaneers</span></a>' +
     (here ? '<span class="crumb">/ ' + esc(here) + "</span>" : "") + '<span class="grow"></span>' +
     (S.mode === "competition" ? '<button class="leadchip" style="border:0" data-act="go" data-v="account" title="Change in Account settings">Competition mode</button>' : "") +
     '<button class="iconbtn" data-act="bell" aria-expanded="' + S.bell + '" aria-label="Notifications">' + D.ic("bell") + (unread ? '<span class="count">' + unread + "</span>" : "") + "</button>" +
-    '<button class="iconbtn acct" data-act="go" data-v="account" aria-label="Account">' + esc(D.me().name.replace(/^(Ms|Mr|Dr)\. /, "").split(" ").map(function (w) { return w[0]; }).join("").slice(0, 2)) + "</button></header>";
+    '<a class="iconbtn acct" href="' + D.appHref("account") + '" target="_blank" rel="noopener noreferrer" aria-label="Account (opens in a new tab)">' + esc(D.me().name.replace(/^(Ms|Mr|Dr)\. /, "").split(" ").map(function (w) { return w[0]; }).join("").slice(0, 2)) + "</a></header>";
 }
 function appsMenu() {
   var S = D.S, tiles = D.visibleTiles();
-  function item(t) { return '<button class="appitem" data-act="go" data-v="' + t.id + '"' + (S.route === t.id ? ' aria-current="page"' : "") + '><span class="ic">' + D.ic(t.icon, 20) + "</span><span><b>" + esc(t.name) + (t.ext ? " ↗" : "") + "</b><small>" + esc(t.desc) + "</small></span></button>"; }
+  function item(t) { return '<a class="appitem" href="' + D.appHref(t.id) + '" target="_blank" rel="noopener noreferrer" aria-label="' + esc(t.name) + ' (opens in a new tab)"' + (S.route === t.id ? ' aria-current="page"' : "") + '><span class="ic">' + D.ic(t.icon, 20) + "</span><span><b>" + esc(t.name) + (t.ext ? " ↗" : "") + "</b><small>" + esc(t.desc) + "</small></span></a>"; }
   return '<div class="appsmenu" role="dialog" aria-label="All apps"><div class="row between nowrap" style="align-items:flex-start"><p class="eyebrow">' + (S.mode === "competition" ? "Competition mode" : "Build mode") + ' · <button class="linkbtn" style="color:var(--accent)" data-act="go" data-v="account">change in Account</button></p><span class="row nowrap"><button class="btn ghost sm" data-act="go" data-v="portal">Portal home</button><button class="xbtn" data-act="apps" aria-label="Close">×</button></span></div><div class="appgrid">' + tiles.filter(function (t) { return !t.more; }).map(item).join("") + "</div>" +
-    (tiles.some(function (t) { return t.more; }) ? '<p class="eyebrow">More</p><div class="appgrid">' + tiles.filter(function (t) { return t.more; }).map(item).join("") + "</div>" : "") + "</div>";
+    (tiles.some(function (t) { return t.more; }) ? '<details class="apps-more"><summary>More</summary><div class="appgrid">' + tiles.filter(function (t) { return t.more; }).map(item).join("") + "</div></details>" : "") + "</div>";
 }
 function rail() {
   var S = D.S, tiles = D.visibleTiles();
@@ -181,7 +189,7 @@ function banner() {
 D.views.portal = function () {
   var S = D.S, tiles = D.visibleTiles();
   var main = tiles.filter(function (t) { return !t.more; }), more = tiles.filter(function (t) { return t.more; });
-  function tile(t) { return '<button class="tile" data-act="go" data-v="' + t.id + '"><span class="ic">' + D.ic(t.icon, 22) + "</span><b>" + esc(t.name) + (t.ext ? " ↗" : "") + '</b><p class="hide-sm">' + esc(t.desc) + "</p>" + (SHORT[t.id] ? '<p class="tshort">' + esc(SHORT[t.id]) + "</p>" : "") + "</button>"; }
+  function tile(t) { return '<a class="tile" href="' + D.appHref(t.id) + '" target="_blank" rel="noopener noreferrer" aria-label="' + esc(t.name) + ' (opens in a new tab)"><span class="ic">' + D.ic(t.icon, 22) + "</span><b>" + esc(t.name) + (t.ext ? " ↗" : "") + '</b><p class="hide-sm">' + esc(t.desc) + "</p>" + (SHORT[t.id] ? '<p class="tshort">' + esc(SHORT[t.id]) + "</p>" : "") + "</a>"; }
   // Phone tiles have room for a few words only.
   var SHORT = { tasks: "Your tasks", calendar: "Practices and events", here: "Attendance and hours", snacks: "Snack sign-up", parts: "Request and find parts", skills: "Training and sign-offs", kickoff: "Game strategy", schedule: "Your event roles", pit: "Checklists and batteries", scouting: "Match forms", onshape: "Robot CAD", github: "Robot code", drive: "Shared files", admin: "Accounts and groups", handbook: "Team rules and info" };
   var greet = (D.greetings && D.greetings[S.role]) || "Welcome back.";
@@ -272,5 +280,5 @@ document.addEventListener("keydown", function (e) {
 });
 function routeFromHash() { var h = location.hash.slice(1); return h && (D.views[h] || D.tile(h)) ? h : null; }
 window.addEventListener("hashchange", function () { var h = routeFromHash(); if (h && h !== D.S.route) { D.S.route = h; D.S.drawer = null; D.S.modal = null; D.render(); } });
-D.boot = function () { D.reset(); var h = routeFromHash(); if (h) D.S.route = h; D.render(); };
+D.boot = function () { D.reset(); var params = new URLSearchParams(location.search); if (Object.prototype.hasOwnProperty.call(D.ROLES, params.get("role"))) D.S.role = params.get("role"); if (params.get("mode") === "competition") D.S.mode = "competition"; var h = routeFromHash(); if (h) D.S.route = h; D.render(); };
 })();
