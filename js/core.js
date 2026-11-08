@@ -102,7 +102,7 @@ D.go = function (route) {
 D.tab = function (app, def) { return D.S.tabs[app] || def; };
 D.tabsFor = function (app, list, def) {
   var cur = D.tab(app, def || list[0][0]);
-  return list.map(function (t) { return '<button class="tab" data-act="tab" data-app="' + app + '" data-v="' + t[0] + '" aria-pressed="' + (cur === t[0]) + '">' + esc(t[1]) + "</button>"; }).join("");
+  return list.map(function (t) { return '<button class="tab" data-act="tab" data-app="' + app + '" data-v="' + t[0] + '" aria-pressed="' + (cur === t[0]) + '">' + esc(t[1]) + (t[2] ? ' <span class="tcount">' + esc(t[2]) + "</span>" : "") + (t[3] ? ' <span class="tcount warn">' + esc(t[3]) + "</span>" : "") + "</button>"; }).join("");
 };
 D.topbar = function (title, host, tabs, right) {
   return '<header class="topbar">' + (D.topbarLead || "") + "<div><h1>" + esc(title) + '</h1><div class="host">' + esc(host) + "</div></div>" +
@@ -196,8 +196,8 @@ D.views.portal = function () {
     '<p class="flowhint">Switch roles in the yellow bar, choose <b>Competition</b> mode on your Account page, or tick <b>Event day</b>. The <b>Apps</b> menu at the top left reaches every tool from anywhere. Behind the tiles run five services: Account, Calendar, Parts, Competition and Skills.</p></div>';
 };
 D.greetings = { student: "Hi Sam.", mentor: "Hi Ms. Rivera. 2 sign-offs and 4 parts are waiting.", admin: "Hi Mr. Okafor. One request needs your OK and Dr. Patel hasn't answered for this week.", parent: "Hi Pat. Thursday still needs snacks." };
-function displayHome() {
-  return '<div class="display"><p class="dmute">Signed in as a display account · read-only · set up once per screen by an admin</p><h1>Pick what this screen shows</h1><div class="grid3">' +
+function displayHome(blocked) {
+  return '<div class="display">' + (blocked ? '<div class="dcard" style="border-color:var(--gold)">' + esc(blocked) + " isn't available on a display. Pick one of these instead.</div>" : "") + '<p class="dmute">Signed in as a display account · read-only · set up once per screen by an admin</p><h1>Pick what this screen shows</h1><div class="grid3">' +
     [["kiosk", "Door QR", "Sign in and out at the shop door"], ["monitor", "Pit monitor", "Next match, batteries, issues, pit duty"], ["projector", "Projector", "The build plan on the shop TV"], ["kproj", "Kickoff projector", "Strategy points and the live vote"]].map(function (d) {
       return '<button class="dcard" style="text-align:left;cursor:pointer" data-act="go" data-v="' + d[0] + '"><b style="font-family:var(--display);font-size:1.3rem">' + d[1] + '</b><span class="dmute">' + d[2] + "</span></button>";
     }).join("") + '</div><p class="dmute">A display can open only these pages. Everything else answers “not allowed”.</p></div>';
@@ -214,7 +214,7 @@ D.render = function () {
   var scrollers = {}; document.querySelectorAll("[data-keepscroll]").forEach(function (el) { scrollers[el.getAttribute("data-keepscroll")] = [el.scrollLeft, el.scrollTop]; });
   var html = demobar();
   if (S.role === "display") {
-    html += D.DISPLAY_ROUTES[S.route] ? '<div style="position:relative"><div class="dispctl"><button class="btn sm" data-act="go" data-v="portal">Change screen</button></div>' + D.views[S.route]() + "</div>" : displayHome();
+    html += D.DISPLAY_ROUTES[S.route] ? '<div style="position:relative"><div class="dispctl"><button class="btn sm" data-act="go" data-v="portal">Change screen</button></div>' + D.views[S.route]() + "</div>" : displayHome(S.route !== "portal" && D.APPNAME[S.route] ? D.APPNAME[S.route] : "");
   } else if (D.DISPLAY_ROUTES[S.route]) {
     html += D.views[S.route]();
   } else {
