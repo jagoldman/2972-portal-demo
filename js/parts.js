@@ -109,7 +109,7 @@ function qtyText(r) { return r.qty + (r.pack > 1 ? " × pack of " + r.pack + (r.
 function stockTotal(i) { return i.stock.reduce(function (a, s) { return a + s.qty; }, 0); }
 function inStore(i) { return i.stock.filter(function (s) { return s.place.indexOf("bot") < 0; }).reduce(function (a, s) { return a + s.qty; }, 0); }
 // Students see what Needs OK means for them: a mentor has to approve it.
-function statusPill(s) { return '<span class="pill ' + STATUS[s][1] + '">' + (s === "needsok" && !D.isStaff() ? "Waiting for mentor OK" : STATUS[s][0]) + "</span>"; }
+function statusPill(s) { return '<span class="pill ' + STATUS[s][1] + '">' + (D.isStaff() ? STATUS[s][0] : s === "needsok" ? "Waiting for mentor OK" : s === "toorder" ? "Approved" : STATUS[s][0]) + "</span>"; }
 function priPill(p) { return p === "normal" ? "" : '<span class="pill pri ' + PRI[p][1] + '">' + PRI[p][0] + "</span>"; }
 function split(totalC, weights) { var sum = weights.reduce(function (a, b) { return a + b; }, 0) || 1; var w = weights.some(function (x) { return x > 0; }) ? weights : weights.map(function () { return 1; }); sum = w.reduce(function (a, b) { return a + b; }, 0); var out = w.map(function (x) { return Math.floor(totalC * x / sum); }); out[out.length - 1] += totalC - out.reduce(function (a, b) { return a + b; }, 0); return out; }
 
@@ -134,7 +134,7 @@ D.views.parts = function () {
 };
 function requests() {
   var p = P(), me = D.me().name;
-  var groups = [["open", "Open", ["needsok", "toorder", "ordered"]], ["needsok", D.isStaff() ? "Needs OK" : "Waiting for mentor OK", ["needsok"]], ["toorder", "To order", ["toorder"]], ["ordered", "Ordered", ["ordered"]], ["done", "Arrived", ["arrived", "putaway"]], ["closed", "Denied or cancelled", ["denied", "cancelled"]], ["all", "All", Object.keys(STATUS)]];
+  var groups = [["open", "Open", ["needsok", "toorder", "ordered"]], ["needsok", D.isStaff() ? "Needs OK" : "Waiting for mentor OK", ["needsok"]], ["toorder", D.isStaff() ? "To order" : "Approved", ["toorder"]], ["ordered", "Ordered", ["ordered"]], ["done", "Arrived", ["arrived", "putaway"]], ["closed", "Denied or cancelled", ["denied", "cancelled"]], ["all", "All", Object.keys(STATUS)]];
   var g = groups.filter(function (x) { return x[0] === p.filter; })[0];
   var q = p.q.toLowerCase();
   var rows = p.requests.filter(function (r) { return g[2].indexOf(r.status) >= 0 && (!p.mine || r.by === me) && (!q || (r.name + r.sku + r.vendor + r.by + r.sub).toLowerCase().indexOf(q) >= 0); });
@@ -145,7 +145,7 @@ function requests() {
   return '<div class="card"><div class="row between">' + chips + '<label class="row small" style="font-weight:600"><button class="toggle" data-act="pmine" aria-pressed="' + p.mine + '" aria-label="Only my requests"></button> Only mine</label></div>' +
     '<div class="field"><input id="p-q" class="inp" data-input="pq" placeholder="Search part, SKU, vendor or person" value="' + esc(p.q) + '" aria-label="Search requests"></div>' +
     '<div class="list">' + (rows.length ? rows.map(function (r) {
-      return '<button class="li click rli" data-act="preq" data-v="' + r.id + '"><span class="grow"><b>' + esc(r.name) + "</b><br><span class=\"who\">" + esc(r.vendor) + " · " + qtyText(r) + " · " + money(total(r)) + " · " + esc(r.by) + " · " + esc(r.sub) + (r.need ? " · need by " + fmt(r.need) : "") + "</span></span>" + priPill(r.pri) + statusPill(r.status) + '<span class="chev" aria-hidden="true">›</span></button>';
+      return '<button class="li click rli" data-act="preq" data-v="' + r.id + '"><span class="grow"><b>' + esc(r.name) + "</b><br><span class=\"who\">" + esc(r.vendor) + " · " + qtyText(r) + " · " + money(total(r)) + " · " + esc(r.by) + " · " + esc(r.sub) + (r.need ? " · need by " + fmt(r.need) : "") + "</span></span>" + statusPill(r.status) + priPill(r.pri) + '<span class="chev" aria-hidden="true">›</span></button>';
     }).join("") : '<div class="empty">Nothing here.</div>') + "</div></div>";
 }
 D.drawers.preq = function (d) {
@@ -153,7 +153,7 @@ D.drawers.preq = function (d) {
   var acts = [];
   if (staff && r.status === "needsok") acts.push('<button class="btn primary" data-act="papprove" data-v="' + r.id + '">Approve</button>', '<button class="btn" data-act="pdeny" data-v="' + r.id + '">Deny…</button>', '<button class="btn" data-act="preplace" data-v="' + r.id + '">Replace item…</button>');
   // Cancelling is kept apart from the decision buttons so it isn't hit by mistake.
-  var cancel = (mine || staff) && (r.status === "needsok" || r.status === "toorder") ? '<div class="row" style="border-top:1px solid var(--line);padding-top:12px"><button class="btn ghost danger sm" data-act="pcancel" data-v="' + r.id + '">Cancel request</button><span class="small mute">Takes it off the list for good.</span></div>' : "";
+  var cancel = (mine || staff) && (r.status === "needsok" || r.status === "toorder") ? '<div class="row" style="border-top:1px solid var(--line);padding-top:12px"><button class="btn ghost danger sm" data-act="pcancel" data-v="' + r.id + '">Cancel request</button><span class="small mute">Moves it to Denied or cancelled. Its history is kept.</span></div>' : "";
   if (r.status === "ordered") acts.push('<button class="btn" data-act="tab" data-app="parts" data-v="arriving">Check it in on Arriving</button>');
   var rows = [["Vendor", esc(r.vendor)], ["SKU", '<span class="mono">' + esc(r.sku) + "</span>"], ["Quantity", qtyText(r)], ["Price", money(r.price) + " each · " + money(total(r)) + " total"], ["Budget", esc(bname(r.bud))], ["Priority", PRI[r.pri][0]], ["Need by", fmt(r.need) + (ob ? "<br>Order by " + fmt(ob) : "")], ["For", esc(r.sub) + (r.task ? " · task “" + esc(r.task) + "”" : "")], ["Asked by", esc(r.by)]];
   return D.drawerHead("Request #" + r.id, r.name) + '<div class="row">' + statusPill(r.status) + priPill(r.pri) + (r.order ? '<span class="pill">Order #' + r.order + "</span>" : "") + "</div>" +
@@ -214,13 +214,13 @@ function toOrderView() {
   if (!vs.length && !waiting.length) return '<div class="card"><h2>Nothing to order</h2><p class="mute">New requests land here, grouped by vendor.</p></div>';
   return html + vs.map(function (vn) {
     var v = vendor(vn), lines = byV[vn], sub = lines.reduce(function (a, r) { return a + total(r); }, 0), today = lines.filter(placeToday);
-    var nudge = v.free ? (sub >= v.free ? '<span class="pill ok">Free shipping</span>' : '<span class="small"><b>' + money(v.free - sub) + "</b> more for free shipping</span>") : "";
+    var nudge = v.free ? (sub >= v.free ? '<span class="small" style="color:var(--ok);font-weight:600">✓ Free shipping</span>' : '<span class="small"><b>' + money(v.free - sub) + "</b> more for free shipping</span>") : "";
     var tips = [];
     if (v.cutoff) tips.push("Order cutoff " + v.cutoff); if (v.taxfree) tips.push("Tax-exempt here"); v.credits.forEach(function (c) { tips.push(c.label + (c.bal ? ": " + money(c.bal) : "") + (c.code ? " (" + c.code + ")" : "")); }); if (v.pay) tips.push("Pay with " + v.pay);
     return '<div class="card"><div><div class="row between nowrap" style="align-items:baseline"><h2>' + esc(vn) + '</h2><div class="row nowrap"><b class="num">' + money(sub) + "</b>" + (today.length ? '<span class="pill bad">Place today</span>' : "") + '</div></div><p class="who">' + esc(tips.join(" · ")) + "</p></div>" +
-      (v.free ? '<div class="bar"><i style="width:' + Math.min(100, D.pct(sub, v.free)) + '%"></i></div>' : "") + nudge +
+      (v.free ? '<div class="bar"><i' + (sub >= v.free ? ' class="ok"' : "") + ' style="width:' + Math.min(100, D.pct(sub, v.free)) + '%"></i></div>' : "") + nudge +
       '<div class="list">' + lines.map(function (r) { var ob = orderBy(r); return '<div class="li oli"><span class="grow"><b>' + esc(r.name) + '</b><br><span class="who">' + esc(r.sku) + " · " + qtyText(r) + " · " + esc(bname(r.bud)) + " · for " + esc(r.sub) + " · " + esc(r.by) + (ob ? " · order by " + fmt(ob) : "") + "</span></span>" + priPill(r.pri) + '<span class="num">' + money(total(r)) + "</span></div>"; }).join("") + "</div>" +
-      '<div class="row"><button class="btn" data-act="pmarkordered" data-v="' + esc(vn) + '">Mark ordered…</button><button class="btn" data-act="pcopy" data-v="' + esc(vn) + '">' + (vn === "McMaster-Carr" ? "Copy for paste box" : vn === "Amazon" ? "Open Share-A-Cart" : "Copy list") + "</button></div></div>";
+      '<div class="row"><button class="btn primary" data-act="pmarkordered" data-v="' + esc(vn) + '">Mark ordered…</button><button class="btn" data-act="pcopy" data-v="' + esc(vn) + '">' + (vn === "McMaster-Carr" ? "Copy for paste box" : vn === "Amazon" ? "Open Share-A-Cart" : "Copy list") + "</button></div></div>";
   }).join("");
 }
 D.modals.pcopy = function (d) {
@@ -273,7 +273,7 @@ function inventory() {
     '<div class="card"><div class="row"><details class="placepick show-sm-block"><summary>Place: <b>' + esc(p.loc === "all" ? "Everywhere" : nameOf(p.places, p.loc)) + '</b></summary><div class="ltree">' + placeTree + '</div></details><input id="p-invq" class="inp" style="flex:1;min-width:180px" data-input="pinvq" placeholder="Find a part" value="' + esc(p.invq) + '" aria-label="Find a part"><button class="chip" data-act="plow" aria-pressed="' + p.low + '">Low stock ' + lowN + "</button></div>" +
     '<div class="tablewrap"><table class="stacktbl c3"><thead><tr><th>Part</th><th>Where</th><th>In store</th><th>On robots</th><th>Reorder</th></tr></thead><tbody>' + rows.map(function (i) {
       var low = inStore(i) <= i.min, places = i.stock.filter(function (s) { return under(s.place); });
-      return '<tr class="click" data-act="pitem" data-v="' + i.id + '"><td class="wrap lead"><b>' + esc(i.name) + ' <span class="chev" aria-hidden="true">›</span>' + "</b></td><td class=\"wrap small\" data-l=\"Where\">" + places.map(function (s) { return esc(s.place) + " (" + s.qty + ")"; }).join("<br>") + "</td><td data-l=\"In store\">" + inStore(i) + " " + (i.unit === "each" ? "" : esc(i.unit)) + (low ? ' <span class="pill warn">Low</span>' : "") + "</td><td data-l=\"On robots\">" + (stockTotal(i) - inStore(i) || "—") + "</td><td class=\"lead\">" + (low ? '<button class="btn sm" data-act="pmore" data-v="' + i.id + '">Request more</button>' : "") + "</td></tr>";
+      return '<tr class="click" data-act="pitem" data-v="' + i.id + '"><td class="wrap lead"><b>' + esc(i.name) + ' <span class="chev" aria-hidden="true">›</span>' + "</b></td><td class=\"wrap small\" data-l=\"Where\">" + (places.filter(function (s) { return s.place.indexOf("bot") < 0; }).map(function (s) { return esc(s.place) + " (" + s.qty + ")"; }).join("<br>") || "Only on robots") + "</td><td data-l=\"In store\">" + inStore(i) + " " + (i.unit === "each" ? "" : esc(i.unit)) + (low ? ' <span class="pill warn" style="margin-left:6px">Low</span>' : "") + "</td><td data-l=\"On robots\">" + (stockTotal(i) - inStore(i) || "—") + "</td><td class=\"lead\">" + (low ? '<button class="btn sm" data-act="pmore" data-v="' + i.id + '">Request more</button>' : "") + "</td></tr>";
     }).join("") + '</tbody></table></div><p class="small mute">Every count, move, take and return shows who did it. Tap a part for its history.</p></div></div>';
 }
 D.drawers.pitem = function (d) {
@@ -301,7 +301,7 @@ function budget() {
     '<div class="card"><div class="row between"><h2>By category</h2><div class="row">' + (D.isStaff() ? '<button class="btn sm">Import order sheet</button><button class="btn sm" data-act="pexport">Export to Google Sheet</button>' : "") + '</div></div><div class="list">' + BUDGETS.map(function (b) {
       var s = p.spent[b.id], c = committed[b.id] || 0, pe = pending[b.id] || 0;
       return '<div class="li budrow" style="display:grid;grid-template-columns:minmax(0,1fr) auto;gap:6px 12px"><b>' + b.name + '</b><span class="small num" style="text-align:right">' + '<b>' + money(Math.max(0, b.budget - s - c)) + ' left</b> · ' + money(s) + " of " + money(b.budget) + (c ? " · " + money(c) + " committed" : "") + (pe ? " · " + money(pe) + " waiting" : "") + '</span><div class="bar" style="height:12px;grid-column:1/-1"><i style="width:' + Math.min(100, D.pct(s, b.budget)) + '%"></i><i class="soft" style="width:' + Math.min(100, D.pct(c, b.budget)) + '%"></i><i style="background:var(--text-2);width:' + Math.min(100, D.pct(pe, b.budget)) + '%"></i></div></div>';
-    }).join("") + '</div><div class="legend"><span><i class="dotc" style="background:var(--gold)"></i>Spent</span><span><i class="dotc" style="background:repeating-linear-gradient(135deg, var(--gold) 0 2px, var(--heat-1) 2px 4px)"></i>Committed</span><span><i class="dotc" style="background:var(--text-2)"></i>Waiting for OK</span></div><p class="small mute">Only placed orders count as spent. The wishlist never counts.</p></div>';
+    }).join("") + '</div><div class="legend"><span><i class="dotc" style="background:var(--gold)"></i>Spent</span><span><i class="dotc" style="background:repeating-linear-gradient(135deg, var(--gold) 0 2px, var(--heat-1) 2px 4px)"></i>Committed</span><span><i class="dotc" style="background:var(--text-2)"></i>Needs OK</span></div><p class="small mute">Only placed orders count as spent. The wishlist never counts.</p></div>';
 }
 function vendorsView() {
   return '<div class="card"><div class="row between"><h2>Vendors</h2><button class="btn sm">+ Add vendor</button></div><div class="tablewrap"><table class="stacktbl"><thead><tr><th>Vendor</th><th>Free shipping</th><th>Lead + ship</th><th>Cutoff</th><th>Tax</th><th>Pay with</th><th>Credits</th><th></th></tr></thead><tbody>' +
