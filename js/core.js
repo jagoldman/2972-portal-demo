@@ -232,6 +232,8 @@ D.render = function () {
   D.after.forEach(function (f) { try { f(); } catch (e) { if (window.console) console.error(e); } });
   if (activeId) { var el = document.getElementById(activeId); if (el && (el.tagName === "INPUT" || el.tagName === "TEXTAREA")) { el.focus(); try { if (selStart != null) el.setSelectionRange(selStart, selStart); } catch (e) {} } }
 };
+// On phones the tab row scrolls sideways; keep the selected tab in view.
+D.after.push(function () { var t = document.querySelector('.topbar .tabs .tab[aria-pressed="true"]'), row = t && t.parentElement; if (row && row.scrollWidth > row.clientWidth) row.scrollLeft = Math.max(0, t.offsetLeft - row.offsetLeft - 16); });
 
 /* ---------- Shell actions ---------- */
 var A = D.acts;
