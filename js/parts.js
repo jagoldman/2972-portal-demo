@@ -109,7 +109,7 @@ function qtyText(r) { return r.qty + (r.pack > 1 ? " × pack of " + r.pack + (r.
 function stockTotal(i) { return i.stock.reduce(function (a, s) { return a + s.qty; }, 0); }
 function inStore(i) { return i.stock.filter(function (s) { return s.place.indexOf("bot") < 0; }).reduce(function (a, s) { return a + s.qty; }, 0); }
 function statusPill(s) { return '<span class="pill ' + STATUS[s][1] + '">' + STATUS[s][0] + "</span>"; }
-function priPill(p) { return p === "normal" ? "" : '<span class="pill ' + PRI[p][1] + '">' + PRI[p][0] + "</span>"; }
+function priPill(p) { return p === "normal" ? "" : '<span class="pill pri ' + PRI[p][1] + '">' + PRI[p][0] + "</span>"; }
 function split(totalC, weights) { var sum = weights.reduce(function (a, b) { return a + b; }, 0) || 1; var w = weights.some(function (x) { return x > 0; }) ? weights : weights.map(function () { return 1; }); sum = w.reduce(function (a, b) { return a + b; }, 0); var out = w.map(function (x) { return Math.floor(totalC * x / sum); }); out[out.length - 1] += totalC - out.reduce(function (a, b) { return a + b; }, 0); return out; }
 
 /* ---------- Views ---------- */
