@@ -157,7 +157,7 @@ function rail() {
   return '<nav class="rail" aria-label="Apps">' +
     '<button class="brand" data-act="go" data-v="portal"><span class="badge-2972">2972</span><span>Gears &amp; Buccaneers<small>Team portal</small></span></button>' +
     '<button class="ritem" data-act="go" data-v="portal"' + (S.route === "portal" ? ' aria-current="page"' : "") + ">" + D.ic("home") + '<span class="label">Home</span></button>' +
-    '<div class="rsect">' + (S.mode === "competition" ? "Competition" : "Build season") + "</div>" + main.map(item).join("") +
+    '<div class="rsect">' + (S.mode === "competition" ? "Competition mode" : "Build mode") + "</div>" + main.map(item).join("") +
     (more.length ? '<div class="rsect">More</div>' + more.map(item).join("") : "") +
     '<div class="grow"></div>' +
     '<button class="ritem" data-act="bell" aria-expanded="' + S.bell + '">' + D.ic("bell") + '<span class="label">Notifications</span>' + (unread ? '<span class="count">' + unread + "</span>" : "") + "</button>" +
