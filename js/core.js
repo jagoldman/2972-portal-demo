@@ -109,7 +109,7 @@ D.topbar = function (title, host, tabs, right) {
     (tabs ? '<div class="tabs" role="group">' + tabs + "</div>" : "") + (right ? '<div class="right">' + right + "</div>" : "") + "</header>";
 };
 D.denied = function (name) {
-  return D.topbar(name, "", "", "") + '<div class="content"><div class="card"><h2>Not for this role</h2><p class="mute">' + esc(D.me().label) + "s don't have " + esc(name) + '. Authentik keeps them out at the door, so the tile never shows in their rail.</p><div><button class="btn" data-act="go" data-v="portal">Back to Home</button></div></div></div>';
+  return D.topbar(name, "", "", "") + '<div class="content"><div class="card"><h2>You don\'t have access</h2><p class="mute">' + esc(D.me().label) + "s don't have " + esc(name) + '. If you think you need it, ask a team admin.</p><div><button class="btn" data-act="go" data-v="portal">Back to Home</button></div></div></div>';
 };
 D.openDrawer = function (type, data) { D.S.drawer = { type: type, data: data || {} }; D.render(); };
 D.openModal = function (type, data) { D.S.modal = { type: type, data: data || {} }; D.render(); };
