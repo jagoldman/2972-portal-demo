@@ -168,12 +168,12 @@ function newRequest() {
   var popular = !q, results = popular ? p.catalog.slice(0, 4) : q.indexOf("http") !== 0 ? p.catalog.filter(function (c) { return (c.name + c.sku + c.vendor + c.cat).toLowerCase().indexOf(q) >= 0; }).slice(0, 6) : [];
   var guessed = d.guess ? '<span class="guess">Guessed from ' + esc(d.guess) + ". Check it's right.</span>" : "";
   var tot = (d.price || 0) * (d.qty || 1), ob = d.need ? addDays(d.need, -((vendor(d.vendor).lead || 0) + (vendor(d.vendor).ship || 0))) : null;
-  return '<div class="grid2"><div class="card"><h2>Find it</h2><p class="small mute">Search the team catalog (started from the FRCDesign parts library), or paste a product link.</p>' +
+  return '<div class="grid2"><div class="card"><h2>Find it</h2><p class="small mute">Search the team catalog (started from the FRCDesign parts library), or paste a product link.</p><button class="linkbtn show-sm-inline" style="justify-self:start;color:var(--accent)" data-act="pjump">Know what you need? Skip to the form ↓</button>' +
     '<div class="field"><input id="p-lq" class="inp" data-input="plq" placeholder="bearing, 22T sprocket, am-0371 or https://…" value="' + esc(p.lq) + '" aria-label="Search the catalog or paste a link"></div>' +
     '<div class="row"><span class="small mute">Try a link:</span><button class="btn sm" data-act="plink" data-v="rev">REV</button><button class="btn sm" data-act="plink" data-v="wcp" title="WCP parts have options to choose">WCP</button><button class="btn sm" data-act="plink" data-v="amazon">Amazon</button></div>' +
     (d.lookup ? '<p class="hint" style="' + (d.lookup.ok ? "" : "background:var(--info-bg)") + '">' + esc(d.lookup.text) + "</p>" : "") +
-    (results.length ? (popular ? '<p class="eyebrow">Often requested</p>' : "") + '<div class="list">' + results.map(function (c) { return '<button class="li click" data-act="ppick" data-v="' + c.id + '"><span class="grow"><b>' + esc(c.name) + '</b><br><span class="who">' + esc(c.vendor) + " · " + esc(c.sku) + " · " + esc(c.cat) + (c.last ? " · last paid " + money(c.last) : "") + "</span></span>" + '<span class="btn sm">Request</span></button>'; }).join("") + "</div>" : q && q.indexOf("http") !== 0 ? '<div class="empty">Nothing in the catalog. Paste the link instead and it becomes a new catalog part.</div>' : "") +
-    '</div><div class="card' + (d.task ? " hero" : "") + '"><h2>Request</h2>' + (d.task ? '<p class="flowhint">From ' + esc(d.from || "Tasks") + ": <b>" + esc(d.task) + "</b>. The request keeps a link back.</p>" : "") +
+    (results.length ? (popular ? '<p class="eyebrow hide-sm">Often requested</p>' : "") + '<div class="list' + (popular ? " hide-sm" : "") + '">' + results.map(function (c) { return '<button class="li click" data-act="ppick" data-v="' + c.id + '"><span class="grow"><b>' + esc(c.name) + '</b><br><span class="who">' + esc(c.vendor) + " · " + esc(c.sku) + " · " + esc(c.cat) + (c.last ? " · last paid " + money(c.last) : "") + "</span></span>" + '<span class="btn sm">Request</span></button>'; }).join("") + "</div>" : q && q.indexOf("http") !== 0 ? '<div class="empty">Nothing in the catalog. Paste the link instead and it becomes a new catalog part.</div>' : "") +
+    '</div><div class="card' + (d.task ? " hero" : "") + '" id="preq-form"><h2>Request</h2>' + (d.task ? '<p class="flowhint">From ' + esc(d.from || "Tasks") + ": <b>" + esc(d.task) + "</b>. The request keeps a link back.</p>" : "") +
     '<div class="formgrid"><div class="field" style="grid-column:1/-1"><label for="pd-name">Part</label><input id="pd-name" data-input="pd" value="' + esc(d.name) + '"></div>' +
     '<div class="field"><label for="pd-vendor">Vendor</label><input id="pd-vendor" data-input="pd" value="' + esc(d.vendor) + '"></div><div class="field"><label for="pd-sku">SKU</label><input id="pd-sku" data-input="pd" value="' + esc(d.sku) + '"></div>' +
     (d.options ? '<div class="field"><label for="pd-opt">Option</label><select id="pd-opt" data-change="pdopt">' + d.options.map(function (o) { return "<option" + (o === d.opt ? " selected" : "") + ">" + esc(o) + "</option>"; }).join("") + "</select></div>" : "") +
@@ -186,7 +186,7 @@ function newRequest() {
     '<div class="field"><span class="flabel">Priority</span><div class="choice four">' + Object.keys(PRI).map(function (k) { return '<button data-act="ppri" data-v="' + k + '" aria-pressed="' + (d.pri === k) + '">' + PRI[k][0] + "</button>"; }).join("") + "</div></div>" +
     '<div class="field"><label for="pd-why">Why (optional)</label><input id="pd-why" data-input="pd" value="' + esc(d.why) + '"></div>' +
     '<div class="row between"><b class="num">Total ' + money(tot) + '</b><span class="small mute">' + (tot > LIMIT ? "Over $250: a mentor OKs it first." : "Under $250: goes straight onto “To order”.") + "</span></div>" +
-    '<div class="row"><button class="btn primary" data-act="psubmit">Send request</button><button class="btn" data-act="pwish">Save to wishlist</button><button class="btn ghost" data-act="pclear">Clear</button></div></div></div>';
+    '<div class="row sendbar"><button class="btn primary" data-act="psubmit">Send request</button><button class="btn" data-act="pwish">Save to wishlist</button><button class="btn ghost" data-act="pclear">Clear</button></div></div></div>';
 }
 function blankDraft() { return { name: "", vendor: "", sku: "", price: 0, qty: 1, pack: 1, unit: "", bud: "mech", guess: "", need: "", sub: "", pri: "normal", why: "", task: "", options: null, opt: "", lookup: null, cid: null }; }
 function fill(d, c, how) {
@@ -308,6 +308,7 @@ function vendorsView() {
 /* ---------- Actions ---------- */
 var A = D.acts;
 A.pfilter = function (b) { P().filter = b.dataset.v; D.render(); };
+A.pjump = function () { var f = document.getElementById("preq-form"); if (f) f.scrollIntoView({ behavior: "smooth" }); };
 D.changes.pfiltersel = function (el) { P().filter = el.value; D.render(); };
 A.pmine = function () { P().mine = !P().mine; D.render(); };
 D.inputs.pq = function (el) { P().q = el.value; D.render(); };
