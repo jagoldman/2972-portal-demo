@@ -10,7 +10,7 @@ function fmt(s) { if (!s) return "—"; var d = parse(s); return d.toLocaleDateS
 function addDays(s, n) { var d = parse(s); return iso(new Date(d.getFullYear(), d.getMonth(), d.getDate() + n)); }
 var LIMIT = 25000;
 var PRI = { blocking: ["Blocking", "bad"], high: ["High", "warn"], normal: ["Normal", ""], nice: ["Nice to have", "info"] };
-var STATUS = { needsok: ["Needs OK", "warn"], toorder: ["To order", "gold"], ordered: ["Ordered", "info"], arrived: ["Arrived", "ok"], putaway: ["Put away", "ok"], denied: ["Denied", "bad"], cancelled: ["Cancelled", ""] };
+var STATUS = { needsok: ["Needs OK", "warn"], toorder: ["To order", ""], ordered: ["Ordered", "info"], arrived: ["Arrived", "ok"], putaway: ["Put away", "ok"], denied: ["Denied", "bad"], cancelled: ["Cancelled", ""] };
 var BUDGETS = [ { id: "drive", name: "Drivetrain", budget: 300000 }, { id: "mech", name: "Mechanisms", budget: 400000 }, { id: "elec", name: "Electrical", budget: 250000 }, { id: "tools", name: "Tools", budget: 150000 }, { id: "spares", name: "Spares", budget: 120000 }, { id: "comp", name: "Competition", budget: 80000 } ];
 function bname(id) { return BUDGETS.filter(function (b) { return b.id === id; })[0].name; }
 
