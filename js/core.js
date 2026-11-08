@@ -210,7 +210,7 @@ D.render = function () {
   var scrollers = {}; document.querySelectorAll("[data-keepscroll]").forEach(function (el) { scrollers[el.getAttribute("data-keepscroll")] = [el.scrollLeft, el.scrollTop]; });
   var html = demobar();
   if (S.role === "display") {
-    html += D.DISPLAY_ROUTES[S.route] ? '<div style="position:relative">' + D.views[S.route]() + '<div style="position:absolute;top:12px;right:16px"><button class="btn sm" data-act="go" data-v="portal">Change screen</button></div></div>' : displayHome();
+    html += D.DISPLAY_ROUTES[S.route] ? '<div style="position:relative"><div class="dispctl"><button class="btn sm" data-act="go" data-v="portal">Change screen</button></div>' + D.views[S.route]() + "</div>" : displayHome();
   } else if (D.DISPLAY_ROUTES[S.route]) {
     html += D.views[S.route]();
   } else {
