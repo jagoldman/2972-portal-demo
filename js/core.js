@@ -187,11 +187,12 @@ D.views.portal = function () {
     S.activity.slice(0, 7).map(function (a) { return '<div class="li"><span class="pill">' + esc(D.APPNAME[a.app]) + '</span><span class="grow"><b>' + esc(a.who) + "</b> " + esc(a.what) + '</span><span class="who">' + esc(a.when) + "</span></div>"; }).join("") + "</div></div>";
   return D.topbar("Home", "portal.2972robotics.com", "", '<span class="pill gold">' + (S.mode === "competition" ? "Competition mode" : "Build mode") + "</span>") +
     '<div class="content"><div><p class="eyebrow">' + esc(D.me().label) + ' view</p><h2 style="font-size:1.5rem">' + esc(greet) + "</h2></div>" +
+    (S.role === "student" && D.nextUpCard ? D.nextUpCard() : "") +
     '<div class="tiles">' + main.map(tile).join("") + "</div>" +
     (more.length ? '<div><p class="eyebrow" style="margin-bottom:8px">More</p><div class="tiles">' + more.map(tile).join("") + "</div></div>" : "") + act +
     '<p class="flowhint">Switch roles in the yellow bar, choose <b>Competition</b> mode on your Account page, or tick <b>Event day</b>. The <b>Apps</b> menu at the top left reaches every tool from anywhere. Behind the tiles run five services: Account, Calendar, Parts, Competition and Skills.</p></div>';
 };
-D.greetings = { student: "Hi Sam. Next up: Mount intake roller bearings.", mentor: "Hi Ms. Rivera. 2 sign-offs and 4 parts are waiting.", admin: "Hi Mr. Okafor. One request needs your OK and Dr. Patel hasn't answered for this week.", parent: "Hi Pat. Thursday still needs snacks." };
+D.greetings = { student: "Hi Sam.", mentor: "Hi Ms. Rivera. 2 sign-offs and 4 parts are waiting.", admin: "Hi Mr. Okafor. One request needs your OK and Dr. Patel hasn't answered for this week.", parent: "Hi Pat. Thursday still needs snacks." };
 function displayHome() {
   return '<div class="display"><p class="dmute">Signed in as a display account · read-only · set up once per screen by an admin</p><h1>Pick what this screen shows</h1><div class="grid3">' +
     [["kiosk", "Door QR", "Sign in and out at the shop door"], ["monitor", "Pit monitor", "Next match, batteries, issues, pit duty"], ["projector", "Projector", "The build plan on the shop TV"]].map(function (d) {
