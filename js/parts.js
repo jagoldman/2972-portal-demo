@@ -149,13 +149,14 @@ D.drawers.preq = function (d) {
   var r = reqById(d.id), staff = D.isStaff(), mine = r.by === D.me().name, ob = orderBy(r);
   var acts = [];
   if (staff && r.status === "needsok") acts.push('<button class="btn primary" data-act="papprove" data-v="' + r.id + '">Approve</button>', '<button class="btn" data-act="pdeny" data-v="' + r.id + '">Deny…</button>', '<button class="btn" data-act="preplace" data-v="' + r.id + '">Replace item…</button>');
-  if ((mine || staff) && (r.status === "needsok" || r.status === "toorder")) acts.push('<button class="btn danger" data-act="pcancel" data-v="' + r.id + '">Cancel request</button>');
+  // Cancelling is kept apart from the decision buttons so it isn't hit by mistake.
+  var cancel = (mine || staff) && (r.status === "needsok" || r.status === "toorder") ? '<div class="row" style="border-top:1px solid var(--line);padding-top:12px"><button class="btn ghost danger sm" data-act="pcancel" data-v="' + r.id + '">Cancel request</button><span class="small mute">Takes it off the list for good.</span></div>' : "";
   if (r.status === "ordered") acts.push('<button class="btn" data-act="tab" data-app="parts" data-v="arriving">Check it in on Arriving</button>');
   var rows = [["Vendor", esc(r.vendor)], ["SKU", '<span class="mono">' + esc(r.sku) + "</span>"], ["Quantity", qtyText(r)], ["Price", money(r.price) + " each · " + money(total(r)) + " total"], ["Budget", esc(bname(r.bud))], ["Priority", PRI[r.pri][0]], ["Need by", fmt(r.need) + (ob ? "<br>Order by " + fmt(ob) : "")], ["For", esc(r.sub) + (r.task ? " · task “" + esc(r.task) + "”" : "")], ["Asked by", esc(r.by)]];
   return D.drawerHead("Request #" + r.id, r.name) + '<div class="row">' + statusPill(r.status) + priPill(r.pri) + (r.order ? '<span class="pill">Order #' + r.order + "</span>" : "") + "</div>" +
     (r.why ? '<p class="hint">' + esc(r.why) + "</p>" : "") + (r.denied ? '<p class="hint" style="background:var(--bad-bg)">Denied: ' + esc(r.denied) + "</p>" : "") +
     '<div class="tablewrap"><table><tbody>' + rows.map(function (x) { return '<tr><th style="width:110px">' + x[0] + '</th><td class="wrap">' + x[1] + "</td></tr>"; }).join("") + "</tbody></table></div>" +
-    (acts.length ? '<div class="row">' + acts.join("") + "</div>" : "") +
+    (acts.length ? '<div class="row">' + acts.join("") + "</div>" : "") + cancel +
     '<div><p class="flabel">History</p><div class="list">' + r.hist.slice().reverse().map(function (h) { return '<div class="li"><span class="grow"><b>' + esc(h.who) + "</b> " + esc(h.what) + '</span><span class="who">' + esc(h.when) + "</span></div>"; }).join("") + "</div></div>";
 };
 D.modals.pdeny = function (d) { var r = reqById(d.id); return D.modalHead("Deny this request?") + "<p><b>" + esc(r.name) + "</b> for " + esc(r.by) + '. They see your reason.</p><div class="field"><label for="p-deny">Why</label><textarea id="p-deny" rows="3">Let\'s use the ones in stock first.</textarea></div><div class="row"><button class="btn primary" data-act="pdenygo" data-v="' + r.id + '">Deny</button><button class="btn" data-act="closemodal">Keep it</button></div>'; };
