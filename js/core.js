@@ -137,7 +137,7 @@ function appbar() {
   return '<header class="appbar"><button class="appsbtn" data-act="apps" aria-expanded="' + !!S.appsOpen + '" aria-label="All apps">' + D.ic("home", 18) + '<span class="hide-sm">Apps</span><span aria-hidden="true">▾</span></button>' +
     '<button class="brand" data-act="go" data-v="portal"><span class="badge-2972">2972</span><span class="hide-sm">Gears &amp; Buccaneers</span></button>' +
     (here ? '<span class="crumb">/ ' + esc(here) + "</span>" : "") + '<span class="grow"></span>' +
-    (S.mode === "competition" ? '<button class="pill info" style="border:0" data-act="go" data-v="account" title="Change in Account settings">Competition mode</button>' : "") +
+    (S.mode === "competition" ? '<button class="leadchip" style="border:0" data-act="go" data-v="account" title="Change in Account settings">Competition mode</button>' : "") +
     '<button class="iconbtn" data-act="bell" aria-expanded="' + S.bell + '" aria-label="Notifications">' + D.ic("bell") + (unread ? '<span class="count">' + unread + "</span>" : "") + "</button>" +
     '<button class="iconbtn acct" data-act="go" data-v="account" aria-label="Account">' + esc(D.me().name.replace(/^(Ms|Mr|Dr)\. /, "").split(" ").map(function (w) { return w[0]; }).join("").slice(0, 2)) + "</button></header>";
 }
@@ -174,7 +174,7 @@ function bellPanel() {
 function banner() {
   var S = D.S; if (!S.eventDay) return "";
   return '<div class="banner"><b>Colorado Regional</b><span>Day 2 of 4 · Pit 42 · Rank 9 of 48</span><a href="https://www.thebluealliance.com" target="_blank" rel="noopener noreferrer">TBA ↗</a><a href="https://www.twitch.tv/firstinspires" target="_blank" rel="noopener noreferrer">Livestream ↗</a>' +
-    (S.mode !== "competition" ? '<button class="btn sm primary" data-act="mode" data-v="competition">Switch to Competition</button>' : '<span class="pill info">Competition mode on</span>') + "</div>";
+    (S.mode !== "competition" ? '<button class="btn sm primary" data-act="mode" data-v="competition">Switch to Competition</button>' : "") + "</div>";
 }
 
 /* ---------- Portal and display home ---------- */
