@@ -173,7 +173,7 @@ function bellPanel() {
 }
 function banner() {
   var S = D.S; if (!S.eventDay) return "";
-  return '<div class="banner"><b>Colorado Regional</b><span>Day 2 of 4 · Pit 42 · Rank 9 of 48</span><a href="https://www.thebluealliance.com" target="_blank" rel="noopener noreferrer">TBA ↗</a><a href="https://www.twitch.tv/firstinspires" target="_blank" rel="noopener noreferrer">Livestream ↗</a>' +
+  return '<div class="banner"><b>Colorado Regional</b><span>Day 2 of 4 · Pit 42 · Rank 9 of 48</span><a href="https://www.thebluealliance.com" target="_blank" rel="noopener noreferrer">The Blue Alliance ↗</a><a href="https://www.twitch.tv/firstinspires" target="_blank" rel="noopener noreferrer">Livestream ↗</a>' +
     (S.mode !== "competition" ? '<button class="btn sm primary" data-act="mode" data-v="competition">Switch to Competition</button>' : "") + "</div>";
 }
 
@@ -187,7 +187,7 @@ D.views.portal = function () {
   var greet = (D.greetings && D.greetings[S.role]) || "Welcome back.";
   var act = S.role === "parent" ? "" : '<div class="card"><div class="row between"><h2>Recent activity</h2><span class="small mute">Everyone sees who did what</span></div><div class="list">' +
     S.activity.slice(0, 7).map(function (a) { return '<div class="li actli"><span class="pill">' + esc(D.APPNAME[a.app]) + '</span><span class="grow"><b>' + esc(a.who) + "</b> " + esc(a.what) + '</span><span class="who">' + esc(a.when) + "</span></div>"; }).join("") + "</div></div>";
-  return D.topbar("Home", "portal.2972robotics.com", "", '<span class="pill gold">' + (S.mode === "competition" ? "Competition mode" : "Build mode") + "</span>") +
+  return D.topbar("Home", "portal.2972robotics.com", "", S.mode === "competition" ? "" : '<span class="pill gold">Build mode</span>') +
     '<div class="content"><div><p class="eyebrow">' + esc(D.me().label) + ' view</p><h2 style="font-size:1.5rem">' + esc(greet) + "</h2></div>" +
     (S.role === "student" && S.eventDay && D.myShiftCard ? D.myShiftCard() : "") +
     (S.role === "student" && D.nextUpCard ? D.nextUpCard() : "") +
