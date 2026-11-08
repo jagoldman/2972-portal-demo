@@ -187,6 +187,7 @@ D.views.portal = function () {
     S.activity.slice(0, 7).map(function (a) { return '<div class="li actli"><span class="pill">' + esc(D.APPNAME[a.app]) + '</span><span class="grow"><b>' + esc(a.who) + "</b> " + esc(a.what) + '</span><span class="who">' + esc(a.when) + "</span></div>"; }).join("") + "</div></div>";
   return D.topbar("Home", "portal.2972robotics.com", "", '<span class="pill gold">' + (S.mode === "competition" ? "Competition mode" : "Build mode") + "</span>") +
     '<div class="content"><div><p class="eyebrow">' + esc(D.me().label) + ' view</p><h2 style="font-size:1.5rem">' + esc(greet) + "</h2></div>" +
+    (S.role === "student" && S.eventDay && D.myShiftCard ? D.myShiftCard() : "") +
     (S.role === "student" && D.nextUpCard ? D.nextUpCard() : "") +
     '<div class="tiles">' + main.map(tile).join("") + "</div>" +
     (more.length ? '<div><p class="eyebrow" style="margin-bottom:8px">More</p><div class="tiles">' + more.map(tile).join("") + "</div></div>" : "") + act +

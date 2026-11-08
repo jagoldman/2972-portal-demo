@@ -86,12 +86,13 @@ D.views.schedule = function () {
   return D.topbar("Schedule", "compete.2972robotics.com/schedule", D.tabsFor("schedule", list, "mine"), right) + '<div class="content">' + body + "</div>";
 };
 function runsOf(row) { var runs = []; row.forEach(function (r, i) { if (!runs.length || runs[runs.length - 1].r !== r) runs.push({ r: r, from: i, to: i }); else runs[runs.length - 1].to = i; }); return runs; }
-function mySchedule(dayTabs) {
+D.myShiftCard = function () { return mySchedule("", true); };
+function mySchedule(dayTabs, heroOnly) {
   var c = C(), who = D.S.role === "student" ? "Sam Ortiz" : PEOPLE.indexOf(D.me().name) >= 0 ? D.me().name : "Ms. Rivera";
   var row = scheduleRows()[who], runs = runsOf(row), cur = runs.filter(function (r) { return r.from <= c.nowSlot && c.nowSlot <= r.to; })[0], nxt = runs[runs.indexOf(cur) + 1];
   return '<div class="card hero"><div class="row between"><div><p class="eyebrow">' + c.days[c.day] + " · now " + slotLabel(c.nowSlot) + '</p><h2 style="font-size:1.5rem">' + esc(ROLES[cur.r].label) + " until " + slotLabel(cur.to + 1) + "</h2>" + (nxt ? '<p class="mute">Then ' + esc(ROLES[nxt.r].label) + " at " + slotLabel(nxt.from) + ". You get a notice " + c.remind + " minutes before.</p>" : "") + "</div>" + dayTabs + "</div>" +
     (cur.r === "scout" ? '<div><button class="btn primary" data-act="go" data-v="scouting">Open my scouting match</button></div>' : cur.r === "pit" ? '<div><button class="btn primary" data-act="go" data-v="pit">Open Pit checklists</button></div>' : "") + "</div>" +
-    '<div class="card"><h2>' + esc(who) + '</h2><div class="timeline">' + runs.map(function (r) { return '<div class="tlrow"><span class="num small">' + slotLabel(r.from) + "–" + slotLabel(r.to + 1) + '</span><div class="tlbar" style="background:' + ROLES[r.r].color + ";" + (r === cur ? "box-shadow:0 0 0 3px var(--text)" : "") + '">' + esc(ROLES[r.r].label) + (r === cur ? " · now" : "") + "</div></div>"; }).join("") + "</div></div>";
+    (heroOnly ? "" : '<div class="card"><h2>' + esc(who) + '</h2><div class="timeline">' + runs.map(function (r) { return '<div class="tlrow"><span class="num small">' + slotLabel(r.from) + "–" + slotLabel(r.to + 1) + '</span><div class="tlbar" style="background:' + ROLES[r.r].color + ";" + (r === cur ? "box-shadow:0 0 0 3px var(--text)" : "") + '">' + esc(ROLES[r.r].label) + (r === cur ? " · now" : "") + "</div></div>"; }).join("") + "</div></div>");
 }
 function everyone(dayTabs) {
   var c = C(), rows = scheduleRows(), staff = D.isStaff();
