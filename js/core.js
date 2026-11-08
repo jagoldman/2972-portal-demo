@@ -181,7 +181,7 @@ function banner() {
 D.views.portal = function () {
   var S = D.S, tiles = D.visibleTiles();
   var main = tiles.filter(function (t) { return !t.more; }), more = tiles.filter(function (t) { return t.more; });
-  function tile(t) { return '<button class="tile" data-act="go" data-v="' + t.id + '"><span class="ic">' + D.ic(t.icon, 22) + "</span><b>" + esc(t.name) + "</b><p>" + esc(t.desc) + '</p><span class="ext">' + esc(t.svc === "link" ? "external link" : t.svc) + "</span></button>"; }
+  function tile(t) { return '<button class="tile" data-act="go" data-v="' + t.id + '"><span class="ic">' + D.ic(t.icon, 22) + "</span><b>" + esc(t.name) + (t.ext ? " ↗" : "") + "</b><p>" + esc(t.desc) + "</p></button>"; }
   var greet = (D.greetings && D.greetings[S.role]) || "Welcome back.";
   var act = S.role === "parent" ? "" : '<div class="card"><div class="row between"><h2>Recent activity</h2><span class="small mute">Everyone sees who did what</span></div><div class="list">' +
     S.activity.slice(0, 7).map(function (a) { return '<div class="li actli"><span class="pill">' + esc(D.APPNAME[a.app]) + '</span><span class="grow"><b>' + esc(a.who) + "</b> " + esc(a.what) + '</span><span class="who">' + esc(a.when) + "</span></div>"; }).join("") + "</div></div>";
