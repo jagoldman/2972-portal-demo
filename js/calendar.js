@@ -52,11 +52,12 @@ D.inits.push(function (S) {
     here: [ { name: "Mr. Chen", at: "3:22 pm" }, { name: "Leo Brooks", at: "3:31 pm" }, { name: "Priya Shah", at: "3:33 pm" }, { name: "Ava Kim", at: "3:40 pm" }, { name: "Nina Park", at: "3:41 pm" } ],
     days: days, att: att, studentsOnly: true, sort: "hours",
     avail: {
-      "Ms. Rivera": { usual: [2, 4], one: { "2026-11-14": "coming", "2026-11-17": "cant" } },
-      "Mr. Chen": { usual: [2, 4, 6], one: {} },
-      "Dr. Patel": { usual: [], one: {} },
-      "Mr. Okafor": { usual: [4], one: { "2026-11-12": "coming" } }
+      "Ms. Rivera": { usual: [2, 4], ut: {}, one: { "2026-11-14": "coming", "2026-11-17": "cant" }, t: { "2026-11-14": { start: "10:00", end: "13:00" } } },
+      "Mr. Chen": { usual: [2, 4], ut: { 2: { start: "16:00", end: "18:00" } }, one: {}, t: {} },
+      "Dr. Patel": { usual: [], ut: {}, one: {}, t: {} },
+      "Mr. Okafor": { usual: [4], ut: {}, one: { "2026-11-12": "coming" }, t: {} }
     },
+    mview: "list", mmonth: [2026, 10], pop: null, medit: null, udraft: null,
     adjust: [ { who: "Jordan Lee", hours: 2.5, why: "Forgot to scan out on Nov 5", by: "Ms. Rivera", when: "Nov 6" } ],
     snacks: {}, slots: 2,
     sync: { last: "2 min ago", count: 148 }
@@ -150,9 +151,9 @@ D.modals.calnew = function (d) {
 /* ---------- Attendance ---------- */
 D.views.here = function () {
   var staff = D.isStaff(), list = [["today", "Today"], ["board", "Leaderboard"], ["me", "My attendance"], ["mentors", "Mentors"]];
-  if (staff) list.push(["mydays", "My days"], ["admin", "Corrections"]);
+  if (staff) list.push(["admin", "Corrections"]);
   var t = D.tab("here", "today"), body;
-  if (t === "board") body = board(); else if (t === "me") body = mine(); else if (t === "mentors") body = mentorsView(); else if (t === "mydays" && staff) body = myDays(); else if (t === "admin" && staff) body = corrections(); else body = today();
+  if (t === "board") body = board(); else if (t === "me") body = mine(); else if (t === "mentors") body = mentorsView(); else if (t === "admin" && staff) body = corrections(); else body = today();
   return D.topbar("Attendance", "calendar.2972robotics.com/here", D.tabsFor("here", list, "today"), staff ? '<button class="btn sm" data-act="go" data-v="kiosk">' + D.ic("qr", 16) + " Door QR screen</button>" : "") + '<div class="content">' + body + "</div>";
 };
 function today() {
@@ -190,20 +191,110 @@ function mine() {
     '<div class="card"><h2>' + esc(n) + ': recent visits</h2><div class="list">' + C().days.slice().reverse().filter(function (d) { return d !== TODAYS; }).map(function (d) { var h = a[d]; return '<div class="li"><b class="num" style="min-width:110px">' + fmt(d) + '</b><span class="grow">' + (h > 0 ? "3:3" + (d.charCodeAt(9) % 9) + " pm – " + (h >= 2.5 ? "6:00" : "5:00") + " pm" : h < 0 ? '<span class="pill bad">Missed sign-out</span> <span class="who">Closed with no hours. Ask a mentor to fix it.</span>' : '<span class="mute">Not there</span>') + '</span><span class="num">' + (h > 0 ? h.toFixed(1) + " h" : "") + "</span></div>"; }).join("") +
     C().adjust.filter(function (x) { return x.who === n; }).map(function (x) { return '<div class="li"><span class="pill info">Adjusted</span><span class="grow">+' + x.hours + " h · " + esc(x.why) + '</span><span class="who">' + esc(x.by) + " · " + esc(x.when) + "</span></div>"; }).join("") + "</div></div>";
 }
+/* Mentor availability, laid out like the Task App's: your usual week, then Who's coming as a List
+   (practice days × mentors) or a Calendar. Your own days open a small editor when clicked. */
+function shortT(s) { return t12(s).replace(" ", ""); }
+function range(a) { return a && a.start && a.end ? shortT(a.start) + "–" + shortT(a.end) : null; }
+function ans(m, date) {
+  var a = C().avail[m], o = a.one[date], wd = parse(date).getDay(), t;
+  if (o) { t = a.t[date] || {}; return { st: o, start: t.start || "", end: t.end || "", usual: false }; }
+  if (a.usual.indexOf(wd) >= 0) { t = a.ut[wd] || {}; return { st: "coming", start: t.start || "", end: t.end || "", usual: true }; }
+  return null;
+}
+function horizonDays() { var end = iso(new Date(TODAY.getTime() + 56 * DAY)); return practiceDays(40).filter(function (e) { return e.date < end; }); }
+function practiceWeekdays(days) { var out = []; days.forEach(function (e) { var w = parse(e.date).getDay(); if (e.auto && out.indexOf(w) < 0) out.push(w); }); return out; }
+function editorName() { if (!D.isStaff()) return null; var c = C(); if (D.S.role === "admin" && c.medit) return c.medit; return C().avail[D.me().name] ? D.me().name : "Ms. Rivera"; }
+function savedUsual(m) { var a = C().avail[m], out = {}; a.usual.slice().sort().forEach(function (w) { var t = a.ut[w] || {}; out[w] = { start: t.start || "", end: t.end || "" }; }); return out; }
+function draft(m) { var c = C(); if (!c.udraft || c.udraft.m !== m) c.udraft = { m: m, days: savedUsual(m) }; return c.udraft.days; }
+function comingCount(d) { return MENTORS.filter(function (m) { var a = ans(m, d); return a && a.st === "coming"; }).length; }
+function timeInputs(id, act, attrs, start, end) {
+  return '<span class="row nowrap" style="gap:4px"><input type="time" step="900" class="inp tinp" id="' + id + '-s" data-change="' + act + '" ' + attrs + ' data-f="start" value="' + start + '" aria-label="Arrive"><span class="mute">to</span>' +
+    '<input type="time" step="900" class="inp tinp" id="' + id + '-e" data-change="' + act + '" ' + attrs + ' data-f="end" value="' + end + '" aria-label="Leave"></span>';
+}
+var WD = ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"];
+
 function mentorsView() {
-  var days = practiceDays(8), student = !D.isStaff();
-  return '<div class="card"><div class="row between"><h2>Mentors at practice</h2><span class="who">' + (student ? "Names only for students" : "From each mentor's usual week and answers") + '</span></div><div class="tablewrap"><table><thead><tr><th>Mentor</th>' + days.map(function (e) { return "<th>" + fmt(e.date, { weekday: "short", month: "numeric", day: "numeric" }) + "</th>"; }).join("") + "</tr></thead><tbody>" +
-    MENTORS.map(function (m) { return "<tr><td><b>" + esc(m) + "</b></td>" + days.map(function (e) { var a = availOf(m, e.date), here = e.date === TODAYS && C().here.some(function (h) { return h.name === m; }); return "<td>" + (here ? '<span class="pill ok">Here</span>' : a === "coming" || a === "usual" ? '<span class="pill info">' + (student ? "Yes" : "Coming") + "</span>" : a === "cant" ? (student ? "" : '<span class="pill bad">Can\'t</span>') : '<span class="mute">—</span>') + "</td>"; }).join("") + "</tr>"; }).join("") +
-    '</tbody></table></div><p class="small mute">At least two mentors are needed for power tools. Days with fewer show in the bell for admins.</p></div>';
+  var ed = editorName(), me = D.me().name, days = horizonDays();
+  var picker = D.S.role === "admin" ? '<label class="row small" title="Admins can set availability for any mentor."><span class="mute">Editing</span><select class="chipsel" data-change="hereedit" aria-label="Editing">' +
+    MENTORS.map(function (m) { return '<option value="' + esc(m) + '"' + (m === ed ? " selected" : "") + ">" + esc(m) + (m === me ? " (you)" : "") + "</option>"; }).join("") + "</select></label>" : "";
+  return '<div class="row between"><div><h2>Mentor availability</h2><p class="small mute">' + (ed ? "Set your usual week once, then click a practice day in Who's coming to change just that day. Students see who's coming on the Calendar." : "Which mentors are coming to each practice. Mentors answer for themselves.") + "</p></div>" + picker + "</div>" +
+    '<div class="mavail' + (ed ? "" : " solo") + '">' + (ed ? usualWeek(ed, days) : "") + whosComing(ed, days) + "</div>";
 }
-function myDays() {
-  var m = C().avail[D.me().name] ? D.me().name : "Ms. Rivera", a = C().avail[m];
-  var wd = ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"];
-  return '<div class="card"><h2>My usual week</h2><div class="row">' + wd.map(function (d, i) { return '<button class="chip" data-act="hereusual" data-v="' + i + '" aria-pressed="' + (a.usual.indexOf(i) >= 0) + '">' + d + "</button>"; }).join("") +
-    '</div><p class="small mute">Your usual days fill in the next 8 weeks. A one-off answer below wins. “Coming” uses the practice time.</p></div><div class="card"><h2>Next practices</h2><div class="list">' +
-    practiceDays(8).map(function (e) { var v = availOf(m, e.date); return '<div class="li"><b class="num" style="min-width:120px">' + fmt(e.date) + '</b><span class="grow mute">' + span(e) + (v === "usual" ? " · usual week" : "") + '</span><span class="seg"><button data-act="hereavail" data-d="' + e.date + '" data-v="coming" aria-pressed="' + (v === "coming" || v === "usual") + '">Coming</button><button data-act="hereavail" data-d="' + e.date + '" data-v="cant" aria-pressed="' + (v === "cant") + '">Can\'t</button></span></div>'; }).join("") +
-    '</div><div class="row"><button class="btn sm" data-act="hereextra">+ Coming on an extra day</button></div></div>';
+function usualWeek(m, days) {
+  var dr = draft(m), pw = practiceWeekdays(days), dirty = JSON.stringify(dr) !== JSON.stringify(savedUsual(m));
+  return '<div class="card usual"><h2>' + (m === D.me().name ? "My usual week" : esc(m) + "'s usual week") + '</h2><p class="small mute">Pick the practice days you normally come. You\'ll be marked as coming on those days for the next 8 weeks.</p><div class="row" style="gap:4px">' +
+    WD.map(function (d, w) { var on = !!dr[w], ok = pw.indexOf(w) >= 0; return '<button class="chip" data-act="hereusual" data-v="' + w + '" aria-pressed="' + on + '"' + (!ok && !on ? " disabled" : "") + ' title="' + (ok ? "Come every " + d : "The team doesn't practice on " + d) + '">' + d + "</button>"; }).join("") + "</div>" +
+    Object.keys(dr).map(function (w) { return '<div class="row small"><b style="width:36px">' + WD[w] + "</b>" + timeInputs("ut" + w, "hereutime", 'data-w="' + w + '"', dr[w].start, dr[w].end) + "</div>"; }).join("") +
+    '<div><button class="btn primary" data-act="heresaveusual"' + (dirty ? "" : " disabled") + ">Save usual week</button></div></div>";
 }
+function whosComing(ed, days) {
+  var c = C(), v = c.mview || "list";
+  return '<div class="card"><div class="row between"><h2>Who\'s coming</h2><span class="seg" role="group" aria-label="View">' + [["list", "List"], ["calendar", "Calendar"]].map(function (x) { return '<button data-act="hereview" data-v="' + x[0] + '" aria-pressed="' + (v === x[0]) + '">' + x[1] + "</button>"; }).join("") + "</span></div>" +
+    (v === "calendar" ? mentorMonth(ed, days) : days.length ? teamList(ed, days) : '<p class="small mute">No practice days in the next 8 weeks.</p>') +
+    (ed && c.pop ? dayPop(ed, c.pop.d, days) : "") + "</div>";
+}
+function answerLabel(a, student) {
+  if (a && a.st === "coming") return '<span class="ans-ok">' + D.ic("check", 13) + " " + (range(a) || "Coming") + "</span>";
+  if (a && a.st === "cant" && !student) return '<span class="mute">✕ Not coming</span>';
+  return '<span class="mute" aria-label="No answer">–</span>';
+}
+function teamList(ed, days) {
+  var c = C(), me = D.me().name, student = !D.isStaff(), admin = D.S.role === "admin", others = MENTORS.filter(function (m) { return m !== ed; });
+  var sub = 'style="display:block;text-transform:none;letter-spacing:0;font-weight:400"';
+  return '<div class="tablewrap" data-keepscroll="mtable"><table style="min-width:36rem"><thead><tr><th>Practice</th>' +
+    (ed ? '<th class="mine">' + (ed === me ? "You" : esc(ed)) + '<span class="who" ' + sub + ">Click a day to change it</span></th>" : "") +
+    others.map(function (m) { return "<th>" + (admin ? '<button class="linkbtn" data-act="hereeditm" data-v="' + esc(m) + '" title="Edit ' + esc(m) + '\'s days">' + esc(m) + "</button>" : esc(m)) + "</th>"; }).join("") + "</tr></thead><tbody>" +
+    days.map(function (e) {
+      var d = e.date, n = comingCount(d), mine = ed && ans(ed, d), open = c.pop && c.pop.d === d;
+      return '<tr style="vertical-align:top"><td><b>' + fmt(d) + '</b><span class="' + (n ? "who" : "nobody") + '" style="display:block">' + (n ? n + " coming" : "Nobody yet") + "</span></td>" +
+        (ed ? '<td class="mine"><button class="dbtn" data-act="herepop" data-d="' + d + '"' + (open ? " data-pop-anchor" : "") + ' aria-expanded="' + !!open + '" title="' + (ed === me ? "Change your answer for this day" : "Change " + esc(ed) + "'s answer for this day") + '">' + (mine ? answerLabel(mine) : '<span class="small" style="color:var(--accent)">Answer…</span>') + "</button></td>" : "") +
+        others.map(function (m) { var here = d === TODAYS && c.here.some(function (h) { return h.name === m; }); return "<td>" + (here ? '<span class="pill ok">Here</span>' : answerLabel(ans(m, d), student)) + "</td>"; }).join("") + "</tr>";
+    }).join("") + "</tbody></table></div>";
+}
+function mentorMonth(ed, days) {
+  var c = C(), y = c.mmonth[0], m = c.mmonth[1], first = new Date(y, m, 1), me = D.me().name, student = !D.isStaff();
+  var practice = {}; days.forEach(function (e) { practice[e.date] = true; });
+  var cells = "";
+  for (var i = 0; i < 42; i++) {
+    var d = new Date(y, m, 1 - first.getDay() + i), s = iso(d), beside = "", below = "";
+    var evs = c.events.filter(function (e) { return e.date === s || (e.end2 && s >= e.date && s <= e.end2); });
+    var hideAuto = evs.some(function (e) { return !e.auto && (e.kind === "build" || e.kind === "off" || e.kind === "comp"); });
+    evs = evs.filter(function (e) { return !(hideAuto && e.auto); });
+    if (practice[s]) {
+      var n = comingCount(s);
+      if (ed) {
+        var a = ans(ed, s), r = range(a), said = a && a.st === "coming" ? "coming" + (r ? " " + r : "") : a && a.st === "cant" ? "can't come" : "not answered";
+        beside = '<button class="dchip ' + (a && a.st === "coming" ? "ok" : a && a.st === "cant" ? "cant" : "ask") + '" data-act="herepop" data-d="' + s + '"' + (c.pop && c.pop.d === s ? " data-pop-anchor" : "") + ' title="' + (ed === me ? "You" : esc(ed)) + ": " + said + '. Click to change.">' +
+          (a && a.st === "coming" ? D.ic("check", 11) + " " + (r || "Coming") : a && a.st === "cant" ? "✕ Can't" : "Coming?") + "</button>";
+      }
+      below = n ? (student ? '<span class="who">' + n + " mentor" + (n > 1 ? "s" : "") + "</span>" : "") : '<span class="nobody">⚠ Nobody yet</span>';
+    }
+    cells += '<div class="day' + (d.getMonth() !== m ? " other" : "") + (s === TODAYS ? " today" : "") + '"><div class="dtop"><span class="d">' + d.getDate() + "</span>" + beside + "</div>" + evs.slice(0, 2).map(evBtn).join("") + (evs.length > 2 ? '<span class="who">+' + (evs.length - 2) + " more</span>" : "") + below + "</div>";
+  }
+  return '<div class="row"><button class="btn sm" data-act="heremonth" data-v="-1" aria-label="Previous month">←</button><h3 style="min-width:150px;text-align:center">' + first.toLocaleDateString("en-US", { month: "long", year: "numeric" }) + '</h3><button class="btn sm" data-act="heremonth" data-v="1" aria-label="Next month">→</button><button class="btn ghost sm" data-act="heremonth" data-v="0">Today</button></div>' +
+    '<div class="tablewrap" data-keepscroll="mmonth"><div class="month" style="min-width:560px">' + WD.map(function (x) { return '<div class="dh">' + x + "</div>"; }).join("") + cells + "</div></div>";
+}
+function dayPop(m, d, days) {
+  var a = ans(m, d), au = C().avail[m], pe = days.filter(function (e) { return e.date === d; })[0], st = a ? a.st : null;
+  return '<div class="dpop" role="dialog" aria-label="Answer for ' + fmt(d) + '"><div class="row between nowrap"><b>' + (m === D.me().name ? fmt(d) : esc(m) + " · " + fmt(d)) + '</b><button class="xbtn sm" data-act="herepop" aria-label="Close">×</button></div>' +
+    '<div class="row" style="gap:4px"><button class="btn sm' + (st === "coming" ? " primary" : "") + '" data-act="hereday" data-d="' + d + '" data-v="coming" aria-pressed="' + (st === "coming") + '">' + D.ic("check", 14) + ' Coming</button><button class="btn sm' + (st === "cant" ? " on" : "") + '" data-act="hereday" data-d="' + d + '" data-v="cant" aria-pressed="' + (st === "cant") + '">✕ Can\'t</button></div>' +
+    (st === "coming" ? '<div style="display:grid;gap:4px"><span class="who">Arrive and leave (optional)</span>' + timeInputs("dt", "heredtime", 'data-d="' + d + '"', a.start, a.end) + "</div>" : "") +
+    '<div class="row who">' + (!a ? "<span>Not answered</span>" : "") + (pe && pe.start ? "<span>Practice " + shortT(pe.start) + "–" + shortT(pe.end) + "</span>" : "") + (a && a.usual ? "<span>From the usual week</span>" : "") +
+    (a && !a.usual && au.usual.length ? '<button class="btn ghost sm" style="margin-left:auto" data-act="hereuseusual" data-d="' + d + '" title="Forget this answer and go back to the usual week for this day.">Use usual</button>' : "") + "</div></div>";
+}
+function placePop() {
+  var p = document.querySelector(".dpop"), t = document.querySelector("[data-pop-anchor]"); if (!p) return;
+  if (!t) { p.style.visibility = "hidden"; return; }
+  var r = t.getBoundingClientRect(), w = p.offsetWidth, h = p.offsetHeight, top = r.bottom + 6;
+  if (top + h > innerHeight - 8 && r.top - h - 6 > 8) top = r.top - h - 6;
+  p.style.left = Math.max(8, Math.min(r.left, innerWidth - w - 8)) + "px"; p.style.top = top + "px"; p.style.visibility = "";
+}
+D.after.push(placePop);
+window.addEventListener("scroll", placePop, true);
+window.addEventListener("resize", placePop);
+// A click outside the day editor, or Escape, closes it.
+document.addEventListener("click", function (e) { var c = D.S && D.S.cal; if (!c || !c.pop || e.target.closest(".dpop, [data-act=herepop]")) return; c.pop = null; D.render(); });
+document.addEventListener("keydown", function (e) { var c = D.S && D.S.cal; if (e.key === "Escape" && c && c.pop) { c.pop = null; D.render(); } });
 function corrections() {
   var c = C();
   var missed = []; Object.keys(c.att).forEach(function (n) { Object.keys(c.att[n]).forEach(function (d) { if (c.att[n][d] < 0) missed.push({ n: n, d: d }); }); });
@@ -281,9 +372,23 @@ A.hereall = function () { var c = C(), n = c.here.length; c.here = []; D.log("si
 A.herestud = function () { C().studentsOnly = !C().studentsOnly; D.render(); };
 D.changes.heresort = function (el) { C().sort = el.value; D.render(); };
 A.herecsv = function () { D.toast("Downloaded attendance-2026-27.csv (mentors only)."); D.render(); };
-A.hereusual = function (b) { var m = C().avail[D.me().name] || C().avail["Ms. Rivera"], d = +b.dataset.v, i = m.usual.indexOf(d); if (i >= 0) m.usual.splice(i, 1); else m.usual.push(d); D.render(); };
-A.hereavail = function (b) { var m = C().avail[D.me().name] || C().avail["Ms. Rivera"]; m.one[b.dataset.d] = b.dataset.v; D.log("answered " + (b.dataset.v === "coming" ? "Coming" : "Can't come") + " for " + fmt(b.dataset.d), "here"); D.render(); };
-A.hereextra = function () { var m = C().avail[D.me().name] || C().avail["Ms. Rivera"]; m.one["2026-11-21"] = "coming"; C().events.push({ id: 9900, date: "2026-11-21", kind: "build", name: "Extra build day (Ms. Rivera)", start: "10:00", end: "13:00", where: "Dawson shop" }); D.toast("Added Sat Nov 21 as an extra day."); D.render(); };
+function edAvail() { return C().avail[editorName()]; }
+A.hereview = function (b) { var c = C(); c.mview = b.dataset.v; c.pop = null; D.render(); };
+A.heremonth = function (b) { var c = C(), v = +b.dataset.v, m = c.mmonth[1] + v, y = c.mmonth[0]; if (!v) { c.mmonth = [2026, 10]; D.render(); return; } if (m < 0) { m = 11; y--; } if (m > 11) { m = 0; y++; } c.mmonth = [y, m]; c.pop = null; D.render(); };
+A.herepop = function (b) { var c = C(), d = b.dataset.d; c.pop = d && !(c.pop && c.pop.d === d) ? { d: d } : null; D.render(); };
+A.hereday = function (b) {
+  var a = edAvail(), d = b.dataset.d, v = b.dataset.v, w = parse(d).getDay(), pe = horizonDays().filter(function (e) { return e.date === d; })[0];
+  a.one[d] = v; delete a.t[d];
+  if (v === "coming") a.t[d] = pe && pe.start ? { start: pe.start, end: pe.end } : { start: (a.ut[w] || {}).start || "", end: (a.ut[w] || {}).end || "" };
+  D.log("answered " + (v === "coming" ? "Coming" : "Can't come") + " for " + fmt(d), "here"); D.render();
+};
+D.changes.heredtime = function (el) { var a = edAvail(), d = el.dataset.d, cur = ans(editorName(), d); a.one[d] = "coming"; a.t[d] = { start: cur.start, end: cur.end }; a.t[d][el.dataset.f] = el.value; D.render(); };
+A.hereuseusual = function (b) { var a = edAvail(); delete a.one[b.dataset.d]; delete a.t[b.dataset.d]; D.render(); };
+A.hereusual = function (b) { var dr = draft(editorName()), w = b.dataset.v; if (dr[w]) delete dr[w]; else dr[w] = { start: "", end: "" }; D.render(); };
+D.changes.hereutime = function (el) { draft(editorName())[el.dataset.w][el.dataset.f] = el.value; D.render(); };
+A.heresaveusual = function () { var c = C(), a = edAvail(), dr = draft(editorName()); a.usual = Object.keys(dr).map(Number); a.ut = {}; a.usual.forEach(function (w) { a.ut[w] = { start: dr[w].start, end: dr[w].end }; }); c.udraft = null; D.toast("Usual week saved"); D.render(); };
+D.changes.hereedit = function (el) { var c = C(); c.medit = el.value; c.pop = null; c.udraft = null; D.render(); };
+A.hereeditm = function (b) { var c = C(); c.medit = b.dataset.v; c.pop = null; c.udraft = null; D.render(); };
 A.herefix = function (b) { var c = C(); c.att[b.dataset.n][b.dataset.d] = 2.5; c.adjust.push({ who: b.dataset.n, hours: 0, why: "Fixed missed sign-out on " + fmt(b.dataset.d) + " (2.5 h)", by: D.me().name, when: "Just now" }); D.toast("Fixed. " + b.dataset.n + " gets 2.5 hours."); D.render(); };
 A.hereadd = function () { var c = C(); c.adjust.unshift({ who: D.val("ha-who"), hours: parseFloat(D.val("ha-h")) || 0, why: D.val("ha-why"), by: D.me().name, when: "Just now" }); D.toast("Saved. It shows in their history."); D.render(); };
 A.snack = function (b) { var c = C(), nm = D.S.role === "parent" ? "Ortiz family" : D.me().name; c.snacks[b.dataset.d][+b.dataset.k] = nm; D.toast("Thanks. You'll get a reminder the day before."); D.render(); };

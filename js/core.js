@@ -56,7 +56,7 @@ D.TILES = [
   { id: "snacks", name: "Snacks", icon: "snacks", svc: "calendar./snacks", desc: "Sign up to bring snacks to practice.", modes: ["build"], groups: ["admin", "mentor", "parent"] },
   { id: "parts", name: "Parts & Inventory", icon: "parts", svc: "parts.", desc: "Request parts, check orders in, find spares.", modes: ["build", "competition"], groups: BUILDERS },
   { id: "skills", name: "Skills", icon: "skills", svc: "skills.", desc: "Training trees that unlock step by step.", modes: ["build"], groups: BUILDERS },
-  { id: "kickoff", name: "Kickoff", icon: "kickoff", svc: "kickoff.", desc: "Game analysis and strategy for the season.", modes: ["build"], groups: BUILDERS, ext: true },
+  { id: "kickoff", name: "Kickoff", icon: "kickoff", svc: "kickoff.", desc: "Game analysis and strategy for the season.", modes: ["build"], groups: BUILDERS },
   { id: "schedule", name: "Schedule", icon: "schedule", svc: "compete./schedule", desc: "Who does which role at the event.", modes: ["competition"], groups: BUILDERS },
   { id: "pit", name: "Pit", icon: "pit", svc: "compete./pit", desc: "Match checklists, issues and batteries.", modes: ["competition"], groups: BUILDERS },
   { id: "scouting", name: "Scouting", icon: "scouting", svc: "compete./scouting", desc: "Match forms, assignments, stats and pick list.", modes: ["competition"], groups: BUILDERS },
@@ -66,9 +66,9 @@ D.TILES = [
   { id: "admin", name: "Admin", icon: "admin", svc: "admin.", desc: "Approve accounts and manage groups.", modes: ["build"], groups: ["admin"], more: true, ext: true },
   { id: "handbook", name: "Team Handbook", icon: "more", svc: "link", desc: "Student, family and mentor handbook.", modes: ["build"], groups: ALL, more: true, ext: true }
 ];
-D.APPNAME = { portal: "Portal", account: "Account", kiosk: "Door QR", monitor: "Pit monitor", projector: "Projector" };
+D.APPNAME = { portal: "Portal", account: "Account", kiosk: "Door QR", monitor: "Pit monitor", projector: "Projector", kproj: "Kickoff projector" };
 D.TILES.forEach(function (t) { D.APPNAME[t.id] = t.name; });
-D.DISPLAY_ROUTES = { kiosk: 1, monitor: 1, projector: 1 };
+D.DISPLAY_ROUTES = { kiosk: 1, monitor: 1, projector: 1, kproj: 1 };
 
 D.reset = function () {
   var prev = D.S || {};
@@ -198,9 +198,9 @@ D.views.portal = function () {
 D.greetings = { student: "Hi Sam.", mentor: "Hi Ms. Rivera. 2 sign-offs and 4 parts are waiting.", admin: "Hi Mr. Okafor. One request needs your OK and Dr. Patel hasn't answered for this week.", parent: "Hi Pat. Thursday still needs snacks." };
 function displayHome() {
   return '<div class="display"><p class="dmute">Signed in as a display account · read-only · set up once per screen by an admin</p><h1>Pick what this screen shows</h1><div class="grid3">' +
-    [["kiosk", "Door QR", "Sign in and out at the shop door"], ["monitor", "Pit monitor", "Next match, batteries, issues, pit duty"], ["projector", "Projector", "The build plan on the shop TV"]].map(function (d) {
+    [["kiosk", "Door QR", "Sign in and out at the shop door"], ["monitor", "Pit monitor", "Next match, batteries, issues, pit duty"], ["projector", "Projector", "The build plan on the shop TV"], ["kproj", "Kickoff projector", "Strategy points and the live vote"]].map(function (d) {
       return '<button class="dcard" style="text-align:left;cursor:pointer" data-act="go" data-v="' + d[0] + '"><b style="font-family:var(--display);font-size:1.3rem">' + d[1] + '</b><span class="dmute">' + d[2] + "</span></button>";
-    }).join("") + '</div><p class="dmute">A display can open only these three pages. Everything else answers “not allowed”.</p></div>';
+    }).join("") + '</div><p class="dmute">A display can open only these pages. Everything else answers “not allowed”.</p></div>';
 }
 function extTile(t) {
   return D.topbar(t.name, t.svc === "link" ? "external link" : t.svc + "2972robotics.com", "", "") + '<div class="content"><div class="card"><h2>' + esc(t.name) + '</h2><p class="mute">' + esc(t.desc) + " This tool already exists and stays as it is. In the real portal the tile opens it, and it gets the same rail.</p></div></div>";
@@ -241,7 +241,7 @@ A.role = function (b) {
   var S = D.S; S.role = b.dataset.v; S.bell = false; S.appsOpen = false; S.drawer = null; S.modal = null;
   (D.onRole || []).forEach(function (f) { f(S.role); });
   if (S.role === "display") { S.route = D.DISPLAY_ROUTES[S.route] ? S.route : "portal"; }
-  else if (!(S.route === "portal" || S.route === "account" || (D.tile(S.route) && D.inGroup(S.route)) || (D.DISPLAY_ROUTES[S.route] && D.isStaff()))) S.route = "portal";
+  else if (!(S.route === "portal" || S.route === "account" || (D.tile(S.route) && D.inGroup(S.route)) || (D.DISPLAY_ROUTES[S.route] && (D.isStaff() || (S.route === "kproj" && D.inGroup("kickoff")))))) S.route = "portal";
   D.render();
 };
 D.changes.eventday = function (el) { D.S.eventDay = el.checked; D.render(); };

@@ -18,6 +18,7 @@ Everything is sample data. Nothing is saved, and a reload resets it.
 | Parts & Inventory | Request a part from a task. Mentors order by vendor. Anyone checks lines in when the box arrives. Inventory is organized by place. |
 | Calendar, Attendance, Snacks | A month calendar with practices and competitions, door QR sign-in, an hours heat grid, mentor plans and snack sign-up. |
 | Skills | Skill trees drawn as graphs, sign-off requests, bulk sign-off. |
+| Kickoff | The made-up “Orbit Orchard” game: rule notes and questions, the scoring table, strategies as match timelines, a criteria matrix and ranked vote, requirements, mechanisms, the build-plan export, the research assistant and a projector view. |
 | Schedule, Pit, Scouting | Paint event roles by dragging. Pit has checklists, issues and batteries, with a monitor. Scouting has a match form with field drawing, stats and a pick list. |
 
 ## Run it locally
