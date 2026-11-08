@@ -118,7 +118,7 @@ function setup() {
     '<p class="flabel">Days off</p><div class="list"><div class="li"><b class="grow">Thanksgiving week</b><span class="who">Nov 23–28</span></div><div class="li"><b class="grow">Winter break</b><span class="who">Dec 21 – Jan 3</span></div></div><div class="row"><button class="btn sm">Edit pattern</button><button class="btn sm">+ Day off</button></div></div>' +
     '<div class="card"><h2>Google Calendar copy</h2><div class="row"><span class="pill ok">Up to date</span><span class="who">Last copied ' + esc(c.sync.last) + " · " + c.sync.count + " events</span></div><p class=\"small mute\">One-way: edits made in Google are overwritten. Edit here.</p>" +
     '<p class="flabel">Subscribe links</p><div class="list">' + [["Team (students and mentors)", "team"], ["Parents (practices, events, snacks)", "parents"], ["Mentors (plus availability)", "mentors"]].map(function (x) { return '<div class="li"><span class="grow">' + x[0] + '<br><span class="mono who">calendar.2972robotics.com/ical/' + x[1] + '-••••.ics</span></span><button class="btn sm" data-act="calical">Copy</button></div>'; }).join("") +
-    '</div><p class="small mute">Time zone: America/Denver. Task App, Who\'s in, Snacks and Competition read practice days and events from here.</p></div></div>';
+    '</div><p class="small mute">Time zone: America/Denver. Tasks, Attendance, Snacks and Competition read practice days and events from here.</p></div></div>';
 }
 D.drawers.calev = function (d) {
   var e = C().events.filter(function (x) { return x.id === +d.id; })[0], staff = D.isStaff(), html = "";
@@ -127,7 +127,7 @@ D.drawers.calev = function (d) {
     var ms = MENTORS.map(function (m) { var a = availOf(m, e.date), here = e.date === TODAYS && C().here.some(function (h) { return h.name === m; }); return '<div class="li"><b class="grow">' + esc(m) + "</b>" + (here ? '<span class="pill ok">Here</span>' : a === "coming" || a === "usual" ? '<span class="pill info">Coming' + (a === "usual" ? " (usual)" : "") + "</span>" : a === "cant" ? '<span class="pill bad">Can\'t</span>' : '<span class="pill">No answer</span>') + "</div>"; }).join("");
     var sn = C().snacks[e.date] || [null, null];
     html += (D.S.role !== "parent" ? '<div><p class="flabel">Mentors</p><div class="list">' + ms + "</div></div>" : "") +
-      (e.date === TODAYS ? '<p class="who">' + C().here.length + ' people signed in right now.</p><div><button class="btn" data-act="go" data-v="here">Open Who\'s in</button></div>' : "") +
+      (e.date === TODAYS ? '<p class="who">' + C().here.length + ' people signed in right now.</p><div><button class="btn" data-act="go" data-v="here">Open Attendance</button></div>' : "") +
       '<div><p class="flabel">Snacks</p><p>' + sn.map(function (x) { return x ? esc(x) : "<span class=\"mute\">open</span>"; }).join(" · ") + '</p></div>';
   }
   if (e.kind === "comp") {

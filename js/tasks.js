@@ -1,4 +1,4 @@
-/* Task App at working depth: its own left sidebar (views and the Division > Project > Subteam tree), list and board per subteam, milestone grid per project,
+/* Tasks at working depth: its own left sidebar (views and the Division > Project > Subteam tree), list and board per subteam, milestone grid per project,
    My tasks, This week, Dashboard, Calendar, Timeline, a full task panel (subtasks, dependencies, labels, links, comments, history), lead and simple modes, the assistant, and the projector. */
 (function () {
 "use strict";
@@ -100,7 +100,7 @@ function subsOf(x) { return T().list.filter(function (y) { return y.parent === x
 function sidebar() {
   var tt = T(), at = tt.at, staff = lead(), mine = tt.list.filter(function (x) { return x.who.indexOf(me()) >= 0 && x.st !== "done"; }).length;
   function nav(v, label, icon, n, extra) { var cur = at.v === v && !extra; return '<button class="tnav" data-act="tgo" data-v="' + v + '"' + (cur ? ' aria-current="page"' : "") + ">" + D.ic(icon, 17) + '<span class="lbl">' + label + "</span>" + (n != null ? '<span class="n">' + n + "</span>" : "") + "</button>"; }
-  if (D.S.role === "parent") return '<nav class="tside" aria-label="Task App">' + nav("week", "This week", "calendar") + nav("calendar", "Calendar", "calendar") + '<p class="small mute" style="padding:8px">Parents see a read-only summary.</p></nav>';
+  if (D.S.role === "parent") return '<nav class="tside" aria-label="Tasks">' + nav("week", "This week", "calendar") + nav("calendar", "Calendar", "calendar") + '<p class="small mute" style="padding:8px">Parents see a read-only summary.</p></nav>';
   var tree = tt.divs.map(function (d) {
     var open = d.open;
     return '<div class="trow"><button class="tnav" data-act="tdiv" data-v="' + d.id + '" aria-expanded="' + open + '"><span class="car">' + (open ? "▾" : "▸") + '</span><span class="lbl" style="font-weight:600">' + esc(d.name) + "</span></button>" + (staff ? '<button class="more" data-act="tmenu" data-k="div" data-v="' + d.id + '" aria-label="Division actions">⋯</button>' : "") + "</div>" +
@@ -110,7 +110,7 @@ function sidebar() {
           (pe ? p.subs.map(function (s) { var c = tt.list.filter(function (x) { return x.p === p.id && x.sub === s && x.st !== "done" && !x.parent; }).length; return '<div class="trow" style="padding-left:40px"><button class="tnav" data-act="tlist" data-p="' + p.id + '" data-v="' + esc(s) + '"' + (at.v === "list" && at.p === p.id && at.l === s ? ' aria-current="page"' : "") + '><span class="lbl">' + esc(s) + '</span><span class="n">' + c + "</span></button></div>"; }).join("") : "");
       }).join("") + (staff ? '<button class="tnav" style="padding-left:34px;color:var(--mute)" data-act="tnewproj" data-v="' + d.id + '">+ New project</button>' : "") : "");
   }).join("");
-  return '<nav class="tside" aria-label="Task App"><button class="btn primary" data-act="tnew" style="justify-content:center;margin:2px 4px 8px">' + D.ic("plus", 16) + " New task</button>" +
+  return '<nav class="tside" aria-label="Tasks"><button class="btn primary" data-act="tnew" style="justify-content:center;margin:2px 4px 8px">' + D.ic("plus", 16) + " New task</button>" +
     nav("my", "My tasks", "user", mine) + nav("week", "This week", "calendar") + (staff ? nav("dash", "Dashboard", "home") : "") + nav("calendar", "Calendar", "calendar") + (staff ? nav("timeline", "Timeline", "schedule") : "") +
     '<div class="sect"><span>Divisions</span>' + (D.S.role === "admin" ? '<button class="btn ghost sm" data-act="tnewdiv" style="min-height:22px;padding:0 6px">+</button>' : "") + "</div>" + tree +
     '<div class="sect"><span>You</span></div>' +
@@ -348,7 +348,7 @@ A.tlead = function () { var tt = T(); tt.lead = !tt.lead; if (tt.lead) { D.log("
 A.tsimple = function () { T().simple = !simple(); D.render(); };
 A.tdone = function (b) { var x = task(b.dataset.v), prev = x.st; if (x.st === "done") { x.st = "todo"; h(x, "reopened it"); D.render(); return; } D.withUndo("Done: " + x.title, function () { x.st = "done"; h(x, "marked it done"); D.log("finished “" + x.title + "”", "tasks"); }, function () { x.st = prev; x.hist.pop(); D.S.activity.shift(); }); };
 A.tstuck = function (b) { var x = task(b.dataset.v); x.st = "blocked"; h(x, "said they're stuck"); x.comments.push([D.me().name, "I'm stuck and need a hand.", "Just now"]); D.notify("mentor", "tasks", D.me().name + " is stuck on “" + x.title + "”."); D.toast("Ms. Rivera (" + proj(x.p).name + " mentor) was told. Your note is on the task."); D.render(); };
-A.tpart = function (b) { var x = task(b.dataset.v); D.partsApi.startRequest({ task: x.title, sub: proj(x.p).name, need: x.due, catalogName: /bearing/i.test(x.title) ? "Bearing" : /polycarb/i.test(x.title) ? "Polycarbonate" : /CAN|crimp/i.test(x.title) ? "Andersen" : /shaft/i.test(x.title) ? "MAXSpline" : "", from: "Task App" }); };
+A.tpart = function (b) { var x = task(b.dataset.v); D.partsApi.startRequest({ task: x.title, sub: proj(x.p).name, need: x.due, catalogName: /bearing/i.test(x.title) ? "Bearing" : /polycarb/i.test(x.title) ? "Polycarbonate" : /CAN|crimp/i.test(x.title) ? "Andersen" : /shaft/i.test(x.title) ? "MAXSpline" : "", from: "Tasks" }); };
 A.ttake = function (b) { var x = task(b.dataset.v); x.who.push(me()); h(x, "took it"); D.log("took “" + x.title + "”", "tasks"); D.render(); };
 D.changes.tassign = function (el) { if (!el.value) return; var x = task(el.dataset.v); x.who.push(el.value); h(x, "assigned " + el.value); if (el.value === ME_STUDENT) D.notify("student", "tasks", D.me().name + " assigned you “" + x.title + "”."); D.render(); };
 A.tunassign = function (b) { var x = task(b.dataset.v); x.who = x.who.filter(function (w) { return w !== b.dataset.w; }); h(x, "removed " + b.dataset.w); D.render(); };

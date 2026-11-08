@@ -50,7 +50,7 @@ D.ROLES = {
 };
 var ALL = ["admin", "mentor", "student", "parent"], BUILDERS = ["admin", "mentor", "student"];
 D.TILES = [
-  { id: "tasks", name: "Task App", icon: "tasks", svc: "tasks.", desc: "Your next task, projects and the build plan.", modes: ["build", "competition"], groups: ALL },
+  { id: "tasks", name: "Tasks", icon: "tasks", svc: "tasks.", desc: "Your next task, projects and the build plan.", modes: ["build", "competition"], groups: ALL },
   { id: "calendar", name: "Calendar", icon: "calendar", svc: "calendar.", desc: "Practices, build days and competitions.", modes: ["build", "competition"], groups: ALL },
   { id: "here", name: "Attendance", icon: "here", svc: "calendar./here", desc: "Sign in at the door, mentor plans, hours.", modes: ["build", "competition"], groups: BUILDERS },
   { id: "snacks", name: "Snacks", icon: "snacks", svc: "calendar./snacks", desc: "Sign up to bring snacks to practice.", modes: ["build"], groups: ["admin", "mentor", "parent"] },
