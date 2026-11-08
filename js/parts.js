@@ -108,7 +108,8 @@ function placeToday(r) { var ob = orderBy(r); return r.pri === "blocking" || (ob
 function qtyText(r) { return r.qty + (r.pack > 1 ? " × pack of " + r.pack + (r.unit ? " " + r.unit : "") : ""); }
 function stockTotal(i) { return i.stock.reduce(function (a, s) { return a + s.qty; }, 0); }
 function inStore(i) { return i.stock.filter(function (s) { return s.place.indexOf("bot") < 0; }).reduce(function (a, s) { return a + s.qty; }, 0); }
-function statusPill(s) { return '<span class="pill ' + STATUS[s][1] + '">' + STATUS[s][0] + "</span>"; }
+// Students see what Needs OK means for them: a mentor has to approve it.
+function statusPill(s) { return '<span class="pill ' + STATUS[s][1] + '">' + (s === "needsok" && !D.isStaff() ? "Waiting for mentor OK" : STATUS[s][0]) + "</span>"; }
 function priPill(p) { return p === "normal" ? "" : '<span class="pill pri ' + PRI[p][1] + '">' + PRI[p][0] + "</span>"; }
 function split(totalC, weights) { var sum = weights.reduce(function (a, b) { return a + b; }, 0) || 1; var w = weights.some(function (x) { return x > 0; }) ? weights : weights.map(function () { return 1; }); sum = w.reduce(function (a, b) { return a + b; }, 0); var out = w.map(function (x) { return Math.floor(totalC * x / sum); }); out[out.length - 1] += totalC - out.reduce(function (a, b) { return a + b; }, 0); return out; }
 
@@ -133,7 +134,7 @@ D.views.parts = function () {
 };
 function requests() {
   var p = P(), me = D.me().name;
-  var groups = [["open", "Open", ["needsok", "toorder", "ordered"]], ["needsok", "Needs OK", ["needsok"]], ["toorder", "To order", ["toorder"]], ["ordered", "Ordered", ["ordered"]], ["done", "Arrived", ["arrived", "putaway"]], ["closed", "Denied or cancelled", ["denied", "cancelled"]], ["all", "All", Object.keys(STATUS)]];
+  var groups = [["open", "Open", ["needsok", "toorder", "ordered"]], ["needsok", D.isStaff() ? "Needs OK" : "Waiting for mentor OK", ["needsok"]], ["toorder", "To order", ["toorder"]], ["ordered", "Ordered", ["ordered"]], ["done", "Arrived", ["arrived", "putaway"]], ["closed", "Denied or cancelled", ["denied", "cancelled"]], ["all", "All", Object.keys(STATUS)]];
   var g = groups.filter(function (x) { return x[0] === p.filter; })[0];
   var q = p.q.toLowerCase();
   var rows = p.requests.filter(function (r) { return g[2].indexOf(r.status) >= 0 && (!p.mine || r.by === me) && (!q || (r.name + r.sku + r.vendor + r.by + r.sub).toLowerCase().indexOf(q) >= 0); });
