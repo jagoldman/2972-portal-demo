@@ -301,6 +301,8 @@ button.sw[aria-pressed="true"] { border-color: var(--text); box-shadow: 0 0 0 2p
 /* Task App's own left navigation */
 .tsk { display: grid; grid-template-columns: 264px minmax(0,1fr); align-items: start; min-height: calc(100vh - 96px); }
 .tsk.collapsed { grid-template-columns: minmax(0,1fr); }
+/* Paint the sidebar's background and edge down the whole page; the sticky sidebar itself stops at the viewport. */
+@media (min-width: 861px) { .tsk:not(.collapsed) { background: linear-gradient(to right, var(--surface) 263px, var(--line) 263px, var(--line) 264px, transparent 264px); } }
 .tside { position: sticky; top: 0; max-height: 100vh; overflow-y: auto; background: var(--surface); border-right: 1px solid var(--line); padding: 12px 10px 24px; display: grid; gap: 2px; align-content: start; }
 .tsk.collapsed .tside { display: none; }
 .tside .sect { font-size: .68rem; letter-spacing: .1em; text-transform: uppercase; color: var(--mute); padding: 12px 8px 4px; display: flex; align-items: center; justify-content: space-between; font-weight: 600; }
