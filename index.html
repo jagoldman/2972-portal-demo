@@ -346,6 +346,10 @@ button.sw[aria-pressed="true"] { border-color: var(--text); box-shadow: 0 0 0 2p
 .tltrack i { position: absolute; top: 4px; bottom: 4px; border-radius: 4px; background: var(--gold); opacity: .85; }
 .tltrack i.done { background: var(--ok); } .tltrack i.task { top: 7px; bottom: 7px; background: var(--info); }
 .tltrack i.ms { width: 10px; height: 10px; top: 8px; bottom: auto; transform: rotate(45deg); border-radius: 2px; background: var(--text); opacity: 1; }
+.tlaxis { position: relative; height: 34px; font-size: .7rem; color: var(--mute); }
+.tlaxis span, .tlaxis b { position: absolute; top: 16px; transform: translateX(-50%); white-space: nowrap; }
+.tlaxis span::before { content: ""; position: absolute; left: 50%; top: 16px; height: 5px; border-left: 1px solid var(--line-2); }
+.tlaxis b { color: var(--bad); font-weight: 700; top: 0; }
 .tltrack .today { position: absolute; top: -4px; bottom: -4px; width: 2px; background: var(--bad); }
 .chat { display: grid; gap: 10px; }
 .bubble { padding: 9px 12px; border-radius: 12px; max-width: 88%; font-size: .9rem; }

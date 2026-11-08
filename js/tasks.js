@@ -188,7 +188,8 @@ function calendar() {
 function timeline() {
   var start = "2026-10-26", span = 70;
   function pos(s) { return Math.max(0, Math.min(100, (days(s) + days(TODAYS) * 0 - days(start)) / span * 100)); }
-  var html = T().divs.filter(function (d) { return d.id === "eng" || d.id === "out"; }).map(function (d) {
+  var axis = '<span></span><div class="tlaxis">' + ["2026-11-01", "2026-11-15", "2026-12-01", "2026-12-15", "2027-01-01"].map(function (t) { return '<span style="left:' + pos(t) + '%">' + fmt(t, { month: "short", day: "numeric" }) + "</span>"; }).join("") + '<b style="left:' + pos(TODAYS) + '%">Today</b></div>';
+  var html = axis +T().divs.filter(function (d) { return d.id === "eng" || d.id === "out"; }).map(function (d) {
     return '<p class="eyebrow" style="grid-column:1/-1;margin-top:8px">' + esc(d.name) + "</p>" + d.projects.map(function (p) {
       var xs = T().list.filter(function (x) { return x.p === p.id && x.due && !x.parent; }); if (!xs.length) return "";
       var lo = xs.reduce(function (a, x) { return x.due < a ? x.due : a; }, xs[0].due), hi = xs.reduce(function (a, x) { return x.due > a ? x.due : a; }, xs[0].due); lo = add(lo, -7);
