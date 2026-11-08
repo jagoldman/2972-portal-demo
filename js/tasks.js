@@ -140,7 +140,7 @@ D.views.tasks = function () {
 };
 function compactRow(x) {
   var bb = blockedBy(x);
-  return '<div class="trowx"><button class="tcheck" data-act="tdone" data-v="' + x.id + '" aria-pressed="' + (x.st === "done") + '" aria-label="Done">' + D.ic("check", 14) + '</button><div style="min-width:0"><button class="ttitle" data-act="topen" data-v="' + x.id + '">' + esc(x.title) + '</button><div class="who">' + esc(proj(x.p).name) + " › " + esc(x.sub) + (x.ms ? " · ◆ " + esc(msName(x.p, x.ms)) : "") + "</div></div>" +
+  return '<div class="trowx"><button class="tcheck" data-act="tdone" data-v="' + x.id + '" aria-pressed="' + (x.st === "done") + '" aria-label="Done">' + D.ic("check", 14) + '</button><div style="min-width:0"><button class="ttitle" data-act="topen" data-v="' + x.id + '">' + esc(x.title) + '</button><div class="who">' + esc(proj(x.p).name) + " › " + esc(x.sub) + (x.ms ? " · ◆ " + esc(msName(x.p, x.ms)) : "") + "</div>" + '<div class="show-sm2">' + (bb.length && !simple() ? '<span class="pill bad">Waiting</span>' : stPill(x.st)) + "</div></div>" +
     '<span class="hide-sm2">' + labs(x) + "</span>" + (bb.length && !simple() ? '<span class="pill bad hide-sm2" title="Waiting on ' + esc(bb.map(function (b) { return b.title; }).join(", ")) + '">Waits on ' + bb.length + "</span>" : '<span class="hide-sm2"></span>') + '<span class="hide-sm2">' + stPill(x.st) + "</span>" + dueTxt(x) + "</div>";
 }
 function my() {
