@@ -343,6 +343,11 @@ button.sw[aria-pressed="true"] { border-color: var(--text); box-shadow: 0 0 0 2p
 .pgrid > div { background: var(--surface); padding: 8px; min-width: 0; display: grid; gap: 6px; align-content: start; }
 .pgrid .gh { background: var(--surface-2); font-size: .74rem; font-weight: 700; color: var(--text-2); }
 .gcard { border: 1px solid var(--line); border-left: 3px solid var(--info); border-radius: 6px; padding: 5px 7px; font-size: .8rem; background: var(--surface); text-align: left; width: 100%; }
+/* On a mouse, each grid cell's "+ Add" waits for hover so the real cards stand out. */
+@media (hover: hover) and (pointer: fine) {
+  .pgrid .btn.ghost { opacity: 0; transition: opacity .1s; }
+  .pgrid > div:hover .btn.ghost, .pgrid .btn.ghost:focus-visible { opacity: 1; }
+}
 .pstack { display: none; gap: 12px; }
 .pstack-ms { display: grid; gap: 8px; padding: 12px; border-radius: 10px; background: var(--surface-2); }
 .pstack-sub { display: grid; gap: 6px; }
