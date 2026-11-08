@@ -232,8 +232,8 @@ D.render = function () {
   D.after.forEach(function (f) { try { f(); } catch (e) { if (window.console) console.error(e); } });
   if (activeId) { var el = document.getElementById(activeId); if (el && (el.tagName === "INPUT" || el.tagName === "TEXTAREA")) { el.focus(); try { if (selStart != null) el.setSelectionRange(selStart, selStart); } catch (e) {} } }
 };
-// On phones the tab row scrolls sideways; keep the selected tab in view.
-D.after.push(function () { var t = document.querySelector('.topbar .tabs .tab[aria-pressed="true"]'), row = t && t.parentElement; if (!row || row.scrollWidth <= row.clientWidth) return; var l = t.offsetLeft - row.offsetLeft, r = l + t.offsetWidth + 32; if (r > row.clientWidth) row.scrollLeft = r - row.clientWidth; else row.scrollLeft = 0; });
+// On phones the tabs wrap into an even grid: one row up to four tabs, otherwise two rows.
+D.after.push(function () { var row = document.querySelector(".topbar .tabs"); if (!row) return; var n = [].filter.call(row.children, function (t) { return getComputedStyle(t).display !== "none"; }).length; row.style.setProperty("--cols", n <= 4 ? n : Math.ceil(n / 2)); });
 
 /* ---------- Shell actions ---------- */
 var A = D.acts;
