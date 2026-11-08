@@ -142,7 +142,7 @@ function requests() {
   return '<div class="card"><div class="row between">' + chips + '<label class="row small" style="font-weight:600"><button class="toggle" data-act="pmine" aria-pressed="' + p.mine + '" aria-label="Only my requests"></button> Only mine</label></div>' +
     '<div class="field"><input id="p-q" class="inp" data-input="pq" placeholder="Search part, SKU, vendor or person" value="' + esc(p.q) + '" aria-label="Search requests"></div>' +
     '<div class="list">' + (rows.length ? rows.map(function (r) {
-      return '<button class="li click rli" data-act="preq" data-v="' + r.id + '"><span class="grow"><b>' + esc(r.name) + "</b><br><span class=\"who\">" + esc(r.vendor) + " · " + qtyText(r) + " · " + money(total(r)) + " · " + esc(r.by) + " · " + esc(r.sub) + (r.need ? " · need by " + fmt(r.need) : "") + "</span></span>" + priPill(r.pri) + statusPill(r.status) + "</button>";
+      return '<button class="li click rli" data-act="preq" data-v="' + r.id + '"><span class="grow"><b>' + esc(r.name) + "</b><br><span class=\"who\">" + esc(r.vendor) + " · " + qtyText(r) + " · " + money(total(r)) + " · " + esc(r.by) + " · " + esc(r.sub) + (r.need ? " · need by " + fmt(r.need) : "") + "</span></span>" + priPill(r.pri) + statusPill(r.status) + '<span class="chev" aria-hidden="true">›</span></button>';
     }).join("") : '<div class="empty">Nothing here.</div>') + "</div></div>";
 }
 D.drawers.preq = function (d) {
@@ -269,7 +269,7 @@ function inventory() {
     '<div class="card"><div class="row"><details class="placepick show-sm-block"><summary>Place: <b>' + esc(p.loc === "all" ? "Everywhere" : nameOf(p.places, p.loc)) + '</b></summary><div class="ltree">' + placeTree + '</div></details><input id="p-invq" class="inp" style="flex:1;min-width:180px" data-input="pinvq" placeholder="Find a part" value="' + esc(p.invq) + '" aria-label="Find a part"><button class="chip" data-act="plow" aria-pressed="' + p.low + '">Low stock ' + lowN + "</button></div>" +
     '<div class="tablewrap"><table class="stacktbl c3"><thead><tr><th>Part</th><th>Where</th><th>In store</th><th>On robots</th><th>Reorder</th></tr></thead><tbody>' + rows.map(function (i) {
       var low = inStore(i) <= i.min, places = i.stock.filter(function (s) { return under(s.place); });
-      return '<tr class="click" data-act="pitem" data-v="' + i.id + '"><td class="wrap lead"><b>' + esc(i.name) + "</b></td><td class=\"wrap small\" data-l=\"Where\">" + places.map(function (s) { return esc(s.place) + " (" + s.qty + ")"; }).join("<br>") + "</td><td data-l=\"In store\">" + inStore(i) + " " + (i.unit === "each" ? "" : esc(i.unit)) + (low ? ' <span class="pill warn">Low</span>' : "") + "</td><td data-l=\"On robots\">" + (stockTotal(i) - inStore(i) || "—") + "</td><td class=\"lead\">" + (low ? '<button class="btn sm" data-act="pmore" data-v="' + i.id + '">Request more</button>' : "") + "</td></tr>";
+      return '<tr class="click" data-act="pitem" data-v="' + i.id + '"><td class="wrap lead"><b>' + esc(i.name) + ' <span class="chev" aria-hidden="true">›</span>' + "</b></td><td class=\"wrap small\" data-l=\"Where\">" + places.map(function (s) { return esc(s.place) + " (" + s.qty + ")"; }).join("<br>") + "</td><td data-l=\"In store\">" + inStore(i) + " " + (i.unit === "each" ? "" : esc(i.unit)) + (low ? ' <span class="pill warn">Low</span>' : "") + "</td><td data-l=\"On robots\">" + (stockTotal(i) - inStore(i) || "—") + "</td><td class=\"lead\">" + (low ? '<button class="btn sm" data-act="pmore" data-v="' + i.id + '">Request more</button>' : "") + "</td></tr>";
     }).join("") + '</tbody></table></div><p class="small mute">Every count, move, take and return shows who did it. Tap a part for its history.</p></div></div>';
 }
 D.drawers.pitem = function (d) {
@@ -300,14 +300,15 @@ function budget() {
     }).join("") + '</div><div class="legend"><span><i class="dotc" style="background:var(--gold)"></i>Spent</span><span><i class="dotc" style="background:repeating-linear-gradient(135deg, var(--gold) 0 2px, var(--heat-1) 2px 4px)"></i>Committed</span><span><i class="dotc" style="background:var(--text-2)"></i>Waiting for OK</span></div><p class="small mute">Only placed orders count as spent. The wishlist never counts.</p></div>';
 }
 function vendorsView() {
-  return '<div class="card"><div class="row between"><h2>Vendors</h2><button class="btn sm">+ Add vendor</button></div><div class="tablewrap"><table class="stacktbl"><thead><tr><th>Vendor</th><th>Free shipping</th><th>Lead + ship</th><th>Cutoff</th><th>Tax</th><th>Pay with</th><th>Credits</th></tr></thead><tbody>' +
-    P().vendors.map(function (v) { return '<tr><td class="lead"><b>' + esc(v.name) + '</b></td><td data-l="Free shipping">' + (v.free ? "over " + money(v.free) : "—") + '</td><td data-l="Lead + ship">' + v.lead + " + " + v.ship + ' days</td><td data-l="Cutoff">' + esc(v.cutoff || "—") + '</td><td data-l="Tax">' + (v.taxfree ? '<span class="pill ok">Exempt</span>' : "Taxed") + '</td><td data-l="Pay with">' + esc(v.pay) + '</td><td data-l="Credits">' + (v.credits.length ? v.credits.map(function (c) { return esc(c.label) + (c.bal ? " " + money(c.bal) : ""); }).join(", ") : "—") + "</td></tr>"; }).join("") +
+  return '<div class="card"><div class="row between"><h2>Vendors</h2><button class="btn sm">+ Add vendor</button></div><div class="tablewrap"><table class="stacktbl"><thead><tr><th>Vendor</th><th>Free shipping</th><th>Lead + ship</th><th>Cutoff</th><th>Tax</th><th>Pay with</th><th>Credits</th><th></th></tr></thead><tbody>' +
+    P().vendors.map(function (v) { return '<tr><td class="lead"><b>' + esc(v.name) + '</b></td><td data-l="Free shipping">' + (v.free ? "over " + money(v.free) : "—") + '</td><td data-l="Lead + ship">' + v.lead + " + " + v.ship + ' days</td><td data-l="Cutoff">' + esc(v.cutoff || "—") + '</td><td data-l="Tax">' + (v.taxfree ? '<span class="pill ok">Exempt</span>' : '<span class="pill">Taxed</span>') + '</td><td data-l="Pay with">' + esc(v.pay) + '</td><td data-l="Credits">' + (v.credits.length ? v.credits.map(function (c) { return esc(c.label) + (c.bal ? " " + money(c.bal) : ""); }).join(", ") : "—") + '</td><td class="lead"><button class="btn sm" data-act="pvedit" data-v="' + esc(v.name) + '">Edit</button></td></tr>'; }).join("") +
     '</tbody></table></div><p class="small mute">Carts use these for the free-shipping nudge, the order-by date and reminders at checkout. Students see only lead times.</p></div>';
 }
 
 /* ---------- Actions ---------- */
 var A = D.acts;
 A.pfilter = function (b) { P().filter = b.dataset.v; D.render(); };
+A.pvedit = function (b) { D.toast("Editing " + b.dataset.v + "'s terms opens a form in the real app."); };
 A.pjump = function () { var f = document.getElementById("preq-form"); if (f) f.scrollIntoView({ behavior: "smooth" }); };
 D.changes.pfiltersel = function (el) { P().filter = el.value; D.render(); };
 A.pmine = function () { P().mine = !P().mine; D.render(); };
