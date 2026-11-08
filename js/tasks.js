@@ -216,9 +216,18 @@ function projectPage(pid) {
         return "<div>" + cs.map(function (x) { var bb = blockedBy(x); return '<button class="gcard ' + x.st + '" data-act="topen" data-v="' + x.id + '"><b>' + esc(x.title) + '</b><div class="row" style="gap:4px;margin-top:4px">' + avs(x.who) + dueTxt(x) + (bb.length && !simple() ? '<span class="pill bad">Waits</span>' : "") + "</div></button>"; }).join("") + '<button class="btn ghost sm" style="justify-self:start" data-act="tnewin" data-p="' + p.id + '" data-s="' + esc(s) + '" data-m="' + (m[0] || "") + '">+ Add</button></div>';
       }).join("");
     }).join("") + "</div></div>";
-  var cross = xs.filter(function (x) { return x.by.some(function (b) { var bt = task(b); return bt && bt.sub !== x.sub; }); });
+  // Phones get one milestone at a time, subteams stacked inside it, instead of the wide grid.
+  var stack = '<div class="pstack">' + rows.map(function (m) {
+    var groups = p.subs.map(function (s) {
+      var cs = xs.filter(function (x) { return x.sub === s && (x.ms || null) === m[0]; });
+      return cs.length ? '<div class="pstack-sub"><button class="linkbtn mute" style="text-decoration:none" data-act="tlist" data-p="' + p.id + '" data-v="' + esc(s) + '">' + esc(s) + " →</button>" + cs.map(function (x) { var bb = blockedBy(x); return '<button class="gcard ' + x.st + '" data-act="topen" data-v="' + x.id + '"><b>' + esc(x.title) + '</b><div class="row" style="gap:4px;margin-top:4px">' + avs(x.who) + dueTxt(x) + (bb.length && !simple() ? '<span class="pill bad">Waits</span>' : "") + "</div></button>"; }).join("") + "</div>" : "";
+    }).join("");
+    return '<section class="pstack-ms"><div class="row between"><b>◆ ' + esc(m[1]) + "</b>" + (m[2] ? '<span class="who">' + fmt(m[2]) + (m[3] ? " · done" : "") + "</span>" : "") + "</div>" + (groups || '<p class="small mute">No tasks yet.</p>') + '<button class="btn ghost sm" style="justify-self:start" data-act="tnewin" data-p="' + p.id + '" data-s="' + esc(p.subs[0]) + '" data-m="' + (m[0] || "") + '">+ Add</button></section>';
+  }).join("") + "</div>";
+  grid = '<div class="hide-sm">' + grid + "</div>" + stack;
+  var cross =xs.filter(function (x) { return x.by.some(function (b) { var bt = task(b); return bt && bt.sub !== x.sub; }); });
   var tools = (lead() ? '<button class="btn sm" data-act="tmsadd" data-v="' + p.id + '">+ Milestone</button><button class="btn sm" data-act="tsaves">' + D.ic("history", 16) + " Save points</button>" : "");
-  return frame(p.name, esc(d.name), tools, filtersBar() + '<div class="card"><div class="row between"><h2>Milestones by subteam</h2><span class="small mute">Rows are milestones, columns are subteams. Tap a card to open it.</span></div>' + grid + "</div>" +
+  return frame(p.name, esc(d.name), tools, filtersBar() + '<div class="card"><div class="row between"><h2>Milestones by subteam</h2><span class="small mute hide-sm">Rows are milestones, columns are subteams. Tap a card to open it.</span></div>' + grid + "</div>" +
     (cross.length && !simple() ? '<div class="card"><h2>Waiting across subteams</h2><div class="list">' + cross.map(function (x) { return '<div class="li"><span class="grow"><b>' + esc(x.title) + '</b> <span class="who">(' + esc(x.sub) + ") waits on</span> " + x.by.map(function (b) { var bt = task(b); return "<b>" + esc(bt.title) + '</b> <span class="who">(' + esc(bt.sub) + ", " + ST[bt.st][0] + ")</span>"; }).join(", ") + "</span></div>"; }).join("") + "</div></div>" : ""));
 }
 function listPage(pid, sub) {
