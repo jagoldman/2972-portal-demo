@@ -190,7 +190,7 @@ D.views.portal = function () {
   return D.topbar("Home", "portal.2972robotics.com", "", S.mode === "competition" ? "" : '<span class="pill gold">Build mode</span>') +
     '<div class="content"><div><p class="eyebrow">' + esc(D.me().label) + ' view</p><h2 style="font-size:1.5rem">' + esc(greet) + "</h2></div>" +
     (S.role === "student" && S.eventDay && D.myShiftCard ? D.myShiftCard() : "") +
-    (S.role === "student" && D.nextUpCard ? D.nextUpCard() : "") +
+    (S.role === "student" && D.nextUpCard ? (S.eventDay ? '<div class="evcompact">' + D.nextUpCard() + "</div>" : D.nextUpCard()) : "") +
     '<div class="tiles">' + main.map(tile).join("") + "</div>" +
     (more.length ? '<div><p class="eyebrow" style="margin-bottom:8px">More</p><div class="tiles">' + more.map(tile).join("") + "</div></div>" : "") + act +
     '<p class="flowhint">Switch roles in the yellow bar, choose <b>Competition</b> mode on your Account page, or tick <b>Event day</b>. The <b>Apps</b> menu at the top left reaches every tool from anywhere. Behind the tiles run five services: Account, Calendar, Parts, Competition and Skills.</p></div>';
