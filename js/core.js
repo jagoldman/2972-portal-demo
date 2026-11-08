@@ -168,7 +168,7 @@ function rail() {
 function bellPanel() {
   var list = D.myNotices();
   return '<div class="panel' + (D.S.collapsed ? " narrow" : "") + '" role="dialog" aria-label="Notifications"><div class="row between"><h3>Notifications</h3><span class="row nowrap"><button class="btn ghost sm" data-act="readall">Mark all read</button><button class="xbtn" data-act="bell" aria-label="Close">×</button></span></div><div class="list">' +
-    (list.length ? list.map(function (n) { return '<div class="li"><span class="pill ' + (n.read ? "" : "gold") + '">' + esc(D.APPNAME[n.app]) + '</span><span class="grow">' + esc(n.text) + '</span><span class="who">' + esc(n.when) + "</span></div>"; }).join("") : '<p class="mute">Nothing yet.</p>') +
+    (list.length ? list.map(function (n) { return '<div class="li nli' + (n.read ? "" : " unread") + '"><span class="pill ' + (n.read ? "" : "gold") + '">' + esc(D.APPNAME[n.app]) + '</span><span class="grow">' + esc(n.text) + '</span><span class="who">' + esc(n.when) + "</span></div>"; }).join("") : '<p class="mute">Nothing yet.</p>') +
     '</div><p class="small mute">One bell for every app. Choose Discord and email per kind on your <button class="linkbtn" style="color:var(--accent)" data-act="go" data-v="account">Account</button> page.</p></div>';
 }
 function banner() {
@@ -219,7 +219,7 @@ D.render = function () {
     if (t && !D.inGroup(t)) content = D.denied(t.name);
     else if (t && t.ext) content = extTile(t);
     else content = (D.views[S.route] || D.views.portal)();
-    html += appbar() + '<div class="main">' + banner() + content + "</div>" + (S.bell ? bellPanel() : "") + (S.appsOpen ? '<button class="drawer-scrim" style="background:transparent;z-index:49" data-act="apps" aria-label="Close apps"></button>' + appsMenu() : "");
+    html += appbar() + '<div class="main">' + banner() + content + "</div>" + (S.bell ? '<button class="drawer-scrim" style="background:transparent;z-index:49" data-act="bell" aria-label="Close notifications"></button>' + bellPanel() : "") + (S.appsOpen ? '<button class="drawer-scrim" style="background:transparent;z-index:49" data-act="apps" aria-label="Close apps"></button>' + appsMenu() : "");
   }
   if (S.drawer && D.drawers[S.drawer.type]) html += '<button class="drawer-scrim" data-act="closedrawer" aria-label="Close panel"></button><aside class="drawer" role="dialog" aria-modal="true">' + D.drawers[S.drawer.type](S.drawer.data) + "</aside>";
   if (S.modal && D.modals[S.modal.type]) html += '<button class="modal-scrim" data-act="closemodal" aria-label="Close dialog"></button><div class="modal" role="dialog" aria-modal="true">' + D.modals[S.modal.type](S.modal.data) + "</div>";
