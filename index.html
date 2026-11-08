@@ -108,7 +108,7 @@ body::before { content: ""; position: fixed; inset: 0 0 auto; height: env(safe-a
 .btn { border: 1px solid var(--line-2); background: var(--surface); border-radius: 8px; padding: 7px 13px; font-weight: 600; display: inline-flex; gap: 6px; align-items: center; min-height: 36px; white-space: nowrap; }
 .btn:hover { border-color: var(--text-2); }
 .btn.primary { background: var(--gold); border-color: var(--gold); color: var(--on-gold); }
-.btn.primary:hover { background: var(--gold-2); }
+.btn.primary:hover { background: var(--gold-2); } .btn.primary[aria-pressed="true"] { background: var(--rail); border-color: var(--rail); color: var(--gold); }
 .btn.ghost { border-color: transparent; background: none; color: var(--accent); }
 .btn.danger { color: var(--bad); }
 .btn.sm { min-height: 30px; padding: 3px 10px; font-size: .84rem; }
