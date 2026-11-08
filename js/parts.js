@@ -138,7 +138,7 @@ function requests() {
   var q = p.q.toLowerCase();
   var rows = p.requests.filter(function (r) { return g[2].indexOf(r.status) >= 0 && (!p.mine || r.by === me) && (!q || (r.name + r.sku + r.vendor + r.by + r.sub).toLowerCase().indexOf(q) >= 0); });
   rows.sort(function (a, b) { return (b.by === me) - (a.by === me) || a.id - b.id; });
-  var chips = '<div class="chips">' + groups.map(function (x) { var n = p.requests.filter(function (r) { return x[2].indexOf(r.status) >= 0; }).length; return '<button class="chip" data-act="pfilter" data-v="' + x[0] + '" aria-pressed="' + (p.filter === x[0]) + '">' + x[1] + ' <span class="small">' + n + "</span></button>"; }).join("") + "</div>";
+  var chips = '<div class="chips scrollrow">' + groups.map(function (x) { var n = p.requests.filter(function (r) { return x[2].indexOf(r.status) >= 0; }).length; return '<button class="chip" data-act="pfilter" data-v="' + x[0] + '" aria-pressed="' + (p.filter === x[0]) + '">' + x[1] + ' <span class="small">' + n + "</span></button>"; }).join("") + "</div>";
   return '<div class="card"><div class="row between">' + chips + '<label class="row small" style="font-weight:600"><button class="toggle" data-act="pmine" aria-pressed="' + p.mine + '" aria-label="Only my requests"></button> Only mine</label></div>' +
     '<div class="field"><input id="p-q" class="inp" data-input="pq" placeholder="Search part, SKU, vendor or person" value="' + esc(p.q) + '" aria-label="Search requests"></div>' +
     '<div class="list">' + (rows.length ? rows.map(function (r) {
