@@ -1,4 +1,4 @@
-/* Team Calendar service: Calendar (month, agenda, events, competitions, practice pattern), Who's in (door sign-in, mentors, hours), Snacks. */
+/* Team Calendar service: Calendar (month, agenda, events, competitions, practice pattern), Attendance (door sign-in, mentors, hours), Snacks. */
 (function () {
 "use strict";
 var esc = D.esc;
@@ -147,13 +147,13 @@ D.modals.calnew = function (d) {
     '<div class="row"><button class="btn primary" data-act="calsave">Save</button><button class="btn" data-act="closemodal">Cancel</button></div>';
 };
 
-/* ---------- Who's in ---------- */
+/* ---------- Attendance ---------- */
 D.views.here = function () {
   var staff = D.isStaff(), list = [["today", "Today"], ["board", "Leaderboard"], ["me", "My attendance"], ["mentors", "Mentors"]];
   if (staff) list.push(["mydays", "My days"], ["admin", "Corrections"]);
   var t = D.tab("here", "today"), body;
   if (t === "board") body = board(); else if (t === "me") body = mine(); else if (t === "mentors") body = mentorsView(); else if (t === "mydays" && staff) body = myDays(); else if (t === "admin" && staff) body = corrections(); else body = today();
-  return D.topbar("Who's in", "calendar.2972robotics.com/here", D.tabsFor("here", list, "today"), staff ? '<button class="btn sm" data-act="go" data-v="kiosk">' + D.ic("qr", 16) + " Door QR screen</button>" : "") + '<div class="content">' + body + "</div>";
+  return D.topbar("Attendance", "calendar.2972robotics.com/here", D.tabsFor("here", list, "today"), staff ? '<button class="btn sm" data-act="go" data-v="kiosk">' + D.ic("qr", 16) + " Door QR screen</button>" : "") + '<div class="content">' + body + "</div>";
 };
 function today() {
   var c = C(), me = D.me().name, signed = c.here.some(function (h) { return h.name === me; }), staff = D.isStaff();

@@ -52,7 +52,7 @@ var ALL = ["admin", "mentor", "student", "parent"], BUILDERS = ["admin", "mentor
 D.TILES = [
   { id: "tasks", name: "Task App", icon: "tasks", svc: "tasks.", desc: "Your next task, projects and the build plan.", modes: ["build", "competition"], groups: ALL },
   { id: "calendar", name: "Calendar", icon: "calendar", svc: "calendar.", desc: "Practices, build days and competitions.", modes: ["build", "competition"], groups: ALL },
-  { id: "here", name: "Who's in", icon: "here", svc: "calendar./here", desc: "Sign in at the door, mentor plans, hours.", modes: ["build", "competition"], groups: BUILDERS },
+  { id: "here", name: "Attendance", icon: "here", svc: "calendar./here", desc: "Sign in at the door, mentor plans, hours.", modes: ["build", "competition"], groups: BUILDERS },
   { id: "snacks", name: "Snacks", icon: "snacks", svc: "calendar./snacks", desc: "Sign up to bring snacks to practice.", modes: ["build"], groups: ["admin", "mentor", "parent"] },
   { id: "parts", name: "Parts & Inventory", icon: "parts", svc: "parts.", desc: "Request parts, check orders in, find spares.", modes: ["build", "competition"], groups: BUILDERS },
   { id: "skills", name: "Skills", icon: "skills", svc: "skills.", desc: "Training trees that unlock step by step.", modes: ["build"], groups: BUILDERS },

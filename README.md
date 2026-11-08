@@ -16,7 +16,7 @@ Everything is sample data. Nothing is saved, and a reload resets it.
 |---|---|
 | Task App | Its own sidebar with views and Divisions › Projects › Subteams. A milestone grid per project, a list and a board per subteam, a full task panel, the timeline and the projector. |
 | Parts & Inventory | Request a part from a task. Mentors order by vendor. Anyone checks lines in when the box arrives. Inventory is organized by place. |
-| Calendar, Who's in, Snacks | A month calendar with practices and competitions, door QR sign-in, an hours heat grid, mentor plans and snack sign-up. |
+| Calendar, Attendance, Snacks | A month calendar with practices and competitions, door QR sign-in, an hours heat grid, mentor plans and snack sign-up. |
 | Skills | Skill trees drawn as graphs, sign-off requests, bulk sign-off. |
 | Schedule, Pit, Scouting | Paint event roles by dragging. Pit has checklists, issues and batteries, with a monitor. Scouting has a match form with field drawing, stats and a pick list. |
 
