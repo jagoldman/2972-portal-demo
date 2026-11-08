@@ -144,7 +144,7 @@ function appbar() {
 function appsMenu() {
   var S = D.S, tiles = D.visibleTiles();
   function item(t) { return '<button class="appitem" data-act="go" data-v="' + t.id + '"' + (S.route === t.id ? ' aria-current="page"' : "") + '><span class="ic">' + D.ic(t.icon, 20) + "</span><span><b>" + esc(t.name) + (t.ext ? " ↗" : "") + "</b><small>" + esc(t.desc) + "</small></span></button>"; }
-  return '<div class="appsmenu" role="dialog" aria-label="All apps"><div class="row between"><p class="eyebrow">' + (S.mode === "competition" ? "Competition mode" : "Build mode") + ' · <button class="linkbtn" style="color:var(--accent)" data-act="go" data-v="account">change in Account</button></p><button class="btn ghost sm" data-act="go" data-v="portal">Portal home</button></div><div class="appgrid">' + tiles.filter(function (t) { return !t.more; }).map(item).join("") + "</div>" +
+  return '<div class="appsmenu" role="dialog" aria-label="All apps"><div class="row between nowrap" style="align-items:flex-start"><p class="eyebrow">' + (S.mode === "competition" ? "Competition mode" : "Build mode") + ' · <button class="linkbtn" style="color:var(--accent)" data-act="go" data-v="account">change in Account</button></p><span class="row nowrap"><button class="btn ghost sm" data-act="go" data-v="portal">Portal home</button><button class="xbtn" data-act="apps" aria-label="Close">×</button></span></div><div class="appgrid">' + tiles.filter(function (t) { return !t.more; }).map(item).join("") + "</div>" +
     (tiles.some(function (t) { return t.more; }) ? '<p class="eyebrow">More</p><div class="appgrid">' + tiles.filter(function (t) { return t.more; }).map(item).join("") + "</div>" : "") + "</div>";
 }
 function rail() {
@@ -167,7 +167,7 @@ function rail() {
 }
 function bellPanel() {
   var list = D.myNotices();
-  return '<div class="panel' + (D.S.collapsed ? " narrow" : "") + '" role="dialog" aria-label="Notifications"><div class="row between"><h3>Notifications</h3><button class="btn ghost sm" data-act="readall">Mark all read</button></div><div class="list">' +
+  return '<div class="panel' + (D.S.collapsed ? " narrow" : "") + '" role="dialog" aria-label="Notifications"><div class="row between"><h3>Notifications</h3><span class="row nowrap"><button class="btn ghost sm" data-act="readall">Mark all read</button><button class="xbtn" data-act="bell" aria-label="Close">×</button></span></div><div class="list">' +
     (list.length ? list.map(function (n) { return '<div class="li"><span class="pill ' + (n.read ? "" : "gold") + '">' + esc(D.APPNAME[n.app]) + '</span><span class="grow">' + esc(n.text) + '</span><span class="who">' + esc(n.when) + "</span></div>"; }).join("") : '<p class="mute">Nothing yet.</p>') +
     '</div><p class="small mute">One bell for every app. Choose Discord and email per kind on your <button class="linkbtn" style="color:var(--accent)" data-act="go" data-v="account">Account</button> page.</p></div>';
 }
