@@ -1,44 +1,268 @@
-/* Skills: trees of categories, categories of skills, both drawn as layered graphs; mentor sign-off, requests, bulk sign-off, AI doc import. */
+/* Skills: trees of categories, categories of skills, both drawn as layered graphs; mentor sign-off, requests, bulk sign-off, AI doc import.
+   CAD: FRCDesign.org. Electrical: FRCElectrical.org. Programming: WPILib / RobotPy.
+   Every skill names its check: written test, demonstration, both (a dual check), or an Onshape review for CAD. */
 (function () {
 "use strict";
 var esc = D.esc;
 var STUDENTS = ["Sam Ortiz", "Leo Brooks", "Priya Shah", "Ava Kim", "Jordan Lee", "Maya Gold"];
 
-function sk(id, name, sum, req) { return { id: id, name: name, sum: sum, req: req || [] }; }
+function sk(id, name, sum, req, url, checks) { return { id: id, name: name, sum: sum, req: req || [], url: url || "", checks: checks || null }; }
+/* Checks: test = written test, demo = a mentor watches, both = dual check, rev = a mentor reviews the Onshape document. */
+function both(test, demo) { return { test: test, demo: demo }; }
+function demoOnly(demo) { return both("", demo); }
+function test(q) { return both(q, ""); }
+function rev(pass) { return { review: pass }; }
+function frc(slug) { return "https://frcdesign.org/" + slug + "/"; }
+function fel(slug) { return "https://frcelectrical.org/" + slug; }
+function wpi(slug) { return "https://docs.wpilib.org/en/stable/docs/" + slug; }
 var TREES = [
   { id: "safety", name: "Safety", tag: "SF", note: "Required. Unlocks every other tree.", req: null, cats: [
-    { id: "shop", name: "Shop Safety", req: [], skills: [sk("s1", "Shop rules and PPE", "glasses, closed shoes, hair tied"), sk("s2", "Emergency stops and first aid", "e-stops, eyewash, first-aid kit", ["s1"]), sk("s3", "Clean-up and tool return", "end-of-practice routine", ["s1"])] },
-    { id: "batt", name: "Battery and Robot Power", req: ["shop"], skills: [sk("s4", "Battery handling", "carry, charge, inspect leads"), sk("s5", "Power-on checks", "breaker, RSL, radio light", ["s4"]), sk("s6", "Lock out before work", "breaker off, battery out", ["s5"])] },
-    { id: "mach", name: "Machine Safety", req: ["shop"], skills: [sk("s7", "Hand tools", "files, hacksaw, deburring"), sk("s8", "Drill press", "clamping, speeds, chips", ["s7"]), sk("s9", "Bandsaw", "blade guard, push stick", ["s7"]), sk("s10", "Belt sander", "direction, small parts", ["s8", "s9"])] }
+    { id: "shop", name: "Shop Safety", req: [], skills: [
+      sk("s1", "Shop rules and PPE", "safety glasses on, closed shoes, long hair and loose clothes tied back", [], "", demoOnly("Arrive with glasses on, closed shoes, and hair and sleeves secured; a mentor checks all three and you show where the spare glasses are.")),
+      sk("s2", "Find the e-stops, eyewash, and first aid", "where each one is, and which adult you tell", ["s1"], "", demoOnly("Walk a mentor to each e-stop, the eyewash, and the first-aid kit, and name the adult you tell after any injury, even a small one.")),
+      sk("s10", "Fire and smoke", "stop the machine if you safely can, tell an adult, leave by the nearest exit to the meeting spot if it spreads; never fight a battery fire alone", ["s2"], "", both("Where the extinguisher is, when you leave instead of using it, and what you do if a battery or the laser starts to smoke.", "Walk the route from your bench to the nearest exit and the meeting spot.")),
+      sk("s15", "Chemicals, dust, and noise", "CA glue, solvents, cutting fluid; dust from deburring; ear protection at loud machines", ["s1"], "", test("Where the safety data sheets are, what you do if CA glue or a solvent gets on skin or in an eye, and which machines need ear protection.")),
+      sk("s3", "Clean-up and tool return", "machines off, tools back where they live, floor swept", ["s1"], "", demoOnly("Run the end-of-practice clean-up for one bench and leave it ready for the next person."))
+    ] },
+    { id: "batt", name: "Battery and Robot Power", req: ["shop"], skills: [
+      sk("s4", "Battery handling", "carry by the case, never the leads; look for cracks, swelling, and loose lugs", [], "", demoOnly("Carry a battery by the case, inspect it, and say what you do if it is cracked, swollen, or leaking: leave it and tell a mentor.")),
+      sk("s6", "Lock out before work", "disable, main breaker off, battery unplugged", ["s4"], "", demoOnly("Make the robot safe to touch, then show a mentor it cannot power on.")),
+      sk("s11", "Release stored energy", "vent the air, lower or pin arms and elevators, watch for springs", ["s6"], "", both("Name three ways a robot that is switched off can still move or hurt you.", "Vent the pneumatics and lower or pin a raised mechanism before you reach in.")),
+      sk("s13", "Charge and store batteries", "on the charging cart, never left charging overnight, damaged ones set aside", ["s4"], "", demoOnly("Put a battery on charge, read the charger, and show where a damaged battery goes.")),
+      sk("s14", "Pinch points and lifting the robot", "hands clear of wheels, belts, and arms; two people and the cart to move it", ["s6"], "", demoOnly("Point out three pinch points on the robot, then move it onto the cart with a partner.")),
+      sk("s5", "Power on and enable safely", "area clear, call out “enabling”, someone ready to disable", ["s6"], "", demoOnly("Power on with the area clear, call it out before you enable, and show the keys that stop the robot: Enter disables, the space bar e-stops."))
+    ] },
+    { id: "mach", name: "Machine Safety", req: ["shop"], skills: [
+      sk("s7", "Only signed-off machines", "the qualified list posted in the shop, or a mentor beside you", [], "", demoOnly("Find the posted qualified list, say whether you may run the bandsaw today, and name who could supervise you if not.")),
+      sk("s8", "Stop a machine", "its switch or e-stop, then hands off until it is fully still", ["s7"], "", demoOnly("Stop a running machine, keep your hands away until it is fully still, and switch it off.")),
+      sk("s9", "Rotating-tool rules", "no gloves, sleeves and hair secured, chips away from you", ["s7"], "", test("Why gloves stay off near a spinning tool, and where hair, sleeves, and chips go.")),
+      sk("s12", "Hot parts and fumes", "printer nozzles and beds, fresh-cut metal, laser smoke; let it cool, run the air", ["s7"], "", test("Name three hot things in our shop and what you wait for or use before you touch each one."))
+    ] }
   ] },
-  { id: "mfg", name: "Manufacturing", tag: "MF", note: "Make robot parts accurately.", req: "safety", cats: [
-    { id: "meas", name: "Measuring and Layout", req: [], skills: [sk("m1", "Calipers and rules", "read to 0.001 in"), sk("m2", "Layout and center punch", "scribe, square, punch", ["m1"])] },
-    { id: "hand", name: "Hand Fabrication", req: ["meas"], skills: [sk("m3", "Cut aluminum tube", "miter box, square ends"), sk("m4", "Rivets", "pop rivets, sizing, removal", ["m3"]), sk("m5", "Deburr and finish", "edges, chamfers", ["m3"])] },
-    { id: "drill", name: "Drilling and Tapping", req: ["hand"], skills: [sk("m6", "Drill to a layout", "pilot, step drill"), sk("m7", "Tap threads", "10-32, 1/4-20, cutting fluid", ["m6"]), sk("m8", "Hex broaching", "1/2 in hex in sprockets", ["m6"])] },
-    { id: "cnc", name: "CNC Router", req: ["meas"], skills: [sk("m9", "Load stock and zero", "hold-downs, work zero"), sk("m10", "Run a toolpath", "feeds, dust, watch the cut", ["m9"]), sk("m11", "CAM from Onshape", "export, toolpaths, tabs", ["m10"])] },
-    { id: "sheet", name: "Polycarb and Sheet", req: ["drill", "cnc"], skills: [sk("m12", "Bend polycarb", "heat, jig, springback"), sk("m13", "Gussets and plates", "pattern drilling, fit-up", ["m12"])] }
+  /* CAD follows FRCDesign.org's Onshape learning course (setup through Stage 2). Each skill links to the lesson.
+     A mentor reviews the student's Onshape document against the pass line. */
+  { id: "cad", name: "CAD", tag: "CAD", note: "Onshape, following FRCDesign.org from setup through Stage 2.", req: "safety", cats: [
+    { id: "cadsetup", name: "Course Setup", req: [], skills: [
+      sk("cd1", "Why CAD for FRC", "iteration, collaboration, manufacturing", [], frc("learning-course/course-setup/new-to-cad"), test("In two sentences, why the team models a part before it cuts one.")),
+      sk("cd2", "Set up Onshape", "education account, documents page, sharing with the team", ["cd1"], frc("learning-course/course-setup/new-to-onshape/account-setup"), rev("Your education account works and a mentor can open a document you shared.")),
+      sk("cd3", "Tune Onshape performance", "units, graphics, shortcuts", ["cd2"], frc("learning-course/course-setup/new-to-onshape/performance-tuning"), rev("Units match the team standard (inches) and the lesson's graphics settings are on.")),
+      sk("cd4", "Add FRCDesignLib", "MKCad parts in every document", ["cd2"], frc("learning-course/course-setup/required-course-tools/part-library"), rev("FRCDesignLib is in your library and you insert one part from it.")),
+      sk("cd5", "Install course Featurescripts", "Origin Cube, Tube Converter, Belt & Chain Gen", ["cd2"], frc("learning-course/course-setup/required-course-tools/featurescripts"), rev("All three Featurescripts are on your toolbar."))
+    ] },
+    { id: "cad1a", name: "1A Onshape Fundamentals", req: ["cadsetup"], skills: [
+      sk("cd6", "Navigate a part studio", "rotate, pan, zoom, tabs", [], frc("learning-course/stage1/1a/section1-exercise0"), rev("Exercise 0 is done, and you reach a face a mentor names without the view cube.")),
+      sk("cd7", "Extrude box tubes", "1×1 and 2×1 tubes with Tube Converter", ["cd6"], frc("learning-course/stage1/1a/section1-exercise1"), rev("Exercises 1 and 2 match the lesson's sizes and were made with Tube Converter.")),
+      sk("cd8", "Fully constrain a sketch", "dimensions, constraints, mirrors", ["cd7"], frc("learning-course/stage1/1a/section1-exercise3"), rev("Every sketch in Exercise 3 is fully defined (all black).")),
+      sk("cd9", "Model tube frames", "drivetrain, box, and triangle frames", ["cd8"], frc("learning-course/stage1/1a/section1-exercise4"), rev("Exercises 4 to 6 match the lesson's drawings.")),
+      sk("cd10", "Model plates and gussets", "plate workflow, 0.5 in hole grid, superstructure gussets", ["cd8"], frc("learning-course/stage1/1a/section2-exercise1"), rev("Section 2 Exercises 1 to 3: plates and gussets with holes on the tube's 0.5 in grid.")),
+      sk("cd11", "Motor mounting plate", "bolt circle and pilot hole from the motor", ["cd10"], frc("learning-course/stage1/1a/section2-exercise4"), rev("Exercise 4: the plate's holes line up with the FRCDesignLib motor.")),
+      sk("cd12", "Rivets and gussets on a frame", "rivet pattern, gusset setup, mates", ["cd9", "cd11"], frc("learning-course/stage1/1a/section3-exercise1"), rev("Section 3 Exercises 1 and 3: rivets sit on the hole grid and every gusset is mated.")),
+      sk("cd46", "Mate swerve modules", "four MK4i modules on the frame corners", ["cd12"], frc("learning-course/stage1/1a/section3-exercise2"), rev("Exercise 2: four modules mated at the corners; nothing moves when you drag it.")),
+      sk("cd51", "Full frame and finishing", "gussets, rivets, and the finished frame", ["cd46"], frc("learning-course/stage1/1a/section3-exercise4"), rev("Exercises 4 and 5: every gusset placed and riveted, and the frame matches the lesson."))
+    ] },
+    { id: "cad1b", name: "1B Power Transmissions", req: ["cad1a"], skills: [
+      sk("cd13", "Motors, shafts, and bearings", "COTS motors, hex shaft, flanged bearings", [], frc("learning-course/stage1/1b/motors"), test("Name two FRC motors, why we use hex shaft, and where a flanged bearing goes.")),
+      sk("cd14", "Torque, speed, and ratios", "a reduction trades speed for torque", ["cd13"], frc("learning-course/stage1/1b/torque-speed"), test("A motor with a 6000 rpm free speed drives a 3:1 reduction: give the output speed and say what happens to torque.")),
+      sk("cd47", "Gears", "tooth count, pitch, center-to-center distance", ["cd14"], frc("learning-course/stage1/1b/gears"), test("Work out the center-to-center distance for two gears a mentor names.")),
+      sk("cd15", "Model a simple gearbox", "gears at the right center-to-center, Origin Cube", ["cd47"], frc("learning-course/stage1/1b/exercise1"), rev("Exercise 1: gears mesh at the right center-to-center and the output turns with the motor.")),
+      sk("cd16", "Model a two-stage gearbox", "stacked reductions", ["cd15"], frc("learning-course/stage1/1b/exercise2"), rev("Exercise 2: both stages mesh and your stated ratio matches the tooth counts.")),
+      sk("cd17", "Belt and pulley drives", "5 mm HTD, Belt & Chain Gen", ["cd15"], frc("learning-course/stage1/1b/belts"), rev("A belt made with Belt & Chain Gen at a belt length you could order.")),
+      sk("cd18", "Chain and sprocket drives", "#25 chain, center-to-center, tensioning", ["cd15"], frc("learning-course/stage1/1b/chain"), rev("A #25 chain run at a whole number of links, with a way to tension it.")),
+      sk("cd19", "Gear and belt gearbox", "mixed transmission", ["cd16", "cd17", "cd18"], frc("learning-course/stage1/1b/exercise3"), rev("Exercise 3: gear and belt stages together, and the overall ratio is right."))
+    ] },
+    { id: "cad1c", name: "1C Practice Mechanisms", req: ["cad1b"], skills: [
+      sk("cd20", "Origin Cube on every mechanism", "first feature, group, fasten to origin", [], frc("learning-course/stage1/1c/introduction"), rev("Each 1C mechanism starts with an Origin Cube and is fastened to the origin in its assembly.")),
+      sk("cd21", "Model a flat intake", "layout sketch drives the rollers", ["cd20"], frc("learning-course/stage1/1c/exercise1"), rev("Exercise 1: change one layout dimension and the rollers follow.")),
+      sk("cd22", "Model dead-axle rollers", "bushings, live vs dead axles", ["cd21"], frc("learning-course/stage1/1c/exercise2"), rev("Exercise 2: you can say which axles are live and which are dead, and the bearings match.")),
+      sk("cd23", "Model a practice shooter", "flywheels, compression", ["cd22"], frc("learning-course/stage1/1c/exercise3"), rev("Exercise 3: flywheel spacing and compression come from the layout.")),
+      sk("cd24", "Model a telescoping hook", "linear extension, hard stops", ["cd23"], frc("learning-course/stage1/1c/exercise4"), rev("Exercise 4: the hook extends in the assembly and stops at its hard stop.")),
+      sk("cd25", "Flipped and direction-swap gearboxes", "packaging a reduction", ["cd23"], frc("learning-course/stage1/1c/exercise5"), rev("Exercise 5: the output turns the way the lesson asks.")),
+      sk("cd26", "Model an indexer", "vertical rollers, belts and chain", ["cd22"], frc("learning-course/stage1/1c/exercise8"), rev("Exercise 8: the game piece has a clear path from intake to shooter."))
+    ] },
+    { id: "cad1d", name: "1D Design Methodology", req: ["cad1c"], skills: [
+      sk("cd27", "Top-down design", "layout sketches drive the parts", [], frc("learning-course/stage1/1d/top-down-design"), test("Why parts come from a layout sketch, and what breaks when they do not.")),
+      sk("cd28", "Drivetrain layout sketch", "the course's swerve frame with MK4i modules, side and top", ["cd27"], frc("learning-course/stage1/1d/layout-sketch"), rev("Top and side layout sketches are fully defined, and the module positions come from them.")),
+      sk("cd29", "Model the swerve chassis", "tubes and bellypan derived from the layout", ["cd28"], frc("learning-course/stage1/1d/part-modeling"), rev("Change the frame size in the layout and the tubes and bellypan follow.")),
+      sk("cd30", "Assemble the drivebase", "modules, groups, top-level robot assembly", ["cd29"], frc("learning-course/stage1/1d/assembly-modeling"), rev("Modules grouped, the top-level assembly built, and nothing floats."))
+    ] },
+    { id: "cad1e", name: "1E Subsystem Workflow", req: ["cad1d"], skills: [
+      sk("cd31", "Battery holder", "the battery comes out fast", [], frc("learning-course/stage1/1e/battery-mounting"), rev("Exercise 1: the holder fits the battery model and the battery comes out without removing other parts.")),
+      sk("cd48", "Mount the electronics", "power board, controller, radio, main breaker", ["cd31"], frc("learning-course/stage1/1e/electronics"), rev("Exercise 2: every part is mounted with room for wires, and the main breaker is easy to reach.")),
+      sk("cd49", "Bellypan pocketing", "lighten without weakening", ["cd48"], frc("learning-course/stage1/1e/exercise3"), rev("Exercise 3: pockets leave material under every bolt and electronics mount.")),
+      sk("cd32", "Bumpers and bumper mounts", "game-manual rules, quick on and off", ["cd48"], frc("learning-course/stage1/1e/exercise4"), rev("Exercises 4 and 5: bumpers sit where the rules say, and the pit crew can take them off fast."))
+    ] },
+    { id: "cad2a", name: "2A Basic Shooter", req: ["cad1e"], skills: [
+      sk("cd33", "Shooter design", "trajectory, exit velocity, compression, wrap, spin", [], frc("learning-course/stage2/2a/introduction"), test("Compression, wrap, and spin in one line each, and one way to raise exit velocity.")),
+      sk("cd34", "Shooter layout sketch", "field element, hood, ball path", ["cd33"], frc("learning-course/stage2/2a/layout-sketch"), rev("The layout shows the game piece path and the hood angle.")),
+      sk("cd35", "Model a flywheel shooter", "plates, belts, Limelight mount", ["cd34"], frc("learning-course/stage2/2a/part-studio"), rev("The part studio is driven by the layout, with belts and a camera mount."))
+    ] },
+    { id: "cad2b", name: "2B Dead Axle Pivot", req: ["cad1e"], skills: [
+      sk("cd36", "Pivot design", "strength, friction, backlash, tensioning", [], frc("learning-course/stage2/2b/introduction"), test("Where backlash comes from in a pivot, and one way to reduce it.")),
+      sk("cd37", "Model a dead-axle pivot", "layout, chain, moving subassemblies", ["cd36"], frc("learning-course/stage2/2b/part-studio"), rev("The arm pivots in the assembly and the chain can be tensioned."))
+    ] },
+    { id: "cad2c", name: "2C Slapdown Intake", req: ["cad2b"], skills: [
+      sk("cd38", "Intake golden rules", "robust rollers, the pivot, zombie axles (a pivot axle that also drives the rollers)", [], frc("learning-course/stage2/2c/intake-golden-rules"), test("Three intake golden rules, and what a zombie axle lets you do with the roller motor.")),
+      sk("cd39", "Model a slapdown intake", "over the bumper, ball path, motion", ["cd38"], frc("learning-course/stage2/2c/part-studio"), rev("The intake folds inside the frame and deploys over the bumper."))
+    ] },
+    { id: "cad2d", name: "2D Cascade Elevator", req: ["cad1e"], skills: [
+      sk("cd40", "Elevator design", "blocks, chain attachment, rigging, cables", [], frc("learning-course/stage2/2d/elevator-blocks"), test("How a cascade elevator differs from a continuous one, and how the chain attaches.")),
+      sk("cd41", "Model a cascade elevator", "stages, sliders, linear relation", ["cd40"], frc("learning-course/stage2/2d/part-studio"), rev("The stages move together in the assembly and the travel matches the layout."))
+    ] },
+    { id: "cadnext", name: "Next Steps", req: ["cad2a", "cad2c", "cad2d"], skills: [
+      sk("cd42", "CAD best practices", "named parts, layout-driven, clean feature tree", [], frc("best-practices"), rev("One Stage 2 document has every part named, every part driven by a layout sketch, no red features, and no floating parts.")),
+      sk("cd50", "Release a part for the shop", "DXF for the router or laser, a 3MF for the printers, units checked", ["cd42"], "", rev("Make a drawing of one plate with its critical dimensions, export it as a DXF, and export one part for a printer; note the material, cutter, and how the part is held, and a mentor approves units and hole sizes before anything is cut.")),
+      sk("cd43", "Independent mechanism", "your own project, then a design review", ["cd42"], frc("learning-course/next-steps"), rev("Present your own mechanism at a design review and fix what the review finds.")),
+      sk("cd44", "Study public robot CAD", "Open Alliance, mechanism examples", ["cd42"], frc("mechanism-examples"), test("Pick a public mechanism and explain two choices its team made."))
+    ] }
   ] },
-  { id: "elec", name: "Electrical", tag: "EL", note: "Wire it once, wire it right.", req: "safety", cats: [
-    { id: "wire", name: "Wire Prep", req: [], skills: [sk("e1", "Wire gauges and colors", "red/black, 6 to 22 AWG"), sk("e2", "Strip and tin", "clean strip lengths", ["e1"])] },
-    { id: "crimp", name: "Crimping and Connectors", req: ["wire"], skills: [sk("e3", "Andersen Powerpole", "crimp, housing, polarity"), sk("e4", "Ferrules", "for WAGO and PDH", ["e3"]), sk("e5", "JST and PWM", "small crimps, latches", ["e3"]), sk("e6", "Large lugs", "6 AWG, hydraulic crimp, pull test", ["e4"])] },
-    { id: "ctrl", name: "Control System", req: ["crimp"], skills: [sk("e7", "Lay out the board", "roboRIO, PDH, radio"), sk("e8", "Power distribution", "breakers, fuses, budget", ["e7"]), sk("e9", "Radio and network", "config, power, field test", ["e7"])] },
-    { id: "can", name: "CAN and Motor Controllers", req: ["ctrl"], skills: [sk("e10", "CAN bus wiring", "daisy chain, termination"), sk("e11", "Set CAN ids", "Phoenix Tuner, REV Hardware Client", ["e10"])] },
-    { id: "pneu", name: "Pneumatics", req: ["wire"], skills: [sk("e12", "Tubing and fittings", "cut square, push-to-connect"), sk("e13", "Solenoids and the hub", "wiring, leak test", ["e12"])] },
-    { id: "sens", name: "Sensors", req: ["ctrl"], skills: [sk("e14", "Limit switches and beam breaks", "wiring, polarity"), sk("e15", "Encoders", "absolute vs relative", ["e14"])] }
+  { id: "mfg", name: "Manufacturing", tag: "MF", note: "Our shop. Each machine: rules (written test), a supervised job (demonstration), then qualification (both). Qualified means you may run it alone while a mentor is in the shop.", req: "safety", cats: [
+    { id: "meas", name: "Measuring and Layout", req: [], skills: [
+      sk("mf1", "Read calipers", "to 0.001 in, inside and outside", [], "", demoOnly("Measure three features a mentor names and get each within 0.005 in.")),
+      sk("mf5", "Pick the stock", "aluminum tube and plate, polycarbonate, wall thickness on the label", ["mf1"], "", test("Which stock you use for a frame tube, a gusset, and a guard, and how you check the wall thickness.")),
+      sk("mf6", "Fits and tolerances", "clearance, close, and press fits; which dimensions must be exact", ["mf1"], "", test("The clearance hole for a 10-32 bolt, how a bearing bore differs from a clearance hole, and which dimension on a drawing you check first.")),
+      sk("mf2", "Layout and center punch", "scribe, square, punch on the cross", ["mf1"], "", demoOnly("Lay out a hole pattern and punch every center within 1/32 in of the mark."))
+    ] },
+    { id: "hand", name: "Hand Work", req: ["meas"], skills: [
+      sk("mf3", "Deburr and file", "every cut edge, no gloves near a spinning part", [], "", demoOnly("Deburr a cut tube until a shop rag pulled along every edge does not snag.")),
+      sk("mf4", "Pop rivets", "grip length, set, and drill out", ["mf3"], "", demoOnly("Set two rivets flush and drill one out without enlarging the hole."))
+    ] },
+    { id: "miter", name: "Compound Miter Saw", req: ["meas"], skills: [
+      sk("mt1", "Miter saw rules", "guard down, work clamped, hands outside the no-hands zone, blade stopped before you reach", [], "", test("What you clamp, what you never cut freehand, and when you may reach for the offcut.")),
+      sk("mt2", "Supervised square cut", "length to a mark, blade fully stopped before you reach in", ["mt1"], "", demoOnly("Cut one piece to a marked length while a mentor watches the whole cycle.")),
+      sk("mt3", "Qualified on the miter saw", "you may cut alone while a mentor is in the shop", ["mt2"], "", both("Kickback, which side of the line you cut, and who may use the saw without a mentor beside them.", "Support and clamp a tube, cut it to a length a mentor names within 1/32 in, check it square, and sweep the table."))
+    ] },
+    { id: "drill", name: "Drill Press", req: ["meas"], skills: [
+      sk("dp1", "Drill press rules", "clamp the work, peck, no gloves, hair tied", [], "", test("Why the work is clamped, what peck drilling is, and why gloves stay off.")),
+      sk("dp2", "Drill a laid-out hole", "center punch, pilot, then finish size", ["dp1"], "", demoOnly("Drill one hole on a punched center without the part walking.")),
+      sk("dp4", "Tap a hole", "10-32 or 1/4-20, cutting fluid, back the tap out to break the chip", ["dp3"], "", both("Tap drill size for 10-32 and 1/4-20, and when you back the tap out.", "Tap one hole that a bolt turns in by hand.")),
+      sk("dp5", "Countersink and step drill", "flush rivets and bolts, clean holes in thin plate", ["dp3"], "", demoOnly("Countersink one hole so a flat-head screw sits flush, and step-drill a clean hole in thin plate.")),
+      sk("dp3", "Qualified on the drill press", "you may drill alone while a mentor is in the shop", ["dp2"], "", both("Speed for a large bit vs a small one, and what you do if the part catches.", "Drill a laid-out three-hole pattern within 1/32 in, then brush the chips and the table clean."))
+    ] },
+    { id: "band", name: "Grizzly G0994 Bandsaw", req: ["meas"], skills: [
+      sk("bw1", "Know the G0994", "vertical metal bandsaw, variable blade speed, key switch", [], "https://support.grizzly.com/hc/en-us/articles/35557903989911-FAQ-G0994-Metal-cutting-Bandsaw", test("Which blade speed you use for aluminum, why round stock needs support, and where the key is kept.")),
+      sk("bw2", "Supervised metal cut", "fence or miter gauge, speed set for aluminum, guard just above the work", ["bw1"], "", demoOnly("Cut one piece of aluminum with the guard set and the speed matched to the metal.")),
+      sk("bw3", "Qualified on the bandsaw", "you may cut alone while a mentor is in the shop", ["bw2"], "https://www.grizzly.com/videos/kpq5DqCAVHQ", both("Speed, guard height, and what you do not cut unsupported.", "Cut a square end, shut down, brush the chips, and return the key."))
+    ] },
+    { id: "lathe", name: "MechMaxx 10×22 Lathe", req: ["meas"], skills: [
+      sk("lt1", "Lathe rules and the DRO", "chuck key never left in the chuck, no gloves, sleeves short", [], "https://mechmaxx.com/products/10-x-22-industrial-metal-lathe-machine-high-precision-benchtop-1-5hp-0-2000-rpm-variable-speed-metal-working-machine", test("Where the chuck key goes before you start the spindle, what a DRO zero means, and why gloves stay off.")),
+      sk("lt2", "Face and turn to a diameter", "light cuts, read the DRO, chip brush not your hand", ["lt1"], "", demoOnly("Face one end and turn a diameter a mentor calls out, within 0.005 in measured with calipers.")),
+      sk("lt3", "Qualified on the lathe", "you may turn parts alone while a mentor is in the shop", ["lt2"], "", both("Spindle speed for aluminum, how you zero the DRO, and what you do if the part chatters.", "Turn a short pin to a diameter, stop the spindle, and put the chuck key back on its hook."))
+    ] },
+    { id: "omio", name: "OMIO Router (WCP)", req: ["meas"], skills: [
+      sk("om1", "OMIO safety", "spindle, collet, e-stop, no gloves, spoil board under sheet", [], "https://docs.wcproducts.com/welcome/frc-build-system/shop-accessories/omio-and-accessories", test("What the e-stop does, why the collet must be tight, and what the spoil board is for.")),
+      sk("om2", "WCP screen, zero, and g-code", "load the WCP screen set, set zero, check the toolpath against the clamps", ["om1"], "https://docs.wcproducts.com/welcome/shop-accessories/omio-cnc-router-x8-usb/basic-operation/screen-sets", demoOnly("Load a file, show the toolpath, and point out every clamp or screw the bit must miss.")),
+      sk("om3", "Supervised sheet or tube job", "WCP tube fixture or screwed-down sheet, hand near the e-stop", ["om2"], "https://docs.wcproducts.com/welcome/shop-accessories/omio-cnc-router-x8-usb/basic-operation/basic-operation", demoOnly("Run one job from zero to spindle-off while a mentor watches.")),
+      sk("om4", "Qualified on the OMIO", "you may run a known file while a mentor is in the shop", ["om3"], "", both("Zero, feeds, and what you do if the bit sounds wrong.", "Set up and run a known plate or tube file, then vacuum the bed."))
+    ] },
+    { id: "print", name: "Bambu X2D Printers", req: [], skills: [
+      sk("x1", "Slice for an X2D", "Bambu Studio, the right printer, the filament the profile expects", [], "https://wiki.bambulab.com/en/x2d/manual/first-print", test("Which of the three printers you sent the file to, and which filament and plate the profile expects.")),
+      sk("x2", "Watch the first layer", "load filament and stay until the first layer is good; the nozzle and bed are hot", ["x1"], "https://wiki.bambulab.com/en/x2d", demoOnly("Start a print and show a mentor a first layer with lines touching and no lifted corners before you leave it.")),
+      sk("x3", "Qualified on the X2Ds", "you may start known prints and leave them running", ["x2"], "https://wiki.bambulab.com/en/x2d/manual/x2d-faq", both("Bed temperature for PLA and PETG, when you cancel a print, and when the plate is cool enough to touch.", "Finish a spacer or clip, pop it off a cooled plate, and leave the plate clean."))
+    ] },
+    { id: "laser", name: "Bambu R1 Laser", req: ["meas"], skills: [
+      sk("lr1", "R1 rules", "55 W CO₂; opening the lid stops the laser; never unattended; no PVC, vinyl, or bare metal", [], "https://wiki.bambulab.com/en/r1/manual/first-setup-guide", test("Why the lid stays closed, two materials you never cut and why (PVC gives off hydrogen chloride gas), and where the extinguisher is.")),
+      sk("lr2", "A supervised cut or engrave", "Bambu Suite, material measured, air and ventilation on", ["lr1"], "https://wiki.bambulab.com/en/r1", demoOnly("Run a small wood or acrylic job and stay at the machine for the whole cut while a mentor watches.")),
+      sk("lr3", "Qualified on the R1", "you may run a known file while you stay in the room", ["lr2"], "https://wiki.bambulab.com/en/r1", both("Lid, air, ventilation, and what you do if you see flame: stop the job, keep the lid shut, tell a mentor, and leave if it spreads.", "Set up a file, cut or engrave it, and leave the bed clear."))
+    ] }
   ] },
-  { id: "prog", name: "Programming", tag: "PR", note: "From Git to autonomous.", req: "safety", cats: [
-    { id: "git", name: "Git and Tools", req: [], skills: [sk("p1", "Clone, branch, commit", "GitHub desktop or CLI"), sk("p2", "Pull requests", "review, merge", ["p1"])] },
-    { id: "java", name: "Java Basics", req: [], skills: [sk("p3", "Classes and methods", ""), sk("p4", "Units and math", "WPILib units", ["p3"])] },
-    { id: "cmd", name: "Command-Based Robots", req: ["git", "java"], skills: [sk("p5", "Subsystems", "hardware in one place"), sk("p6", "Commands and triggers", "bind buttons", ["p5"]), sk("p7", "Simulation", "test without a robot", ["p5"])] },
-    { id: "auto", name: "Autonomous Paths", req: ["cmd"], skills: [sk("p8", "Path planning", "waypoints, constraints"), sk("p9", "Auto chooser", "dashboard selection", ["p8"])] },
-    { id: "vis", name: "Vision", req: ["cmd"], skills: [sk("p10", "AprilTags", "pose from tags"), sk("p11", "Pose estimation", "fuse with odometry", ["p10"])] },
-    { id: "log", name: "Logging and Debugging", req: ["cmd"], skills: [sk("p12", "Read match logs", "AdvantageScope"), sk("p13", "Fix it from the log", "reproduce, patch", ["p12"])] }
+  { id: "elec", name: "Electrical", tag: "EL", note: "Following FRCElectrical.org, from theory to a legal robot.", req: "safety", cats: [
+    { id: "elbase", name: "Basics", req: [], skills: [
+      sk("el1", "Electrical safety", "robot off before you touch wiring, no rings or watches, glasses on", [], fel("intro/"), both("What a short circuit does to a battery, why metal jewelry comes off, and why the robot is off before you touch a wire.", "Show the robot is safe to wire: main breaker off and battery unplugged.")),
+      sk("el2", "Voltage, current, resistance", "Ohm's law, and what each word means on a robot", ["el1"], fel("intro/"), test("V = I × R, and one sentence each for volts, amps, and ohms.")),
+      sk("el3", "Wire gauge and color", "lower AWG is thicker; red is positive, black is negative", ["el2"], fel("intro/"), test("Which is thicker, 6 AWG or 22 AWG, and which color is positive.")),
+      sk("el21", "Use a multimeter", "set the mode and the jack first; voltage on a battery, continuity with the robot off", ["el2"], fel("Tools/"), demoOnly("Set the meter's mode and leads, read a battery's voltage, then check a wire for continuity with the robot off.")),
+      sk("el4", "Power, CAN, and signal wires", "power feeds devices, CAN carries data between controllers, signal wires go to sensors", ["el3"], fel("FRC-Control-System/#control-system-communications-signal-basics"), test("What power, CAN, and signal wires each carry, with one device on each."))
+    ] },
+    { id: "elctrl", name: "Control System", req: ["elbase"], skills: [
+      sk("el5", "Battery, main breaker, and power board", "PDH or PDP 2.0; each breaker matches its wire", [], fel("FRC-Control-System/#power-distribution"), test("Draw battery to main breaker to power board to a motor controller, and say why each breaker matches its wire.")),
+      sk("el6", "Radio and Systemcore", "radio against metal, lights visible, easy to remove", ["el5"], fel("FRC-Control-System/#robot-radio-20"), demoOnly("Power the radio and Systemcore and show the link lights, with the radio mounted the way the lesson says.")),
+      sk("el22", "Network and camera wiring", "radio Ethernet to Systemcore, camera powered and on the network", ["el6"], fel("FRC-Control-System/#cameras"), demoOnly("Connect a camera to the practice board's network and show its feed from the driver laptop.")),
+      sk("el7", "Wire a practice board", "a board with the power, radio, Systemcore, and RSL used for practice; breakers sized to the wire", ["el6"], fel("FRC-Control-System/"), demoOnly("Power the practice board and get the radio and RSL lights with no short."))
+    ] },
+    { id: "elconn", name: "Making Connections", req: ["elctrl"], skills: [
+      sk("el8", "Strip and tug-test", "strip length matches the crimp; a nicked strand means cut and start over", [], fel("Making-Connections/"), demoOnly("Strip one wire to the right length with no nicked strands and tug the crimp.")),
+      sk("el9", "Anderson Powerpole", "red is positive, the contact clicks into the housing", ["el8"], fel("Making-Connections/"), demoOnly("Crimp a red and a black Powerpole, snap the housings together, and tug.")),
+      sk("el10", "Ferrules and WAGO", "square ferrule crimp, then the lever", ["el8"], fel("Tools/"), demoOnly("Ferrule one wire and land it in a WAGO that holds when tugged.")),
+      sk("el11", "Battery connector", "6 AWG with SB50, two crimps per lug, heat shrink on first, Nordlock washers", ["el9"], fel("Battery/#battery-assembly"), both("Which wire goes with an SB50 and which with an SB120, and why the lug's built-in washer is never used.", "Crimp a battery lug with the heat shrink on first, bolt it with two Nordlock washers, and pass a hard pull.")),
+      sk("el12", "Small signal connectors", "sensor and CAN connectors, gentle tug", ["el8"], fel("Making-Connections/"), demoOnly("Crimp one small connector with the contact facing the right way, and tug."))
+    ] },
+    { id: "elcan", name: "CAN and Motors", req: ["elconn"], skills: [
+      sk("el13", "Daisy-chain a CAN bus", "twisted pair from Systemcore, device to device, ending at a 120 ohm resistor; never a star", [], fel("FRC-Control-System/#can-controller-area-network"), both("Where the bus starts, where it ends, where the resistor goes, and why a star is a bad CAN layout.", "Wire a three-device bus that still talks with the resistor on the end.")),
+      sk("el14", "Set a CAN id", "Phoenix Tuner or REV Hardware Client", ["el13"], fel("FRC-Control-System/#motor-controllers"), demoOnly("Change one controller's id and read it back.")),
+      sk("el15", "Motor power leads", "gauge matches the breaker, red to red, encoder or CAN cable seated, no bare copper", ["el14"], fel("Mechanism-Wiring/"), demoOnly("Land one motor's power leads, tug them, and show no bare copper."))
+    ] },
+    { id: "elmech", name: "On the Robot", req: ["elcan"], skills: [
+      sk("el23", "Label and document wiring", "both ends of every wire labeled, the wiring diagram kept current", [], fel("Mechanism-Wiring/"), demoOnly("Label both ends of three wires and update the wiring diagram to match.")),
+      sk("el16", "Service loop on a joint", "strain relief, wires clear of gears and wheels", [], fel("Mechanism-Wiring/"), demoOnly("Show a loop that still has slack at both ends of the joint's travel.")),
+      sk("el17", "Pneumatics: vent, tube, leak check", "dump valve first, 120 psi limit, relief valve", [], fel("Pneumatics/"), both("Where the dump valve is, the 120 psi limit, and what the relief valve does.", "Vent the system, tube one solenoid with a square cut, pressurize, and find a leak.")),
+      sk("el18", "Wire a sensor", "limit switch, beam break, or encoder; polarity right", [], fel("FRC-Control-System/#sensors"), demoOnly("Wire one sensor and show it change state.")),
+      sk("el19", "Practice inspection", "wire size, breakers, battery strapped, no bare copper", ["el16", "el17", "el18"], fel("FRC-Control-System/#fuses-and-breakers"), both("Three things that fail inspection.", "Walk a mentor through the practice board as if it were inspection.")),
+      sk("el20", "Find a wiring fault", "brownouts in the log, CAN faults in the vendor tool, then tug-test", ["el18"], fel("Mechanism-Wiring/"), demoOnly("Find and fix a fault a mentor puts on the practice board."))
+    ] }
   ] },
-  { id: "pit", name: "Pit Crew and Drive", tag: "PD", note: "Competition-ready.", req: "safety", cats: [
-    { id: "pitb", name: "Pit Basics", req: [], skills: [sk("d1", "Pit setup and layout", "carts, tools, power"), sk("d2", "Run a match checklist", "Pit app checklists", ["d1"])] },
-    { id: "brot", name: "Battery Rotation", req: ["pitb"], skills: [sk("d3", "Charge and log batteries", "states, voltages"), sk("d4", "Swap a battery fast", "under 60 seconds", ["d3"])] },
-    { id: "drvb", name: "Driving Basics", req: [], skills: [sk("d5", "Robot driving 101", "field-relative swerve"), sk("d6", "Controls map", "every button", ["d5"])] },
-    { id: "drvp", name: "Driver Practice", req: ["brot", "drvb"], skills: [sk("d7", "Cycle drills", "score, return, repeat"), sk("d8", "Practice match", "full 2:30 with pit crew", ["d7"])] }
+  { id: "prog", name: "Programming", tag: "PR", note: "WPILib and RobotPy. Our robot code is Python and command-based.", req: "safety", cats: [
+    { id: "pgtools", name: "Tools", req: [], skills: [
+      sk("pg1", "Clone, branch, and a pull request", "your own branch; a teammate reviews before merge", [], "https://docs.github.com/en/pull-requests/collaborating-with-pull-requests/proposing-changes-to-your-work-with-pull-requests/about-pull-requests", demoOnly("Clone the team repo, make your own branch, and open a pull request that a teammate reviews and merges.")),
+      sk("pg24", "Resolve a merge conflict", "pull main, fix the conflict, rerun the code", ["pg1"], "https://docs.github.com/en/pull-requests/collaborating-with-pull-requests/addressing-merge-conflicts/resolving-a-merge-conflict-using-the-command-line", demoOnly("Resolve a conflict a mentor sets up, run the code, and push the fix.")),
+      sk("pg2", "Install RobotPy", "Python 3, pip install robotpy, then python -m robotpy sync", ["pg1"], wpi("zero-to-robot/step-2/python-setup.html"), demoOnly("Run python -m robotpy sync in the team repo with no errors.")),
+      sk("pg3", "Find a page in the WPILib docs", "pick Python on the page, don't guess the API", [], wpi("zero-to-robot/introduction.html"), demoOnly("Open the Python example for a class a mentor names."))
+    ] },
+    { id: "pgpy", name: "Python for the Robot", req: [], skills: [
+      sk("pg5", "if, for, lists, and dicts", "the control flow in a command", [], "https://docs.python.org/3/tutorial/controlflow.html", demoOnly("Write a loop that prints each motor's name and CAN id from a dict.")),
+      sk("pg4", "Functions and imports", "split code into files you can import", ["pg5"], "https://docs.python.org/3/tutorial/modules.html", demoOnly("Move that loop into a function in its own file and import it.")),
+      sk("pg20", "Classes and self", "enough to read robot.py and a subsystem", ["pg4"], "https://docs.python.org/3/tutorial/classes.html", test("Read robot.py and explain what self is and when __init__ runs."))
+    ] },
+    { id: "pgz", name: "Zero to Robot", req: ["pgtools", "pgpy"], skills: [
+      sk("pg6", "A TimedRobot that drives", "the robot loop first, with a joystick deadband; our robot itself is command-based", [], wpi("zero-to-robot/step-4/creating-test-drivetrain-program-cpp-java-python.html"), demoOnly("Write a TimedRobot that drives from a joystick.")),
+      sk("pg7", "Run it in simulation", "the sim GUI, from python -m robotpy sim", ["pg6"], wpi("software/wpilib-tools/robot-simulation/introduction.html"), demoOnly("Run the sim and show the drive answering the joystick.")),
+      sk("pg8", "Driver Station modes", "disabled, teleop, auto, test; Enter disables, space bar e-stops", ["pg6"], wpi("software/driverstation/driver-station.html"), test("What each mode does, and which keys disable and e-stop the robot.")),
+      sk("pg17", "Deploy to the robot", "robot on blocks, then python -m robotpy deploy", ["pg7", "pg8"], wpi("software/python/subcommands/deploy.html"), demoOnly("Deploy, enable with the wheels off the ground, and disable."))
+    ] },
+    { id: "pgcmd", name: "Command-Based", req: ["pgz"], skills: [
+      sk("pg9", "A subsystem owns the hardware", "each motor is created in one place", [], wpi("software/commandbased/what-is-command-based.html"), demoOnly("Write one subsystem that owns its motor; no other file creates that motor.")),
+      sk("pg18", "Run a motor controller from code", "Phoenix 6 or REVLib: id, inversion, current limit", ["pg9"], wpi("software/hardware-apis/motors/index.html"), demoOnly("Set a motor's id, inversion, and current limit in code and spin it in sim or on blocks.")),
+      sk("pg10", "Commands, triggers, and default commands", "a button starts a command, which interrupts the default and hands back", ["pg9"], wpi("software/commandbased/binding-commands-to-triggers.html"), demoOnly("Bind a button to a command that interrupts the subsystem's default command while held, and show the default resume on release.")),
+      sk("pg11", "One mechanism in sim", "intake or arm, start to stop", ["pg10", "pg18"], wpi("software/commandbased/structuring-command-based-project.html"), demoOnly("Run an intake or arm subsystem with its commands in sim, from start to stop.")),
+      sk("pg19", "Test a subsystem", "one pytest, run with python -m robotpy test", ["pg11"], "https://robotpy.readthedocs.io/en/stable/guide/testing.html", demoOnly("Add a test that fails when the subsystem's logic is wrong and passes when it is right."))
+    ] },
+    { id: "pgctl", name: "Control", req: ["pgcmd"], skills: [
+      sk("pg12", "Read a sensor", "encoder, beam break, or limit switch on the dashboard", [], wpi("hardware/sensors/index.html"), demoOnly("Show a sensor's value on the dashboard and change it by hand.")),
+      sk("pg13", "PID or feedforward", "one mechanism holds a setpoint", ["pg12"], wpi("software/advanced-controls/introduction/index.html"), demoOnly("One mechanism holds a setpoint in sim, with gains you can explain.")),
+      sk("pg23", "Read the gyro", "heading in degrees, zero it at the start", ["pg12"], wpi("software/hardware-apis/sensors/gyros-software.html"), demoOnly("Show the heading on the dashboard, turn the robot or sim by hand, and reset it to zero.")),
+      sk("pg21", "Swerve and field-relative drive", "gyro heading, chassis speeds, module states", ["pg23", "pg13"], wpi("software/kinematics-and-odometry/swerve-drive-kinematics.html"), demoOnly("In sim, push the stick forward and the robot goes away from the driver whichever way it faces.")),
+      sk("pg25", "Zero the swerve modules", "encoder offsets so every wheel points forward", ["pg21"], "", demoOnly("Set the module offsets on the robot (on blocks) and show all four wheels point straight ahead after a restart.")),
+      sk("pg22", "Odometry", "wheel and gyro data become the robot's pose", ["pg21"], wpi("software/kinematics-and-odometry/swerve-drive-odometry.html"), demoOnly("Drive a square in sim and show the pose return close to where it started."))
+    ] },
+    { id: "pgmatch", name: "Match Code", req: ["pgctl"], skills: [
+      sk("pg14", "A Choreo path and the auto chooser", "one path runs from the dashboard pick", [], "https://choreo.autos/", demoOnly("Pick an auto on the dashboard and run its path in sim.")),
+      sk("pg15", "AprilTag pose", "a tag in view corrects where the robot thinks it is", [], wpi("software/vision-processing/apriltag/index.html"), demoOnly("Put the robot on a marked spot in front of a tag and show the estimated pose within 10 cm of the measured one.")),
+      sk("pg16", "Read a log in AdvantageScope", "find the trace that explains a miss", [], "https://docs.advantagescope.org/", demoOnly("From a match log, find the trace that explains a problem a mentor points to."))
+    ] }
+  ] },
+  { id: "pit", name: "Pit Crew and Drive", tag: "PD", note: "Competition-ready. Team-written.", req: "safety", cats: [
+    { id: "pitb", name: "Pit Basics", req: [], skills: [
+      sk("d1", "Pit setup and layout", "cart, tools, power strip, battery corner", [], "", demoOnly("Set up the pit from the cart; a mentor names five items and you find each one at once.")),
+      sk("d2", "Run a match checklist", "every item on the team's Pit app checklist, before every match", ["d1"], "", demoOnly("Run the full checklist on the robot; a mentor rechecks every item after you and finds nothing missed.")),
+      sk("d11", "Driver Station ready", "laptop charged, team number, controllers in order, auto picked", ["d1"], "", demoOnly("Set up the Driver Station laptop, connect to the robot, and show the right auto selected.")),
+      sk("d12", "Move the robot to the field", "on the cart, lifted the team's way, battery in, bumpers on", ["d1"], "", demoOnly("Take the robot from the pit to a practice field on the cart and lift it on using the team's lift method.")),
+      sk("d9", "Inspection ready", "bumpers, frame perimeter, battery strapped, no bare copper", ["d2"], "", demoOnly("Walk a mentor around the robot as an inspector would, and catch the problem they planted.")),
+      sk("d10", "Fault triage", "no comms, brownout, a CAN light, a dead mechanism: check in order; a mentor repairs anything with exposed power", ["d2"], "", demoOnly("Find the cause of a fault a mentor sets up, in the triage order."))
+    ] },
+    { id: "brot", name: "Battery Rotation", req: ["pitb"], skills: [
+      sk("d3", "Charge, test, and log batteries", "Battery Beak: over 20 milliohms stays off the robot (FRCElectrical.org)", [], fel("Battery/#maintaining-your-battery"), demoOnly("Test three batteries, log each one, and pull any over 20 milliohms.")),
+      sk("d4", "Swap a battery fast", "strap, connector, breaker, under 60 seconds", ["d3"], "", demoOnly("Swap a battery in under 60 seconds with the strap tight and the connector clicked."))
+    ] },
+    { id: "drvb", name: "Driving Basics", req: ["pitb"], skills: [
+      sk("d5", "Robot driving 101", "field-relative swerve; area clear, a spotter ready to disable", [], "", demoOnly("Drive a figure-eight field-relative with a spotter ready to disable.")),
+      sk("d14", "Drive team roles", "driver, operator, coach, human player; who calls a disable", ["d5"], "", test("What each drive-team role does in a match, and who calls a disable and how.")),
+      sk("d15", "Game rules and penalties", "this season's game manual: scoring, fouls, and what gets a card", ["d14"], "", test("Five fouls a driver can cause this season, and what each one costs.")),
+      sk("d6", "Controls map", "every button on both controllers", ["d5"], "", demoOnly("In a practice drive, use each control the moment a mentor calls it."))
+    ] },
+    { id: "drvp", name: "Driver Practice", req: ["drvb"], skills: [
+      sk("d7", "Cycle drills", "score, return, repeat, timed against the coach's target", [], "", demoOnly("Run five score-and-return cycles with an average under the target time on the drill sheet.")),
+      sk("d8", "Practice match", "a full match with the pit crew; enter and leave the field when the field crew says, disable if the robot misbehaves", ["d7"], "", demoOnly("Drive a full practice match with the pit crew and stop the robot at once when a mentor calls it.")),
+      sk("d13", "Match debrief", "what happened, why, and one change, from video or the log", ["d8"], "", demoOnly("Lead a five-minute debrief from match video or the log, ending in one change the team agrees to make."))
+    ] }
   ] }
 ];
 var BYID = {}; TREES.forEach(function (t) { t.cats.forEach(function (c) { c.tree = t.id; c.skills.forEach(function (s) { s.cat = c.id; s.tree = t.id; BYID[s.id] = s; }); }); });
@@ -46,7 +270,7 @@ function tree(id) { return TREES.filter(function (t) { return t.id === id; })[0]
 function cat(t, id) { return t.cats.filter(function (c) { return c.id === id; })[0]; }
 
 function seed(S) {
-  var levels = { "Sam Ortiz": [1, .45, .55, .2, .3], "Leo Brooks": [1, .8, .2, .1, .6], "Priya Shah": [1, .2, .4, .85, .3], "Ava Kim": [1, .35, .75, .3, .2], "Jordan Lee": [.6, 0, 0, 0, 0], "Maya Gold": [1, .15, .1, .5, .1] };
+  var levels = { "Sam Ortiz": [1, .42, .45, .55, .2, .3], "Leo Brooks": [1, .28, .76, .2, .1, .6], "Priya Shah": [1, .18, .2, .4, .85, .3], "Ava Kim": [1, .52, .35, .7, .3, .2], "Jordan Lee": [.6, .08, 0, 0, 0, 0], "Maya Gold": [1, .38, .15, .1, .5, .1] };
   var prog = {};
   STUDENTS.forEach(function (st) {
     prog[st] = {};
@@ -59,7 +283,7 @@ function seed(S) {
   });
   // keep order sensible: drop "done" marks whose prereqs aren't done
   STUDENTS.forEach(function (st) { Object.keys(prog[st]).forEach(function (id) { if (!skillOpenFor(prog[st], BYID[id]) && prog[st][id].s === "done") delete prog[st][id]; }); });
-  S.sk = { prog: prog, student: "Sam Ortiz", tree: "elec", cat: null, requests: [ { st: "Leo Brooks", id: "m11", note: "Cut the intake plates on Saturday" }, { st: "Ava Kim", id: "e11", note: "" } ], bulk: { id: "s9", picks: {} }, ai: null };
+  S.sk = { prog: prog, student: "Sam Ortiz", tree: "elec", cat: null, requests: [ { st: "Leo Brooks", id: "om4", note: "Cut the intake plates on Saturday" }, { st: "Ava Kim", id: "el15", note: "" }, { st: "Maya Gold", id: "cd17", note: "Belt & Chain Gen on the 1B gearbox" } ], bulk: { id: "s9", picks: {} }, ai: null };
 }
 function skillOpenFor(p, s) { return s.req.every(function (r) { return p[r] && p[r].s === "done"; }); }
 
@@ -174,6 +398,36 @@ function catGraph(st, P, t, c) {
   }, function (id) { return P[id] && P[id].s === "done"; });
   return '<div class="card"><div class="row between"><div class="row"><button class="btn sm" data-act="skback">← Back to ' + esc(t.name) + '</button><div><p class="eyebrow">' + esc(t.name) + " · " + esc(st) + "</p><h2>" + esc(c.name) + '</h2></div></div><span class="pill ' + (d === c.skills.length ? "ok" : "") + '">' + d + " / " + c.skills.length + " skills</span></div>" + LEGEND + g + '<p class="small mute">Lines show what you need first. Tap a skill to see it, ask for a sign-off, or (mentors) sign it off.</p></div>';
 }
+function linkLabel(url) {
+  var host = url.replace(/^https?:\/\//, "").split("/")[0].replace(/^www\./, "");
+  if (host === "frcdesign.org") return "FRCDesign.org lesson";
+  if (host === "frcelectrical.org") return "FRCElectrical.org lesson";
+  if (host === "docs.wpilib.org") return "WPILib docs";
+  if (host === "docs.python.org") return "Python tutorial";
+  if (host === "robotpy.readthedocs.io") return "RobotPy docs";
+  if (host === "docs.github.com") return "Git guide";
+  if (host === "docs.advantagescope.org") return "AdvantageScope docs";
+  if (host === "choreo.autos") return "Choreo docs";
+  if (host === "docs.wcproducts.com") return "WCP guide";
+  if (host === "wiki.bambulab.com" || host === "bambulab.com") return "Bambu guide";
+  if (host === "youtube.com" || host === "youtu.be") return "Video";
+  if (host === "grizzly.com") return "Grizzly page";
+  if (host === "support.grizzly.com") return "Grizzly FAQ";
+  if (host === "osha.gov") return "OSHA machine guarding";
+  if (host === "mechmaxx.com") return "Lathe page";
+  return "Guide";
+}
+function checkCopy(s) {
+  if (!s.checks) return "";
+  if (s.checks.review) return "<p><b>Onshape review.</b> " + esc(s.checks.review) + '</p><p class="small mute">A mentor opens your Onshape document and signs it off when this is true.</p>';
+  var test = s.checks.test || "", demo = s.checks.demo || "", html = "";
+  if (test) html += "<p><b>Written test.</b> " + esc(test) + "</p>";
+  if (demo) html += "<p><b>Demonstration.</b> " + esc(demo) + "</p>";
+  if (test && demo) html += '<p class="small mute">A dual check: both the written test and the demonstration are required.</p>';
+  else if (test) html += '<p class="small mute">A mentor gives this written check, then signs it off.</p>';
+  else if (demo) html += '<p class="small mute">A mentor watches this demonstration, then signs it off.</p>';
+  return html;
+}
 D.drawers.skill = function (d) {
   var S = D.S, s = BYID[d.id], t = tree(s.tree), c = cat(t, s.cat), st = S.sk.student, P = S.sk.prog[st], stt = skillStatus(st, P, t, c, s), rec = P[s.id];
   var self = S.role === "student" && st === "Sam Ortiz", staff = D.isStaff();
@@ -183,9 +437,16 @@ D.drawers.skill = function (d) {
   else if (self && (stt === "available" || stt === "progress")) acts = '<button class="btn primary" data-act="skrequest" data-v="' + s.id + '">Request sign-off</button>' + (stt === "available" ? '<button class="btn" data-act="skprogress" data-v="' + s.id + '">I\'m working on it</button>' : "");
   else if (self && stt === "requested") acts = '<span class="pill info">Waiting for a mentor</span><button class="btn ghost sm" data-act="skcancelreq" data-v="' + s.id + '">Cancel request</button>';
   var reqs = s.req.map(function (r) { var ok = P[r] && P[r].s === "done"; return '<div class="li"><span class="pill ' + (ok ? "ok" : "") + '">' + (ok ? "Done" : "Needed") + "</span>" + esc(BYID[r].name) + "</div>"; }).join("");
+  var sumText = s.sum ? s.sum.charAt(0).toUpperCase() + s.sum.slice(1) + "." : "";
+  var onshape = s.url.indexOf("frcdesign.org") !== -1;
+  var link = s.url
+    ? '<p><a class="vlink" href="' + esc(s.url) + '" target="_blank" rel="noopener noreferrer">' + esc(linkLabel(s.url)) + " ↗</a>." + (onshape && !s.checks ? " A mentor reviews your Onshape document and signs it off." : "") + "</p>"
+    : "";
+  var guide = (sumText ? "<p>" + esc(sumText) + "</p>" : "") + link + checkCopy(s);
+  if (!s.url && !s.checks) guide += "<p>A mentor watches you do it once and signs it off.</p>";
   return D.drawerHead(t.name + " › " + c.name, s.name) +
     '<div class="row"><span class="pill ' + ({ complete: "ok", requested: "info", progress: "warn", available: "info", locked: "" })[stt] + '">' + ({ complete: "Complete", requested: "Sign-off asked", progress: "In progress", available: "Available", locked: "Locked" })[stt] + '</span><span class="who">for ' + esc(st) + "</span></div>" +
-    '<p>' + esc(s.sum ? s.sum.charAt(0).toUpperCase() + s.sum.slice(1) + "." : "") + " A mentor watches you do it once and signs it off. The Team Handbook and the linked guide have the steps.</p>" +
+    guide +
     (reqs ? '<div><p class="flabel">Needs first</p><div class="list">' + reqs + "</div></div>" : "") +
     (rec && rec.s === "done" ? '<p class="who">Signed off by ' + esc(rec.by) + " · " + esc(rec.at) + "</p>" : "") +
     (acts ? '<div class="row">' + acts + "</div>" : stt === "locked" ? '<p class="hint">Finish what this needs first.</p>' : "");
@@ -246,9 +507,9 @@ A.skaipick = function () { D.S.sk.ai = [ { op: "Add", name: "Inspect battery lea
 A.skaidrop = function (b) { D.S.sk.ai.splice(+b.dataset.i, 1); D.render(); };
 A.skaidiscard = function () { D.S.sk.ai = null; D.render(); };
 A.skaiaccept = function () {
-  var S = D.S, c = cat(tree("elec"), "ctrl"), n = 0;
-  S.sk.ai.forEach(function (x, i) { if (x.op === "Add") { var s = sk("ai" + i + Date.now(), x.name, x.note.toLowerCase(), [c.skills[n % c.skills.length].id]); s.cat = "ctrl"; s.tree = "elec"; c.skills.push(s); BYID[s.id] = s; n++; } });
-  D.log("added " + n + " skills to Electrical › Control System", "skills"); S.sk.ai = null; S.sk.tree = "elec"; S.sk.cat = "ctrl"; S.tabs.skills = "trees"; D.toast(n + " skills added. Opened the category so you can see them."); D.render();
+  var S = D.S, c = cat(tree("elec"), "elctrl"), n = 0;
+  S.sk.ai.forEach(function (x, i) { if (x.op === "Add") { var s = sk("ai" + i + Date.now(), x.name, x.note.toLowerCase(), [c.skills[n % c.skills.length].id]); s.cat = "elctrl"; s.tree = "elec"; c.skills.push(s); BYID[s.id] = s; n++; } });
+  D.log("added " + n + " skills to Electrical › Control System", "skills"); S.sk.ai = null; S.sk.tree = "elec"; S.sk.cat = "elctrl"; S.tabs.skills = "trees"; D.toast(n + " skills added. Opened the category so you can see them."); D.render();
 };
 
 D.inits.push(function (S) {
