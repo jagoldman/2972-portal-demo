@@ -1,1 +1,83 @@
-/* Parts & Inventory: app-specific styles. Loaded after base.css. */
+/* Parts & Inventory. Loaded after base.css. */
+
+/* Requests: Show, Only mine and search on one line. */
+.pfilters { display: flex; flex-wrap: wrap; align-items: center; gap: 10px 16px; }
+.pf-show { display: flex; align-items: center; gap: 8px; font-weight: 600; font-size: .88rem; color: var(--text-2); }
+.pf-show select { width: auto; min-width: 190px; font-weight: 500; color: var(--text); }
+.pf-mine { display: flex; align-items: center; gap: 8px; font-weight: 600; font-size: .88rem; color: var(--text-2); }
+.pf-q { flex: 1; min-width: 180px; width: auto; }
+
+/* Request and order rows: name, one muted line, status at the right. */
+.prow, .pline, .pwait { padding: 10px 8px; }
+.prow .grow, .pline .grow, .pwait .grow { min-width: 0; flex: 1 1 220px; }
+.prow b, .pline b, .pwait b { display: block; }
+.pmeta { display: block; color: var(--mute); font-size: .85rem; line-height: 1.4; margin-top: 1px; }
+.pside { display: flex; flex-direction: column; align-items: flex-end; gap: 2px; flex: none; text-align: right; }
+.prow .pside { min-width: 112px; }
+.pbad { color: var(--bad); }
+.pok { color: var(--ok); font-weight: 600; }
+.pill.pri.warn, .pill.pri.bad { font-size: .8rem; }
+.pwait { flex-wrap: wrap; }
+.pvh h2 { min-width: 0; }
+
+/* Request drawer */
+.pkv { display: grid; grid-template-columns: 96px minmax(0,1fr); gap: 8px 12px; margin: 0; }
+.pkv dt { color: var(--mute); font-size: .85rem; font-weight: 600; padding-top: 1px; }
+.pkv dd { margin: 0; min-width: 0; overflow-wrap: anywhere; }
+
+/* Request form: its own screen, one column */
+.pnew { display: grid; gap: 16px; width: 100%; max-width: 720px; margin-inline: auto; }
+.pnew > div:first-child { margin-left: -12px; }
+.pform { display: grid; grid-template-columns: repeat(2, minmax(0,1fr)); gap: 12px 16px; align-items: start; }
+.pform .wide { grid-column: 1 / -1; }
+.pform p.who { margin: -4px 0 0; }
+.plookup { margin: 0; padding: 8px 12px; border-radius: var(--r-ctl); background: var(--ok-bg); color: var(--text-2); font-size: .88rem; }
+.plookup.warn { background: var(--info-bg); }
+
+/* Arriving */
+.parr { display: grid; gap: 10px; padding: 14px 0; border-top: 1px solid var(--line); min-width: 0; }
+.parr:first-child { border-top: 0; }
+.parr-ctl { display: flex; flex-wrap: wrap; gap: 12px 24px; align-items: end; }
+.parr-ctl select { min-width: 220px; }
+.parr-ctl .stepper { justify-self: start; }
+.parr .btn.checked { min-width: 120px; }
+
+/* Inventory */
+.pinvbar { display: flex; flex-wrap: wrap; align-items: center; gap: 10px; }
+.pinvbar .inp { flex: 1; min-width: 180px; width: auto; }
+.pinvbar .chip { min-height: 44px; }
+.pinvbar .placepick { margin: 0; }
+.stacktbl tr.click { cursor: pointer; }
+.stacktbl tr.click:hover td { background: var(--surface-2); }
+.stacktbl td .row { flex-wrap: nowrap; }
+
+/* Budget */
+.pbud .kpi b { font-size: 1.45rem; overflow-wrap: anywhere; }
+.pbrow { display: grid; gap: 6px; padding: 12px 4px; border-top: 1px solid var(--line); }
+.pbrow:first-child { border-top: 0; }
+.bar > i.pend { background: var(--text-2); }
+.pdotc { display: inline-block; width: 10px; height: 10px; border-radius: 3px; background: var(--accent); }
+.pdotc.soft { background: repeating-linear-gradient(135deg, var(--accent) 0 2px, var(--tint-2) 2px 4px); }
+.pdotc.pend { background: var(--text-2); }
+
+@media (max-width: 640px) {
+  .pfilters { gap: 10px 12px; }
+  .pf-show { flex: 1 1 100%; }
+  .pf-show select { flex: 1; min-width: 0; }
+  .pf-q { flex-basis: 100%; order: 3; }
+  .pf-mine { min-height: 44px; }
+  .prow, .pline, .pwait { flex-wrap: nowrap; }
+  .pwait { flex-wrap: wrap; }
+  .pwait .grow { flex-basis: 100%; }
+  .prow .pside { min-width: 0; }
+  .pform { grid-template-columns: minmax(0,1fr); }
+  .pnew .btn { min-height: 44px; }
+  .parr-ctl { display: grid; grid-template-columns: minmax(0,1fr); }
+  .parr-ctl select { width: 100%; min-width: 0; }
+  .parr .row .btn { flex: 1 1 auto; }
+  .pinvbar .chip { flex: none; }
+  .pkv { grid-template-columns: 84px minmax(0,1fr); }
+  .stacktbl td .row { flex-wrap: wrap; }
+  .pbud .kpi b { font-size: 1.3rem; }
+}
+@media (max-width: 640px) { .side > .hide-sm { display: none; } }
