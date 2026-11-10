@@ -1,1 +1,15 @@
-/* Account: app-specific styles. Loaded after base.css. */
+/* Account: one column, 720 px. Loaded after base.css. */
+.acc { width: 100%; max-width: 720px; margin-inline: auto; display: grid; gap: 16px; }
+.acc .accav { width: 48px; height: 48px; font-size: 1rem; flex: none; }
+.acc .seg { justify-self: start; max-width: 100%; }
+.acc .seg button { min-height: 44px; }
+.acc .li { min-height: 56px; }
+.acc .li .toggle { margin-left: auto; }
+.acc .card > h3 { margin-top: 4px; }
+.nlist { display: grid; }
+.nkind { display: grid; gap: 8px; padding: 12px 0; border-top: 1px solid var(--line); }
+.nkind:first-child { border-top: 0; padding-top: 4px; }
+.nsw { display: flex; flex-wrap: wrap; gap: 6px 24px; }
+.nsw1 { display: inline-flex; align-items: center; gap: 10px; min-height: 44px; font-weight: 600; font-size: .9rem; }
+.nsw1 .who { font-weight: 400; }
+@media (max-width: 640px) { .nsw { display: grid; gap: 0; } .nsw1 { justify-content: space-between; border-top: 1px solid var(--line); } .nsw1:first-child { border-top: 0; } }

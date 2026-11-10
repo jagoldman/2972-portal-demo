@@ -1,1 +1,63 @@
-/* Schedule, Pit and Scouting: app-specific styles. Loaded after base.css. */
+/* Competition: Schedule, Pit, Scouting, Pit monitor. Loaded after base.css. */
+
+.cmp .evmeta { gap: 4px 12px; font-size: .9rem; }
+.herotitle { font-size: 1.35rem; }
+.tgl { font-weight: 600; min-height: 44px; }
+.archlbl { min-width: 80px; }
+
+/* Schedule: soft timeline bars (pale role colour, dark text) */
+.tlrow { grid-template-columns: 104px minmax(0, 1fr); }
+.tlbar { --rc: var(--role-break); height: 44px; justify-content: space-between; gap: 8px; padding: 0 12px; border-radius: 8px; border-left: 5px solid var(--rc);
+  background: color-mix(in srgb, var(--rc) 22%, var(--surface)); color: var(--text); font-weight: 500; }
+.tlbar.now { background: color-mix(in srgb, var(--rc) 42%, var(--surface)); box-shadow: inset 0 0 0 2px var(--text); font-weight: 600; }
+.nowtag { font-size: .75rem; font-weight: 700; padding: 2px 8px; border-radius: 999px; background: var(--text); color: var(--surface); }
+.sgrid .name .star { text-decoration: none; color: var(--mute); font-size: 1rem; min-width: 28px; min-height: 28px; }
+.sgrid .name .star.on { color: var(--accent); }
+.cell { height: 30px; }
+@media (max-width: 640px) { .cell { height: 34px; } .sgrid .name .star { min-width: 36px; min-height: 36px; } }
+
+/* Pit */
+.checkrow .bigcheck { border-color: var(--line-2); }
+.checkrow .btn.sm { min-height: 40px; }
+@media (max-width: 640px) { .checkrow .btn.sm { min-height: 44px; } }
+.volt { width: 90px; }
+.listname { max-width: 280px; font-weight: 600; }
+.card.tight .row.nowrap { align-items: center; }
+@media (max-width: 640px) {
+  .li .btn.sm { flex: 1 1 auto; justify-content: center; }
+  #pit-new { min-width: 0; }
+}
+
+/* Scouting */
+.timer { min-width: 160px; display: grid; gap: 6px; justify-items: start; }
+.timer .big { font-size: clamp(2.6rem, 8vw, 3.6rem); }
+@media (max-width: 640px) { .timer { width: 100%; grid-template-columns: 1fr auto; align-items: center; } .timer .eyebrow { grid-column: 1; } .timer .big { grid-column: 1; } .timer .btn { grid-column: 2; grid-row: 1 / span 2; } }
+.counter button { height: 56px; }
+.sorth { text-decoration: none; color: inherit; min-height: 36px; }
+.sorth.on { color: var(--accent); }
+tr.click { cursor: pointer; }
+tr.click:hover td { background: var(--surface-2); }
+tr.mine td { background: var(--tint); }
+td.openrep { background: var(--surface-2); white-space: normal; }
+.redt { color: var(--bad); }
+.bluet { color: var(--info); }
+.tier.unsorted { min-height: 60px; grid-template-columns: repeat(auto-fill, minmax(220px, 1fr)); }
+@media (max-width: 640px) {
+  .pcard .chipsel { min-height: 44px; max-width: 130px; }
+  .content .btn.sm { min-height: 44px; }
+  .choice button { min-height: 54px; }
+  td, th { padding-block: 10px; }
+}
+input[type="range"] { width: 100%; min-height: 44px; accent-color: var(--accent); }
+
+/* Pit monitor (TV) */
+.display .dcard .big { font-size: clamp(2.4rem, 6vw, 4.5rem); }
+
+/* Pit: Problem stays at the right of its row on phones; checked box passes AA in dark */
+@media (max-width: 640px) {
+  .checkrow { grid-template-columns: 56px minmax(0, 1fr) auto; }
+  .checkrow > .btn { grid-column: auto; justify-self: end; }
+}
+@media (prefers-color-scheme: dark) { :root:not([data-theme="light"]) .bigcheck[aria-pressed="true"] { color: #07090f; } }
+:root[data-theme="dark"] .bigcheck[aria-pressed="true"] { color: #07090f; }
+@media (max-width: 640px) { .card.tight .chipsel { min-height: 44px; font-size: 1rem; } }
