@@ -151,7 +151,7 @@ function appbar() {
   return '<header class="appbar"><button class="appsbtn" data-act="apps" aria-expanded="' + !!S.appsOpen + '" aria-label="All apps">' + D.ic("apps", 20) + "</button>" +
     '<a class="brand" href="' + D.appHref("portal") + '" target="_blank" rel="noopener noreferrer" aria-label="Home (opens in a new tab)"><span class="badge-2972">2972</span></a>' +
     '<span class="appname">' + esc(here) + '</span><span class="grow"></span>' +
-    (S.mode === "competition" ? '<button class="modechip" data-act="go" data-v="account" title="Change this on your Account page">Competition<span class="hide-sm"> mode</span></button>' : "") +
+    (S.mode === "competition" ? '<button class="modechip" data-act="go" data-v="account" aria-label="Competition mode" title="Competition mode. Change it on your Account page.">Comp<span class="hide-sm">etition mode</span></button>' : "") +
     '<button class="iconbtn" data-act="bell" aria-expanded="' + !!S.bell + '" aria-label="Notifications">' + D.ic("bell") + (unread ? '<span class="count">' + unread + "</span>" : "") + "</button>" +
     '<a class="iconbtn acct" href="' + D.appHref("account") + '" target="_blank" rel="noopener noreferrer" aria-label="Account (opens in a new tab)">' + esc(D.me().name.replace(/^(Ms|Mr|Dr)\. /, "").split(" ").map(function (w) { return w[0]; }).join("").slice(0, 2)) + "</a>" +
     (S.appsOpen ? appsMenu() : "") + (S.bell ? bellPanel() : "") + "</header>" +
@@ -277,12 +277,20 @@ D.render = function () {
   D.after.forEach(function (f) { try { f(); } catch (e) { if (window.console) console.error(e); } });
   if (activeId) { var el = document.getElementById(activeId); if (el && (el.tagName === "INPUT" || el.tagName === "TEXTAREA")) { el.focus(); try { if (selStart != null) el.setSelectionRange(selStart, selStart); } catch (e) {} } }
 };
-// Keep the active tab in view when the tab row scrolls sideways.
+// Keep the active tab in view when the tab row scrolls sideways, and fade the row at an edge that has more tabs.
+function tabFade(row) {
+  row.classList.toggle("more-l", row.scrollLeft > 4);
+  row.classList.toggle("more-r", row.scrollLeft + row.clientWidth < row.scrollWidth - 4);
+}
 D.after.push(function () {
-  var a = document.querySelector(".topbar .tabs [aria-pressed='true']"); if (!a) return;
-  var row = a.parentNode, ar = a.getBoundingClientRect(), rr = row.getBoundingClientRect();
-  if (ar.left < rr.left) row.scrollLeft -= rr.left - ar.left + 12; else if (ar.right > rr.right - 28) row.scrollLeft += ar.right - rr.right + 28;
+  var row = document.querySelector(".topbar .tabs"); if (!row) return;
+  var a = row.querySelector("[aria-pressed='true']");
+  if (a) { var ar = a.getBoundingClientRect(), rr = row.getBoundingClientRect();
+    if (ar.left < rr.left + 24) row.scrollLeft -= rr.left + 24 - ar.left; else if (ar.right > rr.right - 40) row.scrollLeft += ar.right - rr.right + 40; }
+  tabFade(row);
 });
+document.addEventListener("scroll", function (e) { if (e.target && e.target.classList && e.target.classList.contains("tabs")) tabFade(e.target); }, true);
+window.addEventListener("resize", function () { var row = document.querySelector(".topbar .tabs"); if (row) tabFade(row); });
 
 /* ---------- Shell actions ---------- */
 var A = D.acts;

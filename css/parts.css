@@ -1,3 +1,26 @@
+/* Moved from base.css (app-only rules). */
+.pastord { display: grid; gap: 2px; padding: 10px 0; border-top: 1px solid var(--line); }
+
+.pastord:first-child { border-top: 0; }
+
+.placepick { flex-basis: 100%; border: 1px solid var(--line-2); border-radius: var(--r-ctl); padding: 0 10px; }
+
+.placepick summary { padding: 9px 0; cursor: pointer; }
+
+.placepick[open] summary { border-bottom: 1px solid var(--line); margin-bottom: 4px; }
+
+.placepick .ltree { padding-bottom: 8px; }
+
+.ltree { display: grid; gap: 2px; }
+
+.ltree button { display: flex; gap: 8px; align-items: center; border: 0; background: none; border-radius: 6px; padding: 6px 8px; text-align: left; width: 100%; }
+
+.ltree button:hover { background: var(--surface-2); }
+
+.ltree button[aria-pressed="true"] { background: var(--tint-2); color: var(--accent); font-weight: 600; }
+
+.ltree .n { margin-left: auto; font-size: .78rem; color: var(--mute); }
+
 /* Parts & Inventory. Loaded after base.css. */
 
 /* Requests: Show, Only mine and search on one line. */

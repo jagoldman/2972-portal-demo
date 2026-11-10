@@ -1,29 +1,35 @@
-# 2972 Team Portal Demo
+# 2972 Team Portal Demo (simple UI)
 
-A clickable prototype of the apps planned for 2972robotics.com, the site of FRC Team 2972 (Gears & Buccaneers). It's for trying the flows before anything is built.
-
-**Open it:** https://jagoldman.github.io/2972-portal-demo/
+A clickable prototype of the apps planned for 2972robotics.com, the site of FRC Team 2972 (Gears & Buccaneers). It is the design source for the real apps: change it here first, then build it. `REDESIGN.md` is the brief this version follows.
 
 Everything is sample data. Nothing is saved, and a reload resets it.
 
 ## How to use it
-- **Grey bar at the top:** view the site as a Student, Mentor, Admin, Parent or a shared Display screen. Tick **Event day** to see the competition banner, or reset the sample data.
-- **Apps ▾** (top left) reaches every tool.
-- **Your initials** (top right) open Account. Account is where you choose Build or Competition mode, and Discord or email notices.
+- **Grey strip at the top:** view the demo as a Student, Mentor, Admin, Parent or a shared Display screen. Tick **Event day** for the competition banner, or **Reset** the sample data.
+- **Apps button** (nine dots, top left) reaches every app. The navy bar names the app you are in; the row under it holds that app's tabs, and at most one button.
+- **Your initials** (top right) open Account, where you pick Build or Competition mode and how you get notices.
+- Home shows what matters to you today, then the apps. Gold is only ever the one main button on a screen.
 
 ## What's in it
 | App | Try this |
 |---|---|
-| Tasks | Its own sidebar with views and Divisions › Projects › Subteams. A milestone grid per project, a list and a board per subteam, a full task panel, the timeline and the projector. |
-| Parts & Inventory | Request a part from a task. Mentors order by vendor. Anyone checks lines in when the box arrives. Inventory is organized by place. |
-| Calendar, Attendance, Snacks | A month calendar with practices and competitions, door QR sign-in, an hours heat grid, mentor plans and snack sign-up. |
-| Skills | Skill trees drawn as graphs, a shop tool permissions board, sign-off requests, bulk sign-off. CAD follows [FRCDesign.org](https://frcdesign.org/learning-course/). Electrical follows [FRCElectrical.org](https://frcelectrical.org/). Programming follows [WPILib](https://docs.wpilib.org/en/stable/) and RobotPy. Manufacturing is the shop: miter saw, drill press, Grizzly G0994, MechMaxx lathe, OMIO router, three Bambu X2D printers, and the Bambu R1 laser. Every skill names its check: a written test, a demonstration, both (a dual check, used for machine qualifications), or an Onshape review for CAD. |
-| Kickoff | The made-up “Orbit Orchard” game: rule notes and questions, the scoring table, strategies as match timelines, a criteria matrix and ranked vote, requirements, mechanisms, the build-plan export, the research assistant and a projector view. |
-| Schedule, Pit, Scouting | Paint event roles by dragging. Pit has checklists, issues and batteries, with a monitor. Scouting has a match form with field drawing, stats and a pick list. |
+| Tasks | Your next task, projects and subteams, a task panel, the timeline and the projector. |
+| Parts & Inventory | Request a part, order by vendor (mentors), check in arrivals, find spares by place. |
+| Calendar, Attendance, Snacks | Agenda and month views, door-code sign-in, hours, mentor plans, snack sign-up. |
+| Skills | Overview of what to do next, skill trees, sign-off requests, shop tool permissions. |
+| Kickoff | The made-up "Orbit Orchard" game: rules, scoring, strategies, criteria and vote, build plan. Not part of the simple-UI redesign; it only picks up the shared colours. |
+| Schedule, Pit, Scouting | Event roles, pit checklists and monitor, match scouting with stats and a pick list (Competition mode). |
+| Account | Profile, notifications, appearance, mode, sign-in. |
+
+## Files
+- `index.html` loads the fonts, the styles and the scripts. No build step.
+- `css/base.css`: tokens, app bar, tab row, buttons, status, cards, lists, fields, overlays, Home, shop displays, and the few parts that more than one app (or Kickoff) uses.
+- `css/<app>.css`: styles for one app.
+- `js/core.js`: sample people, routes, the shell and shared helpers (`D.*`). `js/<app>.js`: one app each.
 
 ## Run it locally
-Open `index.html` in a browser. There is no build step and nothing to install.
+Open `index.html` in a browser. Nothing to install.
 
 ## Notes
-- This is a design prototype, not the real apps. The names, numbers and schedules are made up.
+- The names, numbers and schedules are made up.
 - Ideas come from [Gearbox](https://frcgearbox.com) by FRC Team 1648, reimplemented from scratch. No Gearbox code or content is copied.

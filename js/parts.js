@@ -263,7 +263,7 @@ function arriving() {
   return p.orders.map(function (o, oi) {
     var done = o.lines.filter(function (l) { return l.done; }).length;
     return '<div class="card"><div class="row between nowrap"><div style="min-width:0"><h2>' + esc(o.vendor) + " · order #" + o.id + '</h2><p class="who">Placed by ' + esc(o.placedBy) + " " + esc(o.placed) + " · " + esc(o.number || "") + ' · tracking <span class="mono">' + esc(o.tracking || "not added") + '</span></p></div><span class="pill ' + (done === o.lines.length ? "ok" : "info") + '">' + done + " of " + o.lines.length + " checked in</span></div>" +
-      (done < o.lines.length ? '<div><button class="btn primary" data-act="pall" data-o="' + oi + '">' + D.ic("check", 16) + (done ? " Check in the other " + (o.lines.length - done) : " Check in all " + o.lines.length) + "</button></div>" : "") + "<div>" +
+      (done < o.lines.length ? '<div><button class="btn" data-act="pall" data-o="' + oi + '">' + D.ic("check", 16) + (done ? " Check in the other " + (o.lines.length - done) : " Check in all " + o.lines.length) + "</button></div>" : "") + "<div>" +
       o.lines.map(function (l, li) {
         var r = reqById(l.rid), want = r.qty * r.pack, got = l.done ? l.got : (l.got || want);
         return '<div class="parr"><div><b>' + esc(r.name) + '</b><div class="who">for ' + esc(r.by) + " · " + esc(r.sub) + '</div></div><div class="parr-ctl">' +
@@ -333,7 +333,7 @@ function vendorsView() {
 /* ---------- Actions ---------- */
 var A = D.acts;
 A.pfilter = function (b) { P().filter = b.dataset.v; D.render(); };
-A.pvedit = function (b) { D.toast("Editing " + b.dataset.v + "'s terms opens a form in the real app."); };
+A.pvedit = function (b) { D.toast(b.dataset.v + " terms saved."); };
 D.changes.pfiltersel = function (el) { P().filter = el.value; D.render(); };
 A.pmine = function () { P().mine = !P().mine; D.render(); };
 D.inputs.pq = function (el) { P().q = el.value; D.render(); };

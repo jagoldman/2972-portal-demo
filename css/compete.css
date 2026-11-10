@@ -1,3 +1,46 @@
+/* Moved from base.css (app-only rules). */
+.sgrid { display: grid; gap: 2px; user-select: none; -webkit-user-select: none; touch-action: none; }
+
+.sgrid .h { font-size: .66rem; color: var(--mute); text-align: left; font-family: var(--mono); }
+
+.sgrid .name { font-size: .85rem; font-weight: 600; padding-right: 8px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; display: flex; gap: 6px; align-items: center; position: sticky; left: 0; background: var(--surface); z-index: 1; }
+
+.sgrid .period { font-size: .7rem; font-weight: 600; color: var(--text-2); background: var(--surface-2); border-radius: 4px; padding: 2px 6px; overflow: hidden; white-space: nowrap; text-overflow: ellipsis; }
+
+.tlrow { display: grid; grid-template-columns: 110px 1fr; gap: 10px; align-items: center; }
+
+.tlbar { height: 34px; border-radius: 8px; display: flex; align-items: center; padding: 0 10px; font-weight: 600; font-size: .88rem; color: var(--on-gold); }
+
+.counter { display: grid; grid-template-columns: 64px 1fr 64px; gap: 8px; align-items: center; }
+
+.counter button { height: 54px; border-radius: 10px; border: 1px solid var(--line-2); background: var(--surface-2); font-size: 1.4rem; font-weight: 700; }
+
+.counter output { text-align: center; font-size: 2rem; }
+
+.fieldcanvas { width: 100%; max-width: 640px; aspect-ratio: 2 / 1; border-radius: 10px; touch-action: none; display: block; background: #1d2a1f; }
+
+.tiers { display: grid; grid-template-columns: repeat(4, minmax(160px, 1fr)); gap: 12px; }
+
+.tier { background: var(--surface-2); border-radius: 10px; padding: 10px; display: grid; gap: 6px; align-content: start; min-height: 160px; }
+
+.tier.over { box-shadow: inset 0 0 0 2px var(--accent); }
+
+.pcard { background: var(--surface); border: 1px solid var(--line); border-radius: 8px; padding: 8px 10px; display: flex; flex-wrap: wrap; gap: 8px; align-items: center; cursor: grab; }
+
+.pcard b { font-weight: 600; }
+
+.pcard .who { min-width: 0; flex: 1 1 120px; }
+
+.pcard .chipsel { max-width: 110px; margin-left: auto; }
+
+@media (max-width: 960px) {
+ .tiers { grid-template-columns: repeat(2, minmax(150px,1fr)); }
+}
+
+@media (max-width: 760px) {
+ .tiers { grid-template-columns: minmax(0,1fr); }
+}
+
 /* Competition: Schedule, Pit, Scouting, Pit monitor. Loaded after base.css. */
 
 .cmp .evmeta { gap: 4px 12px; font-size: .9rem; }
@@ -10,7 +53,7 @@
 .tlbar { --rc: var(--role-break); height: 44px; justify-content: space-between; gap: 8px; padding: 0 12px; border-radius: 8px; border-left: 5px solid var(--rc);
   background: color-mix(in srgb, var(--rc) 22%, var(--surface)); color: var(--text); font-weight: 500; }
 .tlbar.now { background: color-mix(in srgb, var(--rc) 42%, var(--surface)); box-shadow: inset 0 0 0 2px var(--text); font-weight: 600; }
-.nowtag { font-size: .75rem; font-weight: 700; padding: 2px 8px; border-radius: 999px; background: var(--text); color: var(--surface); }
+.nowtag { font-size: .8rem; font-weight: 600; color: var(--accent); }
 .sgrid .name .star { text-decoration: none; color: var(--mute); font-size: 1rem; min-width: 28px; min-height: 28px; }
 .sgrid .name .star.on { color: var(--accent); }
 .cell { height: 30px; }
@@ -61,3 +104,6 @@ input[type="range"] { width: 100%; min-height: 44px; accent-color: var(--accent)
 @media (prefers-color-scheme: dark) { :root:not([data-theme="light"]) .bigcheck[aria-pressed="true"] { color: #07090f; } }
 :root[data-theme="dark"] .bigcheck[aria-pressed="true"] { color: #07090f; }
 @media (max-width: 640px) { .card.tight .chipsel { min-height: 44px; font-size: 1rem; } }
+
+/* The pit monitor's match table scrolls inside its card on very narrow screens. */
+@media (max-width: 480px) { .dcard { min-width: 0; overflow-x: auto; } }

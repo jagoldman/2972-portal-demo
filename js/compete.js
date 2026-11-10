@@ -199,10 +199,12 @@ D.views.scouting = function () {
   if (lead) list.push(["assign", "Assignments"], ["coverage", "Coverage"]);
   if (staff) list.push(["forms", "Forms"]);
   var t = D.tab("scouting", "form"), body = t === "stats" ? stats() : t === "picks" ? picks() : t === "assign" && lead ? assignments() : t === "coverage" && lead ? coverage() : t === "forms" && staff ? forms() : matchForm();
-  return D.topbar("Scouting", "", D.tabsFor("scouting", list, "form"), "") + '<div class="content cmp"><p class="mute">Current match: Qual ' + C().current + "</p>" + body + "</div>";
+  var isForm = !(t === "stats" || t === "picks" || (t === "assign" && lead) || (t === "coverage" && lead) || (t === "forms" && staff));
+  return D.topbar("Scouting", "", D.tabsFor("scouting", list, "form"), "") + '<div class="content cmp">' + (isForm && onShiftNow() ? "" : '<p class="mute">Current match: Qual ' + C().current + "</p>") + body + "</div>";
 };
+function onShiftNow() { return D.S.role !== "student" || nowRole("Sam Ortiz") === "scout"; }
 function matchForm() {
-  var c = C(), f = c.form, onShift = D.S.role !== "student" || nowRole("Sam Ortiz") === "scout";
+  var c = C(), f = c.form, onShift = onShiftNow();
   if (!onShift) return '<div class="card"><h2>You\'re not scouting right now</h2><p class="mute">Your schedule has you on ' + esc(ROLES[nowRole("Sam Ortiz")].label) + '. Your assignment shows here when your scouting shift starts.</p></div>';
   var ch = function (k, opts) { return '<div class="choice">' + opts.map(function (o) { return '<button data-act="sc" data-k="' + k + '" data-v="' + esc(o) + '" aria-pressed="' + (f[k] === o) + '">' + esc(o) + "</button>"; }).join("") + "</div>"; };
   var ct = function (k, label) { return '<div class="field"><span class="flabel">' + label + '</span><div class="counter"><button data-act="scnt" data-k="' + k + '" data-v="-1" aria-label="Minus one">−</button><output class="num">' + f[k] + '</output><button data-act="scnt" data-k="' + k + '" data-v="1" aria-label="Plus one">+</button></div></div>'; };

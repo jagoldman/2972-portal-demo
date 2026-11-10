@@ -1,3 +1,51 @@
+/* Moved from base.css (app-only rules). */
+.month .day .dtop { display: flex; gap: 4px; align-items: center; min-width: 0; }
+
+.ev.k-practice { background: var(--surface-3); }
+
+.ev.k-build { background: var(--tint-2); color: var(--accent); }
+
+.ev.k-comp { background: var(--info-bg); color: var(--info); }
+
+.ev.k-outreach { background: var(--ok-bg); color: var(--ok); }
+
+.ev.k-meeting { background: rgba(155,106,214,.16); color: var(--role-lead); }
+
+.ev.k-off { background: var(--bad-bg); color: var(--bad); }
+
+.mavail { display: grid; grid-template-columns: minmax(0,20rem) minmax(0,1fr); gap: 18px; align-items: start; }
+
+.mavail.solo { grid-template-columns: minmax(0,1fr); }
+
+.mavail .usual { position: sticky; top: calc(var(--bar) + 60px); }
+
+@media (max-width: 1100px) {
+ .mavail { grid-template-columns: minmax(0,1fr); }
+ .mavail .usual { position: static; }
+}
+
+.dbtn { border: 0; background: none; text-align: left; border-radius: 6px; padding: 2px 6px; width: 100%; white-space: nowrap; }
+
+.dbtn:hover { background: var(--surface-2); }
+
+.dchip { flex: 1; min-width: 0; border: 1px solid; border-radius: 5px; padding: 0 5px; font-size: .74rem; font-weight: 600; line-height: 1.35rem; text-align: left; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; background: none; display: inline-flex; gap: 3px; align-items: center; }
+
+.dchip.ok { border-color: var(--ok); background: var(--ok-bg); color: var(--ok); }
+
+.dchip.cant { border-color: var(--line-2); color: var(--mute); }
+
+.dchip.ask { border-style: dashed; border-color: var(--accent); color: var(--accent); }
+
+.dchip:hover { filter: brightness(.96); }
+
+.heat .hc.h1 { background: var(--heat-1); }
+
+.heat .hc.h3 { background: var(--heat-3); }
+
+.heat .hn { font-size: .85rem; font-weight: 600; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; padding-right: 6px; display: flex; gap: 6px; align-items: center; }
+
+.heat .hh { font-size: .66rem; color: var(--mute); text-align: center; font-family: var(--mono); }
+
 /* Calendar, Attendance, Snacks and the door-code screen. Loaded after base.css. */
 
 /* Event kinds: one dot colour per kind (used by the month grid, agenda rows and the legend). */
