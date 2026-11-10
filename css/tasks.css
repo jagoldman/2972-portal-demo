@@ -1,1 +1,168 @@
-/* Tasks: app-specific styles. Loaded after base.css. */
+/* Tasks: the left menu, the page bar, task rows, the milestone grid, board, timeline, calendar and the task panel.
+   Loaded after base.css; it also styles the "next task" card, which Home shows too. */
+
+/* ---------- Page bar: menu button, title, tools ---------- */
+.tmain .topbar { min-height: 56px; gap: 10px; }
+.tmain .topbar > .ttl { padding-block: 6px; }
+.tmain .topbar .ttl h1 { font-size: 1.25rem; line-height: 1.2; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.tmain .topbar .ttl .who { line-height: 1.2; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.tmain .topbar .tabs { align-self: stretch; }
+.tmenu { width: 40px; padding: 0; flex: none; }
+.topbar .right { flex-wrap: wrap; justify-content: flex-end; }
+.topbar .right:empty { display: none; }
+.late { color: var(--bad); font-weight: 600; }
+.kpi b.bad { color: var(--bad); }
+.sw2 { display: inline-block; width: 10px; height: 10px; border-radius: 3px; flex: none; }
+
+/* ---------- Left menu ---------- */
+.tside { padding: 12px 10px 24px; gap: 1px; }
+.tside .tnew { justify-content: flex-start; width: calc(100% - 8px); margin: 2px 4px 10px; }
+.tside .sect { font-size: .8rem; letter-spacing: 0; text-transform: none; color: var(--mute); font-weight: 600; padding: 16px 8px 4px; min-height: 28px; }
+.tside .sect .btn.sm { min-height: 28px; padding: 0 8px; }
+.tnav { min-height: 38px; font-weight: 500; }
+.tnav[aria-current="page"] { background: var(--tint-2); color: var(--accent); font-weight: 600; }
+.tnav .n { color: var(--mute); font-weight: 400; font-size: .8rem; }
+.tnav[aria-current="page"] .n { color: var(--accent); }
+.tnav .car { cursor: pointer; }
+.tdivb .lbl { font-weight: 600; color: var(--text); }
+.trow .tnav { flex: 1; }
+.trow.l1 { padding-left: 10px; }
+.trow.l2 { padding-left: 38px; }
+.tnav.tadd { padding-left: 34px; color: var(--mute); font-weight: 500; }
+.tnav.tsw { cursor: default; justify-content: space-between; }
+.tnav.tsw:hover { background: none; }
+.tclose { display: none; justify-self: end; }
+.tscrim { z-index: 44; }
+.trow .more { opacity: .6; }
+@media (max-width: 860px) {
+  .tside { width: min(300px, 86vw); }
+  .tclose { display: inline-grid; }
+  .tnav { min-height: 44px; }
+  .trow .more { width: 44px; height: 44px; }
+  .tmenu { width: 44px; min-height: 44px; }
+}
+@media (max-width: 640px) {
+  .tmain .topbar { flex-wrap: wrap; padding-block: 4px; row-gap: 4px; }
+  .tmain .topbar > .ttl { flex: 1; padding-block: 2px; }
+  .tmain .topbar .right { flex-basis: 100%; margin-left: 0; justify-content: flex-start; padding-bottom: 6px; }
+  .tmain .topbar:has(.tabs) { flex-wrap: nowrap; }
+  .tmain .topbar:has(.tabs) .right { flex-basis: auto; padding-bottom: 0; }
+}
+
+/* ---------- Filters ---------- */
+.tbar { gap: 10px; }
+.tbar .tq { flex: 1 1 200px; max-width: 300px; }
+.tbar .chipsel { min-height: 40px; }
+@media (max-width: 640px) { .tbar .tq { max-width: none; flex-basis: 100%; } .tbar .chipsel { min-height: 44px; } }
+
+/* ---------- Group headings and task rows ---------- */
+.tgrp { font-size: .88rem; font-weight: 600; color: var(--text-2); margin-top: 6px; }
+.tgrp .who { font-weight: 400; }
+.trowx { grid-template-columns: 28px minmax(0, 1fr) 104px 76px; grid-template-areas: "c t s d"; gap: 4px 12px; padding: 10px 6px; min-height: 52px; }
+.trowx > :nth-child(1) { grid-area: c; }
+.trowx > :nth-child(2) { grid-area: t; }
+.trowx > :nth-child(3) { grid-area: s; }
+.trowx > :nth-child(4) { grid-area: d; text-align: right; white-space: nowrap; }
+.trowx.sub { padding-left: 36px; }
+.trowx .tt { min-width: 0; }
+.trowx .ttitle { display: block; font-weight: 600; max-width: 100%; }
+.trowx .ttitle.isdone { color: var(--mute); text-decoration: line-through; font-weight: 500; }
+.tsub { font-size: .82rem; color: var(--mute); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.tsub .lab { vertical-align: baseline; }
+.tline { display: flex; align-items: center; gap: 2px; min-width: 0; }
+.tex { border: 0; background: none; color: var(--mute); width: 28px; height: 28px; padding: 0; margin-left: -6px; flex: none; }
+.tcheck { position: relative; width: 24px; height: 24px; }
+.tcheck::after { content: ""; position: absolute; inset: -10px; }
+.lab { background: none; padding: 0; border-radius: 0; font-size: .8rem; font-weight: 500; color: var(--text-2); gap: 4px; align-items: center; }
+.lab .dotc { width: 8px; height: 8px; }
+@media (max-width: 640px) {
+  .trowx { grid-template-columns: 28px minmax(0, 1fr) auto; grid-template-areas: "c t t" ". s d"; gap: 2px 12px; padding: 10px 4px; }
+  .trowx > :nth-child(3) { justify-self: start; }
+  .trowx .ttitle { white-space: normal; text-overflow: clip; overflow: visible; }
+  .trowx .tsub { white-space: normal; }
+  .tex { width: 36px; height: 36px; }
+  .taddrow { align-items: stretch; }
+  .taddin { flex: 1 1 100%; }
+}
+.taddrow { gap: 8px 16px; }
+.taddin { flex: 1 1 280px; max-width: 460px; }
+.taddin .btn { flex: none; }
+
+/* ---------- Next task card (also on Home) ---------- */
+.nextup h2 { font-size: 1.3rem; line-height: 1.25; }
+.nextup .heroacts { margin-top: 2px; }
+
+/* ---------- Milestone grid ---------- */
+.pgcard { padding: 12px; }
+.pgrid { border-radius: var(--r-ctl); }
+.pgrid .gh { background: var(--surface-2); font-size: .8rem; font-weight: 600; color: var(--text-2); }
+.pgrid .gh.gm { background: var(--surface); }
+.pgrid .gh .linkbtn { text-decoration: none; color: var(--accent); }
+.pgrid .gh .who { font-weight: 400; }
+.pgrid .btn.ghost { justify-self: start; }
+.gcard { display: grid; gap: 4px; border: 1px solid var(--line); border-radius: var(--r-ctl); padding: 8px 10px; font-size: .85rem; background: var(--surface); color: var(--text); }
+.gcard:hover { background: var(--surface-2); }
+.gcard b { font-weight: 600; }
+.gcard .gmeta { display: flex; gap: 6px; align-items: center; flex-wrap: wrap; }
+.gcard.done b { color: var(--mute); }
+.gcard.done, .gcard.blocked, .gcard.todo, .gcard { border-left-width: 1px; }
+.pstack-ms { background: var(--surface-2); gap: 10px; }
+.pstack-sub .linkbtn { text-decoration: none; color: var(--accent); font-weight: 600; min-height: 36px; justify-self: start; text-align: left; }
+.pstack-ms > .btn { justify-self: start; }
+@media (max-width: 640px) { .pgcard { padding: 0; border: 0; background: none; } .gcard { padding: 10px 12px; font-size: .92rem; } }
+
+/* ---------- Board ---------- */
+.board { gap: 12px; }
+.bcol { background: var(--surface-2); border-radius: var(--r); }
+.bcard { border-radius: var(--r-ctl); }
+.bcard .ttitle { white-space: normal; font-weight: 600; }
+.bcard .chipsel { min-height: 36px; }
+@media (max-width: 640px) { .bcard .chipsel { min-height: 44px; } .bcol .btn.ghost { justify-self: start; } }
+
+/* ---------- Dashboard, week ---------- */
+.dprj { gap: 10px; flex-wrap: nowrap; }
+.dprj .bar { width: 80px; flex: none; }
+.dprj .grow { min-width: 0; }
+.wkd { min-width: 120px; flex: none; font-weight: 600; }
+.wk { align-items: flex-start; padding-block: 12px; }
+.wk .grow { display: grid; gap: 4px; }
+.wkl { display: block; }
+.tlink { font-weight: 500; text-decoration: none; color: var(--accent); min-height: 32px; text-align: left; }
+.tlink:hover { text-decoration: underline; }
+@media (max-width: 640px) { .wkd { min-width: 100%; } }
+
+/* ---------- Calendar of due dates ---------- */
+.tmonth { min-width: 560px; }
+.tev { display: block; width: 100%; border: 0; border-radius: 5px; padding: 2px 6px; text-align: left; font-size: .76rem; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; background: var(--surface-2); color: var(--text); font-weight: 500; }
+button.tev:hover { background: var(--surface-3); }
+.tev .dotc { width: 7px; height: 7px; margin-right: 5px; vertical-align: middle; }
+.tev.done { text-decoration: line-through; opacity: .65; }
+@media (max-width: 640px) { .tev { font-size: .66rem; padding: 1px 3px; } .tev .dotc { margin-right: 3px; } }
+
+/* ---------- Timeline ---------- */
+.tlgrp { grid-column: 1 / -1; margin-top: 10px; font-size: .9rem; }
+.tlp { font-weight: 600; display: flex; gap: 6px; align-items: center; }
+.tlt { font-weight: 500; padding-left: 16px; }
+.tltask { height: 20px; }
+.tltrack i.task { top: 4px; bottom: 4px; background: var(--accent); opacity: .7; }
+.tltrack i.task.done { background: var(--ok); }
+.tl .pill { margin-left: 6px; font-size: .78rem; }
+@media (max-width: 640px) { .tlt, .tlp { min-height: 32px; } }
+
+/* ---------- Task panel ---------- */
+.psec { display: grid; gap: 6px; }
+.trs { display: flex; align-items: center; gap: 12px; min-height: 44px; }
+.trs > span:not(.avatars) { flex: 1; min-width: 0; }
+.trs .ttitle { flex: 1; font-weight: 500; white-space: normal; }
+.whochip { display: inline-flex; align-items: center; gap: 2px; min-height: 36px; padding: 0 2px 0 12px; border-radius: 999px; background: var(--surface-3); font-size: .88rem; font-weight: 500; }
+.whochip button { border: 0; background: none; width: 32px; height: 32px; border-radius: 50%; color: var(--mute); font-size: 1.1rem; padding: 0; }
+.whochip button:hover { background: var(--surface-2); color: var(--text); }
+.osbadge { flex: none; width: 34px; height: 34px; border-radius: 8px; background: var(--surface-3); color: var(--text-2); display: grid; place-items: center; font-size: .72rem; font-weight: 700; }
+.chip .dotc { width: 8px; height: 8px; }
+@media (max-width: 640px) { .whochip { min-height: 44px; } .whochip button { width: 40px; height: 40px; } .drawer .chip { min-height: 44px; } .drawer .chipsel { min-height: 44px; } }
+
+/* ---------- Projector (TV) ---------- */
+.display .dbig { font-size: 1.3rem; line-height: 1.45; }
+
+.tkr .btn { margin-left: auto; }
+@media (max-width: 640px) { .tkr .grow { flex-basis: 100%; } .tkr .due { flex: 1; } }
