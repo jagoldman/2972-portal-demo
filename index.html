@@ -114,6 +114,7 @@ body::before { content: ""; position: fixed; inset: 0 0 auto; height: env(safe-a
 .btn.sm { min-height: 30px; padding: 3px 10px; font-size: .84rem; }
 .btn[disabled] { opacity: .5; cursor: not-allowed; }
 .pill { display: inline-flex; align-items: center; gap: 4px; padding: 2px 9px; border-radius: 999px; font-size: .74rem; font-weight: 600; background: var(--surface-2); color: var(--text-2); white-space: nowrap; }
+button.pill { border: 0; }
 /* Priority is outlined so it never reads as a status. */ .pill.pri { background: transparent; box-shadow: inset 0 0 0 1px currentColor; } .pill.pri.warn { color: var(--warn); } @media (min-width: 961px) { .kpi5 { grid-template-columns: repeat(5, minmax(0,1fr)); } }
 @media (min-width: 641px) { .arrrow > div:first-child { display: grid; grid-template-columns: minmax(180px,1fr) auto; column-gap: 24px; align-items: end; } .arrrow > div:first-child > .arrctl { grid-column: 2; grid-row: 1 / span 2; margin-top: 0; } }
 .arrctl { display: grid; grid-template-columns: auto minmax(0,1fr); gap: 8px 16px; margin-top: 8px; align-items: end; } .arrctl .chipsel { max-width: 360px; width: 100%; min-height: 44px; border-radius: 8px; } .arrctl .stepper { justify-self: start; } .arrctl > .pill, .arrctl > .who { grid-column: 1 / -1; justify-self: start; }
@@ -202,9 +203,9 @@ td.wrap { white-space: normal; min-width: 180px; }
 .graph svg { position: absolute; inset: 0; overflow: visible; }
 .graph svg path { fill: none; stroke: var(--line-2); stroke-width: 2; }
 .graph svg path.done { stroke: var(--ok); }
-.gnode { position: absolute; border: 2px solid var(--line-2); background: var(--surface); border-radius: 12px; padding: 10px 12px; text-align: left; display: grid; gap: 4px; align-content: start; }
-.gnode b { font-family: var(--display); font-weight: 600; font-size: .95rem; line-height: 1.2; padding-right: 18px; }
-.gnode .sub { font-size: .74rem; color: var(--mute); }
+.gnode { position: absolute; border: 2px solid var(--line-2); background: var(--surface); border-radius: 12px; padding: 10px 12px; text-align: left; display: grid; gap: 4px; align-content: center; overflow: hidden; }
+.gnode b { font-family: var(--display); font-weight: 600; font-size: .95rem; line-height: 1.2; padding-right: 18px; display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; }
+.gnode .sub { font-size: .74rem; color: var(--mute); line-height: 1.25; display: -webkit-box; -webkit-line-clamp: 1; -webkit-box-orient: vertical; overflow: hidden; }
 .gnode .mark { position: absolute; top: 8px; right: 10px; font-weight: 700; }
 .gnode .gbar { height: 4px; border-radius: 4px; background: var(--surface-3); overflow: hidden; }
 .gnode .gbar i { display: block; height: 100%; background: var(--ok); }

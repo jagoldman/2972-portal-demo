@@ -281,5 +281,5 @@ document.addEventListener("keydown", function (e) {
 });
 function routeFromHash() { var h = location.hash.slice(1); return h && (D.views[h] || D.tile(h)) ? h : null; }
 window.addEventListener("hashchange", function () { var h = routeFromHash(); if (h && h !== D.S.route) { D.S.route = h; D.S.drawer = null; D.S.modal = null; D.render(); } });
-D.boot = function () { D.reset(); var params = new URLSearchParams(location.search); if (Object.prototype.hasOwnProperty.call(D.ROLES, params.get("role"))) D.S.role = params.get("role"); if (params.get("mode") === "competition") D.S.mode = "competition"; var h = routeFromHash(); if (h) D.S.route = h; D.render(); };
+D.boot = function () { D.reset(); var params = new URLSearchParams(location.search); if (Object.prototype.hasOwnProperty.call(D.ROLES, params.get("role"))) D.S.role = params.get("role"); if (params.get("mode") === "competition") D.S.mode = "competition"; var h = routeFromHash(); if (h) D.S.route = h; if (h && params.get("tab")) D.S.tabs[h] = params.get("tab"); D.render(); };
 })();
