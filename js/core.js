@@ -1,4 +1,4 @@
-/* Shared shell: state, rail, routing, drawers, toasts and the event wiring every app uses. */
+/* Shared shell: state, app bar, routing, drawers, toasts and the event wiring every app uses. */
 (function () {
 "use strict";
 var D = window.D = { views: {}, acts: {}, inits: [], drawers: {}, modals: {}, changes: {}, inputs: {}, after: [] };
@@ -27,7 +27,6 @@ var ICON = {
   projector: "M3 5h18v11H3zM8 21h8M12 16v5",
   menu: "M4 6h16M4 12h16M4 18h16",
   check: "M5 12l5 5 9-10",
-  collapse: "M15 6l-6 6 6 6",
   qr: "M4 4h6v6H4zM14 4h6v6h-6zM4 14h6v6H4zM14 14h2v2h-2zM18 18h2v2h-2zM14 18h2M18 14h2",
   plus: "M12 5v14M5 12h14",
   search: "M11 18a7 7 0 1 0 0-14 7 7 0 0 0 0 14zM21 21l-5-5",
@@ -75,7 +74,7 @@ D.DISPLAY_ROUTES = { kiosk: 1, monitor: 1, projector: 1, kproj: 1 };
 D.reset = function () {
   var prev = D.S || {};
   var S = D.S = {
-    role: prev.role || "student", mode: "build", eventDay: false, route: prev.route || "portal", collapsed: false, open: false, bell: false,
+    role: prev.role || "student", mode: "build", eventDay: false, route: prev.route || "portal", bell: false, appsOpen: false,
     toast: null, drawer: null, modal: null, tabs: {}, ui: {},
     notices: [], activity: []
   };
@@ -97,7 +96,7 @@ D.toast = function (text, undo) {
 };
 D.withUndo = function (text, doIt, undo) { doIt(); D.toast(text, undo); D.render(); };
 D.go = function (route) {
-  var S = D.S; S.route = route; S.open = false; S.bell = false; S.appsOpen = false; S.drawer = null; S.modal = null;
+  var S = D.S; S.route = route; S.bell = false; S.appsOpen = false; S.drawer = null; S.modal = null;
   try { if (location.hash !== "#" + route) history.replaceState(null, "", "#" + route); } catch (e) {}
   D.render(); window.scrollTo(0, 0);
 };
@@ -113,72 +112,65 @@ D.tabsFor = function (app, list, def) {
   var cur = D.tab(app, def || list[0][0]);
   return list.map(function (t) { return '<button class="tab" data-act="tab" data-app="' + app + '" data-v="' + t[0] + '" aria-pressed="' + (cur === t[0]) + '">' + esc(t[1]) + (t[2] ? ' <span class="tcount">' + esc(t[2]) + "</span>" : "") + (t[3] ? ' <span class="tcount warn">' + esc(t[3]) + "</span>" : "") + "</button>"; }).join("");
 };
+/* Tab row. With tabs: a sticky row under the app bar (the bar already names the app, so no title; host is ignored).
+   Without tabs: the title is an h1 at the top of the content, with no band. */
 D.topbar = function (title, host, tabs, right) {
-  return '<header class="topbar">' + (D.topbarLead || "") + "<div><h1>" + esc(title) + '</h1><div class="host">' + esc(host) + "</div></div>" +
-    (tabs ? '<div class="tabs" role="group">' + tabs + "</div>" : "") + (right ? '<div class="right">' + right + "</div>" : "") + "</header>";
+  var r = right ? '<div class="right">' + right + "</div>" : "";
+  if (tabs) return '<header class="topbar">' + (D.topbarLead || "") + '<div class="tabs" role="group" data-keepscroll="tabs">' + tabs + "</div>" + r + "</header>";
+  return '<div class="pagehead">' + (D.topbarLead || "") + "<h1>" + esc(title) + "</h1>" + r + "</div>";
 };
 D.denied = function (name) {
-  return D.topbar(name, "", "", "") + '<div class="content"><div class="card"><h2>You don\'t have access</h2><p class="mute">' + esc(D.me().label) + "s don't have " + esc(name) + '. If you think you need it, ask a team admin.</p><div><button class="btn" data-act="go" data-v="portal">Back to Home</button></div></div></div>';
+  return '<div class="content"><div class="card"><h2>You can\'t open ' + esc(name) + '</h2><p class="mute">Ask a team admin if you need it.</p><div><button class="btn" data-act="go" data-v="portal">Back to Home</button></div></div></div>';
 };
 D.openDrawer = function (type, data) { D.S.drawer = { type: type, data: data || {} }; D.render(); };
 D.openModal = function (type, data) { D.S.modal = { type: type, data: data || {} }; D.render(); };
 D.val = function (id) { var el = document.getElementById(id); return el ? el.value : ""; };
 D.drawerHead = function (eyebrow, title) {
-  return '<div class="row between nowrap"><div style="min-width:0"><p class="eyebrow">' + esc(eyebrow) + "</p><h2>" + esc(title) + '</h2></div><button class="xbtn" data-act="closedrawer" aria-label="Close">×</button></div>';
+  return '<div class="row between nowrap"><div style="min-width:0">' + (eyebrow ? '<p class="eyebrow">' + esc(eyebrow) + "</p>" : "") + "<h2>" + esc(title) + '</h2></div><button class="xbtn" data-act="closedrawer" aria-label="Close">×</button></div>';
 };
 D.modalHead = function (title) { return '<div class="row between nowrap"><h2>' + esc(title) + '</h2><button class="xbtn" data-act="closemodal" aria-label="Close">×</button></div>'; };
 
 /* ---------- Shell pieces ---------- */
+// Short descriptions for the Home tiles and the Apps menu.
+var SHORT = { tasks: "Your tasks", calendar: "Practices and events", here: "Attendance and hours", snacks: "Snack sign-up", parts: "Request and find parts", skills: "Training and sign-offs", kickoff: "Game strategy", schedule: "Your event roles", pit: "Checklists and batteries", scouting: "Match forms", onshape: "Robot CAD", github: "Robot code", drive: "Shared files", admin: "Accounts and groups", handbook: "Team rules and info" };
 function demobar() {
   var S = D.S;
   var roles = ["student", "mentor", "admin", "parent", "display"].map(function (r) {
     return '<button data-act="role" data-v="' + r + '" aria-pressed="' + (S.role === r) + '">' + D.ROLES[r].label + "</button>";
   }).join("");
-  return '<div class="demobar"><b>2972 demo</b><span class="small">Sample data. Nothing is saved.</span>' +
+  return '<div class="demobar"><b>Demo</b><span>sample data</span>' +
     '<span class="seg" role="group" aria-label="View as">' + roles + "</span>" +
     '<label><input type="checkbox" id="evday" data-change="eventday"' + (S.eventDay ? " checked" : "") + "> Event day</label>" +
-    '<span class="spacer"></span><button class="linkbtn" data-act="reset">Reset demo</button></div>';
+    '<span class="spacer"></span><button class="linkbtn" data-act="reset">Reset</button></div>';
 }
-/* One app bar across the top of every app: Apps menu, where you are, mode, bell, account. The left side stays free for each app's own navigation. */
+/* One navy app bar on every app: Apps button, 2972 badge, the app's name; Competition chip, bell and account at the right.
+   The apps menu and the bell panel hang from the bar so they stay under it while the page scrolls. */
 function appbar() {
   var S = D.S, unread = D.myNotices().filter(function (n) { return !n.read; }).length;
-  var cur = D.tile(S.route), here = S.route === "account" ? "Account" : cur ? cur.name : "";
-  return '<header class="appbar"><button class="appsbtn" data-act="apps" aria-expanded="' + !!S.appsOpen + '" aria-label="All apps">' + D.ic("apps", 18) + '<span class="hide-sm">Apps</span><span aria-hidden="true">▾</span></button>' +
-    '<a class="brand" href="' + D.appHref("portal") + '" target="_blank" rel="noopener noreferrer" aria-label="Portal home (opens in a new tab)"><span class="badge-2972">2972</span><span class="hide-sm">Gears &amp; Buccaneers</span></a>' +
-    (here ? '<span class="crumb">/ ' + esc(here) + "</span>" : "") + '<span class="grow"></span>' +
-    (S.mode === "competition" ? '<button class="leadchip" style="border:0" data-act="go" data-v="account" title="Change in Account settings">Competition mode</button>' : "") +
-    '<button class="iconbtn" data-act="bell" aria-expanded="' + S.bell + '" aria-label="Notifications">' + D.ic("bell") + (unread ? '<span class="count">' + unread + "</span>" : "") + "</button>" +
-    '<a class="iconbtn acct" href="' + D.appHref("account") + '" target="_blank" rel="noopener noreferrer" aria-label="Account (opens in a new tab)">' + esc(D.me().name.replace(/^(Ms|Mr|Dr)\. /, "").split(" ").map(function (w) { return w[0]; }).join("").slice(0, 2)) + "</a></header>";
+  var cur = D.tile(S.route), here = S.route === "account" ? "Account" : cur ? cur.name : "Gears & Buccaneers";
+  return '<header class="appbar"><button class="appsbtn" data-act="apps" aria-expanded="' + !!S.appsOpen + '" aria-label="All apps">' + D.ic("apps", 20) + "</button>" +
+    '<a class="brand" href="' + D.appHref("portal") + '" target="_blank" rel="noopener noreferrer" aria-label="Home (opens in a new tab)"><span class="badge-2972">2972</span></a>' +
+    '<span class="appname">' + esc(here) + '</span><span class="grow"></span>' +
+    (S.mode === "competition" ? '<button class="modechip" data-act="go" data-v="account" title="Change this on your Account page">Competition<span class="hide-sm"> mode</span></button>' : "") +
+    '<button class="iconbtn" data-act="bell" aria-expanded="' + !!S.bell + '" aria-label="Notifications">' + D.ic("bell") + (unread ? '<span class="count">' + unread + "</span>" : "") + "</button>" +
+    '<a class="iconbtn acct" href="' + D.appHref("account") + '" target="_blank" rel="noopener noreferrer" aria-label="Account (opens in a new tab)">' + esc(D.me().name.replace(/^(Ms|Mr|Dr)\. /, "").split(" ").map(function (w) { return w[0]; }).join("").slice(0, 2)) + "</a>" +
+    (S.appsOpen ? appsMenu() : "") + (S.bell ? bellPanel() : "") + "</header>" +
+    (S.appsOpen ? '<button class="menu-scrim" data-act="apps" aria-label="Close apps"></button>' : S.bell ? '<button class="menu-scrim" data-act="bell" aria-label="Close notifications"></button>' : "");
 }
 function appsMenu() {
   var S = D.S, tiles = D.visibleTiles();
-  function item(t) { return '<a class="appitem" href="' + D.appHref(t.id) + '" target="_blank" rel="noopener noreferrer" aria-label="' + esc(t.name) + ' (opens in a new tab)"' + (S.route === t.id ? ' aria-current="page"' : "") + '><span class="ic">' + D.ic(t.icon, 20) + "</span><span><b>" + esc(t.name) + (t.ext ? " ↗" : "") + "</b><small>" + esc(t.desc) + "</small></span></a>"; }
-  return '<div class="appsmenu" role="dialog" aria-label="All apps"><div class="row between" style="align-items:flex-start"><div class="modeswitch" role="group" aria-label="App mode"><button data-act="mode" data-v="build" aria-pressed="' + (S.mode === "build") + '">Build</button><button data-act="mode" data-v="competition" aria-pressed="' + (S.mode === "competition") + '">Competition</button></div><span class="row nowrap"><button class="btn ghost sm" data-act="go" data-v="portal">Portal home</button><button class="xbtn" data-act="apps" aria-label="Close">×</button></span></div><div class="appgrid">' + tiles.filter(function (t) { return !t.more; }).map(item).join("") + "</div>" +
-    (tiles.some(function (t) { return t.more; }) ? '<details class="apps-more"><summary>More</summary><div class="appgrid">' + tiles.filter(function (t) { return t.more; }).map(item).join("") + "</div></details>" : "") + "</div>";
-}
-function rail() {
-  var S = D.S, tiles = D.visibleTiles();
-  var main = tiles.filter(function (t) { return !t.more; }), more = tiles.filter(function (t) { return t.more; });
-  var unread = D.myNotices().filter(function (n) { return !n.read; }).length;
-  function item(t) {
-    return '<button class="ritem" data-act="go" data-v="' + t.id + '"' + (S.route === t.id ? ' aria-current="page"' : "") + ' title="' + esc(t.name) + '">' + D.ic(t.icon) + '<span class="label">' + esc(t.name) + "</span>" + (t.ext ? '<span class="svc">↗</span>' : "") + "</button>";
-  }
-  return '<nav class="rail" aria-label="Apps">' +
-    '<button class="brand" data-act="go" data-v="portal"><span class="badge-2972">2972</span><span>Gears &amp; Buccaneers<small>Team portal</small></span></button>' +
-    '<button class="ritem" data-act="go" data-v="portal"' + (S.route === "portal" ? ' aria-current="page"' : "") + ">" + D.ic("home") + '<span class="label">Home</span></button>' +
-    '<div class="rsect">' + (S.mode === "competition" ? "Competition mode" : "Build mode") + "</div>" + main.map(item).join("") +
-    (more.length ? '<div class="rsect">More</div>' + more.map(item).join("") : "") +
-    '<div class="grow"></div>' +
-    '<button class="ritem" data-act="bell" aria-expanded="' + S.bell + '">' + D.ic("bell") + '<span class="label">Notifications</span>' + (unread ? '<span class="count">' + unread + "</span>" : "") + "</button>" +
-    '<div class="modeswitch" role="group" aria-label="Mode"><button data-act="mode" data-v="build" aria-pressed="' + (S.mode === "build") + '">Build</button><button data-act="mode" data-v="competition" aria-pressed="' + (S.mode === "competition") + '">Competition</button></div>' +
-    '<button class="ritem" data-act="go" data-v="account"' + (S.route === "account" ? ' aria-current="page"' : "") + ">" + D.ic("user") + '<span class="label">' + esc(D.me().name) + "</span></button>" +
-    '<button class="ritem collapsetoggle" data-act="collapse" title="Collapse"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" style="transform:rotate(' + (S.collapsed ? 180 : 0) + 'deg)"><path d="' + ICON.collapse + '"/></svg><span class="label">Collapse</span></button></nav>';
+  function item(t) { return '<a class="appitem" href="' + D.appHref(t.id) + '" target="_blank" rel="noopener noreferrer" aria-label="' + esc(t.name) + ' (opens in a new tab)"' + (S.route === t.id ? ' aria-current="page"' : "") + '><span class="ic">' + D.ic(t.icon, 20) + "</span><span><b>" + esc(t.name) + (t.ext ? " ↗" : "") + "</b><small>" + esc(SHORT[t.id] || t.desc) + "</small></span></a>"; }
+  var home = '<a class="appitem" href="' + D.appHref("portal") + '" target="_blank" rel="noopener noreferrer" aria-label="Home (opens in a new tab)"' + (S.route === "portal" ? ' aria-current="page"' : "") + '><span class="ic">' + D.ic("home", 20) + "</span><span><b>Home</b><small>Today and all your apps</small></span></a>";
+  var more = tiles.filter(function (t) { return t.more; });
+  return '<div class="appsmenu" role="dialog" aria-label="All apps"><div class="menuhead"><div class="seg" role="group" aria-label="Mode"><button data-act="mode" data-v="build" aria-pressed="' + (S.mode === "build") + '">Build</button><button data-act="mode" data-v="competition" aria-pressed="' + (S.mode === "competition") + '">Competition</button></div><button class="xbtn" data-act="apps" aria-label="Close">×</button></div>' +
+    '<div class="appgrid">' + home + tiles.filter(function (t) { return !t.more; }).map(item).join("") + "</div>" +
+    (more.length ? '<div class="menumore"><small>More</small><div class="appgrid">' + more.map(item).join("") + "</div></div>" : "") + "</div>";
 }
 function bellPanel() {
   var list = D.myNotices();
-  return '<div class="panel' + (D.S.collapsed ? " narrow" : "") + '" role="dialog" aria-label="Notifications"><div class="row between"><h3>Notifications</h3><span class="row nowrap"><button class="btn ghost sm" data-act="readall">Mark all read</button><button class="xbtn" data-act="bell" aria-label="Close">×</button></span></div><div class="list">' +
-    (list.length ? list.map(function (n) { return '<div class="li nli' + (n.read ? "" : " unread") + '"><span class="pill ' + (n.read ? "" : "gold") + '">' + esc(D.APPNAME[n.app]) + '</span><span class="grow">' + esc(n.text) + '</span><span class="who">' + esc(n.when) + "</span></div>"; }).join("") : '<p class="mute">Nothing yet.</p>') +
-    '</div><p class="small mute">One bell for every app. Choose Discord and email per kind on your <button class="linkbtn" style="color:var(--accent)" data-act="go" data-v="account">Account</button> page.</p></div>';
+  return '<div class="bellpanel" role="dialog" aria-label="Notifications"><div class="menuhead"><h3>Notifications</h3><span class="row nowrap"><button class="btn ghost sm" data-act="readall">Mark all read</button><button class="xbtn" data-act="bell" aria-label="Close">×</button></span></div><div class="list">' +
+    (list.length ? list.map(function (n) { return '<div class="li nli' + (n.read ? "" : " unread") + '"><span class="grow"><span class="app">' + esc(D.APPNAME[n.app] || "") + "</span> " + esc(n.text) + '</span><span class="who">' + esc(n.when) + "</span></div>"; }).join("") : '<p class="empty">Nothing yet.</p>') +
+    '</div><button class="btn ghost sm" style="justify-self:start" data-act="go" data-v="account">Notification settings</button></div>';
 }
 function banner() {
   var S = D.S; if (!S.eventDay) return "";
@@ -186,33 +178,77 @@ function banner() {
     (S.mode !== "competition" ? '<button class="btn sm primary" data-act="mode" data-v="competition">Switch to Competition</button>' : "") + "</div>";
 }
 
-/* ---------- Portal and display home ---------- */
+/* ---------- Home ---------- */
+function hasTile(id) { return D.visibleTiles().some(function (t) { return t.id === id; }); }
+function todayRow(o) {
+  return '<div class="li todayrow"><button class="rowlink" data-act="goapp" data-app="' + o.app + '"' + (o.tab ? ' data-tab="' + o.tab + '"' : "") + '><span class="rt">' + esc(o.title) + "</span>" + (o.line ? '<span class="rl">' + esc(o.line) + "</span>" : "") + (o.count ? '<span class="tcount warn">' + o.count + "</span>" : "") + '<span class="chev" aria-hidden="true">›</span></button>' + (o.btn || "") + "</div>";
+}
+function plural(n, one, many) { return n + " " + (n === 1 ? one : many); }
+// What waits on a mentor or admin. Counts come from the sample data in D.S; a missing piece just hides its row.
+function waitingRows() {
+  var S = D.S, rows = [], c = S.cal, P = S.parts, K = S.sk;
+  if (P && P.requests && hasTile("parts")) {
+    var ok = P.requests.filter(function (r) { return r.status === "needsok"; }).length, ord = P.requests.filter(function (r) { return r.status === "toorder"; }).length;
+    if (ok) rows.push({ app: "parts", tab: "toorder", title: plural(ok, "part request needs", "part requests need") + " an OK", count: ok });
+    if (ord) rows.push({ app: "parts", tab: "toorder", title: plural(ord, "part is", "parts are") + " ready to order", count: ord });
+  }
+  if (K && K.requests && K.requests.length && hasTile("skills")) rows.push({ app: "skills", tab: "signoff", title: plural(K.requests.length, "sign-off request", "sign-off requests"), line: K.requests.slice(0, 3).map(function (r) { return r.st; }).join(", "), count: K.requests.length });
+  if (c && c.avail && hasTile("here")) {
+    var silent = Object.keys(c.avail).filter(function (n) { var a = c.avail[n]; return !a.usual.length && !Object.keys(a.one).length; });
+    if (S.role === "admin" && silent.length) rows.push({ app: "here", tab: "mentors", title: plural(silent.length, "mentor hasn't", "mentors haven't") + " answered for this week", line: silent.join(", "), count: silent.length });
+    else if (S.role === "mentor" && silent.indexOf(D.me().name) >= 0) rows.push({ app: "here", tab: "mentors", title: "Tell us if you're coming this week", count: 1 });
+  }
+  return rows;
+}
+function practiceRows() {
+  var S = D.S, rows = [], c = S.cal, api = D.calApi; if (!api || !c) return rows;
+  var role = S.role;
+  if (role === "parent") {
+    var p = api.practiceDays(1)[0], ev = api.upcoming(10, ["comp", "outreach", "meeting"])[0];
+    if (p) rows.push({ app: "calendar", title: "Next practice: " + api.fmt(p.date), line: api.span(p) });
+    if (ev) rows.push({ app: "calendar", title: "Next event: " + ev.name, line: api.fmt(ev.date) });
+    if (hasTile("snacks")) {
+      var nm = "Ortiz family", need = api.practiceDays(8).filter(function (e) {
+        var sn = c.snacks[e.date] || (c.snacks[e.date] = new Array(c.slots).fill(null));
+        return sn.indexOf(nm) < 0 && sn.indexOf(null) >= 0;
+      })[0];
+      if (need) { var sn = c.snacks[need.date], k = sn.indexOf(null), open = sn.filter(function (x) { return !x; }).length; rows.push({ app: "snacks", title: api.fmt(need.date) + " needs snacks", line: plural(open, "family", "families") + " needed", btn: '<button class="btn" data-act="snack" data-d="' + need.date + '" data-k="' + k + '">Sign up</button>' }); }
+    }
+    return rows;
+  }
+  if (S.eventDay) return rows;
+  var pd = api.practiceDays(1)[0]; if (!pd) return rows;
+  var today = pd.date === api.TODAYS, here = c.here || [], me = D.me().name, signed = here.some(function (h) { return h.name === me; });
+  if (D.isStaff()) rows.push({ app: "here", tab: "today", title: (today ? "Practice today, " : "Next practice " + api.fmt(pd.date) + ", ") + api.span(pd), line: today ? plural(here.length, "person is", "people are") + " signed in" : "" });
+  else rows.push({ app: "here", tab: "today", title: (today ? "Practice today, " : "Next practice " + api.fmt(pd.date) + ", ") + api.span(pd), line: today ? (signed ? "You are signed in" : "You are not signed in") : "", btn: today && !signed ? '<button class="btn" data-act="herescan">Sign in</button>' : "" });
+  return rows;
+}
 D.views.portal = function () {
-  var S = D.S, tiles = D.visibleTiles();
+  var S = D.S, tiles = D.visibleTiles(), staff = D.isStaff();
   var main = tiles.filter(function (t) { return !t.more; }), more = tiles.filter(function (t) { return t.more; });
-  function tile(t) { return '<a class="tile" href="' + D.appHref(t.id) + '" target="_blank" rel="noopener noreferrer" aria-label="' + esc(t.name) + ' (opens in a new tab)"><span class="ic">' + D.ic(t.icon, 22) + "</span><b>" + esc(t.name) + (t.ext ? " ↗" : "") + '</b><p class="hide-sm">' + esc(t.desc) + "</p>" + (SHORT[t.id] ? '<p class="tshort">' + esc(SHORT[t.id]) + "</p>" : "") + "</a>"; }
-  // Phone tiles have room for a few words only.
-  var SHORT = { tasks: "Your tasks", calendar: "Practices and events", here: "Attendance and hours", snacks: "Snack sign-up", parts: "Request and find parts", skills: "Training and sign-offs", kickoff: "Game strategy", schedule: "Your event roles", pit: "Checklists and batteries", scouting: "Match forms", onshape: "Robot CAD", github: "Robot code", drive: "Shared files", admin: "Accounts and groups", handbook: "Team rules and info" };
-  var greet = (D.greetings && D.greetings[S.role]) || "Welcome back.";
-  var act = S.role === "parent" ? "" : '<div class="card"><div class="row between"><h2>Recent activity</h2><span class="small mute">Everyone sees who did what</span></div><div class="list">' +
-    S.activity.slice(0, 7).map(function (a) { return '<div class="li actli"><span class="pill">' + esc(D.APPNAME[a.app]) + '</span><span class="grow"><b>' + esc(a.who) + "</b> " + esc(a.what) + '</span><span class="who">' + esc(a.when) + "</span></div>"; }).join("") + "</div></div>";
-  return D.topbar("Home", "portal.2972robotics.com", "", S.mode === "competition" ? "" : '<span class="pill gold">Build mode</span>') +
-    '<div class="content"><div><p class="eyebrow">' + esc(D.me().label) + ' view</p><h2 style="font-size:1.5rem">' + esc(greet) + "</h2></div>" +
-    (S.role === "student" && S.eventDay && D.myShiftCard ? D.myShiftCard() : "") +
-    (S.role === "student" && D.nextUpCard ? (S.eventDay ? '<div class="evcompact">' + D.nextUpCard() + "</div>" : D.nextUpCard()) : "") +
-    '<div class="tiles">' + main.map(tile).join("") + "</div>" +
-    (more.length ? '<div><p class="eyebrow" style="margin-bottom:8px">More</p><div class="tiles">' + more.map(tile).join("") + "</div></div>" : "") + act +
-    '<p class="flowhint">Switch roles in the yellow bar, choose <b>Competition</b> mode on your Account page, or tick <b>Event day</b>. The <b>Apps</b> menu at the top left reaches every tool from anywhere. Behind the tiles run five services: Account, Calendar, Parts, Competition and Skills.</p></div>';
+  function tile(t) { return '<a class="apptile" href="' + D.appHref(t.id) + '" target="_blank" rel="noopener noreferrer" aria-label="' + esc(t.name) + ' (opens in a new tab)"><span class="ic">' + D.ic(t.icon, 20) + "</span><b>" + esc(t.name) + (t.ext ? " ↗" : "") + "</b><small>" + esc(SHORT[t.id] || t.desc) + "</small></a>"; }
+  var d = new Date(2026, 10, 10); try { if (D.calApi && D.calApi.TODAYS) { var q = D.calApi.TODAYS.split("-"); d = new Date(+q[0], +q[1] - 1, +q[2]); } } catch (e) {}
+  var date = d.toLocaleDateString("en-US", { weekday: "long", month: "long", day: "numeric" });
+  var waiting = staff ? waitingRows() : [], today = practiceRows();
+  var cards = "";
+  if (S.role === "student" && S.eventDay && D.myShiftCard) cards += D.myShiftCard();
+  if (staff) cards += '<section class="card"><h2>Waiting on you</h2>' + (waiting.length ? '<div class="list">' + waiting.map(todayRow).join("") + "</div>" : '<p class="mute">Nothing is waiting on you.</p>') + "</section>";
+  if (today.length) cards += '<section class="card"><h2>Today</h2><div class="list">' + today.map(todayRow).join("") + "</div></section>";
+  if (S.role === "student" && D.nextUpCard) cards += S.eventDay ? '<div class="evcompact">' + D.nextUpCard() + "</div>" : D.nextUpCard();
+  var act = S.role === "parent" ? "" : '<section class="card"><h2>Recent activity</h2><div class="list">' +
+    S.activity.slice(0, 5).map(function (a) { return '<div class="li actli"><span class="actapp">' + esc(D.APPNAME[a.app] || "") + '</span><span class="grow"><b>' + esc(a.who) + "</b> " + esc(a.what) + '</span><span class="who">' + esc(a.when) + "</span></div>"; }).join("") + "</div></section>";
+  return '<div class="content home"><div class="homehead"><p class="homedate">' + esc(date) + "</p><h1>Hi " + esc(D.me().short) + ".</h1></div>" + cards +
+    '<section class="stack"><h2 style="margin-bottom:10px">Apps</h2><div class="apptiles">' + main.map(tile).join("") + "</div></section>" +
+    (more.length ? '<section><h3 class="mute" style="margin-bottom:4px">More</h3><ul class="morelinks">' + more.map(function (t) { return '<li><a href="' + D.appHref(t.id) + '" target="_blank" rel="noopener noreferrer">' + D.ic(t.icon, 16) + esc(t.name) + (t.ext ? " ↗" : "") + "</a></li>"; }).join("") + "</ul></section>" : "") + act + "</div>";
 };
-D.greetings = { student: "Hi Sam.", mentor: "Hi Ms. Rivera. 2 sign-offs and 4 parts are waiting.", admin: "Hi Mr. Okafor. One request needs your OK and Dr. Patel hasn't answered for this week.", parent: "Hi Pat. Thursday still needs snacks." };
 function displayHome(blocked) {
-  return '<div class="display">' + (blocked ? '<div class="dcard" style="border-color:var(--gold)">' + esc(blocked) + " isn't available on a display. Pick one of these instead.</div>" : "") + '<p class="dmute">Signed in as a display account · read-only · set up once per screen by an admin</p><h1>Pick what this screen shows</h1><div class="grid3">' +
+  return '<div class="display">' + (blocked ? '<div class="dcard" style="border-color:var(--gold)">' + esc(blocked) + " isn't available on a display. Pick one of these instead.</div>" : "") + '<h1>Pick what this screen shows</h1><div class="grid3">' +
     [["kiosk", "Door QR", "Sign in and out at the shop door"], ["monitor", "Pit monitor", "Next match, batteries, issues, pit duty"], ["projector", "Projector", "The build plan on the shop TV"], ["kproj", "Kickoff projector", "Strategy points and the live vote"]].map(function (d) {
-      return '<button class="dcard" style="text-align:left;cursor:pointer" data-act="go" data-v="' + d[0] + '"><b style="font-family:var(--display);font-size:1.3rem">' + d[1] + '</b><span class="dmute">' + d[2] + "</span></button>";
-    }).join("") + '</div><p class="dmute">A display can open only these pages. Everything else answers “not allowed”.</p></div>';
+      return '<button class="dcard" style="text-align:left;cursor:pointer" data-act="go" data-v="' + d[0] + '"><b style="font-size:1.3rem">' + d[1] + '</b><span class="dmute">' + d[2] + "</span></button>";
+    }).join("") + '</div></div>';
 }
 function extTile(t) {
-  return D.topbar(t.name, t.svc === "link" ? "external link" : t.svc + "2972robotics.com", "", "") + '<div class="content"><div class="card"><h2>' + esc(t.name) + '</h2><p class="mute">' + esc(t.desc) + " This tool already exists and stays as it is. In the real portal the tile opens it, and it gets the same rail.</p></div></div>";
+  return D.topbar(t.name, "", "", "") + '<div class="content"><div class="card"><p class="mute">' + esc(t.desc) + ' It opens in its own tab.</p><div><button class="btn" data-act="go" data-v="portal">Back to Home</button></div></div></div>';
 }
 
 /* ---------- Render ---------- */
@@ -231,7 +267,7 @@ D.render = function () {
     if (t && !D.inGroup(t)) content = D.denied(t.name);
     else if (t && t.ext) content = extTile(t);
     else content = (D.views[S.route] || D.views.portal)();
-    html += appbar() + '<div class="main">' + banner() + content + "</div>" + (S.bell ? '<button class="drawer-scrim" style="background:transparent;z-index:49" data-act="bell" aria-label="Close notifications"></button>' + bellPanel() : "") + (S.appsOpen ? '<button class="drawer-scrim" style="background:transparent;z-index:49" data-act="apps" aria-label="Close apps"></button>' + appsMenu() : "");
+    html += appbar() + '<div class="main">' + banner() + content + "</div>";
   }
   if (S.drawer && D.drawers[S.drawer.type]) html += '<button class="drawer-scrim" data-act="closedrawer" aria-label="Close panel"></button><aside class="drawer" role="dialog" aria-modal="true">' + D.drawers[S.drawer.type](S.drawer.data) + "</aside>";
   if (S.modal && D.modals[S.modal.type]) html += '<button class="modal-scrim" data-act="closemodal" aria-label="Close dialog"></button><div class="modal" role="dialog" aria-modal="true">' + D.modals[S.modal.type](S.modal.data) + "</div>";
@@ -241,8 +277,12 @@ D.render = function () {
   D.after.forEach(function (f) { try { f(); } catch (e) { if (window.console) console.error(e); } });
   if (activeId) { var el = document.getElementById(activeId); if (el && (el.tagName === "INPUT" || el.tagName === "TEXTAREA")) { el.focus(); try { if (selStart != null) el.setSelectionRange(selStart, selStart); } catch (e) {} } }
 };
-// On phones the tabs wrap into an even grid: one row up to four tabs, otherwise two rows.
-D.after.push(function () { var row = document.querySelector(".topbar .tabs"); if (!row) return; var n = [].filter.call(row.children, function (t) { return getComputedStyle(t).display !== "none"; }).length; row.style.setProperty("--cols", n <= 4 ? n : Math.ceil(n / 2)); });
+// Keep the active tab in view when the tab row scrolls sideways.
+D.after.push(function () {
+  var a = document.querySelector(".topbar .tabs [aria-pressed='true']"); if (!a) return;
+  var row = a.parentNode, ar = a.getBoundingClientRect(), rr = row.getBoundingClientRect();
+  if (ar.left < rr.left) row.scrollLeft -= rr.left - ar.left + 12; else if (ar.right > rr.right - 28) row.scrollLeft += ar.right - rr.right + 28;
+});
 
 /* ---------- Shell actions ---------- */
 var A = D.acts;
@@ -261,8 +301,7 @@ A.mode = function (b) { var S = D.S; S.mode = b.dataset.v; if (S.route !== "port
 A.bell = function () { D.S.bell = !D.S.bell; D.S.appsOpen = false; D.render(); };
 A.apps = function () { D.S.appsOpen = !D.S.appsOpen; D.S.bell = false; D.render(); };
 A.readall = function () { D.myNotices().forEach(function (n) { n.read = true; }); D.render(); };
-A.collapse = function () { D.S.collapsed = !D.S.collapsed; D.render(); };
-A.drawernav = function () { D.S.open = !D.S.open; D.render(); };
+A.goapp = function (b) { if (b.dataset.tab) D.S.tabs[b.dataset.app] = b.dataset.tab; D.go(b.dataset.app); };
 A.closedrawer = function () { D.S.drawer = null; D.render(); };
 A.closemodal = function () { D.S.modal = null; D.render(); };
 A.undo = function () { if (undoFn) undoFn(); undoFn = null; D.S.toast = null; D.render(); };
@@ -276,7 +315,7 @@ document.addEventListener("change", function (e) { var t = e.target, k = t.getAt
 document.addEventListener("input", function (e) { var t = e.target, k = t.getAttribute && t.getAttribute("data-input"); if (k && D.inputs[k]) D.inputs[k](t, e); });
 document.addEventListener("keydown", function (e) {
   if (e.key !== "Escape") return;
-  var S = D.S; if (S.modal) S.modal = null; else if (S.drawer) S.drawer = null; else if (S.bell || S.open || S.appsOpen) { S.bell = false; S.open = false; S.appsOpen = false; } else return;
+  var S = D.S; if (S.modal) S.modal = null; else if (S.drawer) S.drawer = null; else if (S.bell || S.appsOpen) { S.bell = false; S.appsOpen = false; } else return;
   D.render();
 });
 function routeFromHash() { var h = location.hash.slice(1); return h && (D.views[h] || D.tile(h)) ? h : null; }

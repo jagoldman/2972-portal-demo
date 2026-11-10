@@ -7,7 +7,7 @@ A clickable prototype of the apps planned for 2972robotics.com, the site of FRC 
 Everything is sample data. Nothing is saved, and a reload resets it.
 
 ## How to use it
-- **Yellow bar:** view the site as a Student, Mentor, Admin, Parent or a shared Display screen. Tick **Event day** to see the competition banner, or reset the sample data.
+- **Grey bar at the top:** view the site as a Student, Mentor, Admin, Parent or a shared Display screen. Tick **Event day** to see the competition banner, or reset the sample data.
 - **Apps ▾** (top left) reaches every tool.
 - **Your initials** (top right) open Account. Account is where you choose Build or Competition mode, and Discord or email notices.
 
