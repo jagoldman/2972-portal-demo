@@ -319,6 +319,7 @@ function treePct(p, t) { var all = 0, d = 0; t.cats.forEach(function (c) { all +
 
 /* Layered layout: each node one row below its deepest prerequisite; rows ordered by the parents' positions.
    Side padding is reserved so a line that skips a row can run down the margin instead of through a box. */
+var NW = 150, NH = 56, GX = 14, GY = 26;
 function layout(nodes, W, H, GX, GY) {
   var byId = {}; nodes.forEach(function (n) { byId[n.id] = n; });
   var layer = {};
@@ -326,7 +327,7 @@ function layout(nodes, W, H, GX, GY) {
   nodes.forEach(L);
   var rows = []; nodes.forEach(function (n) { (rows[layer[n.id]] = rows[layer[n.id]] || []).push(n); });
   var maxRow = Math.max.apply(null, rows.map(function (r) { return r.length; }));
-  var PAD = 36;
+  var PAD = 24;
   var width = Math.max(1, maxRow) * (W + GX) - GX + 2 * PAD, pos = {};
   rows.forEach(function (row, li) {
     if (li > 0) row.sort(function (a, b) { return bary(a) - bary(b); });
@@ -336,7 +337,8 @@ function layout(nodes, W, H, GX, GY) {
   function bary(n) { var ps = n.req.filter(function (r) { return pos[r]; }); return ps.length ? ps.reduce(function (a, r) { return a + pos[r].x; }, 0) / ps.length : 0; }
   var height = rows.length * (H + GY) + GY / 2;
   var edges = []; nodes.forEach(function (n) { n.req.forEach(function (r) { if (pos[r]) edges.push({ from: r, to: n.id }); }); });
-  return { pos: pos, width: width, height: height, edges: edges };
+  var order = []; rows.forEach(function (row) { row.forEach(function (n) { order.push(n); }); });
+  return { pos: pos, width: width, height: height, edges: edges, layer: layer, order: order };
 }
 function roundedPolyline(pts) {
   var rad = 8, d = "M" + pts[0][0] + " " + pts[0][1];
@@ -358,49 +360,103 @@ function edgePoints(a, b, W, H, GY, width) {
     var ym = (y1 + y2) / 2;
     return Math.abs(x1 - x2) < 1 ? [[x1, y1], [x2, y2]] : [[x1, y1], [x1, ym], [x2, ym], [x2, y2]];
   }
-  var lane = (x1 + x2) / 2 < width / 2 ? 16 : width - 16;
-  var yOut = y1 + 18, yIn = y2 - 18;
+  var lane = (x1 + x2) / 2 < width / 2 ? 11 : width - 11;
+  var yOut = y1 + GY / 2, yIn = y2 - GY / 2;
   return [[x1, y1], [x1, yOut], [lane, yOut], [lane, yIn], [x2, yIn], [x2, y2]];
 }
 function edgePath(a, b, W, H, GY, width) { return roundedPolyline(edgePoints(a, b, W, H, GY, width)); }
-function graph(nodes, W, H, renderNode, doneEdge) {
-  var GY = 64;
-  var g = layout(nodes, W, H, 40, GY);
-  var svg = '<svg width="' + g.width + '" height="' + g.height + '" aria-hidden="true">' + g.edges.map(function (e) { return '<path class="' + (doneEdge(e.from) ? "done" : "") + '" d="' + edgePath(g.pos[e.from], g.pos[e.to], W, H, GY, g.width) + '"/>'; }).join("") + "</svg>";
+function graph(nodes, renderNode, doneEdge) {
+  var W = NW, g = layout(nodes, W, NH, GX, GY);
+  /* A wide row narrows the nodes (down to 124) so the tree fits the card without sideways scrolling. */
+  var avail = Math.min(window.innerWidth, 1120) - 48 - 34;
+  if (g.width > avail) { var per = Math.round((g.width + GX - 48) / (W + GX)); W = Math.max(124, Math.min(NW, Math.floor((avail - 48 + GX) / per) - GX)); g = layout(nodes, W, NH, GX, GY); }
+  var svg = '<svg width="' + g.width + '" height="' + g.height + '" aria-hidden="true">' + g.edges.map(function (e) { return '<path class="' + (doneEdge(e.from) ? "done" : "") + '" d="' + edgePath(g.pos[e.from], g.pos[e.to], W, NH, GY, g.width) + '"/>'; }).join("") + "</svg>";
   return '<div class="graphwrap" data-keepscroll="skillgraph"><div class="graph" style="width:' + g.width + "px;height:" + g.height + 'px">' + svg +
-    nodes.map(function (n) { var p = g.pos[n.id]; return renderNode(n, 'style="left:' + p.x + "px;top:" + p.y + "px;width:" + W + "px;height:" + H + 'px"'); }).join("") + "</div></div>";
+    nodes.map(function (n) { var p = g.pos[n.id]; return renderNode(n, 'style="left:' + p.x + "px;top:" + p.y + "px;width:" + W + "px;height:" + NH + 'px"'); }).join("") + "</div></div>";
 }
+/* On a phone the same nodes are an indented list in dependency order. renderRow(node, depthClass) returns one row. */
+function stepList(nodes, renderRow) {
+  var g = layout(nodes, NW, NH, GX, GY);
+  return '<div class="sklist">' + g.order.map(function (n) { return renderRow(n, "d" + Math.min(g.layer[n.id], 4)); }).join("") + "</div>";
+}
+var mqPhone = window.matchMedia("(max-width: 640px)");
+function isPhone() { return mqPhone.matches; }
+function onPhoneChange() { if (D.S && D.S.route === "skills") D.render(); }
+if (mqPhone.addEventListener) mqPhone.addEventListener("change", onPhoneChange); else if (mqPhone.addListener) mqPhone.addListener(onPhoneChange);
 var MARK = { complete: "✓", requested: "…", progress: "●", available: "", locked: "" };
-var LEGEND = '<div class="legend"><span><i class="dotc" style="background:var(--mute)"></i>Locked</span><span><i class="dotc" style="background:var(--info)"></i>Available</span><span><i class="dotc" style="background:var(--warn)"></i>In progress</span><span><i class="dotc" style="background:var(--ok)"></i>Complete</span></div>';
+var WORD = { complete: "Complete", requested: "Waiting for sign-off", progress: "In progress", available: "Available", locked: "Locked" };
+var DOT = { complete: "ok", requested: "info", progress: "warn", available: "info", locked: "" };
+var LEGEND = '<p class="sklegend"><span><i class="dotc k-locked"></i>Locked</span><span><i class="dotc k-available"></i>Available</span><span><i class="dotc k-progress"></i>In progress</span><span><i class="dotc k-requested"></i>Waiting</span><span><i class="dotc k-complete"></i>Complete</span></p>';
+function tag(t) { return '<span class="sktag" aria-hidden="true">' + t.tag + "</span>"; }
 
 /* ---------- Views ---------- */
 D.views.skills = function () {
   var S = D.S, staff = D.isStaff();
   var list = [["overview", "Overview"], ["trees", "Skill trees"], ["permits", "Permissions"]];
-  if (staff) list.push(["signoff", "Sign off" + (S.sk.requests.length ? " (" + S.sk.requests.length + ")" : "")], ["edit", "Edit trees"]);
-  var t = D.tab("skills", "trees"), body;
+  if (staff) { list.unshift(["signoff", "Sign off", S.sk.requests.length || ""]); list.push(["edit", "Edit trees"]); }
+  var t = D.tab("skills", staff ? "signoff" : "overview"), body;
   if (t === "overview") body = overview();
   else if (t === "permits") body = permitsView();
   else if (t === "signoff" && staff) body = signoffView();
   else if (t === "edit" && staff) body = editView();
-  else body = treesView();
-  return D.topbar("Skills", "skills.2972robotics.com", D.tabsFor("skills", list, "trees"), "") + '<div class="content">' + body + "</div>";
+  else if (t === "trees") body = treesView();
+  else body = staff ? signoffView() : overview();
+  return D.topbar("Skills", "", D.tabsFor("skills", list, staff ? "signoff" : "overview"), "") + '<div class="content skills">' + body + "</div>";
 };
-function overview() {
-  var S = D.S, P = S.sk.prog;
-  var cards = TREES.map(function (t) {
-    var avg = Math.round(STUDENTS.reduce(function (a, st) { return a + treePct(P[st], t).pct; }, 0) / STUDENTS.length);
-    var fin = STUDENTS.filter(function (st) { return treeDone(P[st], t); }).length, n = t.cats.reduce(function (a, c) { return a + c.skills.length; }, 0);
-    return '<button class="card tight" style="text-align:left;cursor:pointer" data-act="sktree" data-v="' + t.id + '"><div class="row nowrap"><span class="badge-2972" style="background:var(--rail);color:var(--gold)">' + t.tag + '</span><div><h3>' + esc(t.name) + '</h3><span class="who">' + n + " skills</span></div></div>" +
-      '<div class="bar"><i style="width:' + avg + '%"></i></div><div class="row between small mute"><span>Team average ' + avg + "%</span><span>" + fin + " of " + STUDENTS.length + " finished</span></div></button>";
+var readyAll = false;
+/* What this student can do next: open skills, grouped by where they stand. */
+function nextUp(name) {
+  var P = D.S.sk.prog[name], out = { ready: [], prog: [], wait: [] };
+  TREES.forEach(function (t) {
+    t.cats.forEach(function (c) {
+      var cs = catStatus(P, t, c);
+      c.skills.forEach(function (s) {
+        var stt = skillStatus(name, P, t, c, s);
+        if (stt === "available") out.ready.push({ s: s, t: t, c: c, hot: cs === "progress" });
+        else if (stt === "progress") out.prog.push({ s: s, t: t, c: c });
+        else if (stt === "requested") out.wait.push({ s: s, t: t, c: c });
+      });
+    });
+  });
+  out.ready.sort(function (a, b) { return (b.hot ? 1 : 0) - (a.hot ? 1 : 0); });
+  return out;
+}
+function skillRow(x, word, kind) {
+  return '<button class="li" data-act="skmine" data-v="' + x.s.id + '"><span class="grow"><b>' + esc(x.s.name) + '</b><br><span class="who">' + esc(x.t.name) + " › " + esc(x.c.name) + '</span></span><span class="pill ' + kind + '">' + word + '</span><span class="chev" aria-hidden="true">›</span></button>';
+}
+function treeRows(P, staff) {
+  return TREES.map(function (t) {
+    var line, pct, extra = "";
+    if (staff) {
+      pct = Math.round(STUDENTS.reduce(function (a, st) { return a + treePct(P[st], t).pct; }, 0) / STUDENTS.length);
+      var fin = STUDENTS.filter(function (st) { return treeDone(P[st], t); }).length;
+      line = "Team average · " + fin + " of " + STUDENTS.length + " finished";
+    } else {
+      var r = treePct(P, t); pct = r.pct;
+      line = treeLocked(P, t) ? "Locked until " + tree(t.req).name + " is complete" : r.d + " of " + r.all + " skills";
+    }
+    return '<button class="li sktree' + (!staff && treeLocked(P, t) ? " locked" : "") + '" data-act="sktree" data-v="' + t.id + '">' + tag(t) + '<span class="grow"><b>' + esc(t.name) + '</b><br><span class="who">' + esc(line) + '</span></span><span class="skpct"><span class="bar"><i class="' + (pct === 100 ? "ok" : "") + '" style="width:' + pct + '%"></i></span><span class="num">' + pct + '%</span></span><span class="chev" aria-hidden="true">›</span></button>';
   }).join("");
+}
+function overview() {
+  var S = D.S, P = S.sk.prog, staff = D.isStaff(), html = "";
+  if (!staff) {
+    var me = D.me().name, n = nextUp(me), cap = readyAll ? n.ready.length : 5;
+    html += '<div class="card"><div class="row between"><h2>Ready to start</h2>' + (n.ready.length ? '<span class="tcount">' + n.ready.length + "</span>" : "") + "</div>" +
+      (n.ready.length ? '<div class="list">' + n.ready.slice(0, cap).map(function (x) { return skillRow(x, "Ready", "info"); }).join("") + "</div>" + (n.ready.length > 5 ? '<div><button class="btn ghost" data-act="skreadyall">' + (readyAll ? "Show fewer" : "Show all " + n.ready.length) + "</button></div>" : "") : '<p class="mute">Nothing new is open. Finish what you started.</p>') + "</div>";
+    html += '<div class="card"><div class="row between"><h2>In progress</h2>' + (n.prog.length ? '<span class="tcount">' + n.prog.length + "</span>" : "") + "</div>" +
+      (n.prog.length ? '<div class="list">' + n.prog.map(function (x) { return skillRow(x, "In progress", "warn"); }).join("") + "</div>" : '<p class="mute">Nothing in progress. Pick a skill above to start.</p>') + "</div>";
+    if (n.wait.length) html += '<div class="card"><div class="row between"><h2>Waiting for sign-off</h2><span class="tcount">' + n.wait.length + '</span></div><div class="list">' + n.wait.map(function (x) { return skillRow(x, "Waiting for a mentor", "info"); }).join("") + "</div></div>";
+  }
+  html += '<div class="card"><h2>Skill trees</h2><div class="list">' + treeRows(staff ? P : P[D.me().name], staff) + "</div></div>";
   var rows = STUDENTS.map(function (st) {
     var all = 0, d = 0, prog = 0;
-    var cells = TREES.map(function (t) { var r = treePct(P[st], t); all += r.all; d += r.d; return '<td class="num" style="color:' + (r.pct === 100 ? "var(--ok)" : r.pct ? "var(--text)" : "var(--mute)") + '">' + r.pct + "%</td>"; }).join("");
+    var cells = TREES.map(function (t) { var r = treePct(P[st], t); all += r.all; d += r.d; return '<td class="num pc ' + (r.pct === 100 ? "full" : r.pct ? "" : "zero") + '">' + r.pct + "%</td>"; }).join("");
     Object.keys(P[st]).forEach(function (k) { if (P[st][k].s === "progress") prog++; });
-    return '<tr class="click" data-act="skstudent" data-v="' + esc(st) + '"><td><b>' + esc(st) + "</b>" + (st === "Sam Ortiz" && D.S.role === "student" ? ' <span class="who">(you)</span>' : "") + "</td>" + cells + "<td>" + d + "</td><td>" + prog + '</td><td style="min-width:120px"><div class="row nowrap"><div class="bar" style="flex:1"><i style="width:' + D.pct(d, all) + '%"></i></div><span class="small num">' + D.pct(d, all) + "%</span></div></td></tr>";
+    return '<tr class="click" data-act="skstudent" data-v="' + esc(st) + '"><td><b>' + esc(st) + "</b>" + (st === "Sam Ortiz" && S.role === "student" ? ' <span class="who">(you)</span>' : "") + "</td>" + cells + '<td class="num">' + d + '</td><td class="num">' + prog + '</td><td class="num">' + D.pct(d, all) + "%</td></tr>";
   }).join("");
-  return '<div class="grid3">' + cards + '</div><div class="card"><div class="row between"><h2>Students</h2><span class="small mute">Everyone sees everyone. Tap a row to open their trees.</span></div><div class="tablewrap"><table><thead><tr><th>Student</th>' + TREES.map(function (t) { return "<th>" + t.tag + "</th>"; }).join("") + "<th>Complete</th><th>In progress</th><th>Overall</th></tr></thead><tbody>" + rows + "</tbody></table></div></div>";
+  html += '<div class="card"><div class="row between"><h2>Students</h2><span class="who">Tap a row to open their trees.</span></div><div class="tablewrap"><table class="sktable"><thead><tr><th>Student</th>' + TREES.map(function (t) { return '<th title="' + esc(t.name) + '">' + t.tag + "</th>"; }).join("") + "<th>Done</th><th>Started</th><th>Overall</th></tr></thead><tbody>" + rows + "</tbody></table></div></div>";
+  return html;
 }
 function permitState(p, tool) {
   var c = cat(tree("mfg"), tool.cat);
@@ -412,7 +468,7 @@ function permitsView() {
   var P = D.S.sk.prog;
   var heads = PERMITS.map(function (tool) {
     var n = STUDENTS.filter(function (st) { return permitState(P[st], tool) === "yes"; }).length;
-    return "<th>" + esc(tool.name) + '<br><span class="small mute">' + n + " of " + STUDENTS.length + "</span></th>";
+    return "<th>" + esc(tool.name) + '<br><span class="who">' + n + " of " + STUDENTS.length + "</span></th>";
   }).join("");
   var rows = STUDENTS.map(function (st) {
     var you = st === "Sam Ortiz" && D.S.role === "student" ? ' <span class="who">(you)</span>' : "";
@@ -422,39 +478,50 @@ function permitsView() {
       var label = state === "yes" ? "Yes" : state === "training" ? "Training" : "No";
       var cls = state === "yes" ? "ok" : state === "training" ? "warn" : "";
       var tip = state === "yes" ? "Signed off by " + rec.by + " · " + rec.at : state === "training" ? "Started. The qualification is not signed off." : "Not started. May not run this tool alone.";
-      return '<td class="num"><button class="pill ' + cls + '" data-act="skpermit" data-st="' + esc(st) + '" data-cat="' + tool.cat + '" data-skill="' + tool.skill + '" title="' + esc(tip) + '">' + label + "</button></td>";
+      return '<td><button class="pill skperm ' + cls + '" data-act="skpermit" data-st="' + esc(st) + '" data-cat="' + tool.cat + '" data-skill="' + tool.skill + '" title="' + esc(tip) + '">' + label + "</button></td>";
     }).join("");
     return "<tr><td><b>" + esc(st) + "</b>" + you + "</td>" + cells + "</tr>";
   }).join("");
-  return '<div class="card"><div class="row between"><div><h2>Shop tool permissions</h2><p class="who">Yes means the written test and the demonstration are both signed off. No and Training may not run that tool alone.</p></div></div><div class="tablewrap"><table><thead><tr><th>Student</th>' + heads + "</tr></thead><tbody>" + rows + "</tbody></table></div><p class=\"small mute\">Tap a cell to open that qualification. Cordless drills, the combination sander, and the table saw get a column when each has one.</p></div>";
+  return '<div class="card"><div><h2>Who can use which machine</h2><p class="who">Yes means the written test and the demonstration are signed off. Tap a cell to open that skill.</p></div><div class="tablewrap"><table class="sktable skperms"><thead><tr><th>Student</th>' + heads + "</tr></thead><tbody>" + rows + "</tbody></table></div></div>";
 }
 function studentPicker() {
   var S = D.S;
-  return '<div class="field" style="min-width:200px"><label for="sk-st">Student</label><select id="sk-st" data-change="skstudent">' + STUDENTS.map(function (st) { return "<option" + (st === S.sk.student ? " selected" : "") + ">" + esc(st) + "</option>"; }).join("") + "</select></div>";
+  return '<div class="field skstudent"><label for="sk-st">Student</label><select id="sk-st" data-change="skstudent">' + STUDENTS.map(function (st) { return "<option" + (st === S.sk.student ? " selected" : "") + ">" + esc(st) + "</option>"; }).join("") + "</select></div>";
 }
 function treesView() {
   var S = D.S, st = S.sk.student, P = S.sk.prog[st], t = tree(S.sk.tree);
-  var chips = '<div class="chips">' + TREES.map(function (x) {
+  var chips = '<div class="chips skchips" role="group" aria-label="Skill trees">' + TREES.map(function (x) {
     var r = treePct(P, x);
-    return '<button class="chip' + (treeLocked(P, x) ? " locked" : "") + '" data-act="sktree" data-v="' + x.id + '" aria-pressed="' + (x.id === t.id) + '">' + esc(x.name) + ' <span class="small">' + r.pct + "%</span></button>";
+    return '<button class="chip' + (treeLocked(P, x) ? " locked" : "") + '" data-act="sktree" data-v="' + x.id + '" aria-pressed="' + (x.id === t.id) + '">' + esc(x.name) + ' <span class="pct">' + r.pct + "%</span></button>";
   }).join("") + "</div>";
-  var head = '<div class="row between">' + chips + studentPicker() + "</div>";
+  var head = '<div class="skhead">' + chips + (D.isStaff() || st !== "Sam Ortiz" ? studentPicker() : "") + "</div>";
   if (S.sk.cat) return head + catGraph(st, P, t, cat(t, S.sk.cat));
   var r = treePct(P, t), locked = treeLocked(P, t);
-  var g = graph(t.cats, 230, 92, function (c, style) {
+  var node = function (c, style) {
     var stt = catStatus(P, t, c), d = catCounts(P, c);
-    return '<button class="gnode ' + stt + '" ' + style + ' data-act="skcat" data-v="' + c.id + '"' + (stt === "locked" ? ' aria-disabled="true"' : "") + '><span class="mark">' + MARK[stt] + "</span><b>" + esc(c.name) + '</b><span class="sub">' + d + " / " + c.skills.length + ' skills</span><span class="gbar"><i style="width:' + D.pct(d, c.skills.length) + '%"></i></span></button>';
-  }, function (id) { var c = cat(t, id); return catCounts(P, c) === c.skills.length; });
-  return head + '<div class="card"><div class="row between"><div class="row nowrap"><span class="badge-2972" style="background:var(--rail);color:var(--gold)">' + t.tag + '</span><div><h2>' + esc(t.name) + '</h2><span class="who">' + esc(t.note) + (locked ? " · Locked until " + esc(tree(t.req).name) + " is complete" : "") + '</span></div></div><span class="pill ' + (r.pct === 100 ? "ok" : "") + '">' + r.d + " / " + r.all + " skills</span></div>" + LEGEND + g +
-    '<p class="small mute">Categories unlock when the ones above them are complete. Tap one to see its skills.</p></div>';
+    return '<button class="gnode ' + stt + '" ' + style + ' data-act="skcat" data-v="' + c.id + '"' + (stt === "locked" ? ' aria-disabled="true"' : "") + ' title="' + esc(c.name + " · " + WORD[stt]) + '">' + (MARK[stt] ? '<span class="mark">' + MARK[stt] + "</span>" : "") + "<b>" + esc(c.name) + '</b><span class="gline"><span class="gbar"><i style="width:' + D.pct(d, c.skills.length) + '%"></i></span><span class="gcount">' + d + "/" + c.skills.length + "</span></span></button>";
+  };
+  var row = function (c, dc) {
+    var stt = catStatus(P, t, c), d = catCounts(P, c);
+    return '<button class="skrow ' + stt + " " + dc + '" data-act="skcat" data-v="' + c.id + '"' + (stt === "locked" ? ' aria-disabled="true"' : "") + '><span class="skmark">' + MARK[stt] + '</span><span class="sktxt"><b>' + esc(c.name) + '</b><span class="who">' + d + " of " + c.skills.length + " skills · " + WORD[stt] + '</span></span><span class="chev" aria-hidden="true">›</span></button>';
+  };
+  var done = function (id) { var c = cat(t, id); return catCounts(P, c) === c.skills.length; };
+  return head + '<div class="card"><div class="row between nowrap">' + '<div class="row nowrap">' + tag(t) + '<div><h2>' + esc(t.name) + '</h2><span class="who">' + esc(t.note) + (locked ? " Locked until " + esc(tree(t.req).name) + " is complete." : "") + '</span></div></div><span class="who skcount">' + r.d + " of " + r.all + " skills</span></div>" +
+    (isPhone() ? stepList(t.cats, row) : LEGEND + graph(t.cats, node, done)) + "</div>";
 }
 function catGraph(st, P, t, c) {
   var d = catCounts(P, c);
-  var g = graph(c.skills, 210, 68, function (s, style) {
+  var node = function (s, style) {
     var stt = skillStatus(st, P, t, c, s);
-    return '<button class="gnode ' + stt + '" ' + style + ' data-act="skskill" data-v="' + s.id + '" title="' + esc(s.name + (s.sum ? " — " + s.sum : "")) + '"><span class="mark">' + MARK[stt] + "</span><b>" + esc(s.name) + "</b></button>";
-  }, function (id) { return P[id] && P[id].s === "done"; });
-  return '<div class="card"><div class="row between"><div class="row"><button class="btn sm" data-act="skback">← Back to ' + esc(t.name) + '</button><div><p class="eyebrow">' + esc(t.name) + " · " + esc(st) + "</p><h2>" + esc(c.name) + '</h2></div></div><span class="pill ' + (d === c.skills.length ? "ok" : "") + '">' + d + " / " + c.skills.length + " skills</span></div>" + LEGEND + g + '<p class="small mute">Lines show what you need first. Tap a skill to see it, ask for a sign-off, or (mentors) sign it off.</p></div>';
+    return '<button class="gnode ' + stt + '" ' + style + ' data-act="skskill" data-v="' + s.id + '" title="' + esc(s.name + (s.sum ? " — " + s.sum : "")) + '">' + (MARK[stt] ? '<span class="mark">' + MARK[stt] + "</span>" : "") + "<b>" + esc(s.name) + "</b></button>";
+  };
+  var row = function (s, dc) {
+    var stt = skillStatus(st, P, t, c, s), after = s.req.filter(function (r) { return BYID[r]; }).map(function (r) { return BYID[r].name; });
+    return '<button class="skrow ' + stt + " " + dc + '" data-act="skskill" data-v="' + s.id + '"><span class="skmark">' + MARK[stt] + '</span><span class="sktxt"><b>' + esc(s.name) + '</b><span class="who">' + WORD[stt] + (after.length && stt !== "complete" ? " · after " + esc(after.join(", ")) : "") + '</span></span><span class="chev" aria-hidden="true">›</span></button>';
+  };
+  var done = function (id) { return P[id] && P[id].s === "done"; };
+  return '<div class="card"><div class="row between nowrap"><div class="row nowrap"><button class="btn sm" data-act="skback" aria-label="Back to ' + esc(t.name) + '">← ' + esc(t.name) + '</button><div><p class="eyebrow">' + esc(st) + "</p><h2>" + esc(c.name) + '</h2></div></div><span class="who skcount">' + d + " of " + c.skills.length + " skills</span></div>" +
+    (isPhone() ? stepList(c.skills, row) : LEGEND + graph(c.skills, node, done)) + "</div>";
 }
 function linkLabel(url) {
   var host = url.replace(/^https?:\/\//, "").split("/")[0].replace(/^www\./, "");
@@ -477,13 +544,11 @@ function linkLabel(url) {
 }
 function checkCopy(s) {
   if (!s.checks) return "";
-  if (s.checks.review) return "<p><b>Onshape review.</b> " + esc(s.checks.review) + '</p><p class="small mute">A mentor opens your Onshape document and signs it off when this is true.</p>';
+  if (s.checks.review) return "<p><b>Onshape review.</b> " + esc(s.checks.review) + "</p>";
   var test = s.checks.test || "", demo = s.checks.demo || "", html = "";
   if (test) html += "<p><b>Written test.</b> " + esc(test) + "</p>";
   if (demo) html += "<p><b>Demonstration.</b> " + esc(demo) + "</p>";
-  if (test && demo) html += '<p class="small mute">A dual check: both the written test and the demonstration are required.</p>';
-  else if (test) html += '<p class="small mute">A mentor gives this written check, then signs it off.</p>';
-  else if (demo) html += '<p class="small mute">A mentor watches this demonstration, then signs it off.</p>';
+  if (test && demo) html += '<p class="mute">You need both.</p>';
   return html;
 }
 D.drawers.skill = function (d) {
@@ -493,21 +558,21 @@ D.drawers.skill = function (d) {
   if (staff && stt !== "complete" && stt !== "locked") acts = '<button class="btn primary" data-act="sksignoff" data-v="' + s.id + '">' + D.ic("check", 16) + " Sign off " + esc(st.split(" ")[0]) + '</button><button class="btn" data-act="skprogress" data-v="' + s.id + '">Mark in progress</button>';
   else if (staff && stt === "complete") acts = '<button class="btn danger" data-act="skunsign" data-v="' + s.id + '">Remove sign-off</button>';
   else if (self && (stt === "available" || stt === "progress")) acts = '<button class="btn primary" data-act="skrequest" data-v="' + s.id + '">Request sign-off</button>' + (stt === "available" ? '<button class="btn" data-act="skprogress" data-v="' + s.id + '">I\'m working on it</button>' : "");
-  else if (self && stt === "requested") acts = '<span class="pill info">Waiting for a mentor</span><button class="btn ghost sm" data-act="skcancelreq" data-v="' + s.id + '">Cancel request</button>';
+  else if (self && stt === "requested") acts = '<button class="btn" data-act="skcancelreq" data-v="' + s.id + '">Cancel request</button>';
   var reqs = s.req.map(function (r) { var ok = P[r] && P[r].s === "done"; return '<div class="li"><span class="pill ' + (ok ? "ok" : "") + '">' + (ok ? "Done" : "Needed") + "</span>" + esc(BYID[r].name) + "</div>"; }).join("");
   var sumText = s.sum ? s.sum.charAt(0).toUpperCase() + s.sum.slice(1) + "." : "";
   var onshape = s.url.indexOf("frcdesign.org") !== -1;
   var link = s.url
-    ? '<p><a class="vlink" href="' + esc(s.url) + '" target="_blank" rel="noopener noreferrer">' + esc(linkLabel(s.url)) + " ↗</a>." + (onshape && !s.checks ? " A mentor reviews your Onshape document and signs it off." : "") + "</p>"
+    ? '<p><a class="vlink" href="' + esc(s.url) + '" target="_blank" rel="noopener noreferrer">' + esc(linkLabel(s.url)) + " ↗</a>" + (onshape && !s.checks ? " A mentor reviews your Onshape document and signs it off." : "") + "</p>"
     : "";
   var guide = (sumText ? "<p>" + esc(sumText) + "</p>" : "") + link + checkCopy(s);
   if (!s.url && !s.checks) guide += "<p>A mentor watches you do it once and signs it off.</p>";
   return D.drawerHead(t.name + " › " + c.name, s.name) +
-    '<div class="row"><span class="pill ' + ({ complete: "ok", requested: "info", progress: "warn", available: "info", locked: "" })[stt] + '">' + ({ complete: "Complete", requested: "Sign-off asked", progress: "In progress", available: "Available", locked: "Locked" })[stt] + '</span><span class="who">for ' + esc(st) + "</span></div>" +
+    '<div class="row"><span class="pill ' + DOT[stt] + '">' + WORD[stt] + '</span><span class="who">for ' + esc(st) + "</span></div>" +
     guide +
     (reqs ? '<div><p class="flabel">Needs first</p><div class="list">' + reqs + "</div></div>" : "") +
     (rec && rec.s === "done" ? '<p class="who">Signed off by ' + esc(rec.by) + " · " + esc(rec.at) + "</p>" : "") +
-    (acts ? '<div class="row">' + acts + "</div>" : stt === "locked" ? '<p class="hint">Finish what this needs first.</p>' : "");
+    (acts ? '<div class="row skacts">' + acts + "</div>" : stt === "locked" ? '<p class="mute">Finish what this needs first.</p>' : "");
 };
 function signoffView() {
   var S = D.S, b = S.sk.bulk, s = BYID[b.id];
@@ -515,21 +580,21 @@ function signoffView() {
   var people = STUDENTS.map(function (st) {
     var p = S.sk.prog[st], t = tree(s.tree), c = cat(t, s.cat), stt = skillStatus(st, p, t, c, s);
     var can = stt !== "complete" && stt !== "locked";
-    return '<div class="checkrow" style="grid-template-columns:44px minmax(0,1fr) auto;min-height:52px"><button class="bigcheck sm" data-act="skbulkpick" data-v="' + esc(st) + '" aria-pressed="' + !!b.picks[st] + '"' + (can ? "" : " disabled") + ' aria-label="Pick ' + esc(st) + '">' + D.ic("check", 22) + "</button><b>" + esc(st) + '</b><span class="pill ' + (stt === "complete" ? "ok" : stt === "locked" ? "" : "info") + '">' + ({ complete: "Done", locked: "Locked", requested: "Asked", progress: "In progress", available: "Available" })[stt] + "</span></div>";
+    return '<div class="skpick"><button class="bigcheck sm" data-act="skbulkpick" data-v="' + esc(st) + '" aria-pressed="' + !!b.picks[st] + '"' + (can ? "" : " disabled") + ' aria-label="Pick ' + esc(st) + '">' + D.ic("check", 22) + "</button><b>" + esc(st) + '</b><span class="pill ' + (stt === "complete" ? "ok" : stt === "locked" ? "" : "info") + '">' + ({ complete: "Done", locked: "Locked", requested: "Asked", progress: "In progress", available: "Available" })[stt] + "</span></div>";
   }).join("");
   var n = Object.keys(b.picks).filter(function (k) { return b.picks[k]; }).length;
   var queue = S.sk.requests.length ? S.sk.requests.map(function (r, i) {
     var x = BYID[r.id];
-    return '<div class="li"><span class="grow"><b>' + esc(r.st) + "</b> asks for <b>" + esc(x.name) + '</b><br><span class="who">' + esc(tree(x.tree).name) + " › " + esc(cat(tree(x.tree), x.cat).name) + (r.note ? " · “" + esc(r.note) + "”" : "") + '</span></span><button class="btn primary sm" data-act="skqok" data-i="' + i + '">Sign off</button><button class="btn ghost sm" data-act="skqno" data-i="' + i + '">Not yet</button></div>';
-  }).join("") : '<div class="empty">No one is waiting. Requests from students land here and in your bell.</div>';
-  return '<div class="grid2"><div class="card"><h2>Waiting for a sign-off</h2><div class="list">' + queue + '</div></div><div class="card"><h2>Sign off a group</h2><p class="small mute">After a training session: pick the skill, tick who did it, sign them all off at once.</p><div class="field"><label for="sk-bulk">Skill</label><select id="sk-bulk" data-change="skbulk">' + opts + "</select></div><div>" + people + '</div><div class="row"><button class="btn primary" data-act="skbulkgo"' + (n ? "" : " disabled") + ">Sign off " + n + " student" + (n === 1 ? "" : "s") + "</button></div></div></div>";
+    return '<div class="li skq"><span class="grow"><b>' + esc(r.st) + "</b> asks for <b>" + esc(x.name) + '</b><br><span class="who">' + esc(tree(x.tree).name) + " › " + esc(cat(tree(x.tree), x.cat).name) + (r.note ? " · “" + esc(r.note) + "”" : "") + '</span></span><span class="skqa"><button class="btn" data-act="skqok" data-i="' + i + '">Sign off</button><button class="btn ghost" data-act="skqno" data-i="' + i + '">Not yet</button></span></div>';
+  }).join("") : '<p class="mute">No one is waiting for a sign-off.</p>';
+  return '<div class="grid2"><div class="card"><div class="row between"><h2>Waiting for sign-off</h2>' + (S.sk.requests.length ? '<span class="tcount warn">' + S.sk.requests.length + "</span>" : "") + '</div><div class="list">' + queue + '</div></div><div class="card"><div><h2>Sign off a group</h2><p class="who">Pick the skill, tick who did it.</p></div><div class="field"><label for="sk-bulk">Skill</label><select id="sk-bulk" data-change="skbulk">' + opts + "</select></div><div>" + people + '</div><div class="row"><button class="btn primary" data-act="skbulkgo"' + (n ? "" : " disabled") + ">Sign off " + n + " student" + (n === 1 ? "" : "s") + "</button></div></div></div>";
 }
 function editView() {
   var ai = D.S.sk.ai;
-  return '<div class="grid2"><div class="card"><h2>Turn a doc into skills</h2><p class="mute">Upload a team guide (PDF or text). Gemini drafts skills in our import format. Nothing changes until a mentor accepts the preview.</p>' +
+  return '<div class="grid2"><div class="card"><div><h2>Turn a doc into skills</h2><p class="who">Upload a team guide, then check the draft. Nothing changes until you accept it.</p></div>' +
     '<div class="row"><button class="btn" data-act="skaipick">Use “Battery wiring guide.pdf” (sample)</button></div>' +
-    (ai ? '<div class="card flat"><p class="eyebrow">Draft · Electrical › Control System</p><div class="list">' + ai.map(function (x, i) { return '<div class="li"><span class="pill ' + (x.op === "Add" ? "ok" : "info") + '">' + x.op + '</span><span class="grow"><b>' + esc(x.name) + '</b><br><span class="who">' + esc(x.note) + '</span></span><button class="btn ghost sm" data-act="skaidrop" data-i="' + i + '">Drop</button></div>'; }).join("") + '</div><div class="row"><button class="btn primary" data-act="skaiaccept">Accept ' + ai.length + ' changes</button><button class="btn" data-act="skaidiscard">Discard</button></div><p class="small mute">Keys stay stable, so renamed skills keep everyone\'s progress. The model never sees student progress.</p></div>' : "") +
-    '</div><div class="card"><h2>Edit by hand</h2><p class="small mute">Rename, reorder, add or remove trees, categories and skills. Export and import as a file.</p><div class="list">' +
+    (ai ? '<div class="card flat"><p class="eyebrow">Draft · Electrical › Control System</p><div class="list">' + ai.map(function (x, i) { return '<div class="li"><span class="pill ' + (x.op === "Add" ? "ok" : "info") + '">' + x.op + '</span><span class="grow"><b>' + esc(x.name) + '</b><br><span class="who">' + esc(x.note) + '</span></span><button class="btn ghost sm" data-act="skaidrop" data-i="' + i + '">Drop</button></div>'; }).join("") + '</div><div class="row"><button class="btn primary" data-act="skaiaccept">Accept ' + ai.length + ' changes</button><button class="btn" data-act="skaidiscard">Discard</button></div></div>' : "") +
+    '</div><div class="card"><div><h2>Edit by hand</h2><p class="who">Rename, reorder, add or remove trees, categories and skills.</p></div><div class="list">' +
     TREES.map(function (t) { return '<div class="li"><b class="grow">' + esc(t.name) + '</b><span class="who">' + t.cats.length + " categories</span><button class=\"btn ghost sm\">Edit</button></div>"; }).join("") +
     '</div><div class="row"><button class="btn sm">+ New tree</button><button class="btn sm">Export</button><button class="btn sm">Import file</button></div></div></div>';
 }
@@ -538,6 +603,8 @@ function editView() {
 var A = D.acts;
 A.sktree = function (b) { var S = D.S; S.sk.tree = b.dataset.v; S.sk.cat = null; S.tabs.skills = "trees"; D.render(); };
 A.skpermit = function (b) { var S = D.S; S.sk.student = b.dataset.st; S.sk.tree = "mfg"; S.sk.cat = b.dataset.cat; D.openDrawer("skill", { id: b.dataset.skill }); };
+A.skmine = function (b) { var S = D.S; S.sk.student = "Sam Ortiz"; D.openDrawer("skill", { id: b.dataset.v }); };
+A.skreadyall = function () { readyAll = !readyAll; D.render(); };
 A.skstudent = function (b) { var S = D.S; S.sk.student = b.dataset.v; S.sk.cat = null; S.tabs.skills = "trees"; D.render(); };
 D.changes.skstudent = function (el) { D.S.sk.student = el.value; D.render(); };
 A.skcat = function (b) { if (b.getAttribute("aria-disabled") === "true") { D.toast("Finish the categories above this one first."); D.render(); return; } D.S.sk.cat = b.dataset.v; D.render(); };
