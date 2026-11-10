@@ -1,1 +1,100 @@
-/* Calendar, Attendance and Snacks: app-specific styles. Loaded after base.css. */
+/* Calendar, Attendance, Snacks and the door-code screen. Loaded after base.css. */
+
+/* Event kinds: one dot colour per kind (used by the month grid, agenda rows and the legend). */
+.k-practice { --kc: var(--mute); }
+.k-build { --kc: var(--accent); }
+.k-comp { --kc: var(--role-lead); }
+.k-outreach { --kc: var(--ok); }
+.k-meeting { --kc: var(--warn); }
+.k-off { --kc: var(--bad); }
+.kd { width: 8px; height: 8px; border-radius: 50%; background: var(--kc, var(--mute)); flex: none; display: inline-block; }
+
+/* Month grid: pale events with a coloured dot; "today" is the one gold mark. */
+.mnav { gap: 6px; }
+.mnav h2, .mnav h3 { min-width: 9.5rem; text-align: center; }
+.month { grid-template-columns: repeat(7, minmax(0, 1fr)); }
+.month.wide { min-width: 560px; }
+.month .day.today { box-shadow: none; }
+.month .day .d { width: 24px; height: 24px; display: inline-grid; place-items: center; border-radius: 999px; font-variant-numeric: tabular-nums; }
+.month .day.today .d { background: var(--gold); color: var(--on-gold); font-weight: 700; }
+.ev, .ev.k-practice, .ev.k-build, .ev.k-comp, .ev.k-outreach, .ev.k-meeting, .ev.k-off { background: transparent; color: var(--text-2); font-weight: 500; display: flex; align-items: center; gap: 5px; padding: 2px 4px; border-radius: 6px; min-width: 0; }
+.ev::before { content: ""; width: 7px; height: 7px; border-radius: 50%; background: var(--kc, var(--mute)); flex: none; }
+.ev:hover { background: var(--surface-2); }
+.ev .et { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; min-width: 0; }
+.month .day.other .ev { color: var(--mute); }
+.legend { gap: 8px 16px; font-size: .8rem; }
+
+/* Agenda rows */
+.agrow { display: grid; grid-template-columns: 8.5rem minmax(0, 1fr) auto; gap: 4px 12px; align-items: center; }
+.agrow .grow { min-width: 0; }
+.agdate { font-weight: 600; }
+.agmore { display: block; }
+.kind { display: inline-flex; align-items: center; gap: 6px; font-size: .85rem; color: var(--text-2); white-space: nowrap; }
+
+/* Event form */
+.field.wide { grid-column: 1 / -1; }
+.mfoot { margin-top: 4px; }
+
+/* Attendance: status card first */
+.statuscard { display: flex; align-items: center; justify-content: space-between; gap: 12px 16px; flex-wrap: wrap; }
+.statuscard .grow { min-width: 12rem; }
+.statuscard h2 { font-size: 1.15rem; }
+.heatwrap { padding-bottom: 4px; }
+.heat { min-width: 560px; }
+.heat .hr { text-align: right; }
+.togglab { font-weight: 600; gap: 8px; }
+.missdot { box-shadow: inset 0 0 0 2px var(--bad); background: none; }
+.vdate { min-width: 110px; }
+
+/* Mentors tab */
+.mhead p { margin: 0; }
+.mhead { align-items: center; }
+.chips { gap: 4px; }
+.tpair { gap: 4px; }
+.utrow b { width: 36px; }
+.mtab { min-width: 36rem; }
+.mtab td, .mtab th { vertical-align: top; }
+.subline { display: block; text-transform: none; letter-spacing: 0; font-weight: 400; }
+.dgrid { display: grid; gap: 4px; }
+.dpop .push { margin-left: auto; }
+.dpop .btn.primary { background: var(--tint-2); border-color: transparent; color: var(--accent); }
+.heat .hh { font-size: .6rem; }
+
+/* Snacks */
+.snrow .grow { min-width: 0; }
+.snrow .btn { flex: none; }
+
+/* Door-code TV screen */
+.kiosk { justify-items: center; text-align: center; align-content: center; min-height: 100vh; gap: 24px; }
+.qrtime { width: min(78vw, 360px); }
+.kiosk .bar { background: #111829; }
+
+/* Phones */
+@media (max-width: 640px) {
+  .mnav h2 { min-width: 0; flex: 1; font-size: 1rem; }
+  /* Month: dots only; tap a dot to open the event. */
+  .month:not(.wide) .day { display: flex; flex-wrap: wrap; align-content: flex-start; gap: 2px; min-height: 56px; padding: 4px 2px; justify-content: center; }
+  .month:not(.wide) .day .d { flex: 0 0 100%; width: auto; }
+  .month:not(.wide) .day .d { display: grid; }
+  .month:not(.wide) .day.today .d { width: 24px; flex: none; }
+  .month:not(.wide) .ev { width: 18px; height: 18px; padding: 0; justify-content: center; }
+  .month:not(.wide) .ev .et { display: none; }
+  .month:not(.wide) .ev::before { width: 9px; height: 9px; }
+  .month .day .who { font-size: .66rem; }
+  .agrow { grid-template-columns: minmax(0, 1fr) auto; min-height: 60px; }
+  .agrow .agdate { grid-column: 1; grid-row: 1; font-size: .85rem; color: var(--mute); }
+  .agrow .kind { grid-column: 2; grid-row: 1; }
+  .agrow .grow { grid-column: 1 / -1; grid-row: 2; }
+  .statuscard { flex-direction: column; align-items: stretch; }
+  .statuscard .btn { width: 100%; }
+  .mhead select, .mhead .chipsel { min-height: 44px; }
+  .usual .chip { min-height: 44px; min-width: 44px; justify-content: center; }
+  .tinp { min-height: 44px; }
+  .dbtn { min-height: 44px; }
+  .li .btn.sm { min-height: 44px; }
+  .snrow .grow { flex: 1 1 100%; }
+  .snrow .btn { min-height: 44px; }
+  .snrow > .btn:not(.ghost) { width: 100%; }
+  .dpop { left: 8px !important; right: 8px; top: auto !important; bottom: 8px; max-width: none; }
+  .kiosk { padding-top: 56px; }
+}
