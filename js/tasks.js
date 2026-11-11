@@ -176,13 +176,20 @@ function my() {
   return nextUp() + '<div class="card"><h2>Assigned to me</h2>' + (groups || '<p class="mute">Nothing assigned to you.</p>') + "</div>" +
     (open.length ? '<div class="card"><h2>Nobody has these yet</h2><div class="list">' + open.map(function (x) { return '<div class="li tkr"><span class="grow"><b>' + esc(x.title) + '</b><br><span class="who">' + esc(proj(x.p).name) + " › " + esc(x.sub) + "</span></span>" + dueTxt(x) + '<button class="btn sm" data-act="ttake" data-v="' + x.id + '">I\'ll take it</button></div>'; }).join("") + "</div></div>" : "");
 }
+function weekEvent(x) {
+  return '<span class="wkev"><span class="wkename">' + esc(x.name) + '</span><span class="wketime">' + esc(D.calApi.span(x)) + "</span></span>";
+}
+function weekDay(d, e) {
+  var open = e.filter(function (x) { return x.kind !== "off"; }).length, off = e.length && !open;
+  return '<div class="wkday' + (open ? " prac" : off ? " off" : "") + '"><b class="num">' + fmt(d) + "</b>" + e.map(weekEvent).join("") + "</div>";
+}
 function week() {
   var evs = D.calApi ? D.calApi.upcoming(10) : [], parent = D.S.role === "parent", out = "";
   for (var i = 0; i < 7; i++) {
     var d = add(TODAYS, i), e = evs.filter(function (x) { return x.date === d; }), due = T().list.filter(function (x) { return x.due === d; }), ms = [];
     T().divs.forEach(function (dv) { dv.projects.forEach(function (p) { p.ms.forEach(function (m) { if (m[2] === d) ms.push(p.name + ": " + m[1]); }); }); });
     if (!e.length && !due.length && !ms.length) continue;
-    out += '<div class="li wk"><b class="num wkd">' + fmt(d) + '</b><span class="grow">' + e.map(function (x) { return '<span class="wkl"><span class="pill gold">' + esc(x.name) + '</span> <span class="who">' + D.calApi.span(x) + "</span></span>"; }).join("") + ms.map(function (m) { return '<span class="wkl"><span class="pill info">◆ ' + esc(m) + "</span></span>"; }).join("") +
+    out += '<div class="li wk">' + weekDay(d, e) + '<span class="grow">' + ms.map(function (m) { return '<span class="wkms"><span class="wkmskind">Milestone</span><span class="wkmsname">' + esc(m) + "</span></span>"; }).join("") +
       (parent ? (due.length ? '<span class="wkl who">' + due.length + " robot task" + (due.length > 1 ? "s" : "") + " due</span>" : "") : due.map(function (x) { return '<span class="wkl"><button class="linkbtn tlink" data-act="topen" data-v="' + x.id + '">' + esc(x.title) + "</button></span>"; }).join("")) + "</span></div>";
   }
   return '<div class="card">' + (out ? '<div class="list">' + out + "</div>" : '<p class="mute">Nothing is due in the next 7 days.</p>') + "</div>";
