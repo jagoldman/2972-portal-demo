@@ -1,7 +1,8 @@
 # Redesign brief: simple and usable (branch `simple-ui`)
 
-The lead wrote this brief on 2026-11-10 from the user's request: redo the design of every app except Kickoff,
+The lead wrote this brief on 2026-11-10 from the user's request: redo the design of every app,
 for usability and simplicity, mostly look and feel, with little change to what the apps do.
+The Kickoff app was removed from the suite on 2026-11-10.
 
 This prototype is the design source for the real apps (change the demo first, then build it). So every change
 here must be something a Next.js/Tailwind app can copy: tokens, a small set of shared parts, and clear screens.
@@ -44,7 +45,7 @@ Links, selected chips, selected rows and focus rings use `--accent`. Text on gol
 All text must pass WCAG AA in light and dark.
 
 Type: Inter for everything. Bricolage Grotesque only for the 2972 badge and brand name, the `h1`, and big numbers
-(`.kpi b`, `.big`, `.kbig`, counters). `h2` and `h3` are Inter 600. Body 15 px (16 px at 640 px and below so iOS
+(`.kpi b`, `.big`, counters). `h2` and `h3` are Inter 600. Body 15 px (16 px at 640 px and below so iOS
 does not zoom). JetBrains Mono only for real codes (SKUs, times in grids).
 
 Shape: cards radius 12, controls radius 8, no shadows on cards (only on drawers, menus, toasts). Page gutter 16 px
@@ -94,7 +95,7 @@ Top to bottom, one column up to 1120 px:
 
 Delete the yellow-bar instructions at the bottom.
 
-## Per app (keep every feature reachable; do not touch `js/kickoff.js`)
+## Per app (keep every feature reachable)
 
 **Tasks.** Keep the sidebar and the flows. Calm the sidebar (selected row = tint and accent). "New task" is a plain
 button, because Done on the next-task card is the main action. Task rows: title, one muted line, status dot and
