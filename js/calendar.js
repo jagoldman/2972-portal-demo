@@ -33,7 +33,7 @@ function genEvents() {
     { date: "2026-11-24", kind: "off", name: "No practice: Thanksgiving week", start: "", end: "" },
     { date: "2026-12-05", kind: "outreach", name: "FLL qualifier volunteers", start: "08:00", end: "16:00", where: "Boulder Valley" },
     { date: "2026-12-12", kind: "meeting", name: "Parent meeting and season preview", start: "10:00", end: "11:30", where: "Dawson library" },
-    { date: "2027-01-09", kind: "meeting", name: "Season kickoff", start: "09:00", end: "13:00", where: "Dawson shop", note: "Game reveal, then strategy in Kickoff" },
+    { date: "2027-01-09", kind: "meeting", name: "Season kickoff", start: "09:00", end: "13:00", where: "Dawson shop", note: "Game reveal, then strategy" },
     { date: "2027-02-27", kind: "comp", name: "Week 0 scrimmage", start: "08:00", end: "17:00", where: "Denver", tba: "", nexus: "", stream: "" },
     { date: "2027-03-03", end2: "2027-03-06", kind: "comp", name: "Colorado Regional", start: "08:00", end: "18:00", where: "Denver, Pit 42", tba: "2027code", nexus: "2027code", stream: "twitch.tv/firstinspires" }
   ];

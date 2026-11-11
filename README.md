@@ -17,13 +17,12 @@ Everything is sample data. Nothing is saved, and a reload resets it.
 | Parts & Inventory | Request a part, order by vendor (mentors), check in arrivals, find spares by place. |
 | Calendar, Attendance, Snacks | Agenda and month views, door-code sign-in, hours, mentor plans, snack sign-up. |
 | Skills | Overview of what to do next, skill trees, sign-off requests, shop tool permissions. |
-| Kickoff | The made-up "Orbit Orchard" game: rules, scoring, strategies, criteria and vote, build plan. Not part of the simple-UI redesign; it only picks up the shared colours. |
 | Schedule, Pit, Scouting | Event roles, pit checklists and monitor, match scouting with stats and a pick list (Competition mode). |
 | Account | Profile, notifications, appearance, mode, sign-in. |
 
 ## Files
 - `index.html` loads the fonts, the styles and the scripts. No build step.
-- `css/base.css`: tokens, app bar, tab row, buttons, status, cards, lists, fields, overlays, Home, shop displays, and the few parts that more than one app (or Kickoff) uses.
+- `css/base.css`: tokens, app bar, tab row, buttons, status, cards, lists, fields, overlays, Home, shop displays, and the few parts that more than one app uses.
 - `css/<app>.css`: styles for one app.
 - `js/core.js`: sample people, routes, the shell and shared helpers (`D.*`). `js/<app>.js`: one app each.
 

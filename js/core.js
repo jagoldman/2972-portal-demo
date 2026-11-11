@@ -12,7 +12,6 @@ var ICON = {
   snacks: "M5 11h14l-1.5 9h-11zM8 11V8a4 4 0 0 1 8 0v3",
   parts: "M21 8l-9-5-9 5 9 5 9-5zM3 8v8l9 5 9-5V8M12 13v8",
   skills: "M6 3v6M6 15v6M18 9v6M6 9a3 3 0 1 0 0 6 3 3 0 0 0 0-6zM18 3a3 3 0 1 0 0 6 3 3 0 0 0 0-6zM18 15a3 3 0 1 0 0 6 3 3 0 0 0 0-6zM9 12h6",
-  kickoff: "M5 21V4M5 4h11l-2 4 2 4H5",
   schedule: "M12 21a9 9 0 1 0 0-18 9 9 0 0 0 0 18zM12 7v5l3 2",
   pit: "M14.7 6.3a4 4 0 0 0-5.4 5.4L3 18l3 3 6.3-6.3a4 4 0 0 0 5.4-5.4l-2.5 2.5-2.4-.6-.6-2.4z",
   scouting: "M2 12s4-7 10-7 10 7 10 7-4 7-10 7S2 12 2 12zM12 15a3 3 0 1 0 0-6 3 3 0 0 0 0 6z",
@@ -57,7 +56,6 @@ D.TILES = [
   { id: "snacks", name: "Snacks", icon: "snacks", svc: "calendar./snacks", desc: "Sign up to bring snacks to practice.", modes: ["build"], groups: ["admin", "mentor", "parent"] },
   { id: "parts", name: "Parts & Inventory", icon: "parts", svc: "parts.", desc: "Request parts, check orders in, find spares.", modes: ["build", "competition"], groups: BUILDERS },
   { id: "skills", name: "Skills", icon: "skills", svc: "skills.", desc: "Training trees that unlock step by step.", modes: ["build"], groups: BUILDERS },
-  { id: "kickoff", name: "Kickoff", icon: "kickoff", svc: "kickoff.", desc: "Game analysis and strategy for the season.", modes: ["build"], groups: BUILDERS },
   { id: "schedule", name: "Schedule", icon: "schedule", svc: "compete./schedule", desc: "Who does which role at the event.", modes: ["competition"], groups: BUILDERS },
   { id: "pit", name: "Pit", icon: "pit", svc: "compete./pit", desc: "Match checklists, issues and batteries.", modes: ["competition"], groups: BUILDERS },
   { id: "scouting", name: "Scouting", icon: "scouting", svc: "compete./scouting", desc: "Match forms, assignments, stats and pick list.", modes: ["competition"], groups: BUILDERS },
@@ -67,9 +65,9 @@ D.TILES = [
   { id: "admin", name: "Admin", icon: "admin", svc: "admin.", desc: "Approve accounts and manage groups.", modes: ["build"], groups: ["admin"], more: true, ext: true },
   { id: "handbook", name: "Team Handbook", icon: "handbook", svc: "link", desc: "Student, family and mentor handbook.", modes: ["build"], groups: ALL, more: true, ext: true }
 ];
-D.APPNAME = { portal: "Portal", account: "Account", kiosk: "Door QR", monitor: "Pit monitor", projector: "Projector", kproj: "Kickoff projector" };
+D.APPNAME = { portal: "Portal", account: "Account", kiosk: "Door QR", monitor: "Pit monitor", projector: "Projector" };
 D.TILES.forEach(function (t) { D.APPNAME[t.id] = t.name; });
-D.DISPLAY_ROUTES = { kiosk: 1, monitor: 1, projector: 1, kproj: 1 };
+D.DISPLAY_ROUTES = { kiosk: 1, monitor: 1, projector: 1 };
 
 D.reset = function () {
   var prev = D.S || {};
@@ -132,7 +130,7 @@ D.modalHead = function (title) { return '<div class="row between nowrap"><h2>' +
 
 /* ---------- Shell pieces ---------- */
 // Short descriptions for the Home tiles and the Apps menu.
-var SHORT = { tasks: "Your tasks", calendar: "Practices and events", here: "Attendance and hours", snacks: "Snack sign-up", parts: "Request and find parts", skills: "Training and sign-offs", kickoff: "Game strategy", schedule: "Your event roles", pit: "Checklists and batteries", scouting: "Match forms", onshape: "Robot CAD", github: "Robot code", drive: "Shared files", admin: "Accounts and groups", handbook: "Team rules and info" };
+var SHORT = { tasks: "Your tasks", calendar: "Practices and events", here: "Attendance and hours", snacks: "Snack sign-up", parts: "Request and find parts", skills: "Training and sign-offs", schedule: "Your event roles", pit: "Checklists and batteries", scouting: "Match forms", onshape: "Robot CAD", github: "Robot code", drive: "Shared files", admin: "Accounts and groups", handbook: "Team rules and info" };
 function demobar() {
   var S = D.S;
   var roles = ["student", "mentor", "admin", "parent", "display"].map(function (r) {
@@ -243,7 +241,7 @@ D.views.portal = function () {
 };
 function displayHome(blocked) {
   return '<div class="display">' + (blocked ? '<div class="dcard" style="border-color:var(--gold)">' + esc(blocked) + " isn't available on a display. Pick one of these instead.</div>" : "") + '<h1>Pick what this screen shows</h1><div class="grid3">' +
-    [["kiosk", "Door QR", "Sign in and out at the shop door"], ["monitor", "Pit monitor", "Next match, batteries, issues, pit duty"], ["projector", "Projector", "The build plan on the shop TV"], ["kproj", "Kickoff projector", "Strategy points and the live vote"]].map(function (d) {
+    [["kiosk", "Door QR", "Sign in and out at the shop door"], ["monitor", "Pit monitor", "Next match, batteries, issues, pit duty"], ["projector", "Projector", "The build plan on the shop TV"]].map(function (d) {
       return '<button class="dcard" style="text-align:left;cursor:pointer" data-act="go" data-v="' + d[0] + '"><b style="font-size:1.3rem">' + d[1] + '</b><span class="dmute">' + d[2] + "</span></button>";
     }).join("") + '</div></div>';
 }
@@ -298,7 +296,7 @@ A.role = function (b) {
   var S = D.S; S.role = b.dataset.v; S.bell = false; S.appsOpen = false; S.drawer = null; S.modal = null;
   (D.onRole || []).forEach(function (f) { f(S.role); });
   if (S.role === "display") { S.route = D.DISPLAY_ROUTES[S.route] ? S.route : "portal"; }
-  else if (!(S.route === "portal" || S.route === "account" || (D.tile(S.route) && D.inGroup(S.route)) || (D.DISPLAY_ROUTES[S.route] && (D.isStaff() || (S.route === "kproj" && D.inGroup("kickoff")))))) S.route = "portal";
+  else if (!(S.route === "portal" || S.route === "account" || (D.tile(S.route) && D.inGroup(S.route)) || (D.DISPLAY_ROUTES[S.route] && D.isStaff()))) S.route = "portal";
   D.render();
 };
 D.changes.eventday = function (el) { D.S.eventDay = el.checked; D.render(); };
