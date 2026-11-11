@@ -1,5 +1,5 @@
 /* Skills: trees of categories, categories of skills, both drawn as layered graphs; mentor sign-off, requests, bulk sign-off, AI doc import.
-   CAD: FRCDesign.org. Electrical: FRCElectrical.org. Programming: WPILib / RobotPy.
+   CAD: FRCDesign.org. Electrical: FRCElectrical.org. Programming: WPILib Java.
    Every skill names its check: written test, demonstration, both (a dual check), or an Onshape review for CAD. */
 (function () {
 "use strict";
@@ -33,7 +33,7 @@ var TREES = [
       sk("s5", "Power on and enable safely", "area clear, call out “enabling”, someone ready to disable", ["s6"], "", demoOnly("Power on with the area clear, call it out before you enable, and show the keys that stop the robot: Enter disables, the space bar e-stops."))
     ] },
     { id: "mach", name: "Machine Safety", req: ["shop"], skills: [
-      sk("s7", "Only signed-off machines", "the qualified list posted in the shop, or a mentor beside you", [], "", demoOnly("Find the posted qualified list, say whether you may run the bandsaw today, and name who could supervise you if not.")),
+      sk("s7", "Only signed-off machines", "the qualified list posted in the shop, or a mentor beside you", [], "", demoOnly("Find the posted qualified list, say whether you may run the metal bandsaw today, and name who could supervise you if not.")),
       sk("s8", "Stop a machine", "its switch or e-stop, then hands off until it is fully still", ["s7"], "", demoOnly("Stop a running machine, keep your hands away until it is fully still, and switch it off.")),
       sk("s9", "Rotating-tool rules", "no gloves, sleeves and hair secured, chips away from you", ["s7"], "", test("Why gloves stay off near a spinning tool, and where hair, sleeves, and chips go.")),
       sk("s12", "Hot parts and fumes", "printer nozzles and beds, fresh-cut metal, laser smoke; let it cool, run the air", ["s7"], "", test("Name three hot things in our shop and what you wait for or use before you touch each one."))
@@ -138,20 +138,20 @@ var TREES = [
       sk("dp5", "Countersink and step drill", "flush rivets and bolts, clean holes in thin plate", ["dp3"], "", demoOnly("Countersink one hole so a flat-head screw sits flush, and step-drill a clean hole in thin plate.")),
       sk("dp3", "Qualified on the drill press", "you may drill alone while a mentor is in the shop", ["dp2"], "", both("Speed for a large bit vs a small one, and what you do if the part catches.", "Drill a laid-out three-hole pattern within 1/32 in, then brush the chips and the table clean."))
     ] },
-    { id: "band", name: "Grizzly G0994 Bandsaw", req: ["meas"], skills: [
-      sk("bw1", "Know the G0994", "vertical metal bandsaw, variable blade speed, key switch", [], "https://support.grizzly.com/hc/en-us/articles/35557903989911-FAQ-G0994-Metal-cutting-Bandsaw", test("Which blade speed you use for aluminum, why round stock needs support, and where the key is kept.")),
+    { id: "band", name: "Metal Bandsaw", req: ["meas"], skills: [
+      sk("bw1", "Know the metal bandsaw", "vertical metal bandsaw, variable blade speed, key switch", [], "https://support.grizzly.com/hc/en-us/articles/35557903989911-FAQ-G0994-Metal-cutting-Bandsaw", test("Which blade speed you use for aluminum, why round stock needs support, and where the key is kept.")),
       sk("bw2", "Supervised metal cut", "fence or miter gauge, speed set for aluminum, guard just above the work", ["bw1"], "", demoOnly("Cut one piece of aluminum with the guard set and the speed matched to the metal.")),
-      sk("bw3", "Qualified on the bandsaw", "you may cut alone while a mentor is in the shop", ["bw2"], "https://www.grizzly.com/videos/kpq5DqCAVHQ", both("Speed, guard height, and what you do not cut unsupported.", "Cut a square end, shut down, brush the chips, and return the key."))
+      sk("bw3", "Qualified on the metal bandsaw", "you may cut alone while a mentor is in the shop", ["bw2"], "https://www.grizzly.com/videos/kpq5DqCAVHQ", both("Speed, guard height, and what you do not cut unsupported.", "Cut a square end, shut down, brush the chips, and return the key."))
     ] },
-    { id: "lathe", name: "MechMaxx 10×22 Lathe", req: ["meas"], skills: [
+    { id: "lathe", name: "Lathe", req: ["meas"], skills: [
       sk("lt1", "Lathe rules and the DRO", "chuck key never left in the chuck, no gloves, sleeves short", [], "https://mechmaxx.com/products/10-x-22-industrial-metal-lathe-machine-high-precision-benchtop-1-5hp-0-2000-rpm-variable-speed-metal-working-machine", test("Where the chuck key goes before you start the spindle, what a DRO zero means, and why gloves stay off.")),
       sk("lt2", "Face and turn to a diameter", "light cuts, read the DRO, chip brush not your hand", ["lt1"], "", demoOnly("Face one end and turn a diameter a mentor calls out, within 0.005 in measured with calipers.")),
       sk("lt3", "Qualified on the lathe", "you may turn parts alone while a mentor is in the shop", ["lt2"], "", both("Spindle speed for aluminum, how you zero the DRO, and what you do if the part chatters.", "Turn a short pin to a diameter, stop the spindle, and put the chuck key back on its hook."))
     ] },
-    { id: "omio", name: "OMIO Router (WCP)", req: ["meas"], skills: [
+    { id: "omio", name: "OMIO Router", req: ["meas"], skills: [
       sk("om1", "OMIO safety", "spindle, collet, e-stop, no gloves, spoil board under sheet", [], "https://docs.wcproducts.com/welcome/frc-build-system/shop-accessories/omio-and-accessories", test("What the e-stop does, why the collet must be tight, and what the spoil board is for.")),
-      sk("om2", "WCP screen, zero, and g-code", "load the WCP screen set, set zero, check the toolpath against the clamps", ["om1"], "https://docs.wcproducts.com/welcome/shop-accessories/omio-cnc-router-x8-usb/basic-operation/screen-sets", demoOnly("Load a file, show the toolpath, and point out every clamp or screw the bit must miss.")),
-      sk("om3", "Supervised sheet or tube job", "WCP tube fixture or screwed-down sheet, hand near the e-stop", ["om2"], "https://docs.wcproducts.com/welcome/shop-accessories/omio-cnc-router-x8-usb/basic-operation/basic-operation", demoOnly("Run one job from zero to spindle-off while a mentor watches.")),
+      sk("om2", "Screen, zero, and g-code", "load the screen set, set zero, check the toolpath against the clamps", ["om1"], "https://docs.wcproducts.com/welcome/shop-accessories/omio-cnc-router-x8-usb/basic-operation/screen-sets", demoOnly("Load a file, show the toolpath, and point out every clamp or screw the bit must miss.")),
+      sk("om3", "Supervised sheet or tube job", "tube fixture or screwed-down sheet, hand near the e-stop", ["om2"], "https://docs.wcproducts.com/welcome/shop-accessories/omio-cnc-router-x8-usb/basic-operation/basic-operation", demoOnly("Run one job from zero to spindle-off while a mentor watches.")),
       sk("om4", "Qualified on the OMIO", "you may run a known file while a mentor is in the shop", ["om3"], "", both("Zero, feeds, and what you do if the bit sounds wrong.", "Set up and run a known plate or tube file, then vacuum the bed."))
     ] },
     { id: "print", name: "Bambu X2D Printers", req: [], skills: [
@@ -200,30 +200,30 @@ var TREES = [
       sk("el20", "Find a wiring fault", "brownouts in the log, CAN faults in the vendor tool, then tug-test", ["el18"], fel("Mechanism-Wiring/"), demoOnly("Find and fix a fault a mentor puts on the practice board."))
     ] }
   ] },
-  { id: "prog", name: "Programming", tag: "PR", note: "WPILib and RobotPy. Our robot code is Python and command-based.", req: "safety", cats: [
+  { id: "prog", name: "Programming", tag: "PR", note: "WPILib. Our robot code is Java and command-based.", req: "safety", cats: [
     { id: "pgtools", name: "Tools", req: [], skills: [
       sk("pg1", "Clone, branch, and a pull request", "your own branch; a teammate reviews before merge", [], "https://docs.github.com/en/pull-requests/collaborating-with-pull-requests/proposing-changes-to-your-work-with-pull-requests/about-pull-requests", demoOnly("Clone the team repo, make your own branch, and open a pull request that a teammate reviews and merges.")),
       sk("pg24", "Resolve a merge conflict", "pull main, fix the conflict, rerun the code", ["pg1"], "https://docs.github.com/en/pull-requests/collaborating-with-pull-requests/addressing-merge-conflicts/resolving-a-merge-conflict-using-the-command-line", demoOnly("Resolve a conflict a mentor sets up, run the code, and push the fix.")),
-      sk("pg2", "Install RobotPy", "Python 3, pip install robotpy, then python -m robotpy sync", ["pg1"], wpi("zero-to-robot/step-2/python-setup.html"), demoOnly("Run python -m robotpy sync in the team repo with no errors.")),
-      sk("pg3", "Find a page in the WPILib docs", "pick Python on the page, don't guess the API", [], wpi("zero-to-robot/introduction.html"), demoOnly("Open the Python example for a class a mentor names."))
+      sk("pg2", "Install WPILib", "VS Code, the WPILib extension, and the JDK", ["pg1"], wpi("zero-to-robot/step-2/wpilib-setup.html"), demoOnly("Open the team project and build it with no errors.")),
+      sk("pg3", "Find a page in the WPILib docs", "pick Java on the page, don't guess the API", [], wpi("zero-to-robot/introduction.html"), demoOnly("Open the Java example for a class a mentor names."))
     ] },
-    { id: "pgpy", name: "Python for the Robot", req: [], skills: [
-      sk("pg5", "if, for, lists, and dicts", "the control flow in a command", [], "https://docs.python.org/3/tutorial/controlflow.html", demoOnly("Write a loop that prints each motor's name and CAN id from a dict.")),
-      sk("pg4", "Functions and imports", "split code into files you can import", ["pg5"], "https://docs.python.org/3/tutorial/modules.html", demoOnly("Move that loop into a function in its own file and import it.")),
-      sk("pg20", "Classes and self", "enough to read robot.py and a subsystem", ["pg4"], "https://docs.python.org/3/tutorial/classes.html", test("Read robot.py and explain what self is and when __init__ runs."))
+    { id: "pgpy", name: "Java for the Robot", req: [], skills: [
+      sk("pg5", "if, for, and arrays", "the control flow in a command", [], "https://docs.oracle.com/javase/tutorial/java/nutsandbolts/flow.html", demoOnly("Write a loop that prints each motor's name and CAN id.")),
+      sk("pg4", "Methods and classes", "a class, a method, and new", ["pg5"], "https://docs.oracle.com/javase/tutorial/java/javaOO/classes.html", demoOnly("Put that loop in a method on a small class and call it.")),
+      sk("pg20", "Read Robot.java", "fields, the constructor, and this", ["pg4"], "https://docs.oracle.com/javase/tutorial/java/javaOO/classes.html", test("Read Robot.java and explain what the constructor does and when it runs."))
     ] },
     { id: "pgz", name: "Zero to Robot", req: ["pgtools", "pgpy"], skills: [
-      sk("pg6", "A TimedRobot that drives", "the robot loop first, with a joystick deadband; our robot itself is command-based", [], wpi("zero-to-robot/step-4/creating-test-drivetrain-program-cpp-java-python.html"), demoOnly("Write a TimedRobot that drives from a joystick.")),
-      sk("pg7", "Run it in simulation", "the sim GUI, from python -m robotpy sim", ["pg6"], wpi("software/wpilib-tools/robot-simulation/introduction.html"), demoOnly("Run the sim and show the drive answering the joystick.")),
+      sk("pg6", "A TimedRobot that drives", "the robot loop first, with a joystick deadband; our robot itself is command-based", [], wpi("zero-to-robot/step-4/creating-test-drivetrain-program-cpp-java.html"), demoOnly("Write a TimedRobot that drives from a joystick.")),
+      sk("pg7", "Run it in simulation", "the sim GUI, from VS Code", ["pg6"], wpi("software/wpilib-tools/robot-simulation/introduction.html"), demoOnly("Run the sim and show the drive answering the joystick.")),
       sk("pg8", "Driver Station modes", "disabled, teleop, auto, test; Enter disables, space bar e-stops", ["pg6"], wpi("software/driverstation/driver-station.html"), test("What each mode does, and which keys disable and e-stop the robot.")),
-      sk("pg17", "Deploy to the robot", "robot on blocks, then python -m robotpy deploy", ["pg7", "pg8"], wpi("software/python/subcommands/deploy.html"), demoOnly("Deploy, enable with the wheels off the ground, and disable."))
+      sk("pg17", "Deploy to the robot", "robot on blocks, then deploy from VS Code", ["pg7", "pg8"], wpi("software/vscode-overview/deploying-robot-code.html"), demoOnly("Deploy, enable with the wheels off the ground, and disable."))
     ] },
     { id: "pgcmd", name: "Command-Based", req: ["pgz"], skills: [
       sk("pg9", "A subsystem owns the hardware", "each motor is created in one place", [], wpi("software/commandbased/what-is-command-based.html"), demoOnly("Write one subsystem that owns its motor; no other file creates that motor.")),
       sk("pg18", "Run a motor controller from code", "Phoenix 6 or REVLib: id, inversion, current limit", ["pg9"], wpi("software/hardware-apis/motors/index.html"), demoOnly("Set a motor's id, inversion, and current limit in code and spin it in sim or on blocks.")),
       sk("pg10", "Commands, triggers, and default commands", "a button starts a command, which interrupts the default and hands back", ["pg9"], wpi("software/commandbased/binding-commands-to-triggers.html"), demoOnly("Bind a button to a command that interrupts the subsystem's default command while held, and show the default resume on release.")),
       sk("pg11", "One mechanism in sim", "intake or arm, start to stop", ["pg10", "pg18"], wpi("software/commandbased/structuring-command-based-project.html"), demoOnly("Run an intake or arm subsystem with its commands in sim, from start to stop.")),
-      sk("pg19", "Test a subsystem", "one pytest, run with python -m robotpy test", ["pg11"], "https://robotpy.readthedocs.io/en/stable/guide/testing.html", demoOnly("Add a test that fails when the subsystem's logic is wrong and passes when it is right."))
+      sk("pg19", "Test a subsystem", "one JUnit test, run from VS Code", ["pg11"], wpi("software/wpilib-tools/robot-simulation/unit-testing.html"), demoOnly("Add a test that fails when the subsystem's logic is wrong and passes when it is right."))
     ] },
     { id: "pgctl", name: "Control", req: ["pgcmd"], skills: [
       sk("pg12", "Read a sensor", "encoder, beam break, or limit switch on the dashboard", [], wpi("hardware/sensors/index.html"), demoOnly("Show a sensor's value on the dashboard and change it by hand.")),
@@ -270,7 +270,7 @@ var BYID = {}; TREES.forEach(function (t) { t.cats.forEach(function (c) { c.tree
 var PERMITS = [
   { cat: "miter", skill: "mt3", name: "Miter saw" },
   { cat: "drill", skill: "dp3", name: "Drill press" },
-  { cat: "band", skill: "bw3", name: "Bandsaw" },
+  { cat: "band", skill: "bw3", name: "Metal bandsaw" },
   { cat: "lathe", skill: "lt3", name: "Lathe" },
   { cat: "omio", skill: "om4", name: "OMIO router" },
   { cat: "laser", skill: "lr3", name: "R1 laser" }
@@ -300,6 +300,12 @@ function skillOpenFor(p, s) { return s.req.every(function (r) { return p[r] && p
 function treeDone(p, t) { return t.cats.every(function (c) { return c.skills.every(function (s) { return p[s.id] && p[s.id].s === "done"; }); }); }
 function treeLocked(p, t) { return t.req && !treeDone(p, tree(t.req)); }
 function catCounts(p, c) { var d = 0; c.skills.forEach(function (s) { if (p[s.id] && p[s.id].s === "done") d++; }); return d; }
+function catWait(p, t, c) {
+  var names = [];
+  if (treeLocked(p, t)) names.push(tree(t.req).name);
+  c.req.forEach(function (r) { var rc = cat(t, r); if (catCounts(p, rc) < rc.skills.length) names.push(rc.name); });
+  return names;
+}
 function catStatus(p, t, c) {
   if (treeLocked(p, t)) return "locked";
   if (c.req.some(function (r) { var rc = cat(t, r); return catCounts(p, rc) < rc.skills.length; })) return "locked";
@@ -433,7 +439,7 @@ function treeRows(P, staff) {
       line = "Team average · " + fin + " of " + STUDENTS.length + " finished";
     } else {
       var r = treePct(P, t); pct = r.pct;
-      line = treeLocked(P, t) ? "Locked until " + tree(t.req).name + " is complete" : r.d + " of " + r.all + " skills";
+      line = treeLocked(P, t) ? "Open to read. Start after " + tree(t.req).name : r.d + " of " + r.all + " skills";
     }
     return '<button class="li sktree' + (!staff && treeLocked(P, t) ? " locked" : "") + '" data-act="sktree" data-v="' + t.id + '">' + tag(t) + '<span class="grow"><b>' + esc(t.name) + '</b><br><span class="who">' + esc(line) + '</span></span><span class="skpct"><span class="bar"><i class="' + (pct === 100 ? "ok" : "") + '" style="width:' + pct + '%"></i></span><span class="num">' + pct + '%</span></span><span class="chev" aria-hidden="true">›</span></button>';
   }).join("");
@@ -499,15 +505,15 @@ function treesView() {
   var r = treePct(P, t), locked = treeLocked(P, t);
   var node = function (c, style) {
     var stt = catStatus(P, t, c), d = catCounts(P, c);
-    return '<button class="gnode ' + stt + '" ' + style + ' data-act="skcat" data-v="' + c.id + '"' + (stt === "locked" ? ' aria-disabled="true"' : "") + ' title="' + esc(c.name + " · " + WORD[stt]) + '">' + (MARK[stt] ? '<span class="mark">' + MARK[stt] + "</span>" : "") + "<b>" + esc(c.name) + '</b><span class="gline"><span class="gbar"><i style="width:' + D.pct(d, c.skills.length) + '%"></i></span><span class="gcount">' + d + "/" + c.skills.length + "</span></span></button>";
+    return '<button class="gnode ' + stt + '" ' + style + ' data-act="skcat" data-v="' + c.id + '" title="' + esc(c.name + " · " + (stt === "locked" ? "Open to read. Start after the level before it." : WORD[stt])) + '">' + (MARK[stt] ? '<span class="mark">' + MARK[stt] + "</span>" : "") + "<b>" + esc(c.name) + '</b><span class="gline"><span class="gbar"><i style="width:' + D.pct(d, c.skills.length) + '%"></i></span><span class="gcount">' + d + "/" + c.skills.length + "</span></span></button>";
   };
   var row = function (c, dc) {
     var stt = catStatus(P, t, c), d = catCounts(P, c);
-    return '<button class="skrow ' + stt + " " + dc + '" data-act="skcat" data-v="' + c.id + '"' + (stt === "locked" ? ' aria-disabled="true"' : "") + '><span class="skmark">' + MARK[stt] + '</span><span class="sktxt"><b>' + esc(c.name) + '</b><span class="who">' + d + " of " + c.skills.length + " skills · " + WORD[stt] + '</span></span><span class="chev" aria-hidden="true">›</span></button>';
+    return '<button class="skrow ' + stt + " " + dc + '" data-act="skcat" data-v="' + c.id + '"><span class="skmark">' + MARK[stt] + '</span><span class="sktxt"><b>' + esc(c.name) + '</b><span class="who">' + d + " of " + c.skills.length + " skills · " + (stt === "locked" ? "Open to read" : WORD[stt]) + '</span></span><span class="chev" aria-hidden="true">›</span></button>';
   };
   var done = function (id) { var c = cat(t, id); return catCounts(P, c) === c.skills.length; };
-  return head + '<div class="card"><div class="row between nowrap">' + '<div class="row nowrap">' + tag(t) + '<div><h2>' + esc(t.name) + '</h2><span class="who">' + esc(t.note) + (locked ? " Locked until " + esc(tree(t.req).name) + " is complete." : "") + '</span></div></div><span class="who skcount">' + r.d + " of " + r.all + " skills</span></div>" +
-    (isPhone() ? stepList(t.cats, row) : LEGEND + graph(t.cats, node, done)) + "</div>";
+  return head + '<div class="card"><div class="row between nowrap">' + '<div class="row nowrap">' + tag(t) + '<div><h2>' + esc(t.name) + '</h2><span class="who">' + esc(t.note) + (locked ? " You can read it. Start a skill after " + esc(tree(t.req).name) + " is complete." : "") + '</span></div></div><span class="who skcount">' + r.d + " of " + r.all + " skills</span></div>" +
+    (isPhone() ? stepList(t.cats, row) : LEGEND + graph(t.cats, node, done)) + '<p class="small mute">Open any category to read it. A skill stays locked until the level before it is finished.</p></div>';
 }
 function catGraph(st, P, t, c) {
   var d = catCounts(P, c);
@@ -520,7 +526,8 @@ function catGraph(st, P, t, c) {
     return '<button class="skrow ' + stt + " " + dc + '" data-act="skskill" data-v="' + s.id + '"><span class="skmark">' + MARK[stt] + '</span><span class="sktxt"><b>' + esc(s.name) + '</b><span class="who">' + WORD[stt] + (after.length && stt !== "complete" ? " · after " + esc(after.join(", ")) : "") + '</span></span><span class="chev" aria-hidden="true">›</span></button>';
   };
   var done = function (id) { return P[id] && P[id].s === "done"; };
-  return '<div class="card"><div class="row between nowrap"><div class="row nowrap"><button class="btn sm" data-act="skback" aria-label="Back to ' + esc(t.name) + '">← ' + esc(t.name) + '</button><div><p class="eyebrow">' + esc(st) + "</p><h2>" + esc(c.name) + '</h2></div></div><span class="who skcount">' + d + " of " + c.skills.length + " skills</span></div>" +
+  var wait = catWait(P, t, c);
+  return '<div class="card"><div class="row between nowrap"><div class="row nowrap"><button class="btn sm" data-act="skback" aria-label="Back to ' + esc(t.name) + '">← ' + esc(t.name) + '</button><div><p class="eyebrow">' + esc(st) + "</p><h2>" + esc(c.name) + "</h2>" + (wait.length ? '<span class="who">You can read these. Start them after ' + esc(wait.join(", ")) + ".</span>" : "") + '</div></div><span class="who skcount">' + d + " of " + c.skills.length + " skills</span></div>" +
     (isPhone() ? stepList(c.skills, row) : LEGEND + graph(c.skills, node, done)) + "</div>";
 }
 function linkLabel(url) {
@@ -528,18 +535,17 @@ function linkLabel(url) {
   if (host === "frcdesign.org") return "FRCDesign.org lesson";
   if (host === "frcelectrical.org") return "FRCElectrical.org lesson";
   if (host === "docs.wpilib.org") return "WPILib docs";
-  if (host === "docs.python.org") return "Python tutorial";
-  if (host === "robotpy.readthedocs.io") return "RobotPy docs";
+  if (host === "docs.oracle.com") return "Java tutorial";
   if (host === "docs.github.com") return "Git guide";
   if (host === "docs.advantagescope.org") return "AdvantageScope docs";
   if (host === "choreo.autos") return "Choreo docs";
   if (host === "docs.wcproducts.com") return "WCP guide";
   if (host === "wiki.bambulab.com" || host === "bambulab.com") return "Bambu guide";
   if (host === "youtube.com" || host === "youtu.be") return "Video";
-  if (host === "grizzly.com") return "Grizzly page";
-  if (host === "support.grizzly.com") return "Grizzly FAQ";
+  if (host === "grizzly.com") return "Metal bandsaw video";
+  if (host === "support.grizzly.com") return "Metal bandsaw FAQ";
   if (host === "osha.gov") return "OSHA machine guarding";
-  if (host === "mechmaxx.com") return "Lathe page";
+  if (host === "mechmaxx.com") return "Similar lathe page";
   return "Guide";
 }
 function checkCopy(s) {
@@ -572,7 +578,7 @@ D.drawers.skill = function (d) {
     guide +
     (reqs ? '<div><p class="flabel">Needs first</p><div class="list">' + reqs + "</div></div>" : "") +
     (rec && rec.s === "done" ? '<p class="who">Signed off by ' + esc(rec.by) + " · " + esc(rec.at) + "</p>" : "") +
-    (acts ? '<div class="row skacts">' + acts + "</div>" : stt === "locked" ? '<p class="mute">Finish what this needs first.</p>' : "");
+    (acts ? '<div class="row skacts">' + acts + "</div>" : stt === "locked" ? '<p class="mute">' + (catWait(P, t, c).length ? "You can read this. Start it after " + esc(catWait(P, t, c).join(", ")) + "." : "Finish the skill before this one before you start it.") + "</p>" : "");
 };
 function signoffView() {
   var S = D.S, b = S.sk.bulk, s = BYID[b.id];
@@ -607,28 +613,38 @@ A.skmine = function (b) { var S = D.S; S.sk.student = "Sam Ortiz"; D.openDrawer(
 A.skreadyall = function () { readyAll = !readyAll; D.render(); };
 A.skstudent = function (b) { var S = D.S; S.sk.student = b.dataset.v; S.sk.cat = null; S.tabs.skills = "trees"; D.render(); };
 D.changes.skstudent = function (el) { D.S.sk.student = el.value; D.render(); };
-A.skcat = function (b) { if (b.getAttribute("aria-disabled") === "true") { D.toast("Finish the categories above this one first."); D.render(); return; } D.S.sk.cat = b.dataset.v; D.render(); };
+A.skcat = function (b) { D.S.sk.cat = b.dataset.v; D.render(); };
 A.skback = function () { D.S.sk.cat = null; D.render(); };
 A.skskill = function (b) { D.openDrawer("skill", { id: b.dataset.v }); };
-function setDone(st, id) { D.S.sk.prog[st][id] = { s: "done", by: D.me().name, at: "Nov 10" }; D.S.sk.requests = D.S.sk.requests.filter(function (r) { return !(r.st === st && r.id === id); }); }
+function setDone(st, id) {
+  var s = BYID[id], t = tree(s.tree), c = cat(t, s.cat);
+  if (skillStatus(st, D.S.sk.prog[st], t, c, s) === "locked") return false;
+  D.S.sk.prog[st][id] = { s: "done", by: D.me().name, at: "Nov 10" }; D.S.sk.requests = D.S.sk.requests.filter(function (r) { return !(r.st === st && r.id === id); });
+  return true;
+}
 A.sksignoff = function (b) {
   var S = D.S, st = S.sk.student, id = b.dataset.v, prev = S.sk.prog[st][id];
   D.withUndo("Signed off " + st + " on " + BYID[id].name, function () { setDone(st, id); D.log("signed off " + st + " on " + BYID[id].name, "skills"); if (st === "Sam Ortiz") D.notify("student", "skills", D.me().name + " signed you off on " + BYID[id].name + "."); }, function () { if (prev) S.sk.prog[st][id] = prev; else delete S.sk.prog[st][id]; S.activity.shift(); });
 };
 A.skunsign = function (b) { var S = D.S; delete S.sk.prog[S.sk.student][b.dataset.v]; D.toast("Sign-off removed."); D.render(); };
-A.skprogress = function (b) { var S = D.S; S.sk.prog[S.sk.student][b.dataset.v] = { s: "progress" }; D.render(); };
+A.skprogress = function (b) {
+  var S = D.S, st = S.sk.student, id = b.dataset.v, s = BYID[id], t = tree(s.tree), c = cat(t, s.cat);
+  if (skillStatus(st, S.sk.prog[st], t, c, s) === "locked") { D.toast("Finish the level before this one first."); D.render(); return; }
+  S.sk.prog[st][id] = { s: "progress" }; D.render();
+};
 A.skrequest = function (b) {
-  var S = D.S, id = b.dataset.v;
+  var S = D.S, id = b.dataset.v, s = BYID[id], t = tree(s.tree), c = cat(t, s.cat);
+  if (skillStatus("Sam Ortiz", S.sk.prog["Sam Ortiz"], t, c, s) === "locked") { D.toast("Finish the level before this one first."); D.render(); return; }
   S.sk.requests.push({ st: "Sam Ortiz", id: id, note: "" }); S.sk.prog["Sam Ortiz"][id] = S.sk.prog["Sam Ortiz"][id] || { s: "progress" };
   D.notify(["mentor", "admin"], "skills", "Sam Ortiz asked for a sign-off on " + BYID[id].name + "."); D.log("asked for a sign-off on " + BYID[id].name, "skills");
   D.toast("Asked. Mentors get a notice."); D.render();
 };
 A.skcancelreq = function (b) { var S = D.S; S.sk.requests = S.sk.requests.filter(function (r) { return !(r.st === "Sam Ortiz" && r.id === b.dataset.v); }); D.render(); };
-A.skqok = function (b) { var S = D.S, r = S.sk.requests[+b.dataset.i]; setDone(r.st, r.id); D.log("signed off " + r.st + " on " + BYID[r.id].name, "skills"); if (r.st === "Sam Ortiz") D.notify("student", "skills", D.me().name + " signed you off on " + BYID[r.id].name + "."); D.toast("Signed off " + r.st + "."); D.render(); };
+A.skqok = function (b) { var S = D.S, r = S.sk.requests[+b.dataset.i]; if (!setDone(r.st, r.id)) { D.toast("Finish the level before this one first."); D.render(); return; } D.log("signed off " + r.st + " on " + BYID[r.id].name, "skills"); if (r.st === "Sam Ortiz") D.notify("student", "skills", D.me().name + " signed you off on " + BYID[r.id].name + "."); D.toast("Signed off " + r.st + "."); D.render(); };
 A.skqno = function (b) { var S = D.S, r = S.sk.requests.splice(+b.dataset.i, 1)[0]; if (r.st === "Sam Ortiz") D.notify("student", "skills", D.me().name + " says not yet on " + BYID[r.id].name + ". Ask them what to practice."); D.render(); };
 D.changes.skbulk = function (el) { D.S.sk.bulk = { id: el.value, picks: {} }; D.render(); };
 A.skbulkpick = function (b) { var p = D.S.sk.bulk.picks; p[b.dataset.v] = !p[b.dataset.v]; D.render(); };
-A.skbulkgo = function () { var S = D.S, b = S.sk.bulk, names = Object.keys(b.picks).filter(function (k) { return b.picks[k]; }); names.forEach(function (st) { setDone(st, b.id); }); D.log("signed off " + names.length + " students on " + BYID[b.id].name, "skills"); b.picks = {}; D.toast("Signed off " + names.length + " on " + BYID[b.id].name + "."); D.render(); };
+A.skbulkgo = function () { var S = D.S, b = S.sk.bulk, names = Object.keys(b.picks).filter(function (k) { return b.picks[k]; }); var done = names.filter(function (st) { return setDone(st, b.id); }); D.log("signed off " + done.length + " students on " + BYID[b.id].name, "skills"); b.picks = {}; D.toast("Signed off " + done.length + " on " + BYID[b.id].name + "."); D.render(); };
 A.skaipick = function () { D.S.sk.ai = [ { op: "Add", name: "Inspect battery leads", note: "Before each match: cracks, loose lugs, heat marks" }, { op: "Add", name: "Torque SB50 terminals", note: "Needs: Large lugs" }, { op: "Add", name: "Label and log a battery", note: "Number, date, first use" }, { op: "Update", name: "Power distribution", note: "Adds “check the main breaker rating” to the description" } ]; D.render(); };
 A.skaidrop = function (b) { D.S.sk.ai.splice(+b.dataset.i, 1); D.render(); };
 A.skaidiscard = function () { D.S.sk.ai = null; D.render(); };

@@ -88,7 +88,7 @@
 .gnode.requested { border-color: var(--info); border-style: dashed; }
 .gnode.requested .mark { color: var(--info); }
 .gnode.locked { opacity: 1; border-style: dashed; border-color: var(--line-2); color: var(--mute); }
-.gnode:hover:not(.locked) { box-shadow: none; background: var(--tint); }
+.gnode:hover, .gnode.locked:hover { box-shadow: none; background: var(--tint); }
 .gnode:focus-visible, .skrow:focus-visible { outline: 2px solid var(--accent); outline-offset: 1px; }
 
 /* Legend: one quiet line */
