@@ -483,3 +483,13 @@ button.sw[aria-pressed="true"] { border-color: var(--text); box-shadow: 0 0 0 2p
 @media (max-width: 640px) {
  .choice.four { grid-template-columns: repeat(2, minmax(0,1fr)); }
 }
+
+/* Account: identity, instant theme choice, and three doors. */
+.accountmenu { position: absolute; top: calc(100% + 4px); right: 8px; width: min(288px, calc(100vw - 16px)); max-height: calc(100dvh - 76px); overflow: auto; padding: 12px; display: grid; gap: 8px; border: 1px solid var(--line-2); border-radius: var(--r); background: var(--surface); color: var(--text); box-shadow: 0 16px 44px rgba(0,0,0,.25); }
+.accountmenu small { display: block; overflow-wrap: anywhere; }
+.accountmenu b { overflow-wrap: anywhere; }
+.accountmenu :focus-visible { outline-color: var(--accent); }
+.accountchoice { display: flex; align-items: center; width: 100%; min-height: 44px; padding: 8px 10px; border: 0; border-radius: 8px; background: none; color: var(--text); text-align: left; font: inherit; }
+.accountchoice:hover { background: var(--surface-2); }
+.accountchoice[aria-pressed="true"] { background: var(--tint-2); color: var(--accent); }
+.appbar .acct, .appbar .appsbtn, .appbar .brand { min-width: 44px; min-height: 44px; }

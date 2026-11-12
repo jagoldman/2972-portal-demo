@@ -94,7 +94,7 @@ D.toast = function (text, undo) {
 };
 D.withUndo = function (text, doIt, undo) { doIt(); D.toast(text, undo); D.render(); };
 D.go = function (route) {
-  var S = D.S; S.route = route; S.bell = false; S.appsOpen = false; S.drawer = null; S.modal = null;
+  var S = D.S; S.route = route; S.bell = false; S.appsOpen = false; S.accountOpen = false; S.drawer = null; S.modal = null;
   try { if (location.hash !== "#" + route) history.replaceState(null, "", "#" + route); } catch (e) {}
   D.render(); window.scrollTo(0, 0);
 };
@@ -147,21 +147,27 @@ function appbar() {
   var S = D.S, unread = D.myNotices().filter(function (n) { return !n.read; }).length;
   var cur = D.tile(S.route), here = S.route === "account" ? "Account" : cur ? cur.name : "Gears & Buccaneers";
   return '<header class="appbar"><button class="appsbtn" data-act="apps" aria-expanded="' + !!S.appsOpen + '" aria-label="All apps">' + D.ic("apps", 20) + "</button>" +
-    '<a class="brand" href="' + D.appHref("portal") + '" target="_blank" rel="noopener noreferrer" aria-label="Home (opens in a new tab)"><span class="badge-2972">2972</span></a>' +
+    '<a class="brand" href="' + D.appHref("portal") + '" target="_blank" rel="noopener noreferrer" aria-label="Portal home" data-act="go" data-v="portal"><span class="badge-2972">2972</span></a>' +
     '<span class="appname">' + esc(here) + '</span><span class="grow"></span>' +
     (S.mode === "competition" ? '<button class="modechip" data-act="go" data-v="account" aria-label="Competition mode" title="Competition mode. Change it on your Account page.">Comp<span class="hide-sm">etition mode</span></button>' : "") +
     '<button class="iconbtn" data-act="bell" aria-expanded="' + !!S.bell + '" aria-label="Notifications">' + D.ic("bell") + (unread ? '<span class="count">' + unread + "</span>" : "") + "</button>" +
-    '<a class="iconbtn acct" href="' + D.appHref("account") + '" target="_blank" rel="noopener noreferrer" aria-label="Account (opens in a new tab)">' + esc(D.me().name.replace(/^(Ms|Mr|Dr)\. /, "").split(" ").map(function (w) { return w[0]; }).join("").slice(0, 2)) + "</a>" +
-    (S.appsOpen ? appsMenu() : "") + (S.bell ? bellPanel() : "") + "</header>" +
-    (S.appsOpen ? '<button class="menu-scrim" data-act="apps" aria-label="Close apps"></button>' : S.bell ? '<button class="menu-scrim" data-act="bell" aria-label="Close notifications"></button>' : "");
+    (S.role !== "display" ? '<button class="iconbtn acct" data-act="accountmenu" aria-controls="account-menu" aria-expanded="' + !!S.accountOpen + '" aria-label="Account: ' + esc(D.me().name) + '">' + esc(D.me().name.replace(/^(Ms|Mr|Dr)\. /, "").split(" ").map(function (w) { return w[0]; }).join("").slice(0, 2)) + "</button>" : "") +
+    (S.appsOpen ? appsMenu() : "") + (S.bell ? bellPanel() : "") + (S.accountOpen && S.role !== "display" ? accountMenu() : "") + "</header>" +
+    (S.appsOpen ? '<button class="menu-scrim" data-act="apps" aria-label="Close apps"></button>' : S.bell ? '<button class="menu-scrim" data-act="bell" aria-label="Close notifications"></button>' : S.accountOpen ? '<button class="menu-scrim" data-act="accountmenu" aria-label="Close account"></button>' : "");
 }
+function accountMenu() {
+  var theme = document.documentElement.getAttribute("data-theme") || "";
+  return '<div class="accountmenu" id="account-menu" aria-label="Account"><div><b>' + esc(D.me().name) + '</b><small class="mute">' + esc(D.me().groups.join(" · ")) + '</small></div><div role="group" aria-label="Theme"><h3>Theme</h3>' +
+    [["", "Match my device"], ["light", "Light"], ["dark", "Dark"]].map(function (t) { return '<button class="accountchoice" data-act="menutheme" data-v="' + t[0] + '" aria-pressed="' + (theme === t[0]) + '">' + t[1] + '</button>'; }).join("") +
+    '</div><a class="accountchoice" href="#account" data-act="accountnotifications">Notification settings</a><a class="accountchoice" href="#account" data-act="go" data-v="account">All account settings</a><button class="accountchoice" data-act="demosignout">Sign out</button></div>';
+
 function appsMenu() {
   var S = D.S, tiles = D.visibleTiles();
   function item(t) { return '<a class="appitem" href="' + D.appHref(t.id) + '" target="_blank" rel="noopener noreferrer" aria-label="' + esc(t.name) + ' (opens in a new tab)"' + (S.route === t.id ? ' aria-current="page"' : "") + '><span class="ic">' + D.ic(t.icon, 20) + "</span><span><b>" + esc(t.name) + (t.ext ? " ↗" : "") + "</b><small>" + esc(SHORT[t.id] || t.desc) + "</small></span></a>"; }
   var home = '<a class="appitem" href="' + D.appHref("portal") + '" target="_blank" rel="noopener noreferrer" aria-label="Home (opens in a new tab)"' + (S.route === "portal" ? ' aria-current="page"' : "") + '><span class="ic">' + D.ic("home", 20) + "</span><span><b>Home</b><small>Today and all your apps</small></span></a>";
   var more = tiles.filter(function (t) { return t.more; });
   return '<div class="appsmenu" role="dialog" aria-label="All apps"><div class="menuhead"><div class="seg" role="group" aria-label="Mode"><button data-act="mode" data-v="build" aria-pressed="' + (S.mode === "build") + '">Build</button><button data-act="mode" data-v="competition" aria-pressed="' + (S.mode === "competition") + '">Competition</button></div><button class="xbtn" data-act="apps" aria-label="Close">×</button></div>' +
-    '<div class="appgrid">' + home + tiles.filter(function (t) { return !t.more; }).map(item).join("") + "</div>" +
+    '<div class="appgrid">' + tiles.filter(function (t) { return !t.more; }).map(item).join("") + "</div>" +
     (more.length ? '<div class="menumore"><small>More</small><div class="appgrid">' + more.map(item).join("") + "</div></div>" : "") + "</div>";
 }
 function bellPanel() {
@@ -293,7 +299,7 @@ window.addEventListener("resize", function () { var row = document.querySelector
 /* ---------- Shell actions ---------- */
 var A = D.acts;
 A.role = function (b) {
-  var S = D.S; S.role = b.dataset.v; S.bell = false; S.appsOpen = false; S.drawer = null; S.modal = null;
+  var S = D.S; S.role = b.dataset.v; S.bell = false; S.appsOpen = false; S.accountOpen = false; S.drawer = null; S.modal = null;
   (D.onRole || []).forEach(function (f) { f(S.role); });
   if (S.role === "display") { S.route = D.DISPLAY_ROUTES[S.route] ? S.route : "portal"; }
   else if (!(S.route === "portal" || S.route === "account" || (D.tile(S.route) && D.inGroup(S.route)) || (D.DISPLAY_ROUTES[S.route] && D.isStaff()))) S.route = "portal";
@@ -304,8 +310,12 @@ A.reset = function () { D.reset(); D.toast("Demo reset to its sample data."); D.
 A.go = function (b) { D.go(b.dataset.v); };
 A.tab = function (b) { D.S.tabs[b.dataset.app] = b.dataset.v; D.S.drawer = null; D.render(); };
 A.mode = function (b) { var S = D.S; S.mode = b.dataset.v; if (S.route !== "portal" && S.route !== "account" && D.tile(S.route) && D.visibleTiles().indexOf(D.tile(S.route)) < 0) S.route = "portal"; D.render(); };
-A.bell = function () { D.S.bell = !D.S.bell; D.S.appsOpen = false; D.render(); };
-A.apps = function () { D.S.appsOpen = !D.S.appsOpen; D.S.bell = false; D.render(); };
+A.bell = function () { D.S.accountOpen = false; D.S.bell = !D.S.bell; D.S.appsOpen = false; D.render(); };
+A.apps = function () { D.S.accountOpen = false; D.S.appsOpen = !D.S.appsOpen; D.S.bell = false; D.render(); };
+A.accountmenu = function () { D.S.accountOpen = !D.S.accountOpen; D.S.appsOpen = false; D.S.bell = false; D.render(); document.querySelector(".acct").focus(); };
+A.menutheme = function (b) { D.acts.actheme(b); D.S.accountOpen = false; D.render(); document.querySelector(".acct").focus(); };
+A.accountnotifications = function () { D.go("account"); var heading = Array.from(document.querySelectorAll(".acc h2")).find(function (h) { return h.textContent === "Notifications"; }); if (heading) { heading.parentElement.style.scrollMarginTop = "64px"; heading.parentElement.scrollIntoView(); } };
+A.demosignout = function () { D.S.accountOpen = false; D.toast("Signed out (demo)"); D.render(); };
 A.readall = function () { D.myNotices().forEach(function (n) { n.read = true; }); D.render(); };
 A.goapp = function (b) { if (b.dataset.tab) D.S.tabs[b.dataset.app] = b.dataset.tab; D.go(b.dataset.app); };
 A.closedrawer = function () { D.S.drawer = null; D.render(); };
@@ -321,8 +331,8 @@ document.addEventListener("change", function (e) { var t = e.target, k = t.getAt
 document.addEventListener("input", function (e) { var t = e.target, k = t.getAttribute && t.getAttribute("data-input"); if (k && D.inputs[k]) D.inputs[k](t, e); });
 document.addEventListener("keydown", function (e) {
   if (e.key !== "Escape") return;
-  var S = D.S; if (S.modal) S.modal = null; else if (S.drawer) S.drawer = null; else if (S.bell || S.appsOpen) { S.bell = false; S.appsOpen = false; } else return;
-  D.render();
+  var S = D.S; if (S.modal) S.modal = null; else if (S.drawer) S.drawer = null; else if (S.bell || S.appsOpen || S.accountOpen) { S.bell = false; S.appsOpen = false; S.accountOpen = false; } else return;
+  var accountFocus = !!S.accountOpen; S.accountOpen = false; D.render(); if (accountFocus) document.querySelector(".acct").focus();
 });
 function routeFromHash() { var h = location.hash.slice(1); return h && (D.views[h] || D.tile(h)) ? h : null; }
 window.addEventListener("hashchange", function () { var h = routeFromHash(); if (h && h !== D.S.route) { D.S.route = h; D.S.drawer = null; D.S.modal = null; D.render(); } });
