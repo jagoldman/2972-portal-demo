@@ -161,10 +161,10 @@ function accountMenu() {
     [["", "Match my device"], ["light", "Light"], ["dark", "Dark"]].map(function (t) { return '<button class="accountchoice" data-act="menutheme" data-v="' + t[0] + '" aria-pressed="' + (theme === t[0]) + '">' + t[1] + '</button>'; }).join("") +
     '</div><a class="accountchoice" href="#account" data-act="accountnotifications">Notification settings</a><a class="accountchoice" href="#account" data-act="go" data-v="account">All account settings</a><button class="accountchoice" data-act="demosignout">Sign out</button></div>';
 
+}
 function appsMenu() {
   var S = D.S, tiles = D.visibleTiles();
   function item(t) { return '<a class="appitem" href="' + D.appHref(t.id) + '" target="_blank" rel="noopener noreferrer" aria-label="' + esc(t.name) + ' (opens in a new tab)"' + (S.route === t.id ? ' aria-current="page"' : "") + '><span class="ic">' + D.ic(t.icon, 20) + "</span><span><b>" + esc(t.name) + (t.ext ? " ↗" : "") + "</b><small>" + esc(SHORT[t.id] || t.desc) + "</small></span></a>"; }
-  var home = '<a class="appitem" href="' + D.appHref("portal") + '" target="_blank" rel="noopener noreferrer" aria-label="Home (opens in a new tab)"' + (S.route === "portal" ? ' aria-current="page"' : "") + '><span class="ic">' + D.ic("home", 20) + "</span><span><b>Home</b><small>Today and all your apps</small></span></a>";
   var more = tiles.filter(function (t) { return t.more; });
   return '<div class="appsmenu" role="dialog" aria-label="All apps"><div class="menuhead"><div class="seg" role="group" aria-label="Mode"><button data-act="mode" data-v="build" aria-pressed="' + (S.mode === "build") + '">Build</button><button data-act="mode" data-v="competition" aria-pressed="' + (S.mode === "competition") + '">Competition</button></div><button class="xbtn" data-act="apps" aria-label="Close">×</button></div>' +
     '<div class="appgrid">' + tiles.filter(function (t) { return !t.more; }).map(item).join("") + "</div>" +
