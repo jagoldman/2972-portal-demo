@@ -331,8 +331,17 @@ document.addEventListener("change", function (e) { var t = e.target, k = t.getAt
 document.addEventListener("input", function (e) { var t = e.target, k = t.getAttribute && t.getAttribute("data-input"); if (k && D.inputs[k]) D.inputs[k](t, e); });
 document.addEventListener("keydown", function (e) {
   if (e.key !== "Escape") return;
-  var S = D.S; if (S.modal) S.modal = null; else if (S.drawer) S.drawer = null; else if (S.bell || S.appsOpen || S.accountOpen) { S.bell = false; S.appsOpen = false; S.accountOpen = false; } else return;
-  var accountFocus = !!S.accountOpen; S.accountOpen = false; D.render(); if (accountFocus) document.querySelector(".acct").focus();
+  var S = D.S, accountFocus = !!S.accountOpen; if (S.modal) S.modal = null; else if (S.drawer) S.drawer = null; else if (S.bell || S.appsOpen || S.accountOpen) { S.bell = false; S.appsOpen = false; S.accountOpen = false; } else return;
+  S.accountOpen = false; D.render(); if (accountFocus) document.querySelector(".acct").focus();
+});
+document.addEventListener("focusout", function (e) {
+  if (!D.S.accountOpen || !e.relatedTarget) return;
+  if (!e.relatedTarget.closest(".accountmenu, .acct")) {
+    D.S.accountOpen = false;
+    var panel = document.querySelector(".accountmenu"), scrim = document.querySelector(".menu-scrim");
+    if (panel) panel.remove(); if (scrim) scrim.remove();
+    var trigger = document.querySelector(".acct"); if (trigger) trigger.setAttribute("aria-expanded", "false");
+  }
 });
 function routeFromHash() { var h = location.hash.slice(1); return h && (D.views[h] || D.tile(h)) ? h : null; }
 window.addEventListener("hashchange", function () { var h = routeFromHash(); if (h && h !== D.S.route) { D.S.route = h; D.S.drawer = null; D.S.modal = null; D.render(); } });
