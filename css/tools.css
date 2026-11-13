@@ -42,6 +42,5 @@
 .gfacts div { display: grid; gap: 2px; min-width: 0; }
 .gfacts dt { font-size: .8rem; color: var(--mute); font-weight: 600; }
 .gfacts dd { margin: 0; font-weight: 600; }
-.abbr { text-decoration: underline dotted; text-underline-offset: 3px; cursor: help; }
 @media (max-width: 640px) { .gfacts { grid-template-columns: minmax(0,1fr); } .choice.three { grid-template-columns: minmax(0,1fr); } }
 .toolstep .seg { justify-self: start; }

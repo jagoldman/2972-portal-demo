@@ -461,7 +461,7 @@ function overview() {
     Object.keys(P[st]).forEach(function (k) { if (P[st][k].s === "progress") prog++; });
     return '<tr class="click" data-act="skstudent" data-v="' + esc(st) + '"><td><b>' + esc(st) + "</b>" + (st === "Sam Ortiz" && S.role === "student" ? ' <span class="who">(you)</span>' : "") + "</td>" + cells + '<td class="num">' + d + '</td><td class="num">' + prog + '</td><td class="num">' + D.pct(d, all) + "%</td></tr>";
   }).join("");
-  html += '<div class="card"><div class="row between"><h2>Students</h2><span class="who">Tap a row to open their trees.</span></div><div class="tablewrap"><table class="sktable"><thead><tr><th>Student</th>' + TREES.map(function (t) { return '<th title="' + esc(t.name) + '">' + t.tag + "</th>"; }).join("") + "<th>Done</th><th>Started</th><th>Overall</th></tr></thead><tbody>" + rows + "</tbody></table></div></div>";
+  html += '<div class="card"><div class="row between"><h2>Students</h2><span class="who">Tap a row to open their trees.</span></div><div class="tablewrap"><table class="sktable"><thead><tr><th>Student</th>' + TREES.map(function (t) { return '<th data-tip="' + esc(t.name) + '">' + t.tag + "</th>"; }).join("") + "<th>Done</th><th>Started</th><th>Overall</th></tr></thead><tbody>" + rows + "</tbody></table></div></div>";
   return html;
 }
 function permitState(p, tool) {
@@ -484,7 +484,7 @@ function permitsView() {
       var label = state === "yes" ? "Yes" : state === "training" ? "Training" : "No";
       var cls = state === "yes" ? "ok" : state === "training" ? "warn" : "";
       var tip = state === "yes" ? "Signed off by " + rec.by + " · " + rec.at : state === "training" ? "Started. The qualification is not signed off." : "Not started. May not run this tool alone.";
-      return '<td><button class="pill skperm ' + cls + '" data-act="skpermit" data-st="' + esc(st) + '" data-cat="' + tool.cat + '" data-skill="' + tool.skill + '" title="' + esc(tip) + '">' + label + "</button></td>";
+      return '<td><button class="pill skperm ' + cls + '" data-act="skpermit" data-st="' + esc(st) + '" data-cat="' + tool.cat + '" data-skill="' + tool.skill + '" data-tip="' + esc(tip) + '">' + label + "</button></td>";
     }).join("");
     return "<tr><td><b>" + esc(st) + "</b>" + you + "</td>" + cells + "</tr>";
   }).join("");
@@ -505,7 +505,7 @@ function treesView() {
   var r = treePct(P, t), locked = treeLocked(P, t);
   var node = function (c, style) {
     var stt = catStatus(P, t, c), d = catCounts(P, c);
-    return '<button class="gnode ' + stt + '" ' + style + ' data-act="skcat" data-v="' + c.id + '" title="' + esc(c.name + " · " + (stt === "locked" ? "Open to read. Start after the level before it." : WORD[stt])) + '">' + (MARK[stt] ? '<span class="mark">' + MARK[stt] + "</span>" : "") + "<b>" + esc(c.name) + '</b><span class="gline"><span class="gbar"><i style="width:' + D.pct(d, c.skills.length) + '%"></i></span><span class="gcount">' + d + "/" + c.skills.length + "</span></span></button>";
+    return '<button class="gnode ' + stt + '" ' + style + ' data-act="skcat" data-v="' + c.id + '" data-tip="' + esc(stt === "locked" ? "Open to read. Start after the level before it." : WORD[stt] + ". Open to see its skills.") + '">' + (MARK[stt] ? '<span class="mark">' + MARK[stt] + "</span>" : "") + "<b>" + esc(c.name) + '</b><span class="gline"><span class="gbar"><i style="width:' + D.pct(d, c.skills.length) + '%"></i></span><span class="gcount">' + d + "/" + c.skills.length + "</span></span></button>";
   };
   var row = function (c, dc) {
     var stt = catStatus(P, t, c), d = catCounts(P, c);
@@ -519,7 +519,7 @@ function catGraph(st, P, t, c) {
   var d = catCounts(P, c);
   var node = function (s, style) {
     var stt = skillStatus(st, P, t, c, s);
-    return '<button class="gnode ' + stt + '" ' + style + ' data-act="skskill" data-v="' + s.id + '" title="' + esc(s.name + (s.sum ? " — " + s.sum : "")) + '">' + (MARK[stt] ? '<span class="mark">' + MARK[stt] + "</span>" : "") + "<b>" + esc(s.name) + "</b></button>";
+    return '<button class="gnode ' + stt + '" ' + style + ' data-act="skskill" data-v="' + s.id + '" data-tip="' + esc(s.sum || "Open to see what it takes and ask for a sign-off.") + '">' + (MARK[stt] ? '<span class="mark">' + MARK[stt] + "</span>" : "") + "<b>" + esc(s.name) + "</b></button>";
   };
   var row = function (s, dc) {
     var stt = skillStatus(st, P, t, c, s), after = s.req.filter(function (r) { return BYID[r]; }).map(function (r) { return BYID[r].name; });

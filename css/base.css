@@ -513,3 +513,13 @@ button.sw[aria-pressed="true"] { border-color: var(--text); box-shadow: 0 0 0 2p
 .accountchoice:hover { background: var(--surface-2); }
 .accountchoice[aria-pressed="true"] { background: var(--tint-2); color: var(--accent); }
 .appbar .acct, .appbar .appsbtn, .appbar .brand { min-width: 44px; min-height: 44px; }
+
+/* ============================================================
+   11. The hover description (js/tip.js): any [data-tip]. Above every layer, inside the window, a short fade only.
+   ============================================================ */
+.tip { position: fixed; z-index: 1000; top: 0; left: 0; max-width: min(280px, calc(100vw - 16px)); padding: 6px 10px; border-radius: 6px; background: var(--rail); color: var(--rail-text); font-size: .8rem; font-weight: 500; line-height: 1.35; box-shadow: 0 6px 20px rgba(0,0,0,.25); pointer-events: none; opacity: 0; visibility: hidden; transition: opacity .12s ease, visibility 0s .12s; }
+.tip.on { opacity: 1; visibility: visible; transition: opacity .12s ease; }
+:root[data-theme="dark"] .tip { background: #e9ecf3; color: #0b1224; }
+@media (prefers-color-scheme: dark) { :root:not([data-theme="light"]) .tip { background: #e9ecf3; color: #0b1224; } }
+/* A short code or word with a description: dotted underline. */
+.abbr { text-decoration: underline dotted; text-underline-offset: 3px; cursor: help; }

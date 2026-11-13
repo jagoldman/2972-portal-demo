@@ -70,8 +70,8 @@ D.TILES = [
 /* Tools: small helpers that open inside the site, in the same tab. They are not apps and not link-outs, so they get
    their own closed group under Apps. Adding a tool adds one row here and one page in js/tools.js, never a new tile. */
 D.TOOLS = [
-  { id: "tool-trace", name: "Drawing to vector", icon: "trace", line: "A photo of a drawing becomes a laser or CAD file.", modes: ["build", "competition"], groups: BUILDERS },
-  { id: "tool-gear", name: "Gear and sprocket finder", icon: "gear", line: "A photo and one measurement name the part.", modes: ["build", "competition"], groups: BUILDERS }
+  { id: "tool-trace", name: "Drawing to vector", icon: "trace", line: "A photo of a drawing becomes a laser or CAD file.", tip: "Makes an SVG for the laser and a DXF for Onshape, at true size.", modes: ["build", "competition"], groups: BUILDERS },
+  { id: "tool-gear", name: "Gear and sprocket finder", icon: "gear", line: "A photo and one measurement name the part.", tip: "Works out gear pitch, chain size or belt profile, then finds it in Parts.", modes: ["build", "competition"], groups: BUILDERS }
 ];
 D.tool = function (id) { return D.TOOLS.filter(function (t) { return t.id === id; })[0]; };
 D.isToolRoute = function (r) { return r === "tools" || !!D.tool(r); };
@@ -143,7 +143,7 @@ D.appHref = function (route) {
 D.tab = function (app, def) { return D.S.tabs[app] || def; };
 D.tabsFor = function (app, list, def) {
   var cur = D.tab(app, def || list[0][0]);
-  return list.map(function (t) { return '<button class="tab" data-act="tab" data-app="' + app + '" data-v="' + t[0] + '" aria-pressed="' + (cur === t[0]) + '">' + esc(t[1]) + (t[2] ? ' <span class="tcount">' + esc(t[2]) + "</span>" : "") + (t[3] ? ' <span class="tcount warn">' + esc(t[3]) + "</span>" : "") + "</button>"; }).join("");
+  return list.map(function (t) { return '<button class="tab" data-act="tab" data-app="' + app + '" data-v="' + t[0] + '" aria-pressed="' + (cur === t[0]) + '"' + (D.tabTip ? D.tabTip(app, t[0]) : "") + ">" + esc(t[1]) + (t[2] ? ' <span class="tcount">' + esc(t[2]) + "</span>" : "") + (t[3] ? ' <span class="tcount warn">' + esc(t[3]) + "</span>" : "") + "</button>"; }).join("");
 };
 /* Tab row. With tabs: a sticky row under the app bar (the bar already names the app, so no title; host is ignored).
    Without tabs: the title is an h1 at the top of the content, with no band. */
@@ -159,12 +159,15 @@ D.openDrawer = function (type, data) { D.S.drawer = { type: type, data: data || 
 D.openModal = function (type, data) { D.S.modal = { type: type, data: data || {} }; D.render(); };
 D.val = function (id) { var el = document.getElementById(id); return el ? el.value : ""; };
 D.drawerHead = function (eyebrow, title) {
-  return '<div class="row between nowrap"><div style="min-width:0">' + (eyebrow ? '<p class="eyebrow">' + esc(eyebrow) + "</p>" : "") + "<h2>" + esc(title) + '</h2></div><button class="xbtn" data-act="closedrawer" aria-label="Close">×</button></div>';
+  return '<div class="row between nowrap"><div style="min-width:0">' + (eyebrow ? '<p class="eyebrow">' + esc(eyebrow) + "</p>" : "") + "<h2>" + esc(title) + '</h2></div><button class="xbtn" data-act="closedrawer" aria-label="Close" data-tip="Close this panel">×</button></div>';
 };
-D.modalHead = function (title) { return '<div class="row between nowrap"><h2>' + esc(title) + '</h2><button class="xbtn" data-act="closemodal" aria-label="Close">×</button></div>'; };
+D.modalHead = function (title) { return '<div class="row between nowrap"><h2>' + esc(title) + '</h2><button class="xbtn" data-act="closemodal" aria-label="Close" data-tip="Close without saving">×</button></div>'; };
 
 /* ---------- Shell pieces ---------- */
 // Short descriptions for the Home tiles and the Apps menu.
+// What each tile is for, as its hover description (never the same words as the short line under its name).
+var TILETIP = { tasks: "Your next task, projects and the build plan.", calendar: "See practices, sign in at the door and sign up for snacks.", parts: "Ask for a part, follow orders and find spares on the shelves.", skills: "Training trees that unlock step by step, with mentor sign-offs.", schedule: "Who does which role at the event, and when.", pit: "Match checklists, robot issues and battery charge.", scouting: "Match forms, assignments, team stats and the pick list.", onshape: "The team's robot CAD. Opens in a new tab.", github: "Robot code for every season. Opens in a new tab.", drive: "The team's shared files. Opens in a new tab.", admin: "Approve new accounts and set people's groups.", handbook: "Rules and info for students, families and mentors." };
+D.tileTip = function (id) { return TILETIP[id] ? ' data-tip="' + esc(TILETIP[id]) + '"' : ""; };
 var SHORT = { tasks: "Your tasks", calendar: "Practices, attendance and snacks", parts: "Request and find parts", skills: "Training and sign-offs", schedule: "Your event roles", pit: "Checklists and batteries", scouting: "Match forms", onshape: "Robot CAD", github: "Robot code", drive: "Shared files", admin: "Accounts and groups", handbook: "Team rules and info" };
 function demobar() {
   var S = D.S;
@@ -181,12 +184,12 @@ function demobar() {
 function appbar() {
   var S = D.S, unread = D.myNotices().filter(function (n) { return !n.read; }).length;
   var cur = D.tile(S.route), here = S.route === "account" ? "Account" : D.isToolRoute(S.route) ? "Tools" : cur ? cur.name : "Gears & Buccaneers";
-  return '<header class="appbar"><button class="appsbtn" data-act="apps" aria-expanded="' + !!S.appsOpen + '" aria-label="All apps">' + D.ic("apps", 20) + "</button>" +
+  return '<header class="appbar"><button class="appsbtn" data-act="apps" aria-expanded="' + !!S.appsOpen + '" aria-label="All apps" data-tip="Every app, tool and team link">' + D.ic("apps", 20) + "</button>" +
     '<a class="brand" href="' + D.appHref("portal") + '" target="_blank" rel="noopener noreferrer" aria-label="Portal home" data-act="go" data-v="portal"><span class="badge-2972">2972</span></a>' +
     '<span class="appname">' + esc(here) + '</span><span class="grow"></span>' +
-    (S.mode === "competition" ? '<button class="modechip" data-act="go" data-v="account" aria-label="Competition mode" title="Competition mode. Change it on your Account page.">Comp<span class="hide-sm">etition mode</span></button>' : "") +
-    '<button class="iconbtn" data-act="bell" aria-expanded="' + !!S.bell + '" aria-label="Notifications">' + D.ic("bell") + (unread ? '<span class="count">' + unread + "</span>" : "") + "</button>" +
-    (S.role !== "display" ? '<button class="iconbtn acct" data-act="accountmenu" aria-controls="account-menu" aria-expanded="' + !!S.accountOpen + '" aria-label="Account: ' + esc(D.me().name) + '">' + esc(D.me().name.replace(/^(Ms|Mr|Dr)\. /, "").split(" ").map(function (w) { return w[0]; }).join("").slice(0, 2)) + "</button>" : "") +
+    (S.mode === "competition" ? '<button class="modechip" data-act="go" data-v="account" aria-label="Competition mode" data-tip="Event apps are showing. Change it on your Account page.">Comp<span class="hide-sm">etition mode</span></button>' : "") +
+    '<button class="iconbtn" data-act="bell" aria-expanded="' + !!S.bell + '" aria-label="Notifications" data-tip="What is new for you in every app">' + D.ic("bell") + (unread ? '<span class="count">' + unread + "</span>" : "") + "</button>" +
+    (S.role !== "display" ? '<button class="iconbtn acct" data-act="accountmenu" aria-controls="account-menu" aria-expanded="' + !!S.accountOpen + '" aria-label="Account: ' + esc(D.me().name) + '" data-tip="Your theme, notices and account settings">' + esc(D.me().name.replace(/^(Ms|Mr|Dr)\. /, "").split(" ").map(function (w) { return w[0]; }).join("").slice(0, 2)) + "</button>" : "") +
     (S.appsOpen ? appsMenu() : "") + (S.bell ? bellPanel() : "") + (S.accountOpen && S.role !== "display" ? accountMenu() : "") + "</header>" +
     (S.appsOpen ? '<button class="menu-scrim" data-act="apps" aria-label="Close apps"></button>' : S.bell ? '<button class="menu-scrim" data-act="bell" aria-label="Close notifications"></button>' : S.accountOpen ? '<button class="menu-scrim" data-act="accountmenu" aria-label="Close account"></button>' : "");
 }
@@ -206,22 +209,22 @@ function groupRow(id, label, count, place, body) {
     '<span class="grpname">' + esc(label) + '</span><span class="tcount">' + count + '</span><span class="grpchev" aria-hidden="true">' + D.ic("chevron", 16) + "</span></button>" +
     '<div class="grpbody" id="' + bid + '"' + (open ? "" : " hidden") + ">" + body + "</div></div>";
 }
-D.toolRow = function (t) { return '<a class="toolrow" href="#' + t.id + '" data-act="go" data-v="' + t.id + '"><span class="ic">' + D.ic(t.icon, 18) + "</span><span><b>" + esc(t.name) + "</b><small>" + esc(t.line) + "</small></span></a>"; };
+D.toolRow = function (t) { return '<a class="toolrow" href="#' + t.id + '" data-act="go" data-v="' + t.id + '" data-tip="' + esc(t.tip) + '"><span class="ic">' + D.ic(t.icon, 18) + "</span><span><b>" + esc(t.name) + "</b><small>" + esc(t.line) + "</small></span></a>"; };
 function toolsGroup(place) {
   var tools = D.visibleTools(); if (!tools.length) return "";
   return groupRow("tools", "Tools", tools.length, place, tools.map(D.toolRow).join("") + '<a class="toolrow all" href="#tools" data-act="go" data-v="tools"><span>All tools</span><span class="chev" aria-hidden="true">›</span></a>');
 }
 function appsMenu() {
   var S = D.S, tiles = D.visibleTiles();
-  function item(t) { return '<a class="appitem" href="' + D.appHref(t.id) + '" target="_blank" rel="noopener noreferrer" aria-label="' + esc(t.name) + ' (opens in a new tab)"' + (S.route === t.id ? ' aria-current="page"' : "") + '><span class="ic">' + D.ic(t.icon, 20) + "</span><span><b>" + esc(t.name) + (t.ext ? " ↗" : "") + "</b><small>" + esc(SHORT[t.id] || t.desc) + "</small></span></a>"; }
+  function item(t) { return '<a class="appitem" href="' + D.appHref(t.id) + '" target="_blank" rel="noopener noreferrer" aria-label="' + esc(t.name) + ' (opens in a new tab)"' + D.tileTip(t.id) + (S.route === t.id ? ' aria-current="page"' : "") + '><span class="ic">' + D.ic(t.icon, 20) + "</span><span><b>" + esc(t.name) + (t.ext ? " ↗" : "") + "</b><small>" + esc(SHORT[t.id] || t.desc) + "</small></span></a>"; }
   var more = tiles.filter(function (t) { return t.more; });
-  return '<div class="appsmenu" role="dialog" aria-label="All apps"><div class="menuhead"><div class="seg" role="group" aria-label="Mode"><button data-act="mode" data-v="build" aria-pressed="' + (S.mode === "build") + '">Build</button><button data-act="mode" data-v="competition" aria-pressed="' + (S.mode === "competition") + '">Competition</button></div><button class="xbtn" data-act="apps" aria-label="Close">×</button></div>' +
+  return '<div class="appsmenu" role="dialog" aria-label="All apps"><div class="menuhead"><div class="seg" role="group" aria-label="Mode"><button data-act="mode" data-v="build" aria-pressed="' + (S.mode === "build") + '" data-tip="Show the apps for build season">Build</button><button data-act="mode" data-v="competition" aria-pressed="' + (S.mode === "competition") + '" data-tip="Show the event apps: schedule, pit and scouting">Competition</button></div><button class="xbtn" data-act="apps" aria-label="Close" data-tip="Close the apps menu">×</button></div>' +
     '<div class="appgrid">' + tiles.filter(function (t) { return !t.more; }).map(item).join("") + "</div>" +
     '<div class="menugroups">' + toolsGroup("menu") + (more.length ? groupRow("more", "More", more.length, "menu", '<div class="appgrid">' + more.map(item).join("") + "</div>") : "") + "</div></div>";
 }
 function bellPanel() {
   var list = D.myNotices();
-  return '<div class="bellpanel" role="dialog" aria-label="Notifications"><div class="menuhead"><h3>Notifications</h3><span class="row nowrap"><button class="btn ghost sm" data-act="readall">Mark all read</button><button class="xbtn" data-act="bell" aria-label="Close">×</button></span></div><div class="list">' +
+  return '<div class="bellpanel" role="dialog" aria-label="Notifications"><div class="menuhead"><h3>Notifications</h3><span class="row nowrap"><button class="btn ghost sm" data-act="readall">Mark all read</button><button class="xbtn" data-act="bell" aria-label="Close" data-tip="Close notifications">×</button></span></div><div class="list">' +
     (list.length ? list.map(function (n) { return '<div class="li nli' + (n.read ? "" : " unread") + '"><span class="grow"><span class="app">' + esc(D.APPNAME[n.app] || "") + "</span> " + esc(n.text) + '</span><span class="who">' + esc(n.when) + "</span></div>"; }).join("") : '<p class="empty">Nothing yet.</p>') +
     '</div><button class="btn ghost sm" style="justify-self:start" data-act="go" data-v="account">Notification settings</button></div>';
 }
@@ -279,7 +282,7 @@ function practiceRows() {
 D.views.portal = function () {
   var S = D.S, tiles = D.visibleTiles(), staff = D.isStaff();
   var main = tiles.filter(function (t) { return !t.more; }), more = tiles.filter(function (t) { return t.more; });
-  function tile(t) { return '<a class="apptile" href="' + D.appHref(t.id) + '" target="_blank" rel="noopener noreferrer" aria-label="' + esc(t.name) + ' (opens in a new tab)"><span class="ic">' + D.ic(t.icon, 20) + "</span><b>" + esc(t.name) + (t.ext ? " ↗" : "") + "</b><small>" + esc(SHORT[t.id] || t.desc) + "</small></a>"; }
+  function tile(t) { return '<a class="apptile" href="' + D.appHref(t.id) + '" target="_blank" rel="noopener noreferrer" aria-label="' + esc(t.name) + ' (opens in a new tab)"' + D.tileTip(t.id) + '><span class="ic">' + D.ic(t.icon, 20) + "</span><b>" + esc(t.name) + (t.ext ? " ↗" : "") + "</b><small>" + esc(SHORT[t.id] || t.desc) + "</small></a>"; }
   var d = new Date(2026, 10, 10); try { if (D.calApi && D.calApi.TODAYS) { var q = D.calApi.TODAYS.split("-"); d = new Date(+q[0], +q[1] - 1, +q[2]); } } catch (e) {}
   var date = d.toLocaleDateString("en-US", { weekday: "long", month: "long", day: "numeric" });
   var waiting = staff ? waitingRows() : [], today = practiceRows();
@@ -293,7 +296,7 @@ D.views.portal = function () {
   return '<div class="content home"><div class="homehead"><p class="homedate">' + esc(date) + "</p><h1>Hi " + esc(D.me().short) + ".</h1></div>" + cards +
     '<section class="stack"><h2 style="margin-bottom:10px">Apps</h2><div class="apptiles">' + main.map(tile).join("") + "</div>" +
     '<div class="homegroups">' + toolsGroup("home") +
-    (more.length ? groupRow("more", "More", more.length, "home", '<ul class="morelinks">' + more.map(function (t) { return '<li><a href="' + D.appHref(t.id) + '" target="_blank" rel="noopener noreferrer">' + D.ic(t.icon, 16) + esc(t.name) + (t.ext ? " ↗" : "") + "</a></li>"; }).join("") + "</ul>") : "") +
+    (more.length ? groupRow("more", "More", more.length, "home", '<ul class="morelinks">' + more.map(function (t) { return '<li><a href="' + D.appHref(t.id) + '" target="_blank" rel="noopener noreferrer"' + D.tileTip(t.id) + '>' + D.ic(t.icon, 16) + esc(t.name) + (t.ext ? " ↗" : "") + "</a></li>"; }).join("") + "</ul>") : "") +
     "</div></section>" + act + "</div>";
 };
 function displayHome(blocked) {
