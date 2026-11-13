@@ -293,8 +293,28 @@ th.mine, td.mine { background: var(--tint); }
 .appitem b { display: block; font-size: .92rem; font-weight: 600; }
 .appitem small { display: block; color: var(--mute); font-size: .78rem; line-height: 1.3; }
 .menuhead { display: flex; justify-content: space-between; align-items: center; gap: 8px; }
-.menumore { padding-top: 6px; border-top: 1px solid var(--line); display: grid; gap: 4px; }
-.menumore > small { color: var(--mute); font-weight: 600; font-size: .8rem; padding: 4px 8px 0; }
+/* Tools and More: a quiet row that opens and closes (Apps menu and Home). Closed by default; the chevron turns. */
+.menugroups { display: grid; }
+.grp { border-top: 1px solid var(--line); }
+.grphead { display: flex; align-items: center; gap: 8px; width: 100%; min-height: 44px; padding: 0 8px; border: 0; border-radius: 8px; background: none; color: var(--text-2); font-weight: 600; font-size: .92rem; text-align: left; }
+.grphead:hover { background: var(--surface-2); color: var(--text); }
+.grphead .tcount { margin: 0; }
+.grpchev { margin-left: auto; display: inline-grid; color: var(--mute); transition: transform .15s ease; }
+.grphead[aria-expanded="true"] .grpchev { transform: rotate(90deg); }
+.grpbody { display: grid; gap: 2px; padding: 2px 0 10px; }
+.toolrow { display: flex; gap: 10px; align-items: center; min-height: 52px; padding: 6px 8px; border-radius: 10px; color: inherit; text-decoration: none; min-width: 0; }
+.toolrow:hover { background: var(--surface-2); }
+.toolrow .ic { flex: none; width: 32px; height: 32px; border-radius: 8px; background: var(--surface-2); color: var(--text-2); display: grid; place-items: center; }
+.toolrow:hover .ic { background: var(--surface-3); }
+.toolrow b { display: block; font-size: .92rem; font-weight: 600; }
+.toolrow small { display: block; color: var(--mute); font-size: .8rem; line-height: 1.3; }
+.toolrow.all { min-height: 44px; justify-content: space-between; color: var(--accent); font-weight: 600; font-size: .92rem; }
+.appsmenu .toolrow.all { color: var(--accent); }
+.homegroups { display: grid; margin-top: 14px; border-bottom: 1px solid var(--line); }
+.homegroups:empty { display: none; }
+.homegroups .grphead { padding-inline: 4px; }
+.homegroups .morelinks { padding: 0 4px; }
+.homegroups .toolrow { padding-inline: 4px; }
 .nli { padding: 8px 8px 8px 20px; position: relative; flex-wrap: nowrap; }
 .nli .app { color: var(--mute); }
 .nli.unread { font-weight: 600; }

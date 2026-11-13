@@ -31,7 +31,12 @@ var ICON = {
   folder: "M3 6h6l2 2h10v11H3z",
   robot: "M5 9h14v10H5zM9 9V5h6v4M9 14h.01M15 14h.01M3 13v3M21 13v3",
   history: "M3 12a9 9 0 1 0 3-6.7M3 4v5h5M12 7v5l3 2",
-  undo: "M9 14L4 9l5-5M4 9h11a5 5 0 0 1 0 10h-3"
+  undo: "M9 14L4 9l5-5M4 9h11a5 5 0 0 1 0 10h-3",
+  chevron: "M9 6l6 6-6 6",
+  trace: "M12 19l7-7 3 3-7 7zM18 13l-1.5-7.5L2 2l3.5 14.5L13 18zM2 2l7.6 7.6M11 13a2 2 0 1 0 0-4 2 2 0 0 0 0 4z",
+  gear: "M12 15a3 3 0 1 0 0-6 3 3 0 0 0 0 6zM10.3 3h3.4l.5 2.4 1.7.7 2-1.4 2.4 2.4-1.4 2 .7 1.7 2.4.5v3.4l-2.4.5-.7 1.7 1.4 2-2.4 2.4-2-1.4-1.7.7-.5 2.4h-3.4l-.5-2.4-1.7-.7-2 1.4-2.4-2.4 1.4-2-.7-1.7L3 13.7v-3.4l2.4-.5.7-1.7-1.4-2 2.4-2.4 2 1.4 1.7-.7z",
+  camera: "M3 8h4l2-3h6l2 3h4v11H3zM12 17a4 4 0 1 0 0-8 4 4 0 0 0 0 8z",
+  download: "M12 3v12M7 10l5 5 5-5M5 21h14"
 };
 D.ICON = ICON;
 D.ic = function (name, size) { size = size || 20; return '<svg width="' + size + '" height="' + size + '" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="' + (ICON[name] || ICON.more) + '"/></svg>'; };
@@ -62,6 +67,15 @@ D.TILES = [
   { id: "admin", name: "Admin", icon: "admin", svc: "admin.", desc: "Approve accounts and manage groups.", modes: ["build"], groups: ["admin"], more: true, ext: true },
   { id: "handbook", name: "Team Handbook", icon: "handbook", svc: "link", desc: "Student, family and mentor handbook.", modes: ["build"], groups: ALL, more: true, ext: true }
 ];
+/* Tools: small helpers that open inside the site, in the same tab. They are not apps and not link-outs, so they get
+   their own closed group under Apps. Adding a tool adds one row here and one page in js/tools.js, never a new tile. */
+D.TOOLS = [
+  { id: "tool-trace", name: "Drawing to vector", icon: "trace", line: "A photo of a drawing becomes a laser or CAD file.", modes: ["build", "competition"], groups: BUILDERS },
+  { id: "tool-gear", name: "Gear and sprocket finder", icon: "gear", line: "A photo and one measurement name the part.", modes: ["build", "competition"], groups: BUILDERS }
+];
+D.tool = function (id) { return D.TOOLS.filter(function (t) { return t.id === id; })[0]; };
+D.isToolRoute = function (r) { return r === "tools" || !!D.tool(r); };
+D.visibleTools = function () { return D.TOOLS.filter(function (t) { return D.inGroup(t) && t.modes.indexOf(D.S.mode) >= 0; }); };
 /* The Calendar app has three tabs. Who sees each one is what the Attendance and Snacks tiles used to say. */
 D.CALTABS = [
   { id: "calendar", name: "Calendar", modes: ["build", "competition"], groups: ALL },
@@ -70,10 +84,18 @@ D.CALTABS = [
 ];
 /* Old routes for the tabs. The tab ids are also the old tile ids, so #here and #snacks still work. */
 D.ROUTE_TAB = { here: "calendar", snacks: "calendar" };
-D.APPNAME = { portal: "Portal", account: "Account", kiosk: "Door QR", monitor: "Pit monitor", projector: "Projector" };
+D.APPNAME = { portal: "Portal", account: "Account", kiosk: "Door QR", monitor: "Pit monitor", projector: "Projector", tools: "Tools" };
 D.TILES.forEach(function (t) { D.APPNAME[t.id] = t.name; });
+D.TOOLS.forEach(function (t) { D.APPNAME[t.id] = "Tools"; });
 D.DISPLAY_ROUTES = { kiosk: 1, monitor: 1, projector: 1 };
 
+/* Choices a person makes about the page itself, not sample data: which groups are open, which tour offers they have
+   seen. The demo keeps them in this browser, per role, and Reset leaves them alone; the real site keeps them the way it
+   keeps theme and mode. */
+var SAVE_KEY = "demo2972.saved.v1";
+D.saved = (function () { try { return JSON.parse(localStorage.getItem(SAVE_KEY)) || {}; } catch (e) { return {}; } })();
+D.pref = function (k, def) { var r = D.saved[D.S.role] || {}; return Object.prototype.hasOwnProperty.call(r, k) ? r[k] : def; };
+D.setPref = function (k, v) { (D.saved[D.S.role] = D.saved[D.S.role] || {})[k] = v; try { localStorage.setItem(SAVE_KEY, JSON.stringify(D.saved)); } catch (e) {} };
 D.reset = function () {
   var prev = D.S || {};
   var S = D.S = {
@@ -158,7 +180,7 @@ function demobar() {
    The apps menu and the bell panel hang from the bar so they stay under it while the page scrolls. */
 function appbar() {
   var S = D.S, unread = D.myNotices().filter(function (n) { return !n.read; }).length;
-  var cur = D.tile(S.route), here = S.route === "account" ? "Account" : cur ? cur.name : "Gears & Buccaneers";
+  var cur = D.tile(S.route), here = S.route === "account" ? "Account" : D.isToolRoute(S.route) ? "Tools" : cur ? cur.name : "Gears & Buccaneers";
   return '<header class="appbar"><button class="appsbtn" data-act="apps" aria-expanded="' + !!S.appsOpen + '" aria-label="All apps">' + D.ic("apps", 20) + "</button>" +
     '<a class="brand" href="' + D.appHref("portal") + '" target="_blank" rel="noopener noreferrer" aria-label="Portal home" data-act="go" data-v="portal"><span class="badge-2972">2972</span></a>' +
     '<span class="appname">' + esc(here) + '</span><span class="grow"></span>' +
@@ -175,13 +197,27 @@ function accountMenu() {
     '</div><a class="accountchoice" href="#account" data-act="accountnotifications">Notification settings</a><a class="accountchoice" href="#account" data-act="go" data-v="account">All account settings</a><button class="accountchoice" data-act="demosignout">Sign out</button></div>';
 
 }
+/* Tools and More: one quiet row each, closed by default, that opens a short list. The row is a real button with
+   aria-expanded and its chevron turns. A group with nothing in it for this person is not shown. */
+D.groupOpen = function (id) { return !!D.pref("open-" + id, false); };
+function groupRow(id, label, count, place, body) {
+  var open = D.groupOpen(id), bid = "grp-" + place + "-" + id;
+  return '<div class="grp" data-grp="' + id + '"><button class="grphead" id="' + bid + '-btn" data-act="grp" data-v="' + id + '" data-place="' + place + '" aria-expanded="' + open + '" aria-controls="' + bid + '">' +
+    '<span class="grpname">' + esc(label) + '</span><span class="tcount">' + count + '</span><span class="grpchev" aria-hidden="true">' + D.ic("chevron", 16) + "</span></button>" +
+    '<div class="grpbody" id="' + bid + '"' + (open ? "" : " hidden") + ">" + body + "</div></div>";
+}
+D.toolRow = function (t) { return '<a class="toolrow" href="#' + t.id + '" data-act="go" data-v="' + t.id + '"><span class="ic">' + D.ic(t.icon, 18) + "</span><span><b>" + esc(t.name) + "</b><small>" + esc(t.line) + "</small></span></a>"; };
+function toolsGroup(place) {
+  var tools = D.visibleTools(); if (!tools.length) return "";
+  return groupRow("tools", "Tools", tools.length, place, tools.map(D.toolRow).join("") + '<a class="toolrow all" href="#tools" data-act="go" data-v="tools"><span>All tools</span><span class="chev" aria-hidden="true">›</span></a>');
+}
 function appsMenu() {
   var S = D.S, tiles = D.visibleTiles();
   function item(t) { return '<a class="appitem" href="' + D.appHref(t.id) + '" target="_blank" rel="noopener noreferrer" aria-label="' + esc(t.name) + ' (opens in a new tab)"' + (S.route === t.id ? ' aria-current="page"' : "") + '><span class="ic">' + D.ic(t.icon, 20) + "</span><span><b>" + esc(t.name) + (t.ext ? " ↗" : "") + "</b><small>" + esc(SHORT[t.id] || t.desc) + "</small></span></a>"; }
   var more = tiles.filter(function (t) { return t.more; });
   return '<div class="appsmenu" role="dialog" aria-label="All apps"><div class="menuhead"><div class="seg" role="group" aria-label="Mode"><button data-act="mode" data-v="build" aria-pressed="' + (S.mode === "build") + '">Build</button><button data-act="mode" data-v="competition" aria-pressed="' + (S.mode === "competition") + '">Competition</button></div><button class="xbtn" data-act="apps" aria-label="Close">×</button></div>' +
     '<div class="appgrid">' + tiles.filter(function (t) { return !t.more; }).map(item).join("") + "</div>" +
-    (more.length ? '<div class="menumore"><small>More</small><div class="appgrid">' + more.map(item).join("") + "</div></div>" : "") + "</div>";
+    '<div class="menugroups">' + toolsGroup("menu") + (more.length ? groupRow("more", "More", more.length, "menu", '<div class="appgrid">' + more.map(item).join("") + "</div>") : "") + "</div></div>";
 }
 function bellPanel() {
   var list = D.myNotices();
@@ -255,8 +291,10 @@ D.views.portal = function () {
   var act = S.role === "parent" ? "" : '<section class="card"><h2>Recent activity</h2><div class="list">' +
     S.activity.slice(0, 5).map(function (a) { return '<div class="li actli"><span class="actapp">' + esc(D.APPNAME[a.app] || "") + '</span><span class="grow"><b>' + esc(a.who) + "</b> " + esc(a.what) + '</span><span class="who">' + esc(a.when) + "</span></div>"; }).join("") + "</div></section>";
   return '<div class="content home"><div class="homehead"><p class="homedate">' + esc(date) + "</p><h1>Hi " + esc(D.me().short) + ".</h1></div>" + cards +
-    '<section class="stack"><h2 style="margin-bottom:10px">Apps</h2><div class="apptiles">' + main.map(tile).join("") + "</div></section>" +
-    (more.length ? '<section><h3 class="mute" style="margin-bottom:4px">More</h3><ul class="morelinks">' + more.map(function (t) { return '<li><a href="' + D.appHref(t.id) + '" target="_blank" rel="noopener noreferrer">' + D.ic(t.icon, 16) + esc(t.name) + (t.ext ? " ↗" : "") + "</a></li>"; }).join("") + "</ul></section>" : "") + act + "</div>";
+    '<section class="stack"><h2 style="margin-bottom:10px">Apps</h2><div class="apptiles">' + main.map(tile).join("") + "</div>" +
+    '<div class="homegroups">' + toolsGroup("home") +
+    (more.length ? groupRow("more", "More", more.length, "home", '<ul class="morelinks">' + more.map(function (t) { return '<li><a href="' + D.appHref(t.id) + '" target="_blank" rel="noopener noreferrer">' + D.ic(t.icon, 16) + esc(t.name) + (t.ext ? " ↗" : "") + "</a></li>"; }).join("") + "</ul>") : "") +
+    "</div></section>" + act + "</div>";
 };
 function displayHome(blocked) {
   return '<div class="display">' + (blocked ? '<div class="dcard" style="border-color:var(--gold)">' + esc(blocked) + " isn't available on a display. Pick one of these instead.</div>" : "") + '<h1>Pick what this screen shows</h1><div class="grid3">' +
@@ -315,7 +353,7 @@ A.role = function (b) {
   var S = D.S; S.role = b.dataset.v; S.bell = false; S.appsOpen = false; S.accountOpen = false; S.drawer = null; S.modal = null;
   (D.onRole || []).forEach(function (f) { f(S.role); });
   if (S.role === "display") { S.route = D.DISPLAY_ROUTES[S.route] ? S.route : "portal"; }
-  else if (!(S.route === "portal" || S.route === "account" || (D.tile(S.route) && D.inGroup(S.route)) || (D.DISPLAY_ROUTES[S.route] && D.isStaff()))) S.route = "portal";
+  else if (!(S.route === "portal" || S.route === "account" || (D.tile(S.route) && D.inGroup(S.route)) || (D.isToolRoute(S.route) && D.visibleTools().length) || (D.DISPLAY_ROUTES[S.route] && D.isStaff()))) S.route = "portal";
   D.render();
 };
 D.changes.eventday = function (el) { D.S.eventDay = el.checked; D.render(); };
@@ -330,6 +368,8 @@ A.menutheme = function (b) { D.acts.actheme(b); D.S.accountOpen = false; D.rende
 A.accountnotifications = function () { D.go("account"); var heading = Array.from(document.querySelectorAll(".acc h2")).find(function (h) { return h.textContent === "Notifications"; }); if (heading) { heading.parentElement.style.scrollMarginTop = "64px"; heading.parentElement.scrollIntoView(); } };
 A.demosignout = function () { D.S.accountOpen = false; D.toast("Signed out (demo)"); D.render(); };
 A.readall = function () { D.myNotices().forEach(function (n) { n.read = true; }); D.render(); };
+// Open or close a group (Tools, More) and keep the focus on its row, in the Apps menu or on Home.
+A.grp = function (b) { var id = b.dataset.v, place = b.dataset.place; D.setPref("open-" + id, !D.groupOpen(id)); D.render(); var el = document.getElementById("grp-" + place + "-" + id + "-btn"); if (el) el.focus(); };
 A.goapp = function (b) { if (b.dataset.tab) D.S.tabs[b.dataset.app] = b.dataset.tab; D.go(b.dataset.app); };
 A.closedrawer = function () { D.S.drawer = null; D.render(); };
 A.closemodal = function () { D.S.modal = null; D.render(); };
