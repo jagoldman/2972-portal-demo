@@ -136,7 +136,19 @@ function openStop(id) {
   g.snap = s.snap ? s.snap() : null;
   D.render();
 }
-function closeStop() { if (!G()) return; D.S.guide = null; D.S.guideOpen = null; D.render(); }
+// Close the stop at once: the ring, the dim and the card go now, whatever else the tap does.
+function removeLayer() { if (layer) { layer.remove(); layer = null; cardKey = ""; } document.documentElement.classList.remove("gdocked"); }
+function dismiss() { D.S.guide = null; D.S.guideOpen = null; removeLayer(); }
+// Later or Escape: close, then put focus somewhere useful (the control itself, else the Home card, else the page title).
+function closeStop() {
+  var g = G(); if (!g) return;
+  dismiss(); D.render(); // the page is drawn again, so find the control afresh
+  var focusable = "button:not([disabled]), a[href], input:not([disabled]), select, textarea";
+  var t = g.phase === "show" ? targetEl0(g) : null, f = t && (t.matches(focusable) ? t : t.querySelector(focusable));
+  if (!f) f = q('.guidecard [data-act="guideshow"]') || q(".topbar .tab[aria-pressed=true]") || q(".pagehead h1, .content h1");
+  if (f) { if (!f.matches(focusable)) f.tabIndex = -1; f.focus(); }
+}
+function targetEl0(g) { var s = stop(g.id); return s ? s.target(g) : null; }
 D.guideOpen = openStop;
 function targetEl() { var g = G(), s = g && stop(g.id); return s ? s.target(g) : null; }
 function sentence(s, g) { return s.textFor ? s.textFor(g) : s.text; }
@@ -182,10 +194,10 @@ function place() {
 D.after.push(function () {
   var g = G();
   if (D.S.route !== "portal" && D.S.guideEnd) D.S.guideEnd = false;
-  if (!g) { if (layer) { layer.remove(); layer = null; cardKey = ""; } return; }
-  var s = stop(g.id); if (!s) { D.S.guide = null; return; }
+  if (!g) { removeLayer(); return; }
+  var s = stop(g.id); if (!s) { dismiss(); return; }
   if (g.phase === "show" && s.done(g.snap, g)) { g.phase = "done"; finish(g.id); }
-  else if (g.phase === "show" && D.S.route !== g.route) { D.S.guide = null; D.S.guideOpen = null; if (layer) { layer.remove(); layer = null; cardKey = ""; } return; }
+  else if (g.phase === "show" && D.S.route !== g.route) { dismiss(); return; }
   ensureLayer();
   var t = g.phase === "show" ? targetEl() : null, missing = g.phase === "show" && !t;
   var key = g.id + "|" + g.phase + "|" + missing + "|" + sentence(s, g);
@@ -210,11 +222,17 @@ document.addEventListener("click", function (e) {
   var t = g.phase === "show" ? targetEl() : null, s = stop(g.id);
   if (t && t.contains(e.target)) { g.clicked = true; return; }
   if (s && s.zone && e.target.closest(s.zone + ", .dpop")) return;
-  if (e.target.closest(".drawer, .modal, .drawer-scrim, .modal-scrim, .toast, .demobar")) return;
-  D.S.guide = null; D.S.guideOpen = null; // the tap's own action renders next
+  if (e.target.closest(".drawer, .modal, .drawer-scrim, .modal-scrim, .toast")) return;
+  if (e.target.closest(".demobar") && !e.target.closest('[data-act="role"], [data-act="reset"]')) return;
+  // Anything else: plain text, a link to another tab, a tile. Close now; one render follows the tap's own action.
+  dismiss(); needRender = true;
 }, true);
-// A control that does its work without a render of its own (a link that opens a new tab) still finishes the stop.
-document.addEventListener("click", function () { var g = G(); if (g && g.phase === "show" && g.clicked) D.render(); });
+// After the tap's own action (core's handler runs first): draw once more, so a control that does its work without a
+// render of its own (a link that opens a new tab) still finishes its stop, and a closed stop leaves nothing behind.
+var needRender = false;
+document.addEventListener("click", function () { var g = G(); if (needRender || (g && g.phase === "show" && g.clicked)) { needRender = false; D.render(); } });
+// Switching role in the demo strip closes any stop: the other role has its own guide.
+(D.onRole = D.onRole || []).push(function () { D.S.guideAll = false; D.S.guideEnd = false; dismiss(); });
 // Keyboard: Escape closes the stop; Tab from the card's last button goes to the ringed control.
 document.addEventListener("keydown", function (e) {
   var g = G(); if (!g || !layer) return;
