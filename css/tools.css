@@ -1,0 +1,47 @@
+/* Tools: the Tools page and each tool. Shared rows (.toolrow) live in base.css with the Apps menu and Home. */
+.toolspage .card { padding: 8px; }
+.toollist { display: grid; }
+.toollist .toolrow { min-height: 60px; }
+.toollist .toolrow + .toolrow { border-top: 1px solid var(--line); border-radius: 0; }
+.toollist .toolrow .ic { width: 40px; height: 40px; border-radius: 10px; }
+
+/* A tool page: a small "All tools" link, the tool's name, then numbered steps. Forms max 720 px. */
+.toolhead { display: grid; gap: 4px; justify-content: stretch; max-width: calc(720px + 2 * var(--gut)); }
+.backlink { justify-self: start; display: inline-flex; align-items: center; gap: 4px; min-height: 44px; font-weight: 600; font-size: .92rem; text-decoration: none; }
+.backlink:hover { text-decoration: underline; }
+.content.tool { max-width: calc(720px + 2 * var(--gut)); }
+.toolhead + .content { padding-top: 10px; }
+.toolstep h2 { display: flex; align-items: center; gap: 10px; }
+.stepn { flex: none; width: 24px; height: 24px; border-radius: 50%; background: var(--surface-3); color: var(--text-2); display: grid; place-items: center; font-size: .8rem; font-weight: 700; }
+.photopick .btn { flex: 0 1 auto; }
+.filebtn { position: relative; cursor: pointer; }
+.filebtn:focus-within { outline: 2px solid var(--accent); outline-offset: 2px; }
+.vh { position: absolute; width: 1px; height: 1px; margin: -1px; padding: 0; border: 0; overflow: hidden; clip: rect(0 0 0 0); white-space: nowrap; }
+.ownphoto { display: block; max-height: 360px; width: auto; max-width: 100%; border-radius: var(--r-ctl); border: 1px solid var(--line); }
+.warnline { color: var(--warn); font-weight: 500; }
+@media (max-width: 640px) { .photopick { display: grid; } }
+
+/* Drawing to vector: the photo with the traced outline over it; taps set two points. */
+.traceimg { display: block; width: 100%; height: auto; aspect-ratio: 400 / 260; border-radius: var(--r-ctl); border: 1px solid var(--line); cursor: crosshair; touch-action: manipulation; }
+.traceimg:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+.traced path, .traced circle { fill: none; stroke: #2148a8; stroke-width: 2.2; stroke-linejoin: round; }
+.tpt { fill: #e8b931; stroke: #07090f; stroke-width: 1.5; }
+.tptl { font: 600 13px var(--body); fill: #07090f; }
+.tline { stroke: #b42318; stroke-width: 2; stroke-dasharray: 6 4; }
+.tcur { stroke: #b42318; stroke-width: 2; }
+.trdist .inp { width: auto; }
+.trdist input { flex: 1 1 8rem; min-width: 0; max-width: 12rem; }
+
+/* Gear and sprocket finder */
+.partimg { display: block; width: min(300px, 100%); height: auto; border-radius: var(--r-ctl); }
+.choice.three { grid-template-columns: repeat(3, minmax(0,1fr)); }
+.inp.narrow { max-width: 12rem; }
+.inp.unit { width: auto; }
+.gresult { border-left: 3px solid var(--gold); }
+.gfacts { display: grid; grid-template-columns: repeat(2, minmax(0,1fr)); gap: 10px 16px; margin: 0; }
+.gfacts div { display: grid; gap: 2px; min-width: 0; }
+.gfacts dt { font-size: .8rem; color: var(--mute); font-weight: 600; }
+.gfacts dd { margin: 0; font-weight: 600; }
+.abbr { text-decoration: underline dotted; text-underline-offset: 3px; cursor: help; }
+@media (max-width: 640px) { .gfacts { grid-template-columns: minmax(0,1fr); } .choice.three { grid-template-columns: minmax(0,1fr); } }
+.toolstep .seg { justify-self: start; }
