@@ -354,7 +354,7 @@ D.views.kiosk = function () {
   return '<div class="display kiosk"><h1>Scan to sign in or out</h1>' +
     '<div class="qrbox"><canvas id="qr" width="29" height="29" aria-label="Sign-in code"></canvas></div>' +
     '<div class="qrtime"><div class="bar"><i id="qrbar" style="width:100%"></i></div><p class="dmute" id="qrtxt">New code in 30 s</p></div>' +
-    '<p class="dmute">' + C().here.length + " in the shop · practice until 6:00 pm</p>" + (D.S.role !== "display" ? '<button class="btn" data-act="go" data-v="here">Exit display</button>' : "") + "</div>";
+    '<p class="dmute">' + C().here.length + " in the shop · practice until 6:00 pm</p>" + (D.S.role !== "display" ? '<button class="btn" data-act="goapp" data-app="here" data-tab="today">Exit display</button>' : "") + "</div>";
 };
 function drawQR() {
   var c = document.getElementById("qr"); if (!c) return;

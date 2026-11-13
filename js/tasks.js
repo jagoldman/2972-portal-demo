@@ -97,10 +97,11 @@ function stOf(x) { return x.st !== "done" && x.st !== "blocked" && !simple() && 
 function names(who) { return who.length ? who.map(esc).join(", ") : "Nobody yet"; }
 function check(x) { return '<button class="tcheck" data-act="tdone" data-v="' + x.id + '" aria-pressed="' + (x.st === "done") + '" aria-label="Done: ' + esc(x.title) + '" data-tip="' + (x.st === "done" ? "Mark this task not done" : "Mark this task done") + '">' + D.ic("check", 14) + "</button>"; }
 // Row-only versions (My tasks, Dashboard, a subteam's list). A row shows a status word only when the task needs attention:
-// Blocked, Waiting (held up by another task) or Done. "In progress" lives in the check button's ring, "To do" shows nothing.
+// Blocked or Waiting (held up by another task). "In progress" lives in the check button's ring, "Done" in its green
+// tick, and "To do" shows nothing.
 function rowSt(x) {
   var waiting = x.st !== "done" && x.st !== "blocked" && !simple() && blockedBy(x).length;
-  return (x.st === "todo" || x.st === "doing") && !waiting ? "" : '<span class="tst">' + stOf(x) + "</span>";
+  return (x.st === "todo" || x.st === "doing" || x.st === "done") && !waiting ? "" : '<span class="tst">' + stOf(x) + "</span>";
 }
 function rowCheck(x) {
   var doing = x.st === "doing";
