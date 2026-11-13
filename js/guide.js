@@ -24,9 +24,9 @@ var S_DOOR = { id: "door", name: "Sign in at the door", line: "The first thing y
   snap: function () { return cal().here.some(function (h) { return h.name === D.me().name; }); },
   done: function (s) { return !s && cal().here.some(function (h) { return h.name === D.me().name; }); } };
 var S_TASK = { id: "task", name: "Find your next task", line: "What to work on when you get to the shop.", covered: "your next task",
-  title: "Open your next task", text: "This card always shows the task to do next; tap Open to see its steps.",
+  title: "Open your next task", text: "Your next task is always on this card; tap Open to see its steps.",
   missing: "When a task is assigned to you, it shows here as your next task.",
-  go: function () { D.S.tasks.at = { v: "my" }; D.go("tasks"); }, target: function () { return q(".nextup"); },
+  go: function () { D.S.tasks.at = { v: "my" }; D.go("tasks"); }, target: function () { return q('.nextup .heroacts [data-act="topen"]'); }, // only Open: Done and the rest stay ordinary taps
   done: function (s, g) { return g.clicked && D.S.drawer && D.S.drawer.type === "task"; } };
 var S_PART = { id: "part", name: "Ask for a part", line: "When your task needs something the shop doesn't have.", covered: "asking for a part",
   title: "Ask for a part", text: "Tap the gold Request a part button to open the form; you don't have to send it.",
@@ -57,7 +57,8 @@ var S_SIGN = { id: "sign", name: "Sign off a skill", line: "Students ask; you ch
   title: "Sign off a skill", text: "Check the student's work, then tap Sign off, or Not yet if it needs more practice.",
   missing: "No one is waiting now; sign-off requests show here when students ask.",
   go: function () { D.S.tabs.skills = "signoff"; D.go("skills"); }, target: function () { return q(".skq"); },
-  snap: function () { return D.S.sk.requests.length; }, done: function (s, g) { return g.clicked || D.S.sk.requests.length !== s; } };
+  // Finished by a decision (Sign off or Not yet takes the request off the list), not by any tap on the row.
+  snap: function () { return D.S.sk.requests.length; }, done: function (s) { return D.S.sk.requests.length !== s; } };
 var S_NEXT = { id: "next", name: "See the next practice", line: "Practices and events, in order.", covered: "the next practice",
   title: "See what is coming up", missing: "The Calendar lists every practice and event, soonest first.",
   go: function () { D.go("calendar"); },
