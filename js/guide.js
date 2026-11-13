@@ -180,9 +180,19 @@ function inView(t) {
 function place() {
   var g = G(); if (!g || !layer) return;
   var t = g.phase === "show" && !D.S.modal && !D.S.drawer ? targetEl() : null;
-  if (t) { var r = t.getBoundingClientRect(), pad = 4; Object.assign(ringEl.style, { left: r.left - pad + "px", top: r.top - pad + "px", width: r.width + 2 * pad + "px", height: r.height + 2 * pad + "px" }); ringEl.hidden = false; }
-  else ringEl.hidden = true;
+  if (t) {
+    // Never over the sticky bars: the ring is cut at their lower edge, and hidden while the control is under them.
+    var r = t.getBoundingClientRect(), pad = 4, bars = 0;
+    document.querySelectorAll(".appbar, .topbar").forEach(function (b) { var br = b.getBoundingClientRect(); if (br.top <= 1) bars = Math.max(bars, br.bottom); });
+    var top = Math.max(r.top - pad, bars), bottom = r.bottom + pad;
+    if (bottom - top > 8) { Object.assign(ringEl.style, { left: r.left - pad + "px", top: top + "px", width: r.width + 2 * pad + "px", height: bottom - top + "px" }); ringEl.hidden = false; }
+    else ringEl.hidden = true;
+  } else ringEl.hidden = true;
   layer.classList.toggle("under", !!(D.S.modal || D.S.drawer));
+  // On a phone the card is docked at the bottom: toasts move up above it (css: html.gdocked .toast).
+  var docked = phone() && !layer.classList.contains("under");
+  document.documentElement.classList.toggle("gdocked", docked);
+  if (docked) document.documentElement.style.setProperty("--gdock", cardEl.offsetHeight + 8 + "px");
   cardEl.classList.toggle("centred", !t && !phone());
   if (phone()) { cardEl.style.left = cardEl.style.top = ""; return; }
   if (!t) { cardEl.style.left = cardEl.style.top = ""; return; }

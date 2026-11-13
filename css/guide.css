@@ -42,3 +42,5 @@
   .gnext .btn { padding-inline: 12px; }
   .ghead .btn.ghost { min-height: 36px; }
 }
+/* While a stop card is docked at the bottom of a phone screen, a toast sits above it, never over its buttons. */
+html.gdocked .toast { bottom: calc(var(--gdock, 0px) + 16px + env(safe-area-inset-bottom, 0px)); }
