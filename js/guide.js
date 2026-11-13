@@ -39,7 +39,7 @@ var S_SKILL = { id: "skill", name: "See your next skill", line: "Skills unlock s
   go: function () { D.S.tabs.skills = "overview"; D.go("skills"); }, target: function () { return rowWith('.skills button[data-act="skmine"]', /Ready/); },
   done: function () { return D.S.drawer && D.S.drawer.type === "skill"; } };
 var S_DAYS = { id: "days", name: "Say which days you are coming", line: "So students know when a mentor will be there.", covered: "your days",
-  title: "Say which days you come", text: "Tap your usual days here and save, or tap one day below to change just that day.",
+  title: "Say which days you come", text: "Tap your usual days here and save, or tap one day in Who's coming to change just that day.",
   missing: "Attendance has a My days view where you set the days you usually come.",
   go: function () { D.S.tabs.here = "mentors"; D.go("here"); }, target: function () { return q(".card.usual"); }, zone: ".mavail",
   snap: function () { return JSON.stringify(cal().avail); }, done: function (s) { return JSON.stringify(cal().avail) !== s; } };
