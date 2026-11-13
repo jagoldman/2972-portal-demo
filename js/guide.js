@@ -3,7 +3,8 @@
    too. "Later", Escape, a tap elsewhere or leaving the screen closes the stop and keeps what is done. When every stop
    is done the card says so once and is gone; "Start the tour again" on Account is the only way back in.
    The guide writes nothing but its own progress (kept per role with the demo's other saved choices; the real site
-   keeps it on the person's account). No timers: a stop is drawn in the same frame as the tap. */
+   keeps it on the person's account). No timers: a stop is drawn in the same frame as the tap.
+   The guide never adds a gold button: its own buttons are plain, so the page's gold control stays the only one. */
 (function () {
 "use strict";
 var esc = D.esc;
@@ -112,7 +113,7 @@ D.guideCard = function () {
   if (S.guideEnd) {
     var covered = list.map(function (s) { return s.covered; }), line = covered.length > 1 ? covered.slice(0, -1).join(", ") + " and " + covered[covered.length - 1] : covered[0];
     return '<section class="card guidecard guideend" aria-labelledby="guide-h"><h2 id="guide-h">You\'re set, ' + esc(D.me().short) + ".</h2><p>You covered " + esc(line) + ".</p>" +
-      '<p class="small mute">The bell shows what is new. Your initials hold your settings. You can run this again from Account.</p><div><button class="btn primary" data-act="guideend">Done</button></div></section>';
+      '<p class="small mute">The bell shows what is new. Your initials hold your settings. You can run this again from Account.</p><div><button class="btn" data-act="guideend">Done</button></div></section>';
   }
   if (p.hidden || p.ended) return "";
   var nx = nextStop(); if (!nx) return "";
@@ -121,7 +122,7 @@ D.guideCard = function () {
     '<button class="btn ghost sm" data-act="guideall" aria-expanded="' + !!all + '" aria-controls="guide-all">' + (all ? "Show less" : "See all") + '</button><button class="btn ghost sm" data-act="guidehide" data-tip="Remove this card. Account can bring it back.">Hide</button></div>' +
     '<div class="gbar" aria-hidden="true"><i style="width:' + Math.round(100 * n / list.length) + '%"></i></div>' +
     (all ? '<ol class="glist" id="guide-all">' + list.map(function (s, i) { var d = p.done.indexOf(s.id) >= 0; return '<li class="' + (d ? "gdone" : "") + '"><button class="gitem" data-act="guideshow" data-v="' + s.id + '"><span class="gtick" aria-hidden="true">' + (d ? D.ic("check", 14) : i + 1) + '</span><span class="grow"><b>' + esc(s.name) + "</b>" + (d ? '<span class="vh"> (done)</span>' : "") + '</span><span class="chev" aria-hidden="true">›</span></button></li>'; }).join("") + "</ol>" :
-      '<div class="gnext"><div class="grow"><b>' + esc(nx.name) + '</b><span class="who">' + esc(nx.line) + '</span></div><button class="btn primary" data-act="guideshow" data-v="' + nx.id + '">Show me</button></div>') + "</section>";
+      '<div class="gnext"><div class="grow"><b>' + esc(nx.name) + '</b><span class="who">' + esc(nx.line) + '</span></div><button class="btn" data-act="guideshow" data-v="' + nx.id + '">Show me</button></div>') + "</section>";
 };
 
 /* ---------- A stop ---------- */
@@ -165,9 +166,9 @@ function ensureLayer() {
 function cardHtml(s, g, missing) {
   var list = stops(), i = list.indexOf(s), nx = list.filter(function (x) { return !isDone(x.id) && x.id !== s.id; })[0];
   if (g.phase === "done") return '<p class="gcount who num">' + (i + 1) + " of " + list.length + '</p><h2 id="gcard-h">Done.</h2><p id="gcard-t" aria-live="polite">' + (nx ? "Next: " + esc(nx.name) + "." : "That was the last one.") + "</p>" +
-    '<div class="row nowrap gacts"><button class="btn primary" data-act="guidenext">' + (nx ? "Next" : "Finish") + '</button><button class="btn ghost" data-act="guidelater">Later</button></div>';
+    '<div class="row nowrap gacts"><button class="btn" data-act="guidenext">' + (nx ? "Next" : "Finish") + '</button><button class="btn ghost" data-act="guidelater">Later</button></div>';
   return '<p class="gcount who num">' + (i + 1) + " of " + list.length + '</p><h2 id="gcard-h">' + esc(s.title) + '</h2><p id="gcard-t">' + esc(missing ? s.missing : sentence(s, g)) + "</p>" +
-    '<div class="row nowrap gacts"><button class="btn primary" data-act="guidegot">Got it</button><button class="btn ghost" data-act="guidelater">Later</button></div>';
+    '<div class="row nowrap gacts"><button class="btn" data-act="guidegot">Got it</button><button class="btn ghost" data-act="guidelater">Later</button></div>';
 }
 function inView(t) {
   // Scroll the control into view below the sticky bars, and above the docked card on a phone.

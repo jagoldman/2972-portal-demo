@@ -194,6 +194,9 @@ is visible and small ("2 of 4" and a thin line). Each stop ends in something rea
 the page's own confirmation is the reward and the guide adds one tick. The ending says what they did, not
 "congratulations". No points, streaks, mascots or confetti.
 
+**The guide never adds a gold button** (decided 2026-11-13). "Show me", "Got it", "Next" and the ending's "Done" are
+plain buttons. The page's own gold control stays the one gold thing on the screen, also while a stop is open.
+
 **Writing a stop.** A verb-first title; one sentence that names the control; what finishes it (an action on that
 control, never just a page view where an action exists); and one sentence for when the control is missing.
 
