@@ -193,7 +193,7 @@ function place() {
   if (t) {
     // Never over the sticky bars: the ring is cut at their lower edge, and hidden while the control is under them.
     var r = t.getBoundingClientRect(), pad = 4, bars = 0;
-    document.querySelectorAll(".appbar, .topbar").forEach(function (b) { var br = b.getBoundingClientRect(); if (br.top <= 1) bars = Math.max(bars, br.bottom); });
+    document.querySelectorAll(".appbar, .topbar").forEach(function (b) { if (b.contains(t)) return; var br = b.getBoundingClientRect(); if (br.top < r.top) bars = Math.max(bars, br.bottom); });
     var top = Math.max(r.top - pad, bars), bottom = r.bottom + pad;
     if (bottom - top > 8) { Object.assign(ringEl.style, { left: r.left - pad + "px", top: top + "px", width: r.width + 2 * pad + "px", height: bottom - top + "px" }); ringEl.hidden = false; }
     else ringEl.hidden = true;
