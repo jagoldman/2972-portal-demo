@@ -96,7 +96,16 @@ D.GUIDE = {
 };
 
 /* ---------- Progress, kept per role ---------- */
-function stops() { return D.GUIDE[D.S.role] || []; }
+/* What each stop's screen needs. A stop whose app (or Calendar tab) is not in the current mode is left out of the
+   list and the count while that mode is on, and comes back with it. */
+var NEEDS = { door: "tab:here", task: "tasks", part: "parts", skill: "skills", days: "tab:here", ok: "parts", sign: "skills", next: "calendar", sub: "calendar", snack: "tab:snacks", admin: "admin", pattern: "calendar" };
+function available(s) {
+  var n = NEEDS[s.id]; if (!n) return true;
+  if (n.indexOf("tab:") === 0) return D.calTab(n.slice(4));
+  return D.visibleTiles().some(function (t) { return t.id === n; });
+}
+function allStops() { return D.GUIDE[D.S.role] || []; }
+function stops() { return allStops().filter(available); }
 function prog() { var p = D.pref("guide", null); return p ? { done: p.done || [], hidden: !!p.hidden, ended: !!p.ended } : { done: [], hidden: false, ended: false }; }
 function saveProg(p) { D.setPref("guide", p); }
 function isDone(id) { return prog().done.indexOf(id) >= 0; }
@@ -106,18 +115,18 @@ function finish(id) { var p = prog(); if (p.done.indexOf(id) < 0) p.done.push(id
 
 /* ---------- The Home card ---------- */
 D.guideCard = function () {
-  var S = D.S, list = stops(); if (!list.length) return "";
+  var S = D.S, all0 = allStops(), list = stops(); if (!all0.length) return "";
   var p = prog();
-  // When the last stop is done, Home shows the ending once: it is marked seen as soon as it is drawn.
-  if (!p.ended && !p.hidden && !S.guide && list.every(function (s) { return p.done.indexOf(s.id) >= 0; })) { p.ended = true; saveProg(p); S.guideEnd = true; }
+  // When every stop (in every mode) is done, Home shows the ending once: it is marked seen as soon as it is drawn.
+  if (!p.ended && !p.hidden && !S.guide && all0.every(function (s) { return p.done.indexOf(s.id) >= 0; })) { p.ended = true; saveProg(p); S.guideEnd = true; }
   if (S.guideEnd) {
-    var covered = list.map(function (s) { return s.covered; }), line = covered.length > 1 ? covered.slice(0, -1).join(", ") + " and " + covered[covered.length - 1] : covered[0];
+    var covered = all0.map(function (s) { return s.covered; }), line = covered.length > 1 ? covered.slice(0, -1).join(", ") + " and " + covered[covered.length - 1] : covered[0];
     return '<section class="card guidecard guideend" aria-labelledby="guide-h"><h2 id="guide-h">You\'re set, ' + esc(D.me().short) + ".</h2><p>You covered " + esc(line) + ".</p>" +
       '<p class="small mute">The bell shows what is new. Your initials hold your settings. You can run this again from Account.</p><div><button class="btn" data-act="guideend">Done</button></div></section>';
   }
   if (p.hidden || p.ended) return "";
   var nx = nextStop(); if (!nx) return "";
-  var n = p.done.length, all = S.guideAll;
+  var n = list.filter(function (s) { return p.done.indexOf(s.id) >= 0; }).length, all = S.guideAll;
   return '<section class="card guidecard" aria-labelledby="guide-h"><div class="ghead"><h2 id="guide-h">Get started</h2><span class="who num">' + (n + 1) + " of " + list.length + '</span><span class="grow"></span>' +
     '<button class="btn ghost sm" data-act="guideall" aria-expanded="' + !!all + '" aria-controls="guide-all">' + (all ? "Show less" : "See all") + '</button><button class="btn ghost sm" data-act="guidehide" data-tip="Remove this card. Account can bring it back.">Hide</button></div>' +
     '<div class="gbar" aria-hidden="true"><i style="width:' + Math.round(100 * n / list.length) + '%"></i></div>' +
