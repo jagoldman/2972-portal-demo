@@ -96,6 +96,16 @@ function labs(x) { return simple() ? "" : x.labels.map(function (l) { return '<s
 function stOf(x) { return x.st !== "done" && x.st !== "blocked" && !simple() && blockedBy(x).length ? '<span class="pill bad" title="Waiting on ' + esc(blockedBy(x).map(function (b) { return b.title; }).join(", ")) + '">Waiting</span>' : stPill(x.st); }
 function names(who) { return who.length ? who.map(esc).join(", ") : "Nobody yet"; }
 function check(x) { return '<button class="tcheck" data-act="tdone" data-v="' + x.id + '" aria-pressed="' + (x.st === "done") + '" aria-label="Done: ' + esc(x.title) + '">' + D.ic("check", 14) + "</button>"; }
+// Row-only versions (My tasks, Dashboard, a subteam's list). A row shows a status word only when the task needs attention:
+// Blocked, Waiting (held up by another task) or Done. "In progress" lives in the check button's ring, "To do" shows nothing.
+function rowSt(x) {
+  var waiting = x.st !== "done" && x.st !== "blocked" && !simple() && blockedBy(x).length;
+  return (x.st === "todo" || x.st === "doing") && !waiting ? "" : '<span class="tst">' + stOf(x) + "</span>";
+}
+function rowCheck(x) {
+  var doing = x.st === "doing";
+  return '<button class="tcheck' + (doing ? " doing" : "") + '" data-act="tdone" data-v="' + x.id + '" aria-pressed="' + (x.st === "done") + '" aria-label="' + (doing ? "In progress. Mark done: " : "Done: ") + esc(x.title) + '">' + D.ic("check", 14) + "</button>";
+}
 function dueTxt(x) { if (!x.due) return '<span class="who due">No date</span>'; var n = days(x.due); return '<span class="who num due' + (n < 0 && x.st !== "done" ? " late" : "") + '">' + (n === 0 ? "Today" : n === 1 ? "Tomorrow" : n < 0 && x.st !== "done" ? Math.abs(n) + "d late" : fmt(x.due, { month: "short", day: "numeric" })) + "</span>"; }
 function blockedBy(x) { return x.by.map(task).filter(function (b) { return b && b.st !== "done"; }); }
 function subsOf(x) { return T().list.filter(function (y) { return y.parent === x.id; }); }
@@ -150,8 +160,9 @@ D.views.tasks = function () {
 };
 // One task row: check, title with one muted line, status, date. Used in My tasks and the Dashboard.
 function compactRow(x) {
-  return '<div class="trowx">' + check(x) + '<div class="tt"><button class="ttitle" data-act="topen" data-v="' + x.id + '">' + esc(x.title) + '</button><div class="tsub">' + esc(proj(x.p).name) + " › " + esc(x.sub) + (x.ms ? " · ◆ " + esc(msName(x.p, x.ms)) : "") + "</div></div>" +
-    '<span class="tst">' + stOf(x) + "</span>" + dueTxt(x) + "</div>";
+  var st = rowSt(x);
+  return '<div class="trowx' + (st ? "" : " nost") + '">' + rowCheck(x) + '<div class="tt"><button class="ttitle" data-act="topen" data-v="' + x.id + '">' + esc(x.title) + '</button><div class="tsub">' + esc(proj(x.p).name) + "</div></div>" +
+    st + dueTxt(x) + "</div>";
 }
 // The Next up card: shared by My tasks and the portal home.
 function nextUp() {
@@ -289,8 +300,9 @@ function listRow(x, sc, open, isSub) {
   if (sc.length) sub.push(sc.filter(function (s) { return s.st === "done"; }).length + " of " + sc.length + " subtasks");
   if (x.est && !simple()) sub.push(x.est + " h");
   var lb = labs(x);
-  return '<div class="trowx' + (isSub ? " sub" : "") + '">' + check(x) + '<div class="tt"><div class="tline">' + (sc.length ? '<button class="tex" data-act="tsubs" data-v="' + x.id + '" aria-label="' + (open ? "Hide" : "Show") + ' subtasks" aria-expanded="' + !!open + '">' + (open ? "▾" : "▸") + "</button>" : "") + '<button class="ttitle' + (x.st === "done" ? " isdone" : "") + '" data-act="topen" data-v="' + x.id + '">' + esc(x.title) + '</button></div><div class="tsub">' + sub.join(" · ") + (lb ? " · " + lb : "") + "</div></div>" +
-    '<span class="tst">' + stOf(x) + "</span>" + dueTxt(x) + "</div>";
+  var st = rowSt(x);
+  return '<div class="trowx' + (isSub ? " sub" : "") + (st ? "" : " nost") + '">' + rowCheck(x) + '<div class="tt"><div class="tline">' + (sc.length ? '<button class="tex" data-act="tsubs" data-v="' + x.id + '" aria-label="' + (open ? "Hide" : "Show") + ' subtasks" aria-expanded="' + !!open + '">' + (open ? "▾" : "▸") + "</button>" : "") + '<button class="ttitle' + (x.st === "done" ? " isdone" : "") + '" data-act="topen" data-v="' + x.id + '">' + esc(x.title) + '</button></div><div class="tsub">' + sub.join(" · ") + (lb ? " · " + lb : "") + "</div></div>" +
+    st + dueTxt(x) + "</div>";
 }
 
 /* ---------- Task panel ---------- */
