@@ -90,7 +90,7 @@ Top to bottom, one column up to 1120 px:
      practice and how many are signed in. Remove the sentence greeting that lists counts.
    - Parent: the next practice or event, and any practice that still needs snacks (button: Sign up).
 3. **Apps**: compact tiles (icon, name, the short description) in a grid: 2 across on phones, 3 to 4 on desktop.
-   "More" links below as a plain list of links.
+   Under them two quiet rows, **Tools** and **More**, each closed by default (see "Apps, Tools and More" below).
 4. Recent activity (not for parents): five rows, plain text, app name muted in front. No pills.
 
 Delete the yellow-bar instructions at the bottom.
@@ -140,6 +140,62 @@ gold button is Send. Schedule: keep; soften the bars.
 
 **Account.** One column, 720 px: Profile, Notifications (one row per kind with its switches, not a table on
 phones), Appearance, Build or Competition mode, Sign-in. Plain words: "team sign-in", never "Authentik".
+
+## Apps, Tools and More (decided 2026-11-13, D139)
+
+The Apps menu and Home show three groups. **Apps** are the tiles. **Tools** are small helpers that open inside the
+site, in the same tab (Drawing to vector, Gear and sprocket finder); they are not apps and not link-outs. **More** holds
+the link-outs. Tools and More are each one quiet row (name, count, chevron) that opens and closes; both start closed.
+The row is a real button with `aria-expanded`, the chevron turns (no motion with reduced motion), and each person's
+open or closed choice is remembered the way theme and mode are. A group with nothing in it for that person is not
+shown. Tools are for admins, mentors and students in both modes; parents and the shop screen do not see the group.
+
+**One place for tools.** `#tools` lists every tool (icon, name, one line). A tool page keeps "Tools" in the bar, has a
+small "All tools" link, the tool's name as the `h1`, then numbered steps with one gold action. Adding a tool adds one
+row and one page, never a new tile. A tool that cannot do the real work in the demo says so on the screen; a sample
+result is labelled as a sample.
+
+## Hover descriptions (decided 2026-11-13, D139)
+
+One shared tip for every app: any element with `data-tip="…"` gets it. Do not use `title` (it adds a second,
+browser-made tip).
+- It shows after about half a second of mouse hover and at once on keyboard focus, never from touch. It goes away on
+  leave, blur, Escape, scroll or click. It sits above the element (below when there is no room), inside the window,
+  above every layer, with no arrow and only a short fade. It is tied to the element with `aria-describedby`.
+- **What gets one:** every icon-only button (Apps, bell, initials, menu and "…" buttons, the task check circle, close
+  buttons); every tab and view-switch item (what you find there); every status word (what it means); each tile in the
+  Apps menu; the Build / Competition switch; short codes and jargon (DP, SKU, "Qual 12"); each tool row. A switch or
+  checkbox that sits next to its own visible label does not need one.
+- **How it reads:** one short sentence, at most about 80 characters, on what the thing is or does. Never the visible
+  label again. Sentence case, no host or service names.
+- **Never the only way:** nothing a person must know lives only in a tip, because phones have no hover. Do not remove
+  visible helper text to make room for tips.
+- Tabs and status words take their words from one shared table (tab descriptions by app and id; one glossary of
+  status words per app), so the same word always means the same thing.
+
+## Guide (decided 2026-11-13, D140; the full design is `new-apps/briefs/GUIDE_DESIGN.md`)
+
+A new person learns by doing three to five real first-week jobs, not by watching a tour. Home shows a small "Get
+started" card with only the next stop; "Show me" opens the real screen and rings one control that stays live; using it
+finishes the stop. The card ends once with what they covered and is gone; Account has "Start the tour again".
+
+**Fast, by rule.**
+- No timers, no typing effects, no step that waits. A stop is on screen within about a tenth of a second of the tap.
+  No animation longer than 200 ms; none with reduced motion.
+- One sentence of about 20 words per stop, naming the control ("the gold Scan the door code button"). If a stop
+  needs more words, the screen it points at needs fixing, not the guide.
+- A person who taps "Got it" at every stop is done in under 30 seconds; doing every action, about a minute.
+- Never more than five stops for any role. **A new app adds at most one stop to a role, and only by replacing a
+  weaker one.**
+- The guide adds no weight to a page that is not showing it.
+
+**Engaging, without tricks.** It is about their first day: their first name and their role's real first job. Progress
+is visible and small ("2 of 4" and a thin line). Each stop ends in something real (signed in, task open, days saved);
+the page's own confirmation is the reward and the guide adds one tick. The ending says what they did, not
+"congratulations". No points, streaks, mascots or confetti.
+
+**Writing a stop.** A verb-first title; one sentence that names the control; what finishes it (an action on that
+control, never just a page view where an action exists); and one sentence for when the control is missing.
 
 ## Working rules for whoever codes this
 
