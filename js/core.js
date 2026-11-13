@@ -202,7 +202,8 @@ function accountMenu() {
 }
 /* Tools and More: one quiet row each, closed by default, that opens a short list. The row is a real button with
    aria-expanded and its chevron turns. A group with nothing in it for this person is not shown. */
-D.groupOpen = function (id) { return !!D.pref("open-" + id, false); };
+// The guide may open a group for one stop (D.S.guideOpen) without changing the saved choice.
+D.groupOpen = function (id) { return !!D.pref("open-" + id, false) || !!(D.S.guideOpen && D.S.guideOpen[id]); };
 function groupRow(id, label, count, place, body) {
   var open = D.groupOpen(id), bid = "grp-" + place + "-" + id;
   return '<div class="grp" data-grp="' + id + '"><button class="grphead" id="' + bid + '-btn" data-act="grp" data-v="' + id + '" data-place="' + place + '" aria-expanded="' + open + '" aria-controls="' + bid + '">' +
@@ -293,7 +294,7 @@ D.views.portal = function () {
   if (S.role === "student" && D.nextUpCard) cards += S.eventDay ? '<div class="evcompact">' + D.nextUpCard() + "</div>" : D.nextUpCard();
   var act = S.role === "parent" ? "" : '<section class="card"><h2>Recent activity</h2><div class="list">' +
     S.activity.slice(0, 5).map(function (a) { return '<div class="li actli"><span class="actapp">' + esc(D.APPNAME[a.app] || "") + '</span><span class="grow"><b>' + esc(a.who) + "</b> " + esc(a.what) + '</span><span class="who">' + esc(a.when) + "</span></div>"; }).join("") + "</div></section>";
-  return '<div class="content home"><div class="homehead"><p class="homedate">' + esc(date) + "</p><h1>Hi " + esc(D.me().short) + ".</h1></div>" + cards +
+  return '<div class="content home"><div class="homehead"><p class="homedate">' + esc(date) + "</p><h1>Hi " + esc(D.me().short) + ".</h1></div>" + (D.guideCard ? D.guideCard() : "") + cards +
     '<section class="stack"><h2 style="margin-bottom:10px">Apps</h2><div class="apptiles">' + main.map(tile).join("") + "</div>" +
     '<div class="homegroups">' + toolsGroup("home") +
     (more.length ? groupRow("more", "More", more.length, "home", '<ul class="morelinks">' + more.map(function (t) { return '<li><a href="' + D.appHref(t.id) + '" target="_blank" rel="noopener noreferrer"' + D.tileTip(t.id) + '>' + D.ic(t.icon, 16) + esc(t.name) + (t.ext ? " ↗" : "") + "</a></li>"; }).join("") + "</ul>") : "") +

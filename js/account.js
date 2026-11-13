@@ -23,8 +23,9 @@ D.views.account = function () {
     }).join("") + '</div><h3>By app</h3><div class="list">' + apps.map(function (id) { var muted = !!a.muted[id]; return '<div class="li"><span class="grow"><b>' + esc(D.APPNAME[id]) + '</b><br><span class="who">' + (muted ? "Bell only" : (a.discord ? "Bell, Discord and email" : "Bell and email")) + "</span></span>" + sw("acmute", ' data-v="' + id + '"', "Send " + D.APPNAME[id] + " notices to Discord and email", !muted) + "</div>"; }).join("") + "</div></section>";
   var look = '<section class="card"><h2>Appearance</h2><span class="seg" role="group" aria-label="Theme">' + [["light", "Light"], ["dark", "Dark"], ["", "Match my device"]].map(function (t) { return '<button data-act="actheme" data-v="' + t[0] + '" aria-pressed="' + (theme === t[0]) + '">' + t[1] + "</button>"; }).join("") + "</span></section>";
   var mode = '<section class="card"><h2>Build or Competition mode</h2><p class="small mute">Changes which apps show on Home and in the Apps menu.</p><div class="choice"><button data-act="mode" data-v="build" aria-pressed="' + (D.S.mode === "build") + '">Build mode</button><button data-act="mode" data-v="competition" aria-pressed="' + (D.S.mode === "competition") + '">Competition mode</button></div></section>';
+  var guide = D.GUIDE && D.GUIDE[D.S.role] ? '<section class="card"><h2>Guided tour</h2><p class="mute">A few short steps on Home that show where to start.</p><div><button class="btn" data-act="guidereplay">Start the tour again</button></div></section>' : "";
   var signin = '<section class="card"><h2>Sign-in</h2><p class="mute">You sign in with the team sign-in. Change your password there.</p></section>';
-  return '<div class="content"><div class="acc"><h1>Account</h1>' + profile + notes + look + mode + signin + "</div></div>";
+  return '<div class="content"><div class="acc"><h1>Account</h1>' + profile + notes + look + mode + guide + signin + "</div></div>";
 };
 var A = D.acts;
 A.acdiscord = function () { var a = Acc(); a.discord = !a.discord; D.toast(a.discord ? "Discord linked." : "Discord unlinked."); D.render(); };
