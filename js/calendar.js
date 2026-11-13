@@ -190,12 +190,16 @@ D.modals.calnew = function (d) {
 
 /* ---------- Attendance tab ---------- */
 function attendance() {
-  var staff = D.isStaff(), list = [["today", "Today"], ["board", "Leaderboard"], ["me", "My attendance"], ["mentors", "Mentors"]];
-  if (staff) list.push(["admin", "Corrections"]);
-  var t = D.tab("here", "today"), body;
-  if (!list.some(function (x) { return x[0] === t; })) t = "today";
+  var staff = D.isStaff();
+  // Mentors and admins book their days first, so that view leads and is the one Attendance opens on. Students start on Today.
+  // The id stays "mentors" so old links and Home rows still work; only the label changes with who is looking.
+  var book = ["mentors", D.S.role === "admin" ? "Mentor days" : staff ? "My days" : "Mentors coming"];
+  var rest = [["today", "Today"], ["board", "Leaderboard"], ["me", "My attendance"]];
+  var list = staff ? [book].concat(rest, [["admin", "Corrections"]]) : rest.concat([book]), def = list[0][0];
+  var t = D.tab("here", def), body;
+  if (!list.some(function (x) { return x[0] === t; })) t = def;
   if (t === "board") body = board(); else if (t === "me") body = mine(); else if (t === "mentors") body = mentorsView(); else if (t === "admin") body = corrections(); else body = today();
-  return subnav("here", list, "today") + body;
+  return subnav("here", list, def) + body;
 }
 function today() {
   var c = C(), me = D.me().name, mine = c.here.filter(function (h) { return h.name === me; })[0], staff = D.isStaff();
