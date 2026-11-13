@@ -172,12 +172,13 @@ D.gearMath = function (kind, teeth, odIn) {
 };
 var KINDS = [["gear", "Gear"], ["sprocket", "Chain sprocket"], ["pulley", "Timing pulley"]];
 var BORES = [["hex12", "1/2 in hex", '1/2" hex'], ["hex38", "3/8 in hex", '3/8" hex'], ["r8", "8 mm round", "8 mm round"], ["other", "Other", ""]];
-// The part's name in the same form as the Parts catalog, for example: Sprocket #25, 22T, 1/2" hex.
+// The part's name in the Parts catalog's form, without the bore (for example "Sprocket #25, 22T"), so a search finds
+// it whatever bore the shop's copy has. The bore goes in the request's note instead.
 function partName(r) {
-  var bore = BORES.filter(function (b) { return b[0] === GR().bore; })[0][2];
   var base = r.kind === "gear" ? "Gear " + (/^Module/.test(r.size) ? r.size.toLowerCase() : r.size) : r.kind === "sprocket" ? "Sprocket " + r.size : "Pulley " + r.size;
-  return base + ", " + r.teeth + "T" + (bore ? ", " + bore : "");
+  return base + ", " + r.teeth + "T";
 }
+function boreLabel() { return BORES.filter(function (b) { return b[0] === GR().bore; })[0][1]; }
 function gearResult() {
   var g = GR(), od = parseFloat(g.od), teeth = parseFloat(g.teeth);
   if (!(od > 0) || !(teeth > 0)) return null;
@@ -226,7 +227,7 @@ function gearCard(r) {
     var name = partName(r), pct = Math.max(1, Math.ceil(r.err * 100));
     var sizeTip = r.kind === "gear" ? (/DP/.test(r.size) ? "Diametral pitch: teeth per inch of pitch diameter." : "Module: millimetres of pitch diameter per tooth.") : r.kind === "sprocket" ? "Chain size; the number is the pitch in eighths of an inch." : "Belt profile and the distance from tooth to tooth.";
     card = '<section class="card gresult" id="gr-result" aria-live="polite"><p class="eyebrow">Result</p><h2 id="gr-name">' + esc(name) + "</h2>" +
-      '<dl class="gfacts"><div><dt>Size</dt><dd><span data-tip="' + esc(sizeTip) + '" tabindex="0" class="abbr">' + esc(r.size) + "</span></dd></div><div><dt>Teeth</dt><dd>" + r.teeth + "</dd></div>" +
+      '<dl class="gfacts"><div><dt>Size</dt><dd><span data-tip="' + esc(sizeTip) + '" tabindex="0" class="abbr">' + esc(r.size) + "</span></dd></div><div><dt>Teeth</dt><dd>" + r.teeth + "</dd></div><div><dt>Bore</dt><dd>" + esc(boreLabel()) + "</dd></div>" +
       '<div><dt><span data-tip="The circle where teeth meet; it sets the spacing between two parts." tabindex="0" class="abbr">Pitch diameter</span></dt><dd class="num" id="gr-pd">' + r.pdIn.toFixed(3) + " in (" + r.pdMm.toFixed(1) + " mm)</dd></div>" +
       '<div><dt>Fit</dt><dd><span class="pill ' + (r.err <= .01 ? "ok" : "warn") + '" id="gr-fit" data-tip="How close your numbers are to this common size.">Matches ' + esc(r.size) + " within " + pct + "%</span></dd></div></dl>" +
       '<div class="row"><button class="btn primary" data-act="grfind">' + D.ic("search", 16) + ' Find it in inventory</button><button class="btn" data-act="grrequest">Request this part</button></div></section>';
@@ -281,5 +282,5 @@ D.changes.grunit = function (el) { var g = GR(), v = parseFloat(g.od); if (v > 0
 D.changes.grbore = function (el) { GR().bore = el.value; D.render(); };
 // Doors from the result into Parts & Inventory: its own inventory search and its own prefilled request form.
 A.grfind = function () { var name = D.gearApi.name(); if (!name) return; D.S.parts.invq = name; D.S.parts.loc = "all"; D.S.parts.low = false; D.S.tabs.parts = "inventory"; D.go("parts"); };
-A.grrequest = function () { var name = D.gearApi.name(); if (!name) return; D.partsApi.startRequest({ catalogName: name, name: name, from: "Gear and sprocket finder", task: name }); };
+A.grrequest = function () { var name = D.gearApi.name(); if (!name) return; D.partsApi.startRequest({ name: name, why: "Bore: " + boreLabel() + ".", from: "Gear and sprocket finder", task: name }); };
 })();

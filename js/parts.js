@@ -441,6 +441,6 @@ A.preturn = function (b) { var i = item(b.dataset.v), s = i.stock[+b.dataset.k],
 A.pexport = function () { D.toast("Exported 2026–27 orders to the “Parts (export, don't edit)” Google Sheet."); D.render(); };
 D.partsApi = {
   stockFor: function (name) { var i = P().items.filter(function (x) { return x.name.toLowerCase().indexOf(name.toLowerCase()) >= 0; })[0]; return i ? { name: i.name, store: inStore(i), where: i.stock.filter(function (s) { return s.place.indexOf("bot") < 0; }).map(function (s) { return s.place + " (" + s.qty + ")"; }).join(", ") } : null; },
-  startRequest: function (opts) { var p = P(), d = blankDraft(), c = opts.catalogName ? p.catalog.filter(function (x) { return x.name.toLowerCase().indexOf(opts.catalogName.toLowerCase()) >= 0; })[0] : null; if (c) fill(d, c, "From the catalog."); d.task = opts.task || ""; d.from = opts.from || "Tasks"; d.sub = opts.sub || ""; d.need = opts.need || ""; d.pri = opts.pri || "normal"; if (!c && opts.name) d.name = opts.name; p.draft = d; D.S.tabs.parts = "new"; D.go("parts"); }
+  startRequest: function (opts) { var p = P(), d = blankDraft(), c = opts.catalogName ? p.catalog.filter(function (x) { return x.name.toLowerCase().indexOf(opts.catalogName.toLowerCase()) >= 0; })[0] : null; if (c) fill(d, c, "From the catalog."); d.task = opts.task || ""; d.from = opts.from || "Tasks"; d.sub = opts.sub || ""; d.need = opts.need || ""; d.pri = opts.pri || "normal"; if (!c && opts.name) d.name = opts.name; if (opts.why) d.why = opts.why; p.draft = d; D.S.tabs.parts = "new"; D.go("parts"); }
 };
 })();
