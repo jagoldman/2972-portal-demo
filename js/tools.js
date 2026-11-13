@@ -115,6 +115,11 @@ function dxfFile() {
   out.push("0", "ENDSEC", "0", "EOF");
   return out.join("\n") + "\n";
 }
+// The size line under the distance field. Typing in the field updates only this line, so the caret stays put.
+function sizeLine() {
+  var t = TR(), sc = scale(), b = bbox(outline(t.detail));
+  return '<p class="small ' + (sc ? "" : "warnline") + '" id="tr-size" role="status">' + (sc ? "Size set: the part comes out " + (b.w * sc).toFixed(2) + " × " + (b.h * sc).toFixed(2) + " " + t.unit + "." : "Size not set: the file will need scaling.") + "</p>";
+}
 D.views["tool-trace"] = function () {
   if (!allowed()) return D.denied("Tools");
   var t = TR(), sample = t.src === "sample", o = outline(t.detail);
@@ -129,13 +134,12 @@ D.views["tool-trace"] = function () {
   var s1 = step(1, "Photo", photoPicker("trphoto", [["trsample", "", "Use the sample drawing"]]) + shot);
   var s2 = "", s3 = "";
   if (sample) {
-    var sc = scale(), b = bbox(o);
     s2 = step(2, "Trace", '<p class="small mute">The traced outline is drawn over the photo.</p>' +
       '<div class="field"><span class="flabel">Detail</span><span class="seg" role="group" aria-label="Detail">' + [["less", "Less"], ["normal", "Normal"], ["more", "More"]].map(function (d) { return '<button data-act="trdetail" data-v="' + d[0] + '" aria-pressed="' + (t.detail === d[0]) + '">' + d[1] + "</button>"; }).join("") + "</span></div>" +
       '<div class="field"><span class="flabel">Real size</span><p class="small">' + (t.pts.length === 0 ? "Tap two points on the drawing, then type the real distance between them." : t.pts.length === 1 ? "Point 1 is set. Tap the second point." : "Both points are set. Tap again to start over.") +
       (t.pts.length ? ' <button class="linkbtn" data-act="trclear">Clear points</button>' : "") + '</p><div class="row nowrap trdist"><input id="tr-dist" class="inp" type="number" inputmode="decimal" min="0" step="any" data-input="trdist" value="' + esc(t.dist) + '" aria-label="Real distance between the two points" placeholder="Distance">' +
       '<select class="inp" data-change="trunit" aria-label="Unit"><option value="in"' + (t.unit === "in" ? " selected" : "") + '>in</option><option value="mm"' + (t.unit === "mm" ? " selected" : "") + ">mm</option></select></div>" +
-      '<p class="small ' + (sc ? "" : "warnline") + '" id="tr-size" role="status">' + (sc ? "Size set: the part comes out " + (b.w * sc).toFixed(2) + " × " + (b.h * sc).toFixed(2) + " " + t.unit + "." : "Size not set: the file will need scaling.") + "</p></div>");
+      sizeLine() + "</div>");
   } else if (t.src === "own") s2 = step(2, "Trace", '<p class="warnline">The demo only traces the sample drawing.</p><p class="small mute">Your photo is shown above so you can see the flow. The real tool draws its outline here.</p>');
   if (t.src) s3 = step(3, "Save", '<div class="row"><button class="btn primary" data-act="trsave" data-v="svg">' + D.ic("download", 16) + ' Download SVG</button><button class="btn" data-act="trsave" data-v="dxf">' + D.ic("download", 16) + " Download DXF</button></div>" +
     '<p class="small mute">SVG is for the laser, DXF for Onshape. The photo is not kept after the file is made.</p>');
@@ -211,6 +215,10 @@ D.views["tool-gear"] = function () {
     '<select class="inp unit" data-change="grunit" aria-label="Unit"><option value="in"' + (g.unit === "in" ? " selected" : "") + '>in</option><option value="mm"' + (g.unit === "mm" ? " selected" : "") + ">mm</option></select></div>" +
     '<span class="who">A photo can\'t show true size; this one number does.' + (smp ? " Filled in for the sample." : "") + "</span></div>" +
     '<div class="field"><label for="gr-bore">Bore</label><select id="gr-bore" class="inp narrow" data-change="grbore">' + BORES.map(function (b) { return '<option value="' + b[0] + '"' + (g.bore === b[0] ? " selected" : "") + ">" + b[1] + "</option>"; }).join("") + '</select><span class="who">Set it yourself; the photo doesn\'t show it.</span></div>');
+  return head("Gear and sprocket finder") + '<div class="content tool">' + s1 + s2 + s3 + gearCard(r) + "</div>";
+};
+// The result card. Typing in Teeth or Outside diameter redraws only this card, so the caret stays where the person types.
+function gearCard(r) {
   var card;
   if (!r) card = '<section class="card gresult" id="gr-result" aria-live="polite"><h2>Result</h2><p class="mute">Type the tooth count and the outside diameter to see the size.</p></section>';
   else if (!r.match) card = '<section class="card gresult" id="gr-result" aria-live="polite"><h2>Result</h2><p class="warnline">No common size matches. Check the tooth count and the measurement.</p><p class="small mute">Measured: ' + esc(r.measured) + ".</p></section>";
@@ -220,11 +228,11 @@ D.views["tool-gear"] = function () {
     card = '<section class="card gresult" id="gr-result" aria-live="polite"><p class="eyebrow">Result</p><h2 id="gr-name">' + esc(name) + "</h2>" +
       '<dl class="gfacts"><div><dt>Size</dt><dd><span data-tip="' + esc(sizeTip) + '" tabindex="0" class="abbr">' + esc(r.size) + "</span></dd></div><div><dt>Teeth</dt><dd>" + r.teeth + "</dd></div>" +
       '<div><dt><span data-tip="The circle where teeth meet; it sets the spacing between two parts." tabindex="0" class="abbr">Pitch diameter</span></dt><dd class="num" id="gr-pd">' + r.pdIn.toFixed(3) + " in (" + r.pdMm.toFixed(1) + " mm)</dd></div>" +
-      '<div><dt>Fit</dt><dd><span class="pill ' + (r.err <= .01 ? "ok" : "warn") + '" id="gr-fit">Matches ' + esc(r.size) + " within " + pct + "%</span></dd></div></dl>" +
+      '<div><dt>Fit</dt><dd><span class="pill ' + (r.err <= .01 ? "ok" : "warn") + '" id="gr-fit" data-tip="How close your numbers are to this common size.">Matches ' + esc(r.size) + " within " + pct + "%</span></dd></div></dl>" +
       '<div class="row"><button class="btn primary" data-act="grfind">' + D.ic("search", 16) + ' Find it in inventory</button><button class="btn" data-act="grrequest">Request this part</button></div></section>';
   }
-  return head("Gear and sprocket finder") + '<div class="content tool">' + s1 + s2 + s3 + card + "</div>";
-};
+  return card;
+}
 
 /* ---------- Actions ---------- */
 var A = D.acts;
@@ -248,7 +256,14 @@ document.addEventListener("keydown", function (e) {
   else return;
   D.render(); var s = document.querySelector(".traceimg"); if (s) s.focus();
 });
-D.inputs.trdist = function (el) { TR().dist = el.value; D.render(); };
+// Number fields: keep the state and redraw only what depends on it, never the field itself (a full redraw loses the caret).
+// The live region stays the same element (its contents change), so screen readers announce the new result.
+function swap(id, html) {
+  var el = document.getElementById(id); if (!el) return;
+  var tmp = document.createElement("div"); tmp.innerHTML = html; var n = tmp.firstElementChild;
+  D.hideTip && D.hideTip(); el.className = n.className; el.innerHTML = n.innerHTML;
+}
+D.inputs.trdist = function (el) { TR().dist = el.value; swap("tr-size", sizeLine()); };
 D.changes.trunit = function (el) { TR().unit = el.value; D.render(); };
 A.trsave = function (b) {
   var t = TR(), svg = b.dataset.v === "svg";
@@ -260,8 +275,8 @@ A.trsave = function (b) {
 A.grsample = function (b) { var g = GR(), s = SAMPLES[b.dataset.v]; g.src = b.dataset.v; g.kind = s.kind; g.teeth = String(s.teeth); g.od = s.od; g.unit = "in"; D.render(); };
 D.changes.grphoto = function (el) { var g = GR(); if (readPhoto(el, g)) { g.teeth = ""; g.od = ""; D.render(); } };
 A.grkind = function (b) { GR().kind = b.dataset.v; D.render(); };
-D.inputs.grteeth = function (el) { GR().teeth = el.value; D.render(); };
-D.inputs.grod = function (el) { GR().od = el.value; D.render(); };
+D.inputs.grteeth = function (el) { GR().teeth = el.value; swap("gr-result", gearCard(gearResult())); };
+D.inputs.grod = function (el) { GR().od = el.value; swap("gr-result", gearCard(gearResult())); };
 D.changes.grunit = function (el) { var g = GR(), v = parseFloat(g.od); if (v > 0 && el.value !== g.unit) g.od = el.value === "mm" ? (v * 25.4).toFixed(2) : (v / 25.4).toFixed(3); g.unit = el.value; D.render(); };
 D.changes.grbore = function (el) { GR().bore = el.value; D.render(); };
 // Doors from the result into Parts & Inventory: its own inventory search and its own prefilled request form.
