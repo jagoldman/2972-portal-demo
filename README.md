@@ -2,10 +2,10 @@
 
 A clickable prototype of the apps planned for 2972robotics.com, the site of FRC Team 2972 (Gears & Buccaneers). It is the design source for the real apps: change it here first, then build it. `REDESIGN.md` is the brief this version follows. Component ideas from outside live in [../infra/docs/UI_LIBRARIES.md](../infra/docs/UI_LIBRARIES.md). This demo stays plain HTML/CSS/JS, so an idea from that list is rebuilt in CSS here before an app gets it.
 
-Everything is sample data. Nothing is saved, and a reload resets it. The only things kept in this browser are your own page choices: which groups are open and how far you are in the guide (per role; Reset leaves them).
+Everything is sample data. Nothing is saved, and a reload resets it. The only things kept in this browser are your own page choices: which groups are open and how far you are in the guide (per role). **Reset** clears those too.
 
 ## How to use it
-- **Grey strip at the top:** view the demo as a Student, Mentor, Admin, Parent or a shared Display screen. Tick **Event day** for the competition banner, or **Reset** the sample data.
+- **Grey strip at the top:** view the demo as a Student, Mentor, Admin, Parent or a shared Display screen. Tick **Event day** for the competition banner, or **Reset** the sample data and your saved choices (open groups, guide progress).
 - **Apps button** (nine dots, top left) reaches every app. The navy bar names the app you are in; the row under it holds that app's tabs, and at most one button.
 - **Your initials** (top right) open Account, where you pick Build or Competition mode and how you get notices.
 - Home shows what matters to you today, then the apps. Under the apps, **Tools** and **More** open and close; they start closed and the demo remembers your choice in this browser.

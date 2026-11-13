@@ -89,9 +89,9 @@ D.TILES.forEach(function (t) { D.APPNAME[t.id] = t.name; });
 D.TOOLS.forEach(function (t) { D.APPNAME[t.id] = "Tools"; });
 D.DISPLAY_ROUTES = { kiosk: 1, monitor: 1, projector: 1 };
 
-/* Choices a person makes about the page itself, not sample data: which groups are open, which tour offers they have
-   seen. The demo keeps them in this browser, per role, and Reset leaves them alone; the real site keeps them the way it
-   keeps theme and mode. */
+/* Choices a person makes about the page itself, not sample data: which groups are open, how far they are in the
+   guide, whether they hid it. The demo keeps them in this browser, per role; Reset in the demo strip clears them too,
+   so a presenter starts clean. The real site keeps them the way it keeps theme and mode. */
 var SAVE_KEY = "demo2972.saved.v1";
 D.saved = (function () { try { return JSON.parse(localStorage.getItem(SAVE_KEY)) || {}; } catch (e) { return {}; } })();
 D.pref = function (k, def) { var r = D.saved[D.S.role] || {}; return Object.prototype.hasOwnProperty.call(r, k) ? r[k] : def; };
@@ -367,7 +367,7 @@ A.role = function (b) {
   D.render();
 };
 D.changes.eventday = function (el) { D.S.eventDay = el.checked; D.render(); };
-A.reset = function () { D.reset(); D.toast("Demo reset to its sample data."); D.render(); };
+A.reset = function () { D.saved = {}; try { localStorage.removeItem(SAVE_KEY); } catch (e) {} D.reset(); D.toast("Demo reset: sample data and saved choices."); D.render(); };
 A.go = function (b) { D.go(b.dataset.v); };
 A.tab = function (b) { D.S.tabs[b.dataset.app] = b.dataset.v; D.S.drawer = null; D.render(); };
 A.mode = function (b) { var S = D.S; S.mode = b.dataset.v; if (S.route !== "portal" && S.route !== "account" && D.tile(S.route) && D.visibleTiles().indexOf(D.tile(S.route)) < 0) S.route = "portal"; D.render(); };

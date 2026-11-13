@@ -14,6 +14,12 @@ D.inits.push(function (S) {
     gear: { src: null, photo: null, kind: "gear", teeth: "", od: "", unit: "in", bore: "hex12" }
   };
 });
+// A person's photo lives only as a blob URL in this page. It is released on Reset, on a new photo, and when the
+// person leaves the tool.
+var liveUrls = [];
+D.inits.push(function () { liveUrls.forEach(function (u) { try { URL.revokeObjectURL(u); } catch (e) {} }); liveUrls = []; });
+function dropPhoto(st) { if (!st.photo) return; try { URL.revokeObjectURL(st.photo); } catch (e) {} liveUrls = liveUrls.filter(function (u) { return u !== st.photo; }); st.photo = null; if (st.src === "own") st.src = null; }
+D.after.push(function () { var T = D.S.tools; if (!T) return; if (D.S.route !== "tool-trace") dropPhoto(T.trace); if (D.S.route !== "tool-gear") dropPhoto(T.gear); });
 function TR() { return D.S.tools.trace; }
 function GR() { return D.S.tools.gear; }
 function allowed() { return D.visibleTools().length > 0; }
@@ -29,8 +35,8 @@ function photoPicker(id, samples) {
 }
 function readPhoto(el, st) {
   var f = el.files && el.files[0]; if (!f) return false;
-  if (st.photo) try { URL.revokeObjectURL(st.photo); } catch (e) {}
-  st.photo = URL.createObjectURL(f); st.src = "own"; return true;
+  dropPhoto(st);
+  st.photo = URL.createObjectURL(f); liveUrls.push(st.photo); st.src = "own"; return true;
 }
 function download(name, type, text) {
   var url = URL.createObjectURL(new Blob([text], { type: type })), a = document.createElement("a");
