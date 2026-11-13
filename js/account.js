@@ -8,8 +8,7 @@ D.inits.push(function (S) {
 });
 function Acc() { return D.S.account; }
 D.views.account = function () {
-  var a = Acc(), apps = ["tasks", "calendar", "here", "parts", "skills", "schedule", "pit", "scouting"].filter(function (id) { return D.inGroup(id); });
-  if (D.S.role === "parent") apps = ["tasks", "calendar", "snacks"];
+  var a = Acc(), apps = ["tasks", "calendar", "parts", "skills", "schedule", "pit", "scouting"].filter(function (id) { return D.inGroup(id); });
   var me = D.me(), theme = document.documentElement.getAttribute("data-theme") || "";
   var sw = function (act, attrs, label, on) { return '<button class="toggle" data-act="' + act + '"' + attrs + ' aria-pressed="' + on + '" aria-label="' + esc(label) + '"></button>'; };
   var profile = '<section class="card"><h2>Profile</h2><div class="row nowrap"><span class="badge-2972 accav">' + esc(me.name.split(" ").map(function (w) { return w[0]; }).join("").slice(0, 2)) + '</span><div><b>' + esc(me.name) + '</b><p class="who">' + esc(me.label) + "</p></div></div>" +

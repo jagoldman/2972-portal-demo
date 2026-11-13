@@ -8,8 +8,7 @@ var ICON = {
   home: "M4 4h7v7H4zM13 4h7v7h-7zM4 13h7v7H4zM13 13h7v7h-7z",
   tasks: "M9 6h11M9 12h11M9 18h11M4 6l1 1 2-2M4 12l1 1 2-2M4 18l1 1 2-2",
   calendar: "M4 6h16v14H4zM4 10h16M9 3v4M15 3v4",
-  here: "M12 12a4 4 0 1 0 0-8 4 4 0 0 0 0 8zM4 21a8 8 0 0 1 16 0",
-  snacks: "M5 11h14l-1.5 9h-11zM8 11V8a4 4 0 0 1 8 0v3",
+  snacks: "M12 3a9 9 0 1 0 9 9 4 4 0 0 1-4-4 4 4 0 0 1-5-5zM8.5 9h.01M10 14.5h.01M15 15h.01",
   parts: "M21 8l-9-5-9 5 9 5 9-5zM3 8v8l9 5 9-5V8M12 13v8",
   skills: "M6 3v6M6 15v6M18 9v6M6 9a3 3 0 1 0 0 6 3 3 0 0 0 0-6zM18 3a3 3 0 1 0 0 6 3 3 0 0 0 0-6zM18 15a3 3 0 1 0 0 6 3 3 0 0 0 0-6zM9 12h6",
   schedule: "M12 21a9 9 0 1 0 0-18 9 9 0 0 0 0 18zM12 7v5l3 2",
@@ -51,9 +50,7 @@ D.ROLES = {
 var ALL = ["admin", "mentor", "student", "parent"], BUILDERS = ["admin", "mentor", "student"];
 D.TILES = [
   { id: "tasks", name: "Tasks", icon: "tasks", svc: "tasks.", desc: "Your next task, projects and the build plan.", modes: ["build", "competition"], groups: ALL },
-  { id: "calendar", name: "Calendar", icon: "calendar", svc: "calendar.", desc: "Practices, build days and competitions.", modes: ["build", "competition"], groups: ALL },
-  { id: "here", name: "Attendance", icon: "here", svc: "calendar./here", desc: "Sign in at the door, mentor plans, hours.", modes: ["build", "competition"], groups: BUILDERS },
-  { id: "snacks", name: "Snacks", icon: "snacks", svc: "calendar./snacks", desc: "Sign up to bring snacks to practice.", modes: ["build"], groups: ["admin", "mentor", "parent"] },
+  { id: "calendar", name: "Calendar", icon: "calendar", svc: "calendar.", desc: "Practices, attendance and snacks.", modes: ["build", "competition"], groups: ALL },
   { id: "parts", name: "Parts & Inventory", icon: "parts", svc: "parts.", desc: "Request parts, check orders in, find spares.", modes: ["build", "competition"], groups: BUILDERS },
   { id: "skills", name: "Skills", icon: "skills", svc: "skills.", desc: "Training trees that unlock step by step.", modes: ["build"], groups: BUILDERS },
   { id: "schedule", name: "Schedule", icon: "schedule", svc: "compete./schedule", desc: "Who does which role at the event.", modes: ["competition"], groups: BUILDERS },
@@ -65,6 +62,14 @@ D.TILES = [
   { id: "admin", name: "Admin", icon: "admin", svc: "admin.", desc: "Approve accounts and manage groups.", modes: ["build"], groups: ["admin"], more: true, ext: true },
   { id: "handbook", name: "Team Handbook", icon: "handbook", svc: "link", desc: "Student, family and mentor handbook.", modes: ["build"], groups: ALL, more: true, ext: true }
 ];
+/* The Calendar app has three tabs. Who sees each one is what the Attendance and Snacks tiles used to say. */
+D.CALTABS = [
+  { id: "calendar", name: "Calendar", modes: ["build", "competition"], groups: ALL },
+  { id: "here", name: "Attendance", modes: ["build", "competition"], groups: BUILDERS },
+  { id: "snacks", name: "Snacks", modes: ["build"], groups: ["admin", "mentor", "parent"] }
+];
+/* Old routes for the tabs. The tab ids are also the old tile ids, so #here and #snacks still work. */
+D.ROUTE_TAB = { here: "calendar", snacks: "calendar" };
 D.APPNAME = { portal: "Portal", account: "Account", kiosk: "Door QR", monitor: "Pit monitor", projector: "Projector" };
 D.TILES.forEach(function (t) { D.APPNAME[t.id] = t.name; });
 D.DISPLAY_ROUTES = { kiosk: 1, monitor: 1, projector: 1 };
@@ -81,6 +86,14 @@ D.reset = function () {
 D.me = function () { return D.ROLES[D.S.role]; };
 D.isStaff = function () { return D.S.role === "mentor" || D.S.role === "admin"; };
 D.tile = function (id) { return D.TILES.filter(function (t) { return t.id === id; })[0]; };
+D.calTabs = function () { return D.CALTABS.filter(function (t) { return t.groups.some(function (g) { return D.me().groups.indexOf(g) >= 0; }) && t.modes.indexOf(D.S.mode) >= 0; }); };
+D.calTab = function (id) { return D.calTabs().some(function (t) { return t.id === id; }); };
+// Pick the screen for a route. A tab id (here, snacks) or "calendar" lands on that Calendar tab.
+D.landing = function (route) {
+  var app = D.ROUTE_TAB[route] || (route === "calendar" ? "calendar" : null);
+  if (app) D.S.tabs.calapp = route;
+  return app || route;
+};
 D.inGroup = function (t) { if (typeof t === "string") t = D.tile(t); return t.groups.some(function (g) { return D.me().groups.indexOf(g) >= 0; }); };
 D.visibleTiles = function () { return D.TILES.filter(function (t) { return D.inGroup(t) && t.modes.indexOf(D.S.mode) >= 0; }); };
 D.myNotices = function () { return D.S.notices.filter(function (n) { return n.to === D.S.role; }); };
@@ -94,7 +107,7 @@ D.toast = function (text, undo) {
 };
 D.withUndo = function (text, doIt, undo) { doIt(); D.toast(text, undo); D.render(); };
 D.go = function (route) {
-  var S = D.S; S.route = route; S.bell = false; S.appsOpen = false; S.accountOpen = false; S.drawer = null; S.modal = null;
+  var S = D.S; route = D.landing(route); S.route = route; S.bell = false; S.appsOpen = false; S.accountOpen = false; S.drawer = null; S.modal = null;
   try { if (location.hash !== "#" + route) history.replaceState(null, "", "#" + route); } catch (e) {}
   D.render(); window.scrollTo(0, 0);
 };
@@ -130,7 +143,7 @@ D.modalHead = function (title) { return '<div class="row between nowrap"><h2>' +
 
 /* ---------- Shell pieces ---------- */
 // Short descriptions for the Home tiles and the Apps menu.
-var SHORT = { tasks: "Your tasks", calendar: "Practices and events", here: "Attendance and hours", snacks: "Snack sign-up", parts: "Request and find parts", skills: "Training and sign-offs", schedule: "Your event roles", pit: "Checklists and batteries", scouting: "Match forms", onshape: "Robot CAD", github: "Robot code", drive: "Shared files", admin: "Accounts and groups", handbook: "Team rules and info" };
+var SHORT = { tasks: "Your tasks", calendar: "Practices, attendance and snacks", parts: "Request and find parts", skills: "Training and sign-offs", schedule: "Your event roles", pit: "Checklists and batteries", scouting: "Match forms", onshape: "Robot CAD", github: "Robot code", drive: "Shared files", admin: "Accounts and groups", handbook: "Team rules and info" };
 function demobar() {
   var S = D.S;
   var roles = ["student", "mentor", "admin", "parent", "display"].map(function (r) {
@@ -197,7 +210,7 @@ function waitingRows() {
     if (ord) rows.push({ app: "parts", tab: "toorder", title: plural(ord, "part is", "parts are") + " ready to order", count: ord });
   }
   if (K && K.requests && K.requests.length && hasTile("skills")) rows.push({ app: "skills", tab: "signoff", title: plural(K.requests.length, "sign-off request", "sign-off requests"), line: K.requests.slice(0, 3).map(function (r) { return r.st; }).join(", "), count: K.requests.length });
-  if (c && c.avail && hasTile("here")) {
+  if (c && c.avail && D.calTab("here")) {
     var silent = Object.keys(c.avail).filter(function (n) { var a = c.avail[n]; return !a.usual.length && !Object.keys(a.one).length; });
     if (S.role === "admin" && silent.length) rows.push({ app: "here", tab: "mentors", title: plural(silent.length, "mentor hasn't", "mentors haven't") + " answered for this week", line: silent.join(", "), count: silent.length });
     else if (S.role === "mentor" && silent.indexOf(D.me().name) >= 0) rows.push({ app: "here", tab: "mentors", title: "Tell us if you're coming this week", count: 1 });
@@ -211,7 +224,7 @@ function practiceRows() {
     var p = api.practiceDays(1)[0], ev = api.upcoming(10, ["comp", "outreach", "meeting"])[0];
     if (p) rows.push({ app: "calendar", title: "Next practice: " + api.fmt(p.date), line: api.span(p) });
     if (ev) rows.push({ app: "calendar", title: "Next event: " + ev.name, line: api.fmt(ev.date) });
-    if (hasTile("snacks")) {
+    if (D.calTab("snacks")) {
       var nm = "Ortiz family", need = api.practiceDays(8).filter(function (e) {
         var sn = c.snacks[e.date] || (c.snacks[e.date] = new Array(c.slots).fill(null));
         return sn.indexOf(nm) < 0 && sn.indexOf(null) >= 0;
@@ -343,7 +356,7 @@ document.addEventListener("focusout", function (e) {
     var trigger = document.querySelector(".acct"); if (trigger) trigger.setAttribute("aria-expanded", "false");
   }
 });
-function routeFromHash() { var h = location.hash.slice(1); return h && (D.views[h] || D.tile(h)) ? h : null; }
-window.addEventListener("hashchange", function () { var h = routeFromHash(); if (h && h !== D.S.route) { D.S.route = h; D.S.drawer = null; D.S.modal = null; D.render(); } });
-D.boot = function () { D.reset(); var params = new URLSearchParams(location.search); if (Object.prototype.hasOwnProperty.call(D.ROLES, params.get("role"))) D.S.role = params.get("role"); if (params.get("mode") === "competition") D.S.mode = "competition"; var h = routeFromHash(); if (h) D.S.route = h; if (h && params.get("tab")) D.S.tabs[h] = params.get("tab"); D.render(); };
+function routeFromHash() { var h = location.hash.slice(1); return h && (D.views[h] || D.tile(h) || D.ROUTE_TAB[h]) ? h : null; }
+window.addEventListener("hashchange", function () { var h = routeFromHash(), was = D.S.tabs.calapp; if (!h) return; h = D.landing(h); if (h !== D.S.route || was !== D.S.tabs.calapp) { D.S.route = h; D.S.drawer = null; D.S.modal = null; D.render(); } });
+D.boot = function () { D.reset(); var params = new URLSearchParams(location.search); if (Object.prototype.hasOwnProperty.call(D.ROLES, params.get("role"))) D.S.role = params.get("role"); if (params.get("mode") === "competition") D.S.mode = "competition"; var h = routeFromHash(); if (h) { if (params.get("tab")) D.S.tabs[h] = params.get("tab"); D.S.route = D.landing(h); } D.render(); };
 })();

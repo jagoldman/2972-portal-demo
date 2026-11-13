@@ -107,6 +107,17 @@ form. Filters: one "Show" select with counts on every screen size (no chip row),
 line on desktop. Rows: part name; one muted line (vendor · qty · total · who · need by); status at the right;
 show priority only when it is Blocking or High. "To order" has one gold button per vendor group at most.
 
+**Calendar, Attendance and Snacks are one app (decided 2026-11-13).** They answer one question, "what is happening at
+practice on this day", so there is one tile, "Calendar" ("Practices, attendance and snacks"), and the app bar says
+"Calendar" on every tab. The tab row has three tabs: Calendar, Attendance, Snacks. Who sees which stays what the three
+tiles said: Calendar for everyone; Attendance for admin, mentor and student; Snacks for admin, mentor and parent, in Build
+mode only. A tab that had its own tabs (Calendar's Month and Agenda, Attendance's Today, Leaderboard and the rest) now
+shows them as a small segmented switch at the top of the tab, so the row stays at three tabs and at most one button. On
+the agenda, and in a day's panel, a practice day has two short lines that are doors, not controls: attendance ("You are
+signed in", "Sign in", "N signed in", or the mentors coming) and snacks ("Needs snacks", "Kim family is bringing snacks").
+Each opens that tab for that day, and only roles that have the tab see the line. Old routes `#here` and `#snacks` open the
+matching tab. A person who has only one tab (a parent in Competition mode) sees no tab row, just the page title.
+
 **Calendar.** Phones open on Agenda; desktop opens on Month. Events in the month grid are pale with a coloured
 dot, not solid colour bars; the legend is one quiet line under the grid. "Subscribe on my phone" stays a plain button.
 

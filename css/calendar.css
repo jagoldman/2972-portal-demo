@@ -46,7 +46,11 @@
 
 .heat .hh { font-size: .66rem; color: var(--mute); text-align: center; font-family: var(--mono); }
 
-/* Calendar, Attendance, Snacks and the door-code screen. Loaded after base.css. */
+/* The Calendar app: Calendar, Attendance and Snacks tabs, plus the door-code screen. Loaded after base.css. */
+
+/* The small switch under the tab row (Month or Agenda, Today or Leaderboard, ...). */
+.subnav .seg { max-width: 100%; }
+@media (max-width: 640px) { .subnav .seg { display: flex; width: 100%; } .subnav .seg button { flex: 1 1 auto; } }
 
 /* Event kinds: one dot colour per kind (used by the month grid, agenda rows and the legend). */
 .k-practice { --kc: var(--mute); }
@@ -78,6 +82,18 @@
 .agdate { font-weight: 600; }
 .agmore { display: block; }
 .kind { display: inline-flex; align-items: center; gap: 6px; font-size: .85rem; color: var(--text-2); white-space: nowrap; }
+.agitem { border-top: 1px solid var(--line); min-width: 0; }
+.agitem:first-child { border-top: 0; }
+
+/* A practice day's two lines: doors to Attendance and Snacks for that day. */
+.agdoors { display: grid; padding: 0 4px 8px calc(8.5rem + 16px); }
+.doorln { display: flex; align-items: center; gap: 8px; width: 100%; min-height: 32px; padding: 2px 8px; border: 0; border-radius: 8px; background: none; color: var(--text-2); font: inherit; font-size: .88rem; text-align: left; cursor: pointer; }
+.doorln:hover { background: var(--surface-2); color: var(--text); }
+.doorln svg { flex: none; color: var(--mute); }
+.doorln .dtxt { flex: 1; min-width: 0; }
+.doorln .chev { flex: none; }
+.drawer .agdoors { padding: 0; }
+.focusrow, .focusrow td { background: var(--tint); }
 
 /* Event form */
 .field.wide { grid-column: 1 / -1; }
@@ -133,6 +149,8 @@
   .agrow .agdate { grid-column: 1; grid-row: 1; font-size: .85rem; color: var(--mute); }
   .agrow .kind { grid-column: 2; grid-row: 1; }
   .agrow .grow { grid-column: 1 / -1; grid-row: 2; }
+  .agdoors { padding-left: 4px; }
+  .doorln { min-height: 44px; }
   .statuscard { flex-direction: column; align-items: stretch; }
   .statuscard .btn { width: 100%; }
   .mhead select, .mhead .chipsel { min-height: 44px; }

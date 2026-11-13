@@ -1,4 +1,5 @@
-/* Team Calendar service: Calendar (month, agenda, events, competitions, practice pattern), Attendance (door sign-in, mentors, hours), Snacks. */
+/* Team Calendar service, one app with three tabs: Calendar (month, agenda, events, practice pattern), Attendance (door sign-in, mentors, hours), Snacks.
+   Each answers "what is happening at practice on this day". The Door QR screen is part of it. */
 (function () {
 "use strict";
 var esc = D.esc;
@@ -66,10 +67,10 @@ D.inits.push(function (S) {
   S.cal.snacks["2026-11-10"] = ["Kim family", "Shah family"];
   S.cal.snacks["2026-11-12"] = [null, null];
   S.cal.snacks["2026-11-17"] = ["Brooks family", null];
-  S.notices.push({ to: "admin", app: "here", text: "Dr. Patel hasn't answered for this week's practices.", when: "Sun", read: false });
-  S.notices.push({ to: "mentor", app: "here", text: "Are you coming Tue Nov 17? Your usual week says yes, but you marked Can't.", when: "Sun", read: true });
-  S.notices.push({ to: "parent", app: "snacks", text: "Thu Nov 12 still needs snacks for 2.", when: "Today", read: false });
-  S.activity.push({ who: "Ava Kim", what: "signed in at the door", app: "here", when: "3:40 pm" });
+  S.notices.push({ to: "admin", app: "calendar", text: "Dr. Patel hasn't answered for this week's practices.", when: "Sun", read: false });
+  S.notices.push({ to: "mentor", app: "calendar", text: "Are you coming Tue Nov 17? Your usual week says yes, but you marked Can't.", when: "Sun", read: true });
+  S.notices.push({ to: "parent", app: "calendar", text: "Thu Nov 12 still needs snacks for 2.", when: "Today", read: false });
+  S.activity.push({ who: "Ava Kim", what: "signed in at the door", app: "calendar", when: "3:40 pm" });
 });
 function C() { return D.S.cal; }
 function upcoming(n, kinds) { return C().events.filter(function (e) { return e.date >= TODAYS && (!kinds || kinds.indexOf(e.kind) >= 0); }).sort(function (a, b) { return a.date < b.date ? -1 : a.date > b.date ? 1 : 0; }).slice(0, n); }
@@ -79,15 +80,37 @@ function availOf(m, date) { var a = C().avail[m]; if (a.one[date]) return a.one[
 function practiceDays(n) { return upcoming(40, ["practice", "build"]).filter(function (e) { return e.auto || e.kind === "build"; }).filter(function (e, i, arr) { return !arr.slice(0, i).some(function (x) { return x.date === e.date; }); }).slice(0, n); }
 D.calApi = { practiceDays: practiceDays, upcoming: upcoming, fmt: fmt, span: span, TODAYS: TODAYS, currentEvent: function () { return C().events.filter(function (e) { return e.kind === "comp" && e.tba; })[0]; } };
 
-/* ---------- Calendar ---------- */
+/* ---------- The app: three tabs, each with its own small switch ---------- */
+function snackName() { return D.S.role === "parent" ? "Ortiz family" : D.me().name; }
+function subnav(app, list, def) {
+  var cur = D.tab(app, def);
+  if (!list.some(function (t) { return t[0] === cur; })) cur = def;
+  return '<div class="subnav"><span class="seg" role="group" aria-label="View">' + list.map(function (t) { return '<button data-act="tab" data-app="' + app + '" data-v="' + t[0] + '" aria-pressed="' + (cur === t[0]) + '">' + esc(t[1]) + "</button>"; }).join("") + "</span></div>";
+}
 D.views.calendar = function () {
+  var tabs = D.calTabs(), top = D.tab("calapp", "calendar"), staff = D.isStaff(), body, right = "";
+  if (!D.calTab(top)) top = D.S.tabs.calapp = "calendar";
+  if (top === "here") {
+    body = attendance();
+    if (staff) right = '<button class="btn sm" data-act="go" data-v="kiosk" aria-label="Door QR screen" title="Door QR screen">' + D.ic("qr", 16) + '<span class="hide-sm">Door QR screen</span></button>';
+  } else if (top === "snacks") body = snacks();
+  else {
+    body = calendarTab();
+    right = staff ? '<button class="btn primary sm" data-act="calnew" aria-label="New event">' + D.ic("plus", 16) + '<span>New<span class="hide-sm"> event</span></span></button>' : '<button class="btn sm" data-act="calical">Subscribe<span class="hide-sm"> on my phone</span></button>';
+  }
+  var row = tabs.length > 1 ? D.tabsFor("calapp", tabs.map(function (t) { return [t.id, t.name]; }), "calendar") : "";
+  return D.topbar("Calendar", "", row, right) + '<div class="content">' + body + "</div>";
+};
+
+/* ---------- Calendar tab ---------- */
+function calendarTab() {
   var staff = D.isStaff(), list = [["month", "Month"], ["agenda", "Agenda"]];
   if (staff) list.push(["setup", "Practice pattern and sync"]);
   var def = window.matchMedia && window.matchMedia("(max-width: 640px)").matches ? "agenda" : "month";
-  var t = D.tab("calendar", def), body = t === "agenda" ? agenda() : t === "setup" && staff ? setup() : month();
-  var right = staff ? '<button class="btn primary sm" data-act="calnew">' + D.ic("plus", 16) + " New event</button>" : '<button class="btn sm" data-act="calical">Subscribe on my phone</button>';
-  return D.topbar("Calendar", "", D.tabsFor("calendar", list, def), right) + '<div class="content">' + body + "</div>";
-};
+  var t = D.tab("calendar", def);
+  if (!list.some(function (x) { return x[0] === t; })) t = def;
+  return subnav("calendar", list, def) + (t === "agenda" ? agenda() : t === "setup" ? setup() : month());
+}
 function evBtn(e) { return '<button class="ev ' + KIND[e.kind][1] + '" data-act="calev" data-v="' + e.id + '" title="' + esc(e.name) + '" aria-label="' + esc(e.name) + '"><span class="et">' + (e.start ? t12(e.start).replace(" pm", "p").replace(" am", "a") + " " : "") + esc(e.name) + "</span></button>"; }
 function month() {
   var c = C(), y = c.month[0], m = c.month[1], first = new Date(y, m, 1), start = new Date(y, m, 1 - first.getDay());
@@ -104,14 +127,33 @@ function month() {
     '<div class="month">' + WD.map(function (x) { return '<div class="dh">' + x + "</div>"; }).join("") + cells + "</div>" +
     '<div class="legend">' + Object.keys(KIND).map(function (k) { return '<span class="' + KIND[k][1] + '"><i class="kd"></i>' + KIND[k][0] + "</span>"; }).join("") + "</div></div>";
 }
+function isPractice(e) { return e.kind === "practice" || e.kind === "build"; }
+/* A practice day's two short lines. They are doors to the Attendance and Snacks tabs, not controls. */
+function door(tab, sub, date, icon, text, label) {
+  return '<button class="doorln" data-act="caldoor" data-v="' + tab + '" data-tab="' + sub + '" data-d="' + date + '" aria-label="' + esc(text + ". Open " + label + " for " + fmt(date)) + '">' + D.ic(icon, 16) + '<span class="dtxt">' + esc(text) + '</span><span class="chev" aria-hidden="true">›</span></button>';
+}
+function hereLine(e, brief) {
+  var c = C(), me = D.me().name;
+  if (e.date === TODAYS) return D.isStaff() ? c.here.length + " signed in" : c.here.some(function (h) { return h.name === me; }) ? "You are signed in" : "Sign in";
+  var ms = MENTORS.filter(function (m) { var a = availOf(m, e.date); return a === "coming" || a === "usual"; });
+  return !ms.length ? "No mentors yet" : brief ? ms.length + (ms.length === 1 ? " mentor" : " mentors") + " coming" : "Mentors: " + ms.join(", ");
+}
+function snackLine(date) {
+  var c = C(), names = (c.snacks[date] || []).filter(Boolean), open = c.slots - names.length, mine = names.indexOf(snackName()) >= 0;
+  if (!names.length) return "Needs snacks";
+  var who = mine ? "You are" : names.join(" and ") + (names.length > 1 ? " are" : " is");
+  return who + " bringing snacks" + (open > 0 ? " · " + open + " more needed" : "");
+}
+function dayDoors(e, brief) {
+  var out = "";
+  if (D.calTab("here")) out += door("here", e.date === TODAYS ? "today" : "mentors", e.date, "user", hereLine(e, brief), "Attendance");
+  if (D.calTab("snacks")) out += door("snacks", "", e.date, "snacks", snackLine(e.date), "Snacks");
+  return out ? '<div class="agdoors">' + out + "</div>" : "";
+}
 function agenda() {
-  var items = upcoming(18), notStudent = D.S.role !== "student";
+  var items = upcoming(18);
   return '<div class="card"><h2>Coming up</h2><div class="list">' + items.map(function (e) {
-    var mentors = (e.kind === "practice" || e.kind === "build") ? MENTORS.filter(function (m) { var a = availOf(m, e.date); return a === "coming" || a === "usual"; }) : [];
-    var sn = C().snacks[e.date], more = [span(e) + (e.where ? " · " + esc(e.where) : "")];
-    if (mentors.length && D.S.role !== "parent") more.push("Mentors: " + esc(mentors.join(", ")));
-    if (sn && notStudent) more.push("Snacks: " + sn.filter(Boolean).length + " of " + C().slots);
-    return '<button class="li agrow" data-act="calev" data-v="' + e.id + '"><b class="num agdate">' + fmt(e.date) + (e.end2 ? "–" + fmt(e.end2, { month: "short", day: "numeric" }) : "") + '</b><span class="grow"><b>' + esc(e.name) + '</b><span class="who agmore">' + more.join(" · ") + '</span></span><span class="kind ' + KIND[e.kind][1] + '"><i class="kd"></i>' + KIND[e.kind][0] + "</span></button>";
+    return '<div class="agitem"><button class="li agrow" data-act="calev" data-v="' + e.id + '"><b class="num agdate">' + fmt(e.date) + (e.end2 ? "–" + fmt(e.end2, { month: "short", day: "numeric" }) : "") + '</b><span class="grow"><b>' + esc(e.name) + '</b><span class="who agmore">' + span(e) + (e.where ? " · " + esc(e.where) : "") + '</span></span><span class="kind ' + KIND[e.kind][1] + '"><i class="kd"></i>' + KIND[e.kind][0] + "</span></button>" + (isPractice(e) ? dayDoors(e) : "") + "</div>";
   }).join("") + "</div></div>";
 }
 function setup() {
@@ -126,12 +168,9 @@ function setup() {
 D.drawers.calev = function (d) {
   var e = C().events.filter(function (x) { return x.id === +d.id; })[0], staff = D.isStaff(), html = "";
   html += D.drawerHead(KIND[e.kind][0], e.name) + '<p><b>' + fmt(e.date, { weekday: "long", month: "long", day: "numeric" }) + (e.end2 ? " – " + fmt(e.end2, { weekday: "long", month: "long", day: "numeric" }) : "") + "</b><br>" + span(e) + (e.where ? " · " + esc(e.where) : "") + "</p>" + (e.note ? '<p class="mute">' + esc(e.note) + "</p>" : "");
-  if (e.kind === "practice" || e.kind === "build") {
+  if (isPractice(e)) {
     var ms = MENTORS.map(function (m) { var a = availOf(m, e.date), here = e.date === TODAYS && C().here.some(function (h) { return h.name === m; }); return '<div class="li"><b class="grow">' + esc(m) + "</b>" + (here ? '<span class="pill ok">Here</span>' : a === "coming" || a === "usual" ? '<span class="pill info">Coming' + (a === "usual" ? " (usual)" : "") + "</span>" : a === "cant" ? '<span class="pill bad">Can\'t</span>' : '<span class="pill">No answer</span>') + "</div>"; }).join("");
-    var sn = C().snacks[e.date] || [null, null];
-    html += (D.S.role !== "parent" ? '<div><p class="flabel">Mentors</p><div class="list">' + ms + "</div></div>" : "") +
-      (e.date === TODAYS ? '<p class="who">' + C().here.length + ' people signed in right now.</p><div><button class="btn" data-act="go" data-v="here">Open Attendance</button></div>' : "") +
-      '<div><p class="flabel">Snacks</p><p>' + sn.map(function (x) { return x ? esc(x) : "<span class=\"mute\">open</span>"; }).join(" · ") + '</p></div>';
+    html += (D.S.role !== "parent" ? '<div><p class="flabel">Mentors</p><div class="list">' + ms + "</div></div>" : "") + (function (d) { return d ? '<div><p class="flabel">At this practice</p>' + d + "</div>" : ""; })(dayDoors(e, true));
   }
   if (e.kind === "comp") {
     html += '<div class="tablewrap"><table><tbody><tr><th>TBA event code</th><td class="mono">' + esc(e.tba || "not set") + '</td></tr><tr><th>Nexus event code</th><td class="mono">' + esc(e.nexus || "not set") + "</td></tr><tr><th>Livestream</th><td>" + esc(e.stream || "not set") + '</td></tr></tbody></table></div>';
@@ -149,14 +188,15 @@ D.modals.calnew = function (d) {
     '</div>' +     '<div class="row mfoot"><button class="btn primary" data-act="calsave">Save</button><button class="btn" data-act="closemodal">Cancel</button></div>';
 };
 
-/* ---------- Attendance ---------- */
-D.views.here = function () {
+/* ---------- Attendance tab ---------- */
+function attendance() {
   var staff = D.isStaff(), list = [["today", "Today"], ["board", "Leaderboard"], ["me", "My attendance"], ["mentors", "Mentors"]];
   if (staff) list.push(["admin", "Corrections"]);
   var t = D.tab("here", "today"), body;
-  if (t === "board") body = board(); else if (t === "me") body = mine(); else if (t === "mentors") body = mentorsView(); else if (t === "admin" && staff) body = corrections(); else body = today();
-  return D.topbar("Attendance", "", D.tabsFor("here", list, "today"), staff ? '<button class="btn sm" data-act="go" data-v="kiosk">' + D.ic("qr", 16) + " Door QR screen</button>" : "") + '<div class="content">' + body + "</div>";
-};
+  if (!list.some(function (x) { return x[0] === t; })) t = "today";
+  if (t === "board") body = board(); else if (t === "me") body = mine(); else if (t === "mentors") body = mentorsView(); else if (t === "admin") body = corrections(); else body = today();
+  return subnav("here", list, "today") + body;
+}
 function today() {
   var c = C(), me = D.me().name, mine = c.here.filter(function (h) { return h.name === me; })[0], staff = D.isStaff();
   var ms = MENTORS.map(function (m) { var here = c.here.some(function (h) { return h.name === m; }), a = availOf(m, TODAYS); return '<div class="li"><b class="grow">' + esc(m) + "</b>" + (here ? '<span class="pill ok">Here</span>' : a === "coming" || a === "usual" ? '<span class="pill info">Planned</span>' : a === "cant" ? '<span class="pill bad">Can\'t come</span>' : '<span class="pill">No answer</span>') + "</div>"; }).join("");
@@ -246,7 +286,7 @@ function teamList(ed, days) {
     others.map(function (m) { return "<th>" + (admin ? '<button class="linkbtn" data-act="hereeditm" data-v="' + esc(m) + '" title="Edit ' + esc(m) + '\'s days">' + esc(m) + "</button>" : esc(m)) + "</th>"; }).join("") + "</tr></thead><tbody>" +
     days.map(function (e) {
       var d = e.date, n = comingCount(d), mine = ed && ans(ed, d), open = c.pop && c.pop.d === d;
-      return '<tr><td><b>' + fmt(d) + '</b><span class="subline ' + (n ? "who" : "nobody") + '">' + (n ? n + " coming" : "Nobody yet") + "</span></td>" +
+      return '<tr' + (c.focus === d ? ' class="focusrow"' : "") + '><td><b>' + fmt(d) + '</b><span class="subline ' + (n ? "who" : "nobody") + '">' + (n ? n + " coming" : "Nobody yet") + "</span></td>" +
         (ed ? '<td class="mine"><button class="dbtn" data-act="herepop" data-d="' + d + '"' + (open ? " data-pop-anchor" : "") + ' aria-expanded="' + !!open + '" title="' + (ed === me ? "Change your answer for this day" : "Change " + esc(ed) + "'s answer for this day") + '">' + (mine ? answerLabel(mine) : '<span class="small" style="color:var(--accent)">Answer…</span>') + "</button></td>" : "") +
         others.map(function (m) { var here = d === TODAYS && c.here.some(function (h) { return h.name === m; }); return "<td>" + (here ? '<span class="pill ok">Here</span>' : answerLabel(ans(m, d), student)) + "</td>"; }).join("") + "</tr>";
     }).join("") + "</tbody></table></div>";
@@ -331,13 +371,12 @@ D.after.push(function () {
   }, 1000);
 });
 
-/* ---------- Snacks ---------- */
-D.views.snacks = function () {
-  var c = C(), nm = D.S.role === "parent" ? "Ortiz family" : D.me().name;
-  var days = practiceDays(8), flagged = false;
+/* ---------- Snacks tab ---------- */
+function snacks() {
+  var c = C(), nm = snackName();
+  var days = practiceDays(14), flagged = false;
   var mine = days.filter(function (e) { return (c.snacks[e.date] || []).indexOf(nm) >= 0; });
-  return D.topbar("Snacks", "", "", "") + '<div class="content">' +
-    (mine.length ? '<div class="card hero"><h2>You\'re bringing snacks on ' + mine.map(function (e) { return fmt(e.date); }).join(", ") + '</h2><p class="small mute">We\'ll remind you the day before.</p></div>' : "") +
+  return (mine.length ? '<div class="card hero"><h2>You\'re bringing snacks on ' + mine.map(function (e) { return fmt(e.date); }).join(", ") + '</h2><p class="small mute">We\'ll remind you the day before.</p></div>' : "") +
     '<div class="card"><div class="row between"><h2>Coming practices</h2><span class="who">' + c.slots + ' families per practice · nut-free please</span></div><div class="list">' +
     days.map(function (e) {
       var s = c.snacks[e.date] || (c.snacks[e.date] = new Array(c.slots).fill(null));
@@ -345,15 +384,22 @@ D.views.snacks = function () {
       if (has >= 0) act = '<button class="btn ghost sm" data-act="snackfree" data-d="' + e.date + '" data-k="' + has + '">Cancel</button>';
       else if (open >= 0) { act = '<button class="btn sm' + (flagged ? "" : " primary") + '" data-act="snack" data-d="' + e.date + '" data-k="' + open + '">I\'ll bring snacks</button>'; flagged = true; }
       else act = '<span class="pill ok">Covered</span>';
-      return '<div class="li snrow"><span class="grow"><b>' + fmt(e.date) + '</b><span class="who agmore">' + span(e) + " · " + (names.length ? esc(names.join(", ")) + (open >= 0 ? " · needs " + (s.length - names.length) + " more" : "") : "Nobody yet") + "</span></span>" + act + "</div>";
-    }).join("") + "</div></div></div>";
-};
+      return '<div class="li snrow' + (c.focus === e.date ? " focusrow" : "") + '"><span class="grow"><b>' + fmt(e.date) + '</b><span class="who agmore">' + span(e) + " · " + (names.length ? esc(names.join(", ")) + (open >= 0 ? " · needs " + (s.length - names.length) + " more" : "") : "Nobody yet") + "</span></span>" + act + "</div>";
+    }).join("") + "</div></div>";
+}
 
 /* ---------- Actions ---------- */
 var A = D.acts;
 A.calmonth = function (b) { var c = C(), m = c.month[1] + (+b.dataset.v), y = c.month[0]; if (m < 0) { m = 11; y--; } if (m > 11) { m = 0; y++; } c.month = [y, m]; D.render(); };
 A.caltoday = function () { C().month = [2026, 10]; D.render(); };
 A.calev = function (b) { D.openDrawer("calev", { id: b.dataset.v }); };
+// A door on a practice day: open that tab (and its view) and show the day.
+A.caldoor = function (b) { if (b.dataset.tab) D.S.tabs[b.dataset.v] = b.dataset.tab; C().focus = b.dataset.d || null; D.go(b.dataset.v); };
+D.after.push(function () {
+  var c = D.S && D.S.cal; if (!c || !c.focus) return;
+  var el = document.querySelector(".focusrow"); c.focus = null;
+  if (el) setTimeout(function () { el.scrollIntoView({ block: "center" }); }, 0);
+});
 A.calnew = function () { D.openModal("calnew", { kind: "comp" }); };
 D.changes.calkind = function (el) { D.S.modal.data.kind = el.value; D.S.modal.data.name = D.val("ce-name"); D.render(); };
 A.calsave = function () {
@@ -365,10 +411,10 @@ A.calsave = function () {
 A.calcancel = function (b) { var c = C(), e = c.events.filter(function (x) { return x.id === +b.dataset.v; })[0]; c.events.push({ id: 9500 + c.events.length, date: e.date, kind: "off", name: "No practice", start: "", end: "" }); c.events.splice(c.events.indexOf(e), 1); D.S.drawer = null; D.notify(["student", "mentor", "parent"], "calendar", "Practice on " + fmt(e.date) + " is cancelled."); D.toast("Cancelled. Everyone was told."); D.render(); };
 A.caldelete = function (b) { var c = C(); c.events = c.events.filter(function (x) { return x.id !== +b.dataset.v; }); D.S.drawer = null; D.render(); };
 A.calical = function () { D.toast("Subscribe link copied. Paste it into your phone's calendar app."); D.render(); };
-A.herescan = function () { var c = C(), me = D.me().name; D.withUndo("Signed in at 3:44 pm", function () { c.here.push({ name: me, at: "3:44 pm" }); D.log("signed in at the door", "here"); }, function () { c.here.pop(); D.S.activity.shift(); }); };
+A.herescan = function () { var c = C(), me = D.me().name; D.withUndo("Signed in at 3:44 pm", function () { c.here.push({ name: me, at: "3:44 pm" }); D.log("signed in at the door", "calendar"); }, function () { c.here.pop(); D.S.activity.shift(); }); };
 A.hereout = function () { var c = C(), me = D.me().name; c.here = c.here.filter(function (h) { return h.name !== me; }); D.toast("Signed out. 2.3 hours added."); D.render(); };
 A.hereone = function (b) { var c = C(), h = c.here.splice(+b.dataset.i, 1)[0]; D.toast("Signed out " + h.name + "."); D.render(); };
-A.hereall = function () { var c = C(), n = c.here.length; c.here = []; D.log("signed everyone out at the end of practice", "here"); D.toast("Signed out " + n + " people. Each got their time so far."); D.render(); };
+A.hereall = function () { var c = C(), n = c.here.length; c.here = []; D.log("signed everyone out at the end of practice", "calendar"); D.toast("Signed out " + n + " people. Each got their time so far."); D.render(); };
 A.herestud = function () { C().studentsOnly = !C().studentsOnly; D.render(); };
 D.changes.heresort = function (el) { C().sort = el.value; D.render(); };
 A.herecsv = function () { D.toast("Downloaded attendance-2026-27.csv (mentors only)."); D.render(); };
@@ -380,7 +426,7 @@ A.hereday = function (b) {
   var a = edAvail(), d = b.dataset.d, v = b.dataset.v, w = parse(d).getDay(), pe = horizonDays().filter(function (e) { return e.date === d; })[0];
   a.one[d] = v; delete a.t[d];
   if (v === "coming") a.t[d] = pe && pe.start ? { start: pe.start, end: pe.end } : { start: (a.ut[w] || {}).start || "", end: (a.ut[w] || {}).end || "" };
-  D.log("answered " + (v === "coming" ? "Coming" : "Can't come") + " for " + fmt(d), "here"); D.render();
+  D.log("answered " + (v === "coming" ? "Coming" : "Can't come") + " for " + fmt(d), "calendar"); D.render();
 };
 D.changes.heredtime = function (el) { var a = edAvail(), d = el.dataset.d, cur = ans(editorName(), d); a.one[d] = "coming"; a.t[d] = { start: cur.start, end: cur.end }; a.t[d][el.dataset.f] = el.value; D.render(); };
 A.hereuseusual = function (b) { var a = edAvail(); delete a.one[b.dataset.d]; delete a.t[b.dataset.d]; D.render(); };
@@ -391,6 +437,6 @@ D.changes.hereedit = function (el) { var c = C(); c.medit = el.value; c.pop = nu
 A.hereeditm = function (b) { var c = C(); c.medit = b.dataset.v; c.pop = null; c.udraft = null; D.render(); };
 A.herefix = function (b) { var c = C(); c.att[b.dataset.n][b.dataset.d] = 2.5; c.adjust.push({ who: b.dataset.n, hours: 0, why: "Fixed missed sign-out on " + fmt(b.dataset.d) + " (2.5 h)", by: D.me().name, when: "Just now" }); D.toast("Fixed. " + b.dataset.n + " gets 2.5 hours."); D.render(); };
 A.hereadd = function () { var c = C(); c.adjust.unshift({ who: D.val("ha-who"), hours: parseFloat(D.val("ha-h")) || 0, why: D.val("ha-why"), by: D.me().name, when: "Just now" }); D.toast("Saved. It shows in their history."); D.render(); };
-A.snack = function (b) { var c = C(), nm = D.S.role === "parent" ? "Ortiz family" : D.me().name; c.snacks[b.dataset.d][+b.dataset.k] = nm; D.toast("Thanks. You'll get a reminder the day before."); D.render(); };
+A.snack = function (b) { var c = C(), nm = snackName(); c.snacks[b.dataset.d][+b.dataset.k] = nm; D.toast("Thanks. You'll get a reminder the day before."); D.render(); };
 A.snackfree = function (b) { C().snacks[b.dataset.d][+b.dataset.k] = null; D.render(); };
 })();
