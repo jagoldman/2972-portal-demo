@@ -291,7 +291,6 @@ th.mine, td.mine { background: var(--tint); }
 .appitem[aria-current="page"] { background: var(--tint); }
 .appitem .ic, .apptile .ic { flex: none; width: 36px; height: 36px; border-radius: 10px; background: var(--tint); color: var(--accent); display: grid; place-items: center; }
 .appitem b { display: block; font-size: .92rem; font-weight: 600; }
-.appitem small { display: block; color: var(--mute); font-size: .78rem; line-height: 1.3; }
 .menuhead { display: flex; justify-content: space-between; align-items: center; gap: 8px; }
 /* Tools and More: a quiet row that opens and closes (Apps menu and Home). Closed by default; the chevron turns. */
 .menugroups { display: grid; }
@@ -320,8 +319,12 @@ th.mine, td.mine { background: var(--tint); }
 .nli.unread { font-weight: 600; }
 .nli.unread::before { content: ""; position: absolute; left: 6px; top: 50%; margin-top: -4px; width: 8px; height: 8px; border-radius: 50%; background: var(--accent); }
 .nli .who { white-space: nowrap; }
-@media (min-width: 641px) { .appgrid { grid-template-columns: repeat(3, minmax(0,1fr)); } }
-@media (max-width: 640px) { .appsmenu { left: 8px; right: 8px; width: auto; } .appitem small { display: none; } }
+@media (max-width: 640px) { .appsmenu { left: 8px; right: 8px; width: auto; } }
+/* Names only, two columns at every width; long names wrap rather than cut off. */
+.appsmenu { overscroll-behavior: contain; }
+@media (min-width: 641px) { .appsmenu { width: min(480px, calc(100vw - 16px)); } }
+.appitem { min-height: 48px; }
+.appitem b { min-width: 0; overflow-wrap: anywhere; line-height: 1.25; }
 
 /* Drawer: a side panel on desktop, a full-screen sheet on phones. */
 .drawer-scrim, .modal-scrim { position: fixed; inset: 0; z-index: 54; background: rgba(0,0,0,.35); border: 0; }

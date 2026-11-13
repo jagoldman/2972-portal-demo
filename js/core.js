@@ -217,7 +217,8 @@ function toolsGroup(place) {
 }
 function appsMenu() {
   var S = D.S, tiles = D.visibleTiles();
-  function item(t) { return '<a class="appitem" href="' + D.appHref(t.id) + '" target="_blank" rel="noopener noreferrer" aria-label="' + esc(t.name) + ' (opens in a new tab)"' + D.tileTip(t.id) + (S.route === t.id ? ' aria-current="page"' : "") + '><span class="ic">' + D.ic(t.icon, 20) + "</span><span><b>" + esc(t.name) + (t.ext ? " ↗" : "") + "</b><small>" + esc(SHORT[t.id] || t.desc) + "</small></span></a>"; }
+  // Name only, two columns at every width (as the real bar's kit 0.2.3): the description is the tile's tip.
+  function item(t) { return '<a class="appitem" href="' + D.appHref(t.id) + '" target="_blank" rel="noopener noreferrer" aria-label="' + esc(t.name) + ' (opens in a new tab)"' + D.tileTip(t.id) + (S.route === t.id ? ' aria-current="page"' : "") + '><span class="ic">' + D.ic(t.icon, 20) + "</span><b>" + esc(t.name) + (t.ext ? " ↗" : "") + "</b></a>"; }
   var more = tiles.filter(function (t) { return t.more; });
   return '<div class="appsmenu" role="dialog" aria-label="All apps"><div class="menuhead"><div class="seg" role="group" aria-label="Mode"><button data-act="mode" data-v="build" aria-pressed="' + (S.mode === "build") + '" data-tip="Show the apps for build season">Build</button><button data-act="mode" data-v="competition" aria-pressed="' + (S.mode === "competition") + '" data-tip="Show the event apps: schedule, pit and scouting">Competition</button></div><button class="xbtn" data-act="apps" aria-label="Close" data-tip="Close the apps menu">×</button></div>' +
     '<div class="appgrid">' + tiles.filter(function (t) { return !t.more; }).map(item).join("") + "</div>" +
@@ -341,6 +342,11 @@ function tabFade(row) {
   row.classList.toggle("more-l", row.scrollLeft > 4);
   row.classList.toggle("more-r", row.scrollLeft + row.clientWidth < row.scrollWidth - 4);
 }
+// The Apps menu never runs past the window: it is as tall as the room below the bar allows, and scrolls inside itself.
+D.after.push(function () {
+  var m = document.querySelector(".appsmenu"); if (!m) return;
+  m.style.maxHeight = Math.max(160, window.innerHeight - m.getBoundingClientRect().top - 8) + "px";
+});
 D.after.push(function () {
   var row = document.querySelector(".topbar .tabs"); if (!row) return;
   var a = row.querySelector("[aria-pressed='true']");
