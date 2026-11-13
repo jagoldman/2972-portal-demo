@@ -118,6 +118,8 @@ signed in", "Sign in", "N signed in", or the mentors coming) and snacks ("Needs 
 Each opens that tab for that day, and only roles that have the tab see the line. Old routes `#here` and `#snacks` open the
 matching tab. A person who has only one tab (a parent in Competition mode) sees no tab row, just the page title.
 
+**Only admins edit the practice pattern (decided 2026-11-13, the owner: "mentors cannot edit practice patterns. only admin").** The Calendar tab's "Practice pattern and sync" view (the pattern, days off and the Google Calendar subscribe links) is shown to admins only. A mentor does not see it in the switch, and any old link or `?tab=` value for it opens the Calendar tab's default view. Mentors still create and edit single events, change one practice day, cancel one practice, and use Attendance and Snacks.
+
 **Calendar.** Phones open on Agenda; desktop opens on Month. Events in the month grid are pale with a coloured
 dot, not solid colour bars; the legend is one quiet line under the grid. "Subscribe on my phone" stays a plain button.
 

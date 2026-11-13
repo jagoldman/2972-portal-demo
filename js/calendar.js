@@ -1,4 +1,4 @@
-/* Team Calendar service, one app with three tabs: Calendar (month, agenda, events, practice pattern), Attendance (door sign-in, mentors, hours), Snacks.
+/* Team Calendar service, one app with three tabs: Calendar (month, agenda, events, and for admins the practice pattern), Attendance (door sign-in, mentors, hours), Snacks.
    Each answers "what is happening at practice on this day". The Door QR screen is part of it. */
 (function () {
 "use strict";
@@ -105,7 +105,7 @@ D.views.calendar = function () {
 /* ---------- Calendar tab ---------- */
 function calendarTab() {
   var staff = D.isStaff(), list = [["month", "Month"], ["agenda", "Agenda"]];
-  if (staff) list.push(["setup", "Practice pattern and sync"]);
+  if (D.S.role === "admin") list.push(["setup", "Practice pattern and sync"]); // admin only: mentors cannot edit practice patterns
   var def = window.matchMedia && window.matchMedia("(max-width: 640px)").matches ? "agenda" : "month";
   var t = D.tab("calendar", def);
   if (!list.some(function (x) { return x[0] === t; })) t = def;

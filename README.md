@@ -15,7 +15,7 @@ Everything is sample data. Nothing is saved, and a reload resets it.
 |---|---|
 | Tasks | Your next task, projects and subteams, a task panel, the timeline and the projector. |
 | Parts & Inventory | Request a part, order by vendor (mentors), check in arrivals, find spares by place. |
-| Calendar | One app, three tabs. **Calendar**: agenda and month views. **Attendance**: door-code sign-in, hours, mentor plans. **Snacks**: snack sign-up. Each practice day on the agenda has two short lines that open Attendance and Snacks for that day. Parents see Calendar and Snacks; students see Calendar and Attendance. |
+| Calendar | One app, three tabs. **Calendar**: agenda and month views; admins also get "Practice pattern and sync" (mentors cannot edit practice patterns). **Attendance**: door-code sign-in, hours, mentor plans. **Snacks**: snack sign-up. Each practice day on the agenda has two short lines that open Attendance and Snacks for that day. Parents see Calendar and Snacks; students see Calendar and Attendance. |
 | Skills | Overview of what to do next, skill trees, sign-off requests, shop tool permissions. |
 | Schedule, Pit, Scouting | Event roles, pit checklists and monitor, match scouting with stats and a pick list (Competition mode). |
 | Account | Profile, notifications, appearance, mode, sign-in. |
