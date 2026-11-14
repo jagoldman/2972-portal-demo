@@ -775,7 +775,7 @@ function nextPractice() {
   return next ? "Next practice: " + fmt(next.date) + ", " + (np ? clockSpan(np.start, np.end) : next.name) : "No practice is planned";
 }
 // Today at a glance: short facts, each read from the app that owns it, each shown only when there is something to say.
-// On a day without practice: "No practice today", the next one, and no mentors or snacks. Snacks are counts only (D151).
+// On a day without practice: "No practice today", the next one, and no mentors or snacks.
 function glance() {
   var api = D.calApi, out = [], lp = lastPractice();
   var pr = api && api.practiceOn ? api.practiceOn(TODAYS) : null;
@@ -783,10 +783,9 @@ function glance() {
     out.push(["Practice", clockSpan(pr.start, pr.end)]);
     var ms = api.mentorsOn ? api.mentorsOn(TODAYS) : [];
     if (ms.length) out.push(["Mentors", ms.join(", ")]);
-    // Snacks: numbers only, never a name, for every role (D151; the Calendar only tells the Task App the counts).
-    var sc = api.snackCount ? api.snackCount(TODAYS) : null, tot = sc ? sc.filled + sc.open : 0;
-    var spots = function (n) { return n + (n === 1 ? " spot" : " spots") + " open"; };
-    if (tot) out.push(["Snacks", !sc.filled ? spots(sc.open) : sc.filled + " of " + tot + " covered" + (sc.open ? " · " + spots(sc.open) : "")]);
+    // Snacks: the families bringing them and, while a spot is open, how many (the owner, 2026-11-14).
+    var sn = api.snacksFor ? api.snacksFor(TODAYS) : null, spots = sn && sn.open ? sn.open + (sn.open === 1 ? " spot" : " spots") + " open" : "";
+    if (sn && (sn.filled || sn.open)) out.push(["Snacks", sn.names.join(", ") + (sn.filled && spots ? " · " : "") + spots]);
   } else out.push(["No practice today", "· " + nextPractice()]);
   var arr = lp && D.partsApi && D.partsApi.arrivedSince ? D.partsApi.arrivedSince(lp) : [], seen = {}, nm = [];
   arr.forEach(function (a) { if (!seen[a.name]) { seen[a.name] = 1; nm.push(a.name); } });

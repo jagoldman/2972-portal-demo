@@ -124,12 +124,10 @@ function practiceOn(date) {
 }
 // Mentors who plan to be there on a date (their usual days, or a one-off "coming"), from the mentor plans.
 function mentorsOn(date) { return MENTORS.filter(function (m) { var a = availOf(m, date); return a === "usual" || a === "coming"; }); }
-// The families bringing snacks on a date (empty slots left out), from Snacks.
-function snacksOn(date) { return (C().snacks[date] || []).filter(Boolean); }
-/* How many snack spots are filled and open on a date, and never who fills them (D151): the Projector is a shop screen
-   students see, and the Calendar hides snack sign-ups from students. null when the day has no snack sign-up. */
-function snackCount(date) { var s = C().snacks[date]; if (!s || !s.length) return null; var f = s.filter(Boolean).length; return { filled: f, open: s.length - f }; }
-D.calApi = { kickoff: kickoff, practiceOn: practiceOn, mentorsOn: mentorsOn, snacksOn: snacksOn, snackCount: snackCount, practiceDays: practiceDays, upcoming: upcoming, fmt: fmt, span: span, TODAYS: TODAYS, meetDays: meetDays, eventsIn: eventsIn, daysOff: daysOff, currentEvent: function () { return C().events.filter(function (e) { return e.kind === "comp" && e.tba; })[0]; } };
+/* Snacks on a date, from Snacks: the families bringing them (empty spots left out) and how many spots are open. The
+   Projector shows the families on the shop screen (the owner, 2026-11-14). null when the day has no snack sign-up. */
+function snacksFor(date) { var s = C().snacks[date]; if (!s || !s.length) return null; var names = s.filter(Boolean); return { names: names, filled: names.length, open: s.length - names.length }; }
+D.calApi = { kickoff: kickoff, practiceOn: practiceOn, mentorsOn: mentorsOn, snacksFor: snacksFor, practiceDays: practiceDays, upcoming: upcoming, fmt: fmt, span: span, TODAYS: TODAYS, meetDays: meetDays, eventsIn: eventsIn, daysOff: daysOff, currentEvent: function () { return C().events.filter(function (e) { return e.kind === "comp" && e.tba; })[0]; } };
 
 /* ---------- The app: three tabs, each with its own small switch ---------- */
 function snackName() { return D.S.role === "parent" ? "Ortiz family" : D.me().name; }
