@@ -168,15 +168,15 @@ function ensureLayer() {
   if (layer) return;
   layer = document.createElement("div"); layer.className = "guidelayer";
   ringEl = document.createElement("div"); ringEl.className = "gring"; ringEl.setAttribute("aria-hidden", "true");
-  cardEl = document.createElement("div"); cardEl.className = "gcard"; cardEl.setAttribute("role", "dialog"); cardEl.setAttribute("aria-modal", "false");
-  cardEl.setAttribute("aria-labelledby", "gcard-h"); cardEl.setAttribute("aria-describedby", "gcard-t"); cardEl.tabIndex = -1;
+  cardEl = document.createElement("div"); cardEl.className = "gstop"; cardEl.setAttribute("role", "dialog"); cardEl.setAttribute("aria-modal", "false");
+  cardEl.setAttribute("aria-labelledby", "gstop-h"); cardEl.setAttribute("aria-describedby", "gstop-t"); cardEl.tabIndex = -1;
   layer.appendChild(ringEl); layer.appendChild(cardEl); document.body.appendChild(layer);
 }
 function cardHtml(s, g, missing) {
   var list = stops(), i = list.indexOf(s), nx = list.filter(function (x) { return !isDone(x.id) && x.id !== s.id; })[0];
-  if (g.phase === "done") return '<p class="gcount who num">' + (i + 1) + " of " + list.length + '</p><h2 id="gcard-h">Done.</h2><p id="gcard-t" aria-live="polite">' + (nx ? "Next: " + esc(nx.name) + "." : "That was the last one.") + "</p>" +
+  if (g.phase === "done") return '<p class="gcount who num">' + (i + 1) + " of " + list.length + '</p><h2 id="gstop-h">Done.</h2><p id="gstop-t" aria-live="polite">' + (nx ? "Next: " + esc(nx.name) + "." : "That was the last one.") + "</p>" +
     '<div class="row nowrap gacts"><button class="btn" data-act="guidenext">' + (nx ? "Next" : "Finish") + '</button><button class="btn ghost" data-act="guidelater">Later</button></div>';
-  return '<p class="gcount who num">' + (i + 1) + " of " + list.length + '</p><h2 id="gcard-h">' + esc(s.title) + '</h2><p id="gcard-t">' + esc(missing ? s.missing : sentence(s, g)) + "</p>" +
+  return '<p class="gcount who num">' + (i + 1) + " of " + list.length + '</p><h2 id="gstop-h">' + esc(s.title) + '</h2><p id="gstop-t">' + esc(missing ? s.missing : sentence(s, g)) + "</p>" +
     '<div class="row nowrap gacts"><button class="btn" data-act="guidegot">Got it</button><button class="btn ghost" data-act="guidelater">Later</button></div>';
 }
 function inView(t) {

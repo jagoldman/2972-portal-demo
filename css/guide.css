@@ -21,24 +21,24 @@
 .gdone .gtick { background: var(--ok); color: #fff; }
 .gdone b { color: var(--mute); font-weight: 500; }
 .guideend p:first-of-type { font-weight: 500; }
-.guidecard .vh, .gcard .vh { position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0); white-space: nowrap; }
+.guidecard .vh, .gstop .vh { position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0); white-space: nowrap; }
 
 /* The layer that holds the ring and the stop card. It never blocks the page: only the card takes taps. */
 .guidelayer { position: fixed; inset: 0; z-index: 58; pointer-events: none; }
 .guidelayer.under { z-index: 50; }
 .gring { position: fixed; border-radius: 10px; box-shadow: 0 0 0 3px var(--accent), 0 0 0 6px var(--surface); transition: left .12s ease, top .12s ease, width .12s ease, height .12s ease; }
 .guidelayer.dim .gring { box-shadow: 0 0 0 3px var(--accent), 0 0 0 6px var(--surface), 0 0 0 100vmax rgba(7,9,15,.22); }
-.gcard { position: fixed; pointer-events: auto; width: min(340px, calc(100vw - 24px)); background: var(--surface); color: var(--text); border: 1px solid var(--line-2); border-radius: var(--r); box-shadow: 0 16px 44px rgba(0,0,0,.28); padding: 14px 16px; display: grid; gap: 6px; }
-.gcard:focus { outline: none; }
-.gcard:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
-.gcard h2 { font-size: 1.02rem; }
-.gcard p { font-size: .92rem; }
+.gstop { position: fixed; pointer-events: auto; width: min(340px, calc(100vw - 24px)); background: var(--surface); color: var(--text); border: 1px solid var(--line-2); border-radius: var(--r); box-shadow: 0 16px 44px rgba(0,0,0,.28); padding: 14px 16px; display: grid; gap: 6px; }
+.gstop:focus { outline: none; }
+.gstop:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+.gstop h2 { font-size: 1.02rem; }
+.gstop p { font-size: .92rem; }
 .gcount { margin: 0; }
 .gacts { margin-top: 6px; }
-.gcard.centred { left: 50% !important; top: 50% !important; transform: translate(-50%, -50%); }
+.gstop.centred { left: 50% !important; top: 50% !important; transform: translate(-50%, -50%); }
 @media (max-width: 640px) {
-  .gcard { left: 8px; right: 8px; top: auto !important; bottom: calc(8px + env(safe-area-inset-bottom, 0px)); width: auto; transform: none; }
-  .gcard.centred { left: 8px !important; top: auto !important; transform: none; }
+  .gstop { left: 8px; right: 8px; top: auto !important; bottom: calc(8px + env(safe-area-inset-bottom, 0px)); width: auto; transform: none; }
+  .gstop.centred { left: 8px !important; top: auto !important; transform: none; }
   .gnext .btn { padding-inline: 12px; }
   .ghead .btn.ghost { min-height: 36px; }
 }
