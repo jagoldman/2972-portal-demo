@@ -21,7 +21,6 @@
 .gdone .gtick { background: var(--ok); color: #fff; }
 .gdone b { color: var(--mute); font-weight: 500; }
 .guideend p:first-of-type { font-weight: 500; }
-.guidecard .vh, .gstop .vh { position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0); white-space: nowrap; }
 
 /* The layer that holds the ring and the stop card. It never blocks the page: only the card takes taps. */
 .guidelayer { position: fixed; inset: 0; z-index: 58; pointer-events: none; }
