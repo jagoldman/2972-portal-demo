@@ -141,6 +141,12 @@ gold button is Send. Schedule: keep; soften the bars.
 **Account.** One column, 720 px: Profile, Notifications (one row per kind with its switches, not a table on
 phones), Appearance, Build or Competition mode, Sign-in. Plain words: "team sign-in", never "Authentik".
 
+## Tasks: Due dates
+
+The Tasks view that shows the month of due dates and milestones is called **Due dates** (its menu item, its page
+heading and the parent's tab), never "Calendar": a second thing called Calendar beside the Calendar app confuses
+people. The Calendar app, its tile and every link to it keep the name Calendar.
+
 ## Timeline (decided 2026-11-13, D143)
 
 The Tasks timeline is for everyone but parents. Four rules:
@@ -249,8 +255,11 @@ browser-made tip).
   buttons); every tab and view-switch item (what you find there); every status word (what it means); each tile in the
   Apps menu; the Build / Competition switch; short codes and jargon (DP, SKU, "Qual 12"); each tool row. A switch or
   checkbox that sits next to its own visible label does not need one.
-- **How it reads:** one short sentence, at most about 80 characters, on what the thing is or does. Never the visible
-  label again. Sentence case, no host or service names.
+- **How it reads (D152):** one short sentence, at most about 80 characters, on what the thing is or does: a short
+  instruction or a noun phrase ("Show only the people in one group.", "The vendor's product page, in a new tab."),
+  ending with a full stop. Never "Shows…", "Saves…", "Opens…", "Keeps…" or the like, never "Click…". A tip that is only
+  data (an event's name and time, a person's hours in a cell, "Signed off by … · date") has no full stop. A
+  description that only repeats the control's visible words is left out. Sentence case, no host or service names.
 - **Never the only way:** nothing a person must know lives only in a tip, because phones have no hover. Do not remove
   visible helper text to make room for tips.
 - Tabs and status words take their words from one shared table (tab descriptions by app and id; one glossary of
