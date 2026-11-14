@@ -250,7 +250,14 @@ function tlModel() {
   // Competitions are days the team is together: they come from meetDays as columns of their own (kind "comp").
   Object.keys(marks).forEach(function (d) { cols.push({ type: "mark", date: d, items: marks[d] }); });
   // The Calendar's days off, each labelled with its own first and last day.
-  if (api && api.daysOff) api.daysOff(TL_FROM, TL_TO).forEach(function (r) { cols.push({ type: "gap", from: r.from, to: r.to, name: r.name, date: r.from + "~" }); });
+  // A practice the Calendar holds inside a days-off range keeps its column, and each side of it is labelled with only
+  // the days really off.
+  if (api && api.daysOff) api.daysOff(TL_FROM, TL_TO).forEach(function (r) {
+    var a = r.from;
+    meet.filter(function (m) { return m.date >= r.from && m.date <= r.to; }).map(function (m) { return m.date; }).concat([add(r.to, 1)]).forEach(function (d) {
+      var b = add(d, -1); if (b >= a) cols.push({ type: "gap", from: a, to: b, name: r.name, date: a + "~" }); a = add(d, 1);
+    });
+  });
   // By date; a days-off column stands just after anything on its first day.
   cols.sort(function (p, q) { return p.date < q.date ? -1 : p.date > q.date ? 1 : 0; });
   var dayK = []; cols.forEach(function (c, k) { if (c.type === "day") { c.di = dayK.length; dayK.push(k); } });
@@ -285,7 +292,8 @@ function timeline() {
   function monday(s) { var d = parse(s); return add(s, -((d.getDay() + 6) % 7)); }
   function closeWeek(k) { if (wk) heads += '<div class="tlweek" style="grid-row:1;grid-column:' + (wkStart + 2) + " / " + (k + 2) + '">' + esc(short(wk)) + "</div>"; }
   cols.forEach(function (c, k) {
-    var m = c.type === "gap" ? null : monday(c.date);
+    // A days-off column inside one week belongs to that week (the week keeps one label); a longer one has none.
+    var m = c.type !== "gap" ? monday(c.date) : monday(c.from) === monday(c.to) ? monday(c.from) : null;
     if (m !== wk) { closeWeek(k); wk = m; wkStart = k; }
     if (c.type === "day") heads += '<div class="tlday' + (c.date === TODAYS ? " istoday" : "") + '" style="grid-row:2;grid-column:' + (k + 2) + '" data-date="' + c.date + '" data-k="' + k + '" data-tip="' + esc(fmt(c.date) + " · " + (c.kind === "comp" ? "Competition: " + c.name : c.kind === "build" ? "Build day" : "Practice") + (c.date === TODAYS ? " · today" : "")) + '"' + (c.kind === "comp" ? ' data-kind="comp"' : "") + '><span>' + fmt(c.date, { weekday: "short" }) + "</span><b>" + parse(c.date).getDate() + "</b></div>";
     else if (c.type === "mark") { var says = c.items.join("; ") + " · " + fmt(c.date) + ", no practice that day"; heads += '<div class="tlmarkh" tabindex="0" role="img" aria-label="' + esc(says) + '" style="grid-row:2;grid-column:' + (k + 2) + '" data-date="' + c.date + '" data-tip="' + esc(says) + '"><b aria-hidden="true">' + parse(c.date).getDate() + "</b></div>"; }
