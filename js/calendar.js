@@ -13,7 +13,12 @@ var WD = ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"];
 var MENTORS = ["Ms. Rivera", "Mr. Chen", "Dr. Patel", "Mr. Okafor"];
 var PEOPLE = ["Priya Shah", "Leo Brooks", "Sam Ortiz", "Ava Kim", "Jordan Lee", "Maya Gold", "Nina Park", "Omar Haddad"];
 
-function isOff(s) { return (s >= "2026-11-23" && s <= "2026-11-28") || (s >= "2026-12-21" && s <= "2027-01-03"); }
+// The team's days off: one list for the weekly pattern, the "Practice pattern and sync" view and other apps (daysOff).
+var DAYS_OFF = [
+  { name: "Thanksgiving week", from: "2026-11-23", to: "2026-11-28", shown: "Nov 23–28" },
+  { name: "Winter break", from: "2026-12-21", to: "2027-01-03", shown: "Dec 21 – Jan 3" }
+];
+function isOff(s) { return DAYS_OFF.some(function (r) { return s >= r.from && s <= r.to; }); }
 function practiceFor(d) {
   var s = iso(d), w = d.getDay(), build = s >= "2027-01-09";
   if (isOff(s)) return null;
@@ -95,7 +100,14 @@ function eventsIn(from, to, kinds) {
   return C().events.filter(function (e) { return e.date >= from && e.date <= to && (!kinds || kinds.indexOf(e.kind) >= 0); })
     .map(function (e) { return { date: e.date, end2: e.end2 || "", kind: e.kind, name: e.name }; }).sort(function (a, b) { return a.date < b.date ? -1 : a.date > b.date ? 1 : 0; });
 }
-D.calApi = { practiceDays: practiceDays, upcoming: upcoming, fmt: fmt, span: span, TODAYS: TODAYS, meetDays: meetDays, eventsIn: eventsIn, currentEvent: function () { return C().events.filter(function (e) { return e.kind === "comp" && e.tba; })[0]; } };
+/* Days off that touch two dates: the named ranges, plus any single practice cancelled in the Calendar (an "off" event
+   outside those ranges). Each: { name, from, to }. */
+function daysOff(from, to) {
+  var out = DAYS_OFF.filter(function (r) { return r.to >= from && r.from <= to; }).map(function (r) { return { name: r.name, from: r.from, to: r.to }; });
+  C().events.forEach(function (e) { if (e.kind === "off" && e.date >= from && e.date <= to && !isOff(e.date)) out.push({ name: e.name, from: e.date, to: e.date }); });
+  return out.sort(function (a, b) { return a.from < b.from ? -1 : a.from > b.from ? 1 : 0; });
+}
+D.calApi = { practiceDays: practiceDays, upcoming: upcoming, fmt: fmt, span: span, TODAYS: TODAYS, meetDays: meetDays, eventsIn: eventsIn, daysOff: daysOff, currentEvent: function () { return C().events.filter(function (e) { return e.kind === "comp" && e.tba; })[0]; } };
 
 /* ---------- The app: three tabs, each with its own small switch ---------- */
 function snackName() { return D.S.role === "parent" ? "Ortiz family" : D.me().name; }
@@ -177,7 +189,7 @@ function setup() {
   var c = C();
   return '<div class="grid2"><div class="card"><h2>Practice pattern</h2><p class="small mute">Practices fill in from this. Change a single day on its event.</p><div class="tablewrap"><table><thead><tr><th>Season</th><th>Dates</th><th>Days and times</th></tr></thead><tbody>' +
     '<tr><td><b>Fall</b></td><td>Sep 1 – Jan 8</td><td class="wrap">Tue, Thu 3:30–6:00 pm</td></tr><tr><td><b>Build season</b></td><td>Jan 9 – Apr 30</td><td class="wrap">Mon, Tue, Thu 3:30–6:00 pm · Sat 10 am–2 pm</td></tr><tr><td><b>Summer</b></td><td>Jun 1 – Aug 15</td><td class="wrap">Off-season projects, Wed 4–6 pm</td></tr></tbody></table></div>' +
-    '<p class="flabel">Days off</p><div class="list"><div class="li"><b class="grow">Thanksgiving week</b><span class="who">Nov 23–28</span></div><div class="li"><b class="grow">Winter break</b><span class="who">Dec 21 – Jan 3</span></div></div><div class="row"><button class="btn sm">Edit pattern</button><button class="btn sm">Add a day off</button></div></div>' +
+    '<p class="flabel">Days off</p><div class="list">' + DAYS_OFF.map(function (r) { return '<div class="li"><b class="grow">' + esc(r.name) + '</b><span class="who">' + esc(r.shown) + "</span></div>"; }).join("") + '</div><div class="row"><button class="btn sm">Edit pattern</button><button class="btn sm">Add a day off</button></div></div>' +
     '<div class="card"><h2>Google Calendar</h2><div class="row"><span class="pill ok">Up to date</span><span class="who">Last copied ' + esc(c.sync.last) + " · " + c.sync.count + " events</span></div>" +
     '<p class="flabel">Subscribe links</p><div class="list">' + [["Team (students and mentors)", "team"], ["Parents (practices, events, snacks)", "parents"], ["Mentors (plus availability)", "mentors"]].map(function (x) { return '<div class="li"><span class="grow">' + x[0] + '</span><button class="btn sm" data-act="calical">Copy link</button></div>'; }).join("") +
     '</div></div></div>';

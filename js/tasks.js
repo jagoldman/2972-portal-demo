@@ -230,8 +230,9 @@ function calendar() {
 }
 /* ---------- Timeline ----------
    Columns are only the days the team meets, read from the Calendar (D.calApi.meetDays), all the same width. A milestone
-   or competition on a day the team does not meet gets a narrow marker column on its date; a break (a stretch with no
-   practice longer than a normal weekend) gets one thin gap column that says so. A task's bar ends on the last practice
+   or competition on a day the team does not meet gets a narrow marker column on its date; each of the Calendar's days
+   off (D.calApi.daysOff: a break, or one cancelled practice) gets one thin gap column with its own dates. An ordinary
+   stretch between practices (Friday to Monday) gets nothing. A task's bar ends on the last practice
    day on or before its due date and is as long as the work it needs (about one practice per 2.5 h of estimate, two
    when there is no estimate). The bar is the task: a click opens it. Leads also move it (see "Moving a bar" below). */
 var TL_FROM = "2026-10-26", TL_TO = "2027-01-04", PRACTICE_H = 2.5;
@@ -248,13 +249,9 @@ function tlModel() {
   divs.forEach(function (d) { d.projects.forEach(function (p) { p.ms.forEach(function (m) { mark(m[2], "Milestone: " + p.name + ", " + m[1]); }); }); });
   if (api && api.eventsIn) api.eventsIn(TL_FROM, TL_TO, ["comp"]).forEach(function (e) { mark(e.date, "Competition: " + e.name); });
   Object.keys(marks).forEach(function (d) { cols.push({ type: "mark", date: d, items: marks[d] }); });
-  // Breaks: more than 5 days between two meeting days (a normal week's longest gap is Thursday to Tuesday).
-  var edges = [add(TL_FROM, -1)].concat(meet.map(function (m) { return m.date; })).concat([add(TL_TO, 1)]);
-  for (var i = 1; i < edges.length; i++) {
-    var a = edges[i - 1], b = edges[i], gap = days(b) - days(a);
-    if (gap > 5) cols.push({ type: "gap", from: add(a, 1), to: add(b, -1), date: add(b, -1) + "~" });
-  }
-  // By date; a break sorts by its last day, so a marker inside a break stands before the break's note.
+  // The Calendar's days off, each labelled with its own first and last day.
+  if (api && api.daysOff) api.daysOff(TL_FROM, TL_TO).forEach(function (r) { cols.push({ type: "gap", from: r.from, to: r.to, name: r.name, date: r.from + "~" }); });
+  // By date; a days-off column stands just after anything on its first day.
   cols.sort(function (p, q) { return p.date < q.date ? -1 : p.date > q.date ? 1 : 0; });
   var dayK = []; cols.forEach(function (c, k) { if (c.type === "day") { c.di = dayK.length; dayK.push(k); } });
   return { cols: cols, dayK: dayK, divs: divs, isMeet: isMeet };
@@ -313,7 +310,7 @@ function timeline() {
   var rows = row - 3, todayK = colOfDate(M, TODAYS), back = "";
   cols.forEach(function (c, k) {
     var cls = c.type === "day" ? "tlcol" + (c.kind === "build" ? " build" : "") + (k === todayK ? " today" : "") : c.type === "mark" ? "tlcol mark" : "tlcol gap";
-    back += '<div class="' + cls + '" style="grid-row:3 / span ' + rows + ";grid-column:" + (k + 2) + '"' + (c.type === "gap" ? ' data-tip="' + esc("No practice from " + fmt(c.from) + " to " + fmt(c.to)) + '"><span>No practice ' + esc(spanText(c.from, c.to)) + "</span></div>" : "></div>");
+    back += '<div class="' + cls + '" style="grid-row:3 / span ' + rows + ";grid-column:" + (k + 2) + '"' + (c.type === "gap" ? ' data-tip="' + esc(c.name + ": no practice " + (c.from === c.to ? "on " + fmt(c.from) : "from " + fmt(c.from) + " to " + fmt(c.to))) + '"><span>No practice ' + esc(c.from === c.to ? short(c.from) : spanText(c.from, c.to)) + "</span></div>" : "></div>");
   });
   var todayNote = "the gold column is today";
   if (todayK < 0) {
