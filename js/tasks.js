@@ -309,11 +309,14 @@ function timeline() {
   // Week labels: one per week, spanning that week's columns (a break column has none).
   var heads = '<div class="tlcorner" style="grid-row:1 / 3"></div>', wk = null, wkStart = 0;
   function monday(s) { var d = parse(s); return add(s, -((d.getDay() + 6) % 7)); }
-  function closeWeek(k) { if (wk) heads += '<div class="tlweek" style="grid-row:1;grid-column:' + (wkStart + 2) + " / " + (k + 2) + '">' + esc(short(wk)) + "</div>"; }
+  // A week that holds only a days-off column gets no label: the column already says what it is.
+  var wkDays = false;
+  function closeWeek(k) { if (wk && wkDays) heads += '<div class="tlweek" style="grid-row:1;grid-column:' + (wkStart + 2) + " / " + (k + 2) + '">' + esc(short(wk)) + "</div>"; }
   cols.forEach(function (c, k) {
     // A days-off column inside one week belongs to that week (the week keeps one label); a longer one has none.
     var m = c.type !== "gap" ? monday(c.date) : monday(c.from) === monday(c.to) ? monday(c.from) : null;
-    if (m !== wk) { closeWeek(k); wk = m; wkStart = k; }
+    if (m !== wk) { closeWeek(k); wk = m; wkStart = k; wkDays = false; }
+    if (c.type !== "gap") wkDays = true;
     if (c.type === "day") heads += '<div class="tlday' + (c.date === TODAYS ? " istoday" : "") + '" style="grid-row:2;grid-column:' + (k + 2) + '" data-date="' + c.date + '" data-k="' + k + '" data-tip="' + esc(fmt(c.date) + " · " + (c.kind === "comp" ? "Competition: " + c.name : c.kind === "build" ? "Build day" : "Practice") + (c.date === TODAYS ? " · today" : "")) + '"' + (c.kind === "comp" ? ' data-kind="comp"' : "") + '><span>' + fmt(c.date, { weekday: "short" }) + "</span><b>" + parse(c.date).getDate() + "</b></div>";
     else if (c.type === "mark") { var says = c.items.join("; ") + " · " + fmt(c.date) + ", no practice that day"; heads += '<div class="tlmarkh" tabindex="0" role="img" aria-label="' + esc(says) + '" style="grid-row:2;grid-column:' + (k + 2) + '" data-date="' + c.date + '" data-tip="' + esc(says) + '"><b aria-hidden="true">' + parse(c.date).getDate() + "</b></div>"; }
   });
