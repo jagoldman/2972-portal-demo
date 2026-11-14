@@ -90,7 +90,8 @@ Top to bottom, one column up to 1120 px:
      practice and how many are signed in. Remove the sentence greeting that lists counts.
    - Parent: the next practice or event, and any practice that still needs snacks (button: Sign up).
 3. **Apps**: compact tiles (icon, name, the short description) in a grid: 2 across on phones, 3 to 4 on desktop.
-   Under them two quiet rows, **Tools** and **More**, each closed by default (see "Apps, Tools and More" below).
+   Under them up to three quiet rows, in this order: **Tools**, **Admin apps** and **More**, each closed by default
+   (see "Apps, Tools and More" below).
 4. Recent activity (not for parents): five rows, plain text, app name muted in front. No pills.
 
 Delete the yellow-bar instructions at the bottom.
@@ -239,6 +240,15 @@ the link-outs. Tools and More are each one quiet row (name, count, chevron) that
 The row is a real button with `aria-expanded`, the chevron turns (no motion with reduced motion), and each person's
 open or closed choice is remembered the way theme and mode are. A group with nothing in it for that person is not
 shown. Tools are for admins, mentors and students in both modes; parents and the shop screen do not see the group.
+
+**Admin apps (decided 2026-11-14, D161).** A third group, drawn exactly like Tools and More (same row, count, chevron,
+open and close, its own remembered choice), holds the link-outs for the people who run the site: **Admin** (admins
+only) and **Website editor** (admins and mentors: edit the public website, preview, then publish). Neither is in More
+any more. The group shows only when the person may open at least one of its tiles, and lists only those: an admin sees
+both, a mentor sees Website editor alone, and a student, a parent and the shop screen see no such group. It shows in
+Build and in Competition mode. The order is the same in the Apps menu and on Home: **Tools, Admin apps, More**. The
+group's row and both tiles have a hover description. The admin guide stop "Let new people in" opens Admin apps on
+Home and rings the Admin link there.
 
 **One place for tools.** `#tools` lists every tool (icon, name, one line). A tool page keeps "Tools" in the bar, has a
 small "All tools" link, the tool's name as the `h1`, then numbered steps with one gold action. Adding a tool adds one

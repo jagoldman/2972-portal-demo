@@ -8,7 +8,7 @@ Everything is sample data. Nothing is saved, and a reload resets it. The only th
 - **Grey strip at the top:** view the demo as a Student, Mentor, Admin, Parent or a shared Display screen. Tick **Event day** for the competition banner, or **Reset** the sample data and your saved choices (open groups, guide progress).
 - **Apps button** (nine dots, top left) reaches every app. The navy bar names the app you are in; the row under it holds that app's tabs, and at most one button.
 - **Your initials** (top right) open Account, where you pick Build or Competition mode and how you get notices.
-- Home shows what matters to you today, then the apps. Under the apps, **Tools** and **More** open and close; they start closed and the demo remembers your choice in this browser.
+- Home shows what matters to you today, then the apps. Under the apps, **Tools**, **Admin apps** (admins and mentors: Admin, Website editor) and **More** open and close; they start closed and the demo remembers your choice in this browser.
 - **Get started** (top of Home) offers a few real first-week jobs for your role, one at a time. "Show me" opens the screen and rings the control to use. Replay it from Account with "Start the tour again".
 - Hover over (or tab to) an icon, tab or status word for a short description of what it is.
 - Gold is only ever the one main button on a screen.
@@ -28,7 +28,7 @@ Everything is sample data. Nothing is saved, and a reload resets it. The only th
 - `index.html` loads the fonts, the styles and the scripts. No build step.
 - `css/base.css`: tokens, app bar, tab row, buttons, status, cards, lists, fields, overlays, Home, shop displays, and the few parts that more than one app uses.
 - `css/<app>.css`: styles for one app.
-- `js/core.js`: sample people, routes, the shell and shared helpers (`D.*`), the Apps / Tools / More groups and the saved choices. `js/<app>.js`: one app each.
+- `js/core.js`: sample people, routes, the shell and shared helpers (`D.*`), the Apps / Tools / Admin apps / More groups and the saved choices. `js/<app>.js`: one app each.
 - `js/tip.js`: the shared hover description (`data-tip`), the tab descriptions and the status-word glossary.
 - `js/tools.js` and `css/tools.css`: the Tools page and the two tools.
 - `js/guide.js` and `css/guide.css`: the Get started card, the stops for each role and the ring.
