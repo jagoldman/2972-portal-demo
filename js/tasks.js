@@ -624,11 +624,42 @@ function pjHead(title, cur) {
   return '<div class="mtghead' + (disp ? " mtgdisp" : "") + '"><div class="mtgttl"><h1>' + esc(title) + '</h1><p class="dmute">Updated 3:42 pm</p></div><div class="mtgctl">' + pager + pjSwitch(cur) +
     (disp ? "" : '<button class="btn mtgexit" data-act="go" data-v="tasks" data-tip="Back to Tasks">Exit projector</button>') + "</div></div>";
 }
+/* Countdown strip (top of Meeting and Practice): the season and the next four milestones not yet met.
+   The kickoff date is the Calendar's kickoff event (D.calApi.kickoff); days are counted, and "practices" are the days
+   the team meets from today up to the day before (D.calApi.meetDays), never typed in. */
+function meetsBefore(date) { var api = D.calApi; return api && api.meetDays && date > TODAYS ? api.meetDays(TODAYS, add(date, -1)).length : 0; }
+function plural(n, one, many) { return n + " " + (n === 1 ? one : many || one + "s"); }
+function season() { var k = D.calApi && D.calApi.kickoff ? D.calApi.kickoff() : null; return k ? { date: k.date, days: days(k.date), practices: meetsBefore(k.date) } : null; }
+function nextMilestones(n) {
+  var out = [];
+  T().divs.forEach(function (d) { d.projects.forEach(function (p) { p.ms.forEach(function (m) { if (!m[3]) out.push({ p: p, id: m[0], name: m[1], date: m[2] }); }); }); });
+  return out.sort(function (a, b) { return a.date < b.date ? -1 : a.date > b.date ? 1 : 0; }).slice(0, n);
+}
+// How far away, in the two units that matter: days and practices left ("today"; "3 days late" in words).
+function msAway(date) {
+  var n = days(date);
+  if (n === 0) return "today";
+  if (n < 0) return plural(-n, "day") + " late";
+  var k = meetsBefore(date);
+  return "in " + plural(n, "day") + " · " + (k ? plural(k, "practice") + " left" : "no practice left");
+}
+function countdown() {
+  var s = season(), staff = D.S.role !== "display";
+  var head = s ? '<div class="mtgseason"><span class="mtgkick">Kickoff</span><b>' + esc(fmt(s.date)) + '</b><span class="mtgbig num">' + plural(s.days, "day") + '</span><span class="num">' + plural(s.practices, "practice") + "</span></div>" : "";
+  var cards = nextMilestones(4).map(function (m) {
+    var xs = T().list.filter(function (x) { return x.p === m.p.id && x.ms === m.id && !x.parent; }), dn = xs.filter(function (x) { return x.st === "done"; }).length, late = days(m.date) < 0;
+    var inner = '<span class="mtgmsp"><i class="mtgdot" style="background:' + m.p.color + '"></i>' + esc(m.p.name) + '</span><span class="mtgmsn">' + esc(m.name) + '</span><span class="mtgmsd"><span class="num">' + esc(fmt(m.date)) + '</span> · <b class="mtgaway' + (late ? " late" : "") + '">' + esc(msAway(m.date)) + "</b></span>" +
+      (xs.length ? '<span class="mtgmsbar" aria-hidden="true"><i style="width:' + D.pct(dn, xs.length) + '%"></i></span><span class="mtgmst num">' + dn + " of " + plural(xs.length, "task") + " done</span>" : '<span class="mtgmst">No tasks yet</span>');
+    return staff ? '<button class="mtgms' + (late ? " late" : "") + '" data-act="mtgproj" data-v="' + m.p.id + '" data-tip="Open the ' + esc(m.p.name) + ' project in Tasks">' + inner + "</button>" : '<div class="mtgms' + (late ? " late" : "") + '">' + inner + "</div>";
+  }).join("");
+  return '<div class="mtgstrip" role="group" aria-label="Countdown">' + head + cards + "</div>";
+}
 D.views.projector = function () {
   if (!(lead() || D.S.role === "display")) return D.denied("Projector");
   var v = pjView();
-  if (v === "meeting") return '<div class="display mtgscreen" data-pv="meeting">' + pjHead("Team meeting · " + fmt(TODAYS), v) + meetingLists() + "</div>";
-  return '<div class="display mtgscreen" data-pv="plan">' + pjHead("Build plan · 60 days to kickoff", v) + buildPlan() + "</div>";
+  if (v === "meeting") return '<div class="display mtgscreen" data-pv="meeting">' + pjHead("Team meeting · " + fmt(TODAYS), v) + countdown() + meetingLists() + "</div>";
+  var s = season();
+  return '<div class="display mtgscreen" data-pv="plan">' + pjHead("Build plan" + (s ? " · " + plural(s.days, "day") + " to kickoff" : ""), v) + buildPlan() + "</div>";
 };
 function buildPlan() {
   var start = "2026-10-26", span = 70; function pos(s) { return Math.max(0, Math.min(100, (days(s) - days(start)) / span * 100)); }
@@ -773,6 +804,7 @@ function mtgTurn(dir, byHand) {
 }
 function mtgOn() { return D.S.route === "projector" && pjView() === "meeting" && (lead() || D.S.role === "display"); }
 D.acts.mtgpage = function (b) { var dir = +b.dataset.v; PJ.focusPg = dir; mtgTurn(dir, true); };
+D.acts.mtgproj = function (b) { var tt = T(); tt.expanded[b.dataset.v] = true; tt.at = { v: "project", p: b.dataset.v }; tt.mopen = false; D.go("tasks"); };
 D.acts.mtgopen = function (b) { PJ.focus = b.dataset.v; D.openDrawer("task", { id: b.dataset.v }); };
 D.acts.pjview = function (b) { var v = b.dataset.v; if (pjView() === v) return; D.setPref("projview", v); PJ.page = 0; D.render(); var el = document.querySelector('.mtgsw [data-v="' + v + '"]'); if (el) el.focus(); };
 // Left and Right arrows turn the page (not while typing, or while a panel or dialog is open).

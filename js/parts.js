@@ -74,7 +74,8 @@ function init(S) {
         { rid: 108, got: 0, done: false, loc: "Stock rack", problem: null, by: null },
         { rid: 109, got: 0, done: false, loc: "Shelf B · bin B4", problem: null, by: null } ] }
     ],
-    closed: [ { id: 4402, vendor: "AndyMark", placedBy: "Mr. Okafor", items: 3990, ship: 899, tax: 0, placed: "Oct 28", split: { elec: 4889 }, lines: [{ name: "Andersen SB50 connector, red", qty: 10, loc: "Electrical drawer" }, { name: "PWM cable, 12 in", qty: 6, loc: "Electrical drawer" }] } ],
+    closed: [ { id: 4459, vendor: "REV", placedBy: "Mr. Okafor", items: 22800, ship: 995, tax: 0, placed: "Nov 3", arrived: "2026-11-09", split: { elec: 23795 }, lines: [{ name: "Spark MAX motor controller", qty: 2, loc: "Electrical drawer" }, { name: "Through Bore Encoder", qty: 2, loc: "Electrical drawer" }] },
+      { id: 4402, vendor: "AndyMark", placedBy: "Mr. Okafor", items: 3990, ship: 899, tax: 0, placed: "Oct 28", arrived: "2026-11-02", split: { elec: 4889 }, lines: [{ name: "Andersen SB50 connector, red", qty: 10, loc: "Electrical drawer" }, { name: "PWM cable, 12 in", qty: 6, loc: "Electrical drawer" }] } ],
     spent: { drive: 118400, mech: 214350, elec: 96120, tools: 40300, spares: 22800, comp: 0 },
     filter: "open", mine: false, q: "", lq: "",
     draft: null,
@@ -411,7 +412,7 @@ function closeIfDone(o) {
   var byWho = {}; o.lines.forEach(function (l) { var r = reqById(l.rid); if (l.done) { r.status = "putaway"; hist(r, "checked in " + l.got + " to " + l.loc); (byWho[r.by] = byWho[r.by] || []).push(r.name + " (" + l.loc + ")"); } });
   if (byWho["Sam Ortiz"]) D.notify("student", "parts", "Your " + byWho["Sam Ortiz"].join(" and ") + " arrived.");
   D.notify("mentor", "parts", "Order #" + o.id + " from " + o.vendor + " is checked in" + (o.lines.some(function (l) { return l.problem; }) ? " with a problem to resolve." : "."));
-  p.orders.splice(p.orders.indexOf(o), 1); p.closed.unshift({ id: o.id, vendor: o.vendor, placedBy: o.placedBy, placed: o.placed, items: o.items, ship: o.ship, tax: o.tax });
+  p.orders.splice(p.orders.indexOf(o), 1); p.closed.unshift({ id: o.id, vendor: o.vendor, placedBy: o.placedBy, placed: o.placed, arrived: iso(TODAY), items: o.items, ship: o.ship, tax: o.tax, lines: o.lines.filter(function (l) { return l.done; }).map(function (l) { return { name: reqById(l.rid).name, qty: l.got, loc: l.loc }; }) });
 }
 A.ptick = function (b) {
   var o = P().orders[+b.dataset.o], l = o.lines[+b.dataset.l], r = reqById(l.rid), want = r.qty * r.pack, undoStock = null;
@@ -440,6 +441,8 @@ A.ptakego = function (b) {
 A.preturn = function (b) { var i = item(b.dataset.v), s = i.stock[+b.dataset.k], home = i.stock.filter(function (x) { return x.place.indexOf("bot") < 0; })[0]; home.qty += s.qty; i.hist.unshift({ who: D.me().name, what: "returned " + s.qty + " from " + s.place + " to " + home.place, when: "Just now" }); i.stock.splice(+b.dataset.k, 1); D.render(); };
 A.pexport = function () { D.toast("Exported 2026–27 orders to the “Parts (export, don't edit)” Google Sheet."); D.render(); };
 D.partsApi = {
+  // What arrived on or after a date (closed orders' lines), newest order first. Read by the Projector's Meeting view.
+  arrivedSince: function (date) { var out = []; P().closed.forEach(function (c) { if (c.arrived && c.arrived >= date) (c.lines || []).forEach(function (l) { out.push({ name: l.name, qty: l.qty, order: c.id }); }); }); return out; },
   stockFor: function (name) { var i = P().items.filter(function (x) { return x.name.toLowerCase().indexOf(name.toLowerCase()) >= 0; })[0]; return i ? { name: i.name, store: inStore(i), where: i.stock.filter(function (s) { return s.place.indexOf("bot") < 0; }).map(function (s) { return s.place + " (" + s.qty + ")"; }).join(", ") } : null; },
   startRequest: function (opts) { var p = P(), d = blankDraft(), c = opts.catalogName ? p.catalog.filter(function (x) { return x.name.toLowerCase().indexOf(opts.catalogName.toLowerCase()) >= 0; })[0] : null; if (c) fill(d, c, "From the catalog."); d.task = opts.task || ""; d.from = opts.from || "Tasks"; d.sub = opts.sub || ""; d.need = opts.need || ""; d.pri = opts.pri || "normal"; if (!c && opts.name) d.name = opts.name; if (opts.why) d.why = opts.why; p.draft = d; D.S.tabs.parts = "new"; D.go("parts"); }
 };

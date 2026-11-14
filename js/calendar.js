@@ -39,7 +39,7 @@ function genEvents() {
     { date: "2026-11-24", kind: "off", name: "No practice: Thanksgiving week", start: "", end: "" },
     { date: "2026-12-05", kind: "outreach", name: "FLL qualifier volunteers", start: "08:00", end: "16:00", where: "Boulder Valley" },
     { date: "2026-12-12", kind: "meeting", name: "Parent meeting and season preview", start: "10:00", end: "11:30", where: "Dawson library" },
-    { date: "2027-01-09", kind: "meeting", name: "Season kickoff", start: "09:00", end: "13:00", where: "Dawson shop", note: "Game reveal, then strategy" },
+    { date: "2027-01-09", kind: "meeting", kickoff: true, name: "Season kickoff", start: "09:00", end: "13:00", where: "Dawson shop", note: "Game reveal, then strategy" },
     { date: "2027-02-27", kind: "comp", name: "Week 0 scrimmage", start: "08:00", end: "17:00", where: "Denver", tba: "", nexus: "", stream: "" },
     { date: "2027-03-03", end2: "2027-03-06", kind: "comp", name: "Colorado Regional", start: "08:00", end: "18:00", where: "Denver, Pit 42", tba: "2027code", nexus: "2027code", stream: "twitch.tv/firstinspires" }
   ];
@@ -112,7 +112,21 @@ function daysOff(from, to) {
   C().events.forEach(function (e) { if (e.kind === "off" && e.date >= from && e.date <= to && !isOff(e.date)) out.push({ name: e.name, from: e.date, to: e.date }); });
   return out.sort(function (a, b) { return a.from < b.from ? -1 : a.from > b.from ? 1 : 0; });
 }
-D.calApi = { practiceDays: practiceDays, upcoming: upcoming, fmt: fmt, span: span, TODAYS: TODAYS, meetDays: meetDays, eventsIn: eventsIn, daysOff: daysOff, currentEvent: function () { return C().events.filter(function (e) { return e.kind === "comp" && e.tba; })[0]; } };
+/* Small read-only answers for other apps (the Projector's countdown and "Today at a glance"). */
+// The season's kickoff: the Calendar's own kickoff event (the one place its date lives).
+function kickoff() { var e = C().events.filter(function (x) { return x.kickoff; })[0]; return e ? { date: e.date, name: e.name } : null; }
+// The practice or build day on a date, with its times, unless it was cancelled; null when the team does not meet.
+function practiceOn(date) {
+  if (C().events.some(function (e) { return e.kind === "off" && e.date === date; })) return null;
+  var on = C().events.filter(function (e) { return e.date === date && (e.kind === "practice" || e.kind === "build") && e.start; });
+  var e = on.filter(function (x) { return x.kind === "build"; })[0] || on[0];
+  return e ? { date: e.date, kind: e.kind, name: e.name, start: e.start, end: e.end } : null;
+}
+// Mentors who plan to be there on a date (their usual days, or a one-off "coming"), from the mentor plans.
+function mentorsOn(date) { return MENTORS.filter(function (m) { var a = availOf(m, date); return a === "usual" || a === "coming"; }); }
+// The families bringing snacks on a date (empty slots left out), from Snacks.
+function snacksOn(date) { return (C().snacks[date] || []).filter(Boolean); }
+D.calApi = { kickoff: kickoff, practiceOn: practiceOn, mentorsOn: mentorsOn, snacksOn: snacksOn, practiceDays: practiceDays, upcoming: upcoming, fmt: fmt, span: span, TODAYS: TODAYS, meetDays: meetDays, eventsIn: eventsIn, daysOff: daysOff, currentEvent: function () { return C().events.filter(function (e) { return e.kind === "comp" && e.tba; })[0]; } };
 
 /* ---------- The app: three tabs, each with its own small switch ---------- */
 function snackName() { return D.S.role === "parent" ? "Ortiz family" : D.me().name; }
