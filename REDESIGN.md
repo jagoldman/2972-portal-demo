@@ -141,6 +141,24 @@ gold button is Send. Schedule: keep; soften the bars.
 **Account.** One column, 720 px: Profile, Notifications (one row per kind with its switches, not a table on
 phones), Appearance, Build or Competition mode, Sign-in. Plain words: "team sign-in", never "Authentik".
 
+## Timeline (decided 2026-11-13, D143)
+
+The Tasks timeline is for everyone but parents. Four rules:
+1. **Students read it.** Timeline is in a student's Tasks menu after This week; they can open any task from it but not
+   move it. Lead mode lets a student move bars, like its other edits.
+2. **Only the days the team meets.** One equal column per practice or build day, read from the Calendar app
+   (`D.calApi.meetDays`), never a copy of the pattern, so cancelling or adding a practice there changes the timeline.
+   A milestone or competition on another day gets a narrow marker column on its date; a break gets one thin column
+   that says "No practice Nov 20–30". Week labels span each week's columns. A bar due on a day the team does not meet
+   ends on the practice day before (the real date stays in its name and tip). Today's column is framed in gold; if
+   today is not a practice day, a red line sits between the days around it.
+3. **The bar is the task.** A click or tap on a task's bar opens it, a project's bar opens the project. Bars are
+   buttons with a name (title, state, due date), a focus ring and a tip (title, who, due date).
+4. **Leads move tasks by dragging.** Mentors, admins and Lead-mode students drag a bar sideways: it snaps to practice
+   days, shows the day it will land on, keeps its length, and the drop sets the due date (toast with Undo, a line in
+   the task's history). Under 4 px is a click. Left and Right move a focused bar one practice day. No dragging on touch
+   screens (the chart scrolls); done tasks do not move.
+
 ## Apps, Tools and More (decided 2026-11-13, D139)
 
 The Apps menu and Home show three groups. **Apps** are the tiles. **Tools** are small helpers that open inside the
