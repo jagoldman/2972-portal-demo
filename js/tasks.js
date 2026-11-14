@@ -32,7 +32,7 @@ function seed() {
   ];
   var id = 0, list = [];
   function t(title, p, sub, ms, who, due, st, o) {
-    var x = { id: ++id, title: title, p: p, sub: sub, ms: ms || null, who: who || [], due: due || "", st: st || "todo", parent: null, labels: [], est: null, by: [], rel: [], links: [], desc: "", check: [], comments: [], hist: [] };
+    var x = { id: ++id, title: title, p: p, sub: sub, ms: ms || null, who: who || [], due: due || "", st: st || "todo", doneOn: null, parent: null, labels: [], est: null, by: [], rel: [], links: [], desc: "", check: [], comments: [], hist: [] };
     Object.keys(o || {}).forEach(function (k) { x[k] = o[k]; });
     x.hist.unshift(["Ms. Rivera", "created it", "Nov 2", { st: "todo", due: x.due }]);
     list.push(x); return x;
@@ -47,11 +47,11 @@ function seed() {
   a.by = [shafts.id];
   t("Write the intake command", "intake", "Programming", "m4", ["Priya Shah"], "2026-11-13", "doing", { labels: ["code"], est: 4 });
   t("Intake beam-break sensor", "intake", "Programming", "m5", ["Priya Shah"], "2026-11-24", "todo", { labels: ["code", "wiring"] });
-  t("Intake CAD for design review", "intake", "CAD", "m3", ["Jordan Lee"], "2026-11-05", "done", { labels: ["design"] });
+  t("Intake CAD for design review", "intake", "CAD", "m3", ["Jordan Lee"], "2026-11-05", "done", { labels: ["design"], doneOn: "2026-11-05" });
   t("Intake v2: wider mouth", "intake", "CAD", "m5", ["Jordan Lee"], "2026-11-28", "todo", { labels: ["design"] });
   t("Tune swerve PID on carpet", "drive", "Programming", "m2", ["Priya Shah"], "2026-11-12", "doing", { labels: ["code", "test"] });
   t("Wire swerve CAN loop", "drive", "Electrical", "m2", ["Ava Kim"], "2026-11-10", "doing", { labels: ["wiring"] });
-  t("Build 4 swerve modules", "drive", "Mechanical", "m1", ["Leo Brooks", "Omar Haddad"], "2026-10-30", "done", { labels: ["build"] });
+  t("Build 4 swerve modules", "drive", "Mechanical", "m1", ["Leo Brooks", "Omar Haddad"], "2026-10-30", "done", { labels: ["build"], doneOn: "2026-10-29" });
   t("Belly pan", "drive", "Mechanical", "m2", ["Omar Haddad"], "2026-11-11", "todo", { labels: ["build"] });
   var gb = t("Elevator gearbox CAD", "elev", "CAD", "m6", ["Jordan Lee"], "2026-11-18", "todo", { labels: ["design"] });
   var eb = t("Elevator carriage build", "elev", "Mechanical", "m7", ["Leo Brooks"], "2026-12-08", "todo", { labels: ["build"] }); eb.by = [gb.id];
@@ -68,6 +68,12 @@ function seed() {
   t("Sponsor thank-you letters", "sponsors", "Business", null, ["Omar Haddad"], "2026-11-30", "todo");
   t("Restock bolt bins", "shop", "Ops", null, [], "", "todo");
   t("Write the season plan", "plan", "Captains", null, ["Priya Shah", "Leo Brooks"], "2026-12-15", "doing");
+  // Work that was due at the last practice (Thu Nov 5): the Projector's Meeting view shows how each one ended.
+  // Added at the end so the tasks above keep their ids.
+  t("Design review slides", "intake", "CAD", "m3", ["Maya Gold"], "2026-11-05", "done", { labels: ["design"], doneOn: "2026-11-05" });
+  t("Swerve encoder offsets", "drive", "Programming", "m2", ["Priya Shah"], "2026-11-05", "done", { labels: ["code"], doneOn: "2026-11-05" });
+  t("Drivetrain wiring diagram", "drive", "Electrical", "m2", ["Ava Kim"], "2026-11-05", "doing", { labels: ["wiring"] });
+  t("List this year's sponsors", "sponsors", "Business", null, ["Nina Park"], "2026-11-05", "todo");
   return { divs: divs, list: list, nextId: id + 1 };
 }
 D.inits.push(function (S) {
@@ -129,7 +135,7 @@ function sidebar() {
   return '<nav class="tside" aria-label="Tasks" data-keepscroll="tside">' + close + '<button class="btn tnew" data-act="tnew">' + D.ic("plus", 16) + " New task</button>" +
     // Everyone but parents sees the Timeline (students read it; leads also move bars). For students it follows This week.
     nav("my", "My tasks", "user", mine) + nav("week", "This week", "calendar") + (staff ? nav("dash", "Dashboard", "home") : nav("timeline", "Timeline", "schedule")) + nav("calendar", "Calendar", "calendar") + (staff ? nav("timeline", "Timeline", "schedule") : "") +
-    (staff ? '<button class="tnav" data-act="go" data-v="projector" data-tip="Show the build plan on the shop TV">' + D.ic("projector", 17) + '<span class="lbl">Projector</span></button>' : "") +
+    (staff ? '<button class="tnav" data-act="go" data-v="projector" data-tip="Show the build plan or the meeting lists on the shop TV">' + D.ic("projector", 17) + '<span class="lbl">Projector</span></button>' : "") +
     '<div class="sect"><span>Divisions</span>' + (D.S.role === "admin" ? '<button class="btn ghost sm" data-act="tnewdiv">+ New</button>' : "") + "</div>" + tree +
     '<div class="sect"><span>Options</span></div>' +
     (D.S.role === "student" ? '<div class="tnav tsw"><span class="lbl">Lead mode' + (tt.lead ? " · until 6 pm" : "") + '</span><button class="toggle" data-act="tlead" aria-pressed="' + tt.lead + '" aria-label="Lead mode" data-tip="Lets a student lead plan and assign tasks until 6 pm"></button></div>' : "") +
@@ -598,20 +604,195 @@ D.modals.tmenu = function (d) {
   return D.modalHead(name) + '<div class="list">' + (d.k === "proj" ? '<button class="li click" data-act="tmenugo" data-v="sub">+ New subteam</button><button class="li click" data-act="tmenugo" data-v="ms">+ New milestone</button><button class="li click" data-act="tmenugo" data-v="color">Change color</button>' : '<button class="li click" data-act="tmenugo" data-v="proj">+ New project</button>') + '<button class="li click" data-act="tmenugo" data-v="rename">Rename</button><button class="li click" data-act="tmenugo" data-v="archive">Archive</button></div>';
 };
 
-/* ---------- Projector ---------- */
+/* ---------- Projector ----------
+   One screen for the shop TV with a switch between its views (Build plan, Meeting). The choice is a saved choice
+   (D.setPref "projview"), so Reset clears it. Staff and the Display role both get the switch. */
+var PJ_VIEWS = [["meeting", "Meeting", "Last practice's and today's tasks, for a team meeting"], ["plan", "Build plan", "The build plan chart: projects, milestones and today"]];
+var PJ_DEFAULT = "plan";
+function pjView() { var v = D.pref("projview", PJ_DEFAULT); return PJ_VIEWS.some(function (x) { return x[0] === v; }) ? v : PJ_DEFAULT; }
+// Page state for the Meeting lists: kept while the page is open (a redraw keeps the page you are on).
+var PJ = { page: 0, pages: 1, turned: 0, manual: -1e12, focus: null, focusPg: 0 };
+function pjSwitch(cur) {
+  return '<div class="mtgsw" role="group" aria-label="What the projector shows">' + PJ_VIEWS.map(function (v) {
+    return '<button data-act="pjview" data-v="' + v[0] + '" aria-pressed="' + (v[0] === cur) + '" data-tip="' + esc(v[2]) + '">' + esc(v[1]) + "</button>";
+  }).join("") + "</div>";
+}
+// The header every view shares: title and "Updated" on the left; page buttons (Meeting), the switch and Exit on the right.
+function pjHead(title, cur) {
+  var disp = D.S.role === "display";
+  var pager = cur === "meeting" ? '<div class="mtgpager" hidden><button class="btn mtgpg" data-act="mtgpage" data-v="-1" aria-label="Previous page" data-tip="Show the previous page of tasks (Left arrow)">' + D.ic("chevron", 18) + '</button><span class="mtgpgn num" aria-live="polite">1 / 1</span><button class="btn mtgpg mtgnext" data-act="mtgpage" data-v="1" aria-label="Next page" data-tip="Show the next page of tasks (Right arrow)">' + D.ic("chevron", 18) + "</button></div>" : "";
+  return '<div class="mtghead' + (disp ? " mtgdisp" : "") + '"><div class="mtgttl"><h1>' + esc(title) + '</h1><p class="dmute">Updated 3:42 pm</p></div><div class="mtgctl">' + pager + pjSwitch(cur) +
+    (disp ? "" : '<button class="btn mtgexit" data-act="go" data-v="tasks" data-tip="Back to Tasks">Exit projector</button>') + "</div></div>";
+}
 D.views.projector = function () {
   if (!(lead() || D.S.role === "display")) return D.denied("Projector");
+  var v = pjView();
+  if (v === "meeting") return '<div class="display mtgscreen" data-pv="meeting">' + pjHead("Team meeting · " + fmt(TODAYS), v) + meetingLists() + "</div>";
+  return '<div class="display mtgscreen" data-pv="plan">' + pjHead("Build plan · 60 days to kickoff", v) + buildPlan() + "</div>";
+};
+function buildPlan() {
   var start = "2026-10-26", span = 70; function pos(s) { return Math.max(0, Math.min(100, (days(s) - days(start)) / span * 100)); }
   var ps = ["drive", "intake", "elev", "shoot", "library"].map(proj);
-  return '<div class="display"><div class="row between"><div><h1>Build plan · 60 days to kickoff</h1></div><p class="dmute">Updated 3:42 pm</p></div><div class="dcard"><div class="gantt"><span></span><div class="gaxis">' + ["2026-11-01", "2026-12-01", "2027-01-01"].map(function (t) { return '<span style="left:' + pos(t) + '%">' + fmt(t, { month: "short", day: "numeric" }) + "</span>"; }).join("") + '<b style="left:' + pos(TODAYS) + '%">Today</b></div>' + ps.map(function (p) {
+  return '<div class="dcard"><div class="gantt"><span></span><div class="gaxis">' + ["2026-11-01", "2026-12-01", "2027-01-01"].map(function (t) { return '<span style="left:' + pos(t) + '%">' + fmt(t, { month: "short", day: "numeric" }) + "</span>"; }).join("") + '<b style="left:' + pos(TODAYS) + '%">Today</b></div>' + ps.map(function (p) {
     var xs = T().list.filter(function (x) { return x.p === p.id && x.due && !x.parent; }), dn = xs.filter(function (x) { return x.st === "done"; }).length;
     var lo = add(xs.reduce(function (a, x) { return x.due < a ? x.due : a; }, xs[0].due), -7), hi = xs.reduce(function (a, x) { return x.due > a ? x.due : a; }, xs[0].due);
     return "<b>" + esc(p.name) + '</b><div class="gtrack"><i style="left:' + pos(lo) + "%;width:" + (pos(hi) - pos(lo)) + "%;background:" + p.color + ';opacity:.5"></i><i class="done" style="left:' + pos(lo) + "%;width:" + (pos(hi) - pos(lo)) * dn / xs.length + '%"></i>' + p.ms.map(function (m) { return '<i class="ms" style="left:calc(' + pos(m[2]) + '% - 6px)"></i>'; }).join("") + '<span class="todayline" style="left:' + pos(TODAYS) + '%"></span></div>';
-  }).join("") + '</div></div><div class="grid3"><div class="dcard"><p class="dmute">Blocked</p><p class="dbig">' + T().list.filter(function (x) { return x.st === "blocked"; }).map(function (x) { return esc(x.title) + " (" + esc(x.who.join(", ")) + ")"; }).join("<br>") + '</p></div><div class="dcard"><p class="dmute">Next milestones</p><p class="dbig">Driving on carpet · Thu Nov 12<br>Prototype intaking · Sat Nov 14</p></div><div class="dcard"><p class="dmute">In the shop now</p><p class="dbig">' + (D.S.cal ? D.S.cal.here.length : 0) + ' people</p></div></div><p class="dmute">Green is done, colored bars are planned, diamonds are milestones, the white line is today.</p>' + (D.S.role !== "display" ? '<div><button class="btn" data-act="go" data-v="tasks">Exit projector</button></div>' : "") + "</div>";
-};
+  }).join("") + '</div></div><div class="grid3"><div class="dcard"><p class="dmute">Blocked</p><p class="dbig">' + T().list.filter(function (x) { return x.st === "blocked"; }).map(function (x) { return esc(x.title) + " (" + esc(x.who.join(", ")) + ")"; }).join("<br>") + '</p></div><div class="dcard"><p class="dmute">Next milestones</p><p class="dbig">Driving on carpet · Thu Nov 12<br>Prototype intaking · Sat Nov 14</p></div><div class="dcard"><p class="dmute">In the shop now</p><p class="dbig">' + (D.S.cal ? D.S.cal.here.length : 0) + ' people</p></div></div><p class="dmute">Green is done, colored bars are planned, diamonds are milestones, the white line is today.</p>';
+}
+
+/* Meeting view: two lists side by side (stacked on a narrow window).
+   Last practice: the last day the team met before today, from the Calendar (D.calApi.meetDays). Every top-level task
+     that was due that day (whatever its state now) or was finished that day (doneOn).
+   Today: every top-level task due today, in progress, blocked, or overdue and not done.
+   Rows are grouped by project in the Tasks menu's order; inside a project: blocked, in progress, to do, done; then by
+   title. Nothing is cut: when the rows do not fit the TV, they get denser, then the lists split into pages (mtgFit). */
+function lastPractice() {
+  var api = D.calApi; if (!api || !api.meetDays) return null;
+  var m = api.meetDays(add(TODAYS, -120), add(TODAYS, -1));
+  return m.length ? m[m.length - 1].date : null;
+}
+var MTG_RANK = { blocked: 0, doing: 1, todo: 2, done: 3 };
+function mtgSort(xs) {
+  var order = []; T().divs.forEach(function (d) { d.projects.forEach(function (p) { order.push(p.id); }); });
+  return order.map(function (pid) {
+    return { p: proj(pid), xs: xs.filter(function (x) { return x.p === pid; }).sort(function (a, b) { return MTG_RANK[a.st] - MTG_RANK[b.st] || a.title.localeCompare(b.title, "en", { numeric: true }); }) };
+  }).filter(function (g) { return g.xs.length; });
+}
+function mtgModel() {
+  var top = T().list.filter(function (x) { return !x.parent; }), lp = lastPractice();
+  var left = lp ? top.filter(function (x) { return x.due === lp || x.doneOn === lp; }) : [];
+  var right = top.filter(function (x) { return x.due === TODAYS || x.st === "doing" || x.st === "blocked" || (x.due && x.due < TODAYS && x.st !== "done"); });
+  return { lp: lp, left: left, right: right };
+}
+// What a blocked task waits on: the unfinished tasks it waits on, then any part requested for it that has not arrived.
+function waitsOn(x) {
+  var out = blockedBy(x).map(function (b) { return "“" + b.title + "”"; });
+  if (D.S.parts) D.S.parts.requests.forEach(function (r) { if (r.task === x.title && ["needsok", "toorder", "ordered"].indexOf(r.status) >= 0) out.push("the part " + r.name); });
+  return out;
+}
+function steps(x) {
+  var sc = subsOf(x);
+  if (sc.length) return sc.filter(function (s) { return s.st === "done"; }).length + " of " + sc.length + " steps";
+  if (x.check.length) return x.check.filter(function (c) { return c[1]; }).length + " of " + x.check.length + " steps";
+  return "";
+}
+// The state mark, as in the rest of Tasks: an empty ring (to do), a thick ring (in progress), a green tick (done), and
+// for blocked a square with "!" (never colour alone; the row also says "Blocked").
+function mtgMark(x) {
+  return '<span class="mtgmark st-' + x.st + '" aria-hidden="true">' + (x.st === "done" ? D.ic("check", 14) : x.st === "blocked" ? "!" : "") + "</span>";
+}
+function mtgRow(x, side, staff) {
+  var bits = [], st = "";
+  if (side === "left") st = x.st === "done" ? '<b class="mtgout ok">Done</b>' : '<b class="mtgout">Not finished · ' + ST[x.st][0] + "</b>";
+  else if (x.st === "blocked") st = '<b class="mtgout bad">Blocked</b>';
+  else if (x.st === "done") st = '<b class="mtgout ok">Done</b>';
+  if (x.st === "blocked") { var w = waitsOn(x); if (w.length) bits.push('<span class="mtgwait">waits on ' + esc(w.join(", ")) + "</span>"); }
+  bits.push('<span class="mtgwho">' + names(x.who) + "</span>");
+  bits.push('<span class="mtgsub">' + esc(x.sub) + "</span>");
+  var sp = steps(x); if (sp) bits.push('<span class="mtgsteps">' + sp + "</span>");
+  var carried = side === "right" && x.due && x.due < TODAYS && x.st !== "done" ? '<span class="mtgfrom">from ' + esc(fmt(x.due)) + "</span>" : "";
+  var inner = mtgMark(x) + '<span class="mtgbody"><span class="mtgtitle">' + esc(x.title) + "</span>" + carried + '<span class="mtgmeta">' + (st ? st + '<span class="mtgsep"> · </span>' : "") + bits.join('<span class="mtgsep"> · </span>') + "</span></span>";
+  var label = x.title + ", " + (side === "left" ? (x.st === "done" ? "done" : "not finished, " + ST[x.st][0]) : ST[x.st][0]);
+  return staff ? '<button class="mtgrow" data-act="mtgopen" data-v="' + x.id + '" data-tip="Open this task" aria-label="' + esc(label) + '">' + inner + "</button>" : '<div class="mtgrow" data-v="' + x.id + '">' + inner + "</div>";
+}
+function mtgSection(id, title, count, xs, side, empty) {
+  var staff = D.S.role !== "display";
+  var groups = mtgSort(xs).map(function (g) {
+    return '<div class="mtggrp"><h3 class="mtgph"><i class="mtgdot" style="background:' + g.p.color + '"></i>' + esc(g.p.name) + '<span class="mtgcont" hidden> (continued)</span></h3>' + g.xs.map(function (x) { return mtgRow(x, side, staff); }).join("") + "</div>";
+  }).join("");
+  return '<section class="mtgsec" aria-labelledby="' + id + '"><div class="mtgsh"><h2 id="' + id + '">' + esc(title) + '</h2><span class="mtgcount num">' + esc(count) + "</span></div>" +
+    (xs.length ? '<div class="mtgcols">' + groups + '</div><p class="mtgelse dmute" hidden></p>' : '<p class="mtgempty">' + esc(empty) + "</p>") + "</section>";
+}
+function meetingLists() {
+  var M = mtgModel(), dn = M.left.filter(function (x) { return x.st === "done"; }).length;
+  return '<div class="mtglists">' +
+    mtgSection("mtg-last", "Last practice" + (M.lp ? " · " + fmt(M.lp) : ""), M.left.length ? dn + " of " + M.left.length + " done" : "", M.left, "left", "No tasks were due last practice.") +
+    mtgSection("mtg-today", "Today · " + fmt(TODAYS), M.right.length + (M.right.length === 1 ? " task" : " tasks"), M.right, "right", "Nothing is due today.") + "</div>";
+}
+/* Fitting the lists to the TV. On a wide window (side by side) the lists must end above the bottom of the window:
+   try each density step in turn (0: as large as the Projector's body text; 1: smaller; 2: two columns inside a section;
+   3 and 4: smaller still); if even step 4 is too tall, split each list into pages by whole project groups (a group taller
+   than a page is split by rows, its heading marked "continued"). On a narrow window the lists stack and the page scrolls. */
+var MTG_WIDE = "(min-width: 1024px)", MTG_STEPS = 5;
+function mtgShow(sec, set) {
+  sec.querySelectorAll(".mtggrp").forEach(function (g) {
+    var rows = g.querySelectorAll(".mtgrow"), any = false;
+    rows.forEach(function (r) { var on = !set || set.indexOf(r) >= 0; r.hidden = !on; if (on) any = true; });
+    g.hidden = !any; g.querySelector(".mtgcont").hidden = !(any && set && set.indexOf(rows[0]) < 0);
+  });
+}
+function mtgPaginate(sec, fits) {
+  var pages = [], cur = [];
+  function tryWith(extra) { mtgShow(sec, cur.concat(extra)); return fits(sec); }
+  sec.querySelectorAll(".mtggrp").forEach(function (g) {
+    var rows = Array.prototype.slice.call(g.querySelectorAll(".mtgrow"));
+    if (tryWith(rows)) { cur = cur.concat(rows); return; }
+    if (cur.length) { pages.push(cur); cur = []; if (tryWith(rows)) { cur = rows.slice(); return; } }
+    rows.forEach(function (r) { if (cur.length && !tryWith([r])) { pages.push(cur); cur = []; } cur.push(r); });
+  });
+  if (cur.length) pages.push(cur);
+  return pages;
+}
+function mtgFit() {
+  var scr = document.querySelector(".mtgscreen"); if (!scr) return;
+  // The screen fills the window below the demo strip, so a TV shows no strip of page colour and no scroll bar.
+  scr.style.minHeight = Math.max(0, window.innerHeight - (scr.getBoundingClientRect().top + window.scrollY)) + "px";
+  var lists = scr.querySelector(".mtglists"); if (!lists) return;
+  var secs = Array.prototype.slice.call(lists.querySelectorAll(".mtgsec")), pager = scr.querySelector(".mtgpager");
+  secs.forEach(function (s) { mtgShow(s, null); var e = s.querySelector(".mtgelse"); if (e) e.hidden = true; });
+  pager.hidden = true; PJ.pagesBefore = PJ.pages;
+  if (!window.matchMedia(MTG_WIDE).matches) { scr.dataset.dense = "0"; PJ.pages = 1; PJ.page = 0; return; }
+  var pad = parseFloat(getComputedStyle(scr).paddingBottom) || 0;
+  var fits = function (s) { return s.getBoundingClientRect().bottom <= window.innerHeight - pad + 0.5; };
+  for (var d = 0; d < MTG_STEPS; d++) { scr.dataset.dense = String(d); if (secs.every(fits)) { PJ.pages = 1; PJ.page = 0; return; } }
+  pager.hidden = false;
+  var all = secs.map(function (s) { return s.querySelector(".mtgcols") ? mtgPaginate(s, fits) : []; });
+  PJ.pages = Math.max(1, Math.max.apply(null, all.map(function (p) { return p.length; })));
+  if (PJ.page >= PJ.pages) PJ.page = 0;
+  if (PJ.pagesBefore === 1) PJ.turned = Date.now();
+  secs.forEach(function (s, i) {
+    var p = all[i]; if (!s.querySelector(".mtgcols")) return;
+    if (PJ.page < p.length) mtgShow(s, p[PJ.page]);
+    else { mtgShow(s, []); var e = s.querySelector(".mtgelse"); e.textContent = "All shown on " + (p.length === 1 ? "page 1." : "pages 1 to " + p.length + "."); e.hidden = false; }
+  });
+  pager.querySelector(".mtgpgn").textContent = (PJ.page + 1) + " / " + PJ.pages;
+}
+D.after.push(function () {
+  if (D.S.route !== "projector") return;
+  mtgFit();
+  // Back from a task panel opened on a row: the focus returns to that row.
+  if (PJ.focus != null && !D.S.drawer) { var r = document.querySelector('.mtgrow[data-v="' + PJ.focus + '"]:not([hidden])'); PJ.focus = null; if (r) r.focus(); }
+  if (PJ.focusPg) { var b = document.querySelector('.mtgpg[data-v="' + PJ.focusPg + '"]'); PJ.focusPg = 0; if (b) b.focus(); }
+});
+var mtgResize = null;
+window.addEventListener("resize", function () { if (D.S && D.S.route === "projector") { clearTimeout(mtgResize); mtgResize = setTimeout(mtgFit, 80); } });
+function mtgTurn(dir, byHand) {
+  if (PJ.pages < 2) return;
+  PJ.page = (PJ.page + dir + PJ.pages) % PJ.pages; PJ.turned = Date.now(); if (byHand) PJ.manual = Date.now();
+  D.render();
+}
+function mtgOn() { return D.S.route === "projector" && pjView() === "meeting" && (lead() || D.S.role === "display"); }
+D.acts.mtgpage = function (b) { var dir = +b.dataset.v; PJ.focusPg = dir; mtgTurn(dir, true); };
+D.acts.mtgopen = function (b) { PJ.focus = b.dataset.v; D.openDrawer("task", { id: b.dataset.v }); };
+D.acts.pjview = function (b) { var v = b.dataset.v; if (pjView() === v) return; D.setPref("projview", v); PJ.page = 0; D.render(); var el = document.querySelector('.mtgsw [data-v="' + v + '"]'); if (el) el.focus(); };
+// Left and Right arrows turn the page (not while typing, or while a panel or dialog is open).
+document.addEventListener("keydown", function (e) {
+  if ((e.key !== "ArrowLeft" && e.key !== "ArrowRight") || !mtgOn() || D.S.drawer || D.S.modal || PJ.pages < 2) return;
+  var t = e.target; if (t && (t.tagName === "INPUT" || t.tagName === "TEXTAREA" || t.tagName === "SELECT" || t.isContentEditable)) return;
+  e.preventDefault(); mtgTurn(e.key === "ArrowLeft" ? -1 : 1, true);
+});
+// The Display role turns the page by itself every 20 seconds; a turn by hand pauses that for 60 seconds.
+setInterval(function () {
+  if (!D.S || D.S.role !== "display" || !mtgOn() || PJ.pages < 2) return;
+  var now = Date.now();
+  if (now - PJ.manual >= 60000 && now - PJ.turned >= 20000) mtgTurn(1, false);
+}, 1000);
 
 /* ---------- Actions ---------- */
 var A = D.acts;
+// Every change of state goes through here, so a task marked done anywhere gets the day it was finished (doneOn), and
+// a task taken out of Done loses it. The Projector's Meeting view reads it.
+function setSt(x, s) { if (s === "done" && x.st !== "done") x.doneOn = TODAYS; else if (s !== "done") x.doneOn = null; x.st = s; }
 function h(x, what, snap) { x.hist.push([D.me().name, what, "Just now", snap || { st: x.st, due: x.due }]); }
 function at(v) { T().at = v; T().mopen = false; D.S.drawer = null; D.render(); }
 A.tgo = function (b) { at({ v: b.dataset.v }); };
@@ -634,13 +815,13 @@ A.tsubs = function (b) { var o = T().openSubs; o[b.dataset.v] = !o[b.dataset.v];
 A.topen = function (b) { D.openDrawer("task", { id: b.dataset.v }); };
 A.tlead = function () { var tt = T(); tt.lead = !tt.lead; if (tt.lead) { D.log("turned on lead mode", "tasks"); D.toast("Lead mode on until 6 pm. Your changes are marked, and mentors can undo them."); } else D.toast("Lead mode off."); D.render(); };
 A.tsimple = function () { T().simple = !simple(); D.render(); };
-A.tdone = function (b) { var x = task(b.dataset.v), prev = x.st; if (x.st === "done") { x.st = "todo"; h(x, "reopened it"); D.render(); return; } D.withUndo("Done: " + x.title, function () { x.st = "done"; h(x, "marked it done"); D.log("finished “" + x.title + "”", "tasks"); }, function () { x.st = prev; x.hist.pop(); D.S.activity.shift(); }); };
-A.tstuck = function (b) { var x = task(b.dataset.v); x.st = "blocked"; h(x, "said they're stuck"); x.comments.push([D.me().name, "I'm stuck and need a hand.", "Just now"]); D.notify("mentor", "tasks", D.me().name + " is stuck on “" + x.title + "”."); D.toast("Ms. Rivera (" + proj(x.p).name + " mentor) was told. Your note is on the task."); D.render(); };
+A.tdone = function (b) { var x = task(b.dataset.v), prev = x.st, prevOn = x.doneOn; if (x.st === "done") { setSt(x, "todo"); h(x, "reopened it"); D.render(); return; } D.withUndo("Done: " + x.title, function () { setSt(x, "done"); h(x, "marked it done"); D.log("finished “" + x.title + "”", "tasks"); }, function () { x.st = prev; x.doneOn = prevOn; x.hist.pop(); D.S.activity.shift(); }); };
+A.tstuck = function (b) { var x = task(b.dataset.v); setSt(x, "blocked"); h(x, "said they're stuck"); x.comments.push([D.me().name, "I'm stuck and need a hand.", "Just now"]); D.notify("mentor", "tasks", D.me().name + " is stuck on “" + x.title + "”."); D.toast("Ms. Rivera (" + proj(x.p).name + " mentor) was told. Your note is on the task."); D.render(); };
 A.tpart = function (b) { var x = task(b.dataset.v); D.partsApi.startRequest({ task: x.title, sub: proj(x.p).name, need: x.due, catalogName: /bearing/i.test(x.title) ? "Bearing" : /polycarb/i.test(x.title) ? "Polycarbonate" : /CAN|crimp/i.test(x.title) ? "Andersen" : /shaft/i.test(x.title) ? "MAXSpline" : "", from: "Tasks" }); };
 A.ttake = function (b) { var x = task(b.dataset.v); x.who.push(me()); h(x, "took it"); D.log("took “" + x.title + "”", "tasks"); D.render(); };
 D.changes.tassign = function (el) { if (!el.value) return; var x = task(el.dataset.v); x.who.push(el.value); h(x, "assigned " + el.value); if (el.value === ME_STUDENT) D.notify("student", "tasks", D.me().name + " assigned you “" + x.title + "”."); D.render(); };
 A.tunassign = function (b) { var x = task(b.dataset.v); x.who = x.who.filter(function (w) { return w !== b.dataset.w; }); h(x, "removed " + b.dataset.w); D.render(); };
-A.tset = function (b) { var x = task(b.dataset.v), s = b.dataset.s; if (x.st === s) return; h(x, "moved it to " + ST[s][0], { st: s, due: x.due }); x.st = s; D.render(); };
+A.tset = function (b) { var x = task(b.dataset.v), s = b.dataset.s; if (x.st === s) return; h(x, "moved it to " + ST[s][0], { st: s, due: x.due }); setSt(x, s); D.render(); };
 D.changes.tdue = function (el) { var x = task(el.dataset.v); x.due = el.value; h(x, "changed the due date to " + fmt(el.value), { st: x.st, due: el.value }); D.render(); };
 D.changes.tmove = function (el) { var x = task(el.dataset.v); x.sub = el.value; subsOf(x).forEach(function (s) { s.sub = el.value; }); h(x, "moved it to " + el.value); D.render(); };
 D.changes.tms = function (el) { var x = task(el.dataset.v); x.ms = el.value || null; h(x, "set the milestone"); D.render(); };
@@ -652,7 +833,7 @@ A.taddsub = function (b) { var x = task(b.dataset.v), v = D.val("td-sub-new").tr
 D.changes.tdep = function (el) { if (!el.value) return; var x = task(el.dataset.v); x.by.push(+el.value); h(x, "now waits on “" + task(el.value).title + "”"); D.render(); };
 A.tundep = function (b) { var x = task(b.dataset.v); x.by = x.by.filter(function (i) { return i !== +b.dataset.b; }); D.render(); };
 A.tcomment = function (b) { var x = task(b.dataset.v), v = D.val("td-c").trim(); if (!v) return; x.comments.push([D.me().name, v, "Just now"]); if (/@sam/i.test(v)) D.notify("student", "tasks", D.me().name + " mentioned you on “" + x.title + "”."); D.render(); };
-A.tback = function (b) { var x = task(b.dataset.v), snap = x.hist[+b.dataset.i][3], prev = { st: x.st, due: x.due }; x.st = snap.st; x.due = snap.due; x.hist.push([D.me().name, "went back to " + x.hist[+b.dataset.i][2], "Just now", prev]); D.toast("Put back to how it was then. That's in the history too."); D.render(); };
+A.tback = function (b) { var x = task(b.dataset.v), snap = x.hist[+b.dataset.i][3], prev = { st: x.st, due: x.due }; setSt(x, snap.st); x.due = snap.due; x.hist.push([D.me().name, "went back to " + x.hist[+b.dataset.i][2], "Just now", prev]); D.toast("Put back to how it was then. That's in the history too."); D.render(); };
 A.tarchive = function (b) { var x = task(b.dataset.v), tt = T(), i = tt.list.indexOf(x); D.S.drawer = null; D.withUndo("Archived “" + x.title + "”", function () { tt.list.splice(i, 1); }, function () { tt.list.splice(i, 0, x); }); };
 A.tnew = function () { D.openModal("tnew", {}); };
 A.tnewin = function (b) { D.openModal("tnew", { p: b.dataset.p, s: b.dataset.s, m: b.dataset.m || null, st: b.dataset.st }); };
@@ -664,7 +845,7 @@ document.addEventListener("keydown", function (e) { if (e.key === "Enter" && e.t
 A.tsaves = function () { D.openDrawer("tsaves"); };
 A.tsavenow = function () { T().saves.unshift({ name: "Saved by " + D.me().short, when: "Nov 10, 3:50 pm", by: D.me().name }); D.render(); };
 A.trestore = function (b) { D.openModal("trestore", { i: +b.dataset.i }); };
-A.trestorego = function () { var x = task(1), y = T().list.filter(function (t) { return t.title === "Intake roller shafts"; })[0]; x.due = "2026-11-14"; y.st = "todo"; T().saves.unshift({ name: "Before restoring", when: "Nov 10, 3:51 pm", by: "automatic" }); D.S.modal = null; D.S.drawer = null; D.log("restored Intake to a save point", "tasks"); D.toast("Restored. A save point from just before is there if you change your mind."); D.render(); };
+A.trestorego = function () { var x = task(1), y = T().list.filter(function (t) { return t.title === "Intake roller shafts"; })[0]; x.due = "2026-11-14"; setSt(y, "todo"); T().saves.unshift({ name: "Before restoring", when: "Nov 10, 3:51 pm", by: "automatic" }); D.S.modal = null; D.S.drawer = null; D.log("restored Intake to a save point", "tasks"); D.toast("Restored. A save point from just before is there if you change your mind."); D.render(); };
 A.tmsadd = function (b) { var p = proj(b.dataset.v); p.ms.push(["m" + Date.now(), "New milestone", "2026-12-19", false]); D.toast("Milestone added. Rename it and set its date from the project menu."); D.render(); };
 A.tnewproj = function (b) { var d = T().divs.filter(function (x) { return x.id === b.dataset.v; })[0], id = "p" + Date.now(); d.projects.push({ id: id, name: "New project", color: "#2a9d8f", subs: ["General"], ms: [] }); T().expanded[id] = true; at({ v: "project", p: id }); };
 A.tnewdiv = function () { T().divs.push({ id: "d" + Date.now(), name: "New division", open: true, projects: [] }); D.render(); };
@@ -683,10 +864,10 @@ A.tsend = function () { var v = D.val("tc-in").trim(); if (!v) return; var tt = 
 A.tplan = function (b) { var x = task(b.dataset.v), tt = T(); tt.chat = [["ai", "Let's plan <b>" + esc(x.title) + "</b>. A few questions first."], ["ai", "1. What does done look like?"], ["me", "Rollers spin freely and the intake grabs a game piece from the floor."], ["ai", "2. What's in the way?"], ["me", "We need the shafts and bearings, and the plates have to be cut first."], ["ai", "Here's a plan with 4 subtasks. I put the cut plates first because the bearings press into them."]]; tt.pending = { id: x.id, title: x.title, items: ["Check the side plates are cut and deburred", "Ream bearing bores to size", "Press in bearings and shafts", "Floor test with a game piece"] }; D.openDrawer("tchat", { title: "Plan it with me" }); };
 A.tplanok = function () { var tt = T(), p = tt.pending, x = task(p.id); p.items.forEach(function (s) { tt.list.push({ id: tt.nextId++, title: s, p: x.p, sub: x.sub, ms: x.ms, who: x.who.slice(), due: x.due, st: "todo", parent: x.id, labels: [], est: null, by: [], rel: [], links: [], desc: "", check: [], comments: [], hist: [["Assistant (for " + D.me().name + ")", "created it", "Just now", { st: "todo", due: x.due }]] }); }); tt.openSubs[x.id] = true; tt.pending = null; tt.chat.push(["ai", "Added 4 subtasks. They're marked as made with the assistant, and you can undo them from the task's history."]); D.render(); };
 A.tplanno = function () { T().pending = null; D.render(); };
-D.changes.tcol = function (el) { if (!el.value) return; var x = task(el.dataset.v); h(x, "moved it to " + ST[el.value][0], { st: el.value, due: x.due }); x.st = el.value; D.render(); };
+D.changes.tcol = function (el) { if (!el.value) return; var x = task(el.dataset.v); h(x, "moved it to " + ST[el.value][0], { st: el.value, due: x.due }); setSt(x, el.value); D.render(); };
 var dragTask = null;
 document.addEventListener("dragstart", function (e) { var c = e.target.closest && e.target.closest("[data-task]"); if (!c) return; dragTask = +c.dataset.task; try { e.dataTransfer.setData("text/plain", String(dragTask)); } catch (x) {} });
 document.addEventListener("dragover", function (e) { var c = e.target.closest && e.target.closest("[data-col]"); if (c && dragTask) { e.preventDefault(); c.classList.add("over"); } });
 document.addEventListener("dragleave", function (e) { var c = e.target.closest && e.target.closest("[data-col]"); if (c) c.classList.remove("over"); });
-document.addEventListener("drop", function (e) { var c = e.target.closest && e.target.closest("[data-col]"); if (!c || !dragTask) return; e.preventDefault(); var x = task(dragTask); if (x.st !== c.dataset.col) { h(x, "moved it to " + ST[c.dataset.col][0], { st: c.dataset.col, due: x.due }); x.st = c.dataset.col; } dragTask = null; D.render(); });
+document.addEventListener("drop", function (e) { var c = e.target.closest && e.target.closest("[data-col]"); if (!c || !dragTask) return; e.preventDefault(); var x = task(dragTask); if (x.st !== c.dataset.col) { h(x, "moved it to " + ST[c.dataset.col][0], { st: c.dataset.col, due: x.due }); setSt(x, c.dataset.col); } dragTask = null; D.render(); });
 })();

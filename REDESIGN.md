@@ -170,6 +170,24 @@ The Tasks timeline is for everyone but parents. Four rules:
    visit: divisions open, projects closed except the person's own. "Open all" / "Close all" sits at the right of the
    help line. The choice is kept per person and cleared by Reset.
 
+## Projector: Meeting view (decided 2026-11-13, D146)
+
+The Projector (Tasks menu, staff; and the Display role's shop screen) has a switch at its top right, kept as a saved
+choice (Reset clears it). **Meeting** shows two lists for the team meeting around the shop TV:
+- **Last practice · Thu, Nov 5**: the last day the team met before today, read from the Calendar
+  (`D.calApi.meetDays`), so a practice cancelled or added there moves it. Every top-level task that was due that day
+  or was finished that day (a task keeps the day it was marked done, `doneOn`), each saying how it ended: "Done", or
+  "Not finished" and its state now. The heading counts "3 of 5 done".
+- **Today · Tue, Nov 10**: every top-level task due today, in progress, blocked, or overdue and not done. A row carried
+  from before today has a small "from Thu, Nov 5" tag. A task can be in both lists.
+
+Rows are grouped by project (Tasks menu order), then blocked, in progress, to do, done, then title. Each shows the
+state mark used in Tasks (blocked is a square with "!" and the word), the full title, who, the subteam, what a blocked
+task waits on and "1 of 3 steps". Nothing is ever cut: when the rows do not fit the window, the type gets smaller, then
+each list gets two columns, then the lists split into pages by whole project groups ("1 / 3", Left and Right arrow
+keys, two buttons; the Display role turns the page every 20 s, pausing 60 s after a turn by hand). Staff click a row
+to open the task; the Display role's rows are plain text. Below 1024 px the lists stack and the page scrolls.
+
 ## Apps, Tools and More (decided 2026-11-13, D139)
 
 The Apps menu and Home show three groups. **Apps** are the tiles. **Tools** are small helpers that open inside the
