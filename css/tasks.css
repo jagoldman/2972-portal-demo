@@ -282,6 +282,28 @@ button.tev:hover { background: var(--surface-3); }
 .mtgpg:first-child svg { transform: rotate(180deg); }
 .mtgpgn { font-weight: 700; font-size: 1.15rem; min-width: 3.2em; text-align: center; }
 
+/* Practice view: a large clock, the countdown, then three panels side by side (stacked below 1024 px). */
+.mtghead h1.mtgclock { font-size: clamp(2.2rem, 5vw, 4.4rem); line-height: 1; letter-spacing: -.01em; }
+.mtgp3 { display: grid; grid-template-columns: repeat(3, minmax(0,1fr)); gap: 16px; align-items: start; }
+@media (max-width: 1023px) { .mtgp3 { grid-template-columns: minmax(0,1fr); } }
+.mtgpsec .mtgcount { font-weight: 500; }
+.mtgscreen[data-pv="practice"][data-dense] .mtgcols { columns: auto; }
+/* At the two smallest steps a Practice row puts who after the title on the same line, where there is room. */
+.mtgscreen[data-pv="practice"][data-dense="3"] .mtgbody, .mtgscreen[data-pv="practice"][data-dense="4"] .mtgbody { display: flex; flex-wrap: wrap; align-items: baseline; gap: 0 10px; }
+/* The rotate switch: a small toggle with its words. */
+.mtgrot { display: inline-flex; align-items: center; gap: 8px; min-height: 36px; padding: 0 12px 0 8px; border: 1px solid rgba(255,255,255,.16); border-radius: 10px; background: #111829; color: #c3cad8; font: inherit; font-size: .9rem; font-weight: 600; cursor: pointer; white-space: nowrap; }
+.mtgrot:hover { color: #fff; }
+.mtgrotk { position: relative; width: 34px; height: 20px; border-radius: 999px; background: rgba(255,255,255,.22); flex: none; }
+.mtgrotk::after { content: ""; position: absolute; top: 3px; left: 3px; width: 14px; height: 14px; border-radius: 50%; background: #f1f3f8; }
+.mtgrot[aria-pressed="true"] { color: #f1f3f8; }
+.mtgrot[aria-pressed="true"] .mtgrotk { background: #2e9e6a; }
+.mtgrot[aria-pressed="true"] .mtgrotk::after { left: 17px; }
+/* A rotation fades the new view in (no fade with reduced motion: base.css turns animations off). */
+.mtgfade { animation: mtgfade .6s ease-out; }
+@keyframes mtgfade { from { opacity: 0; } to { opacity: 1; } }
+@media (prefers-reduced-motion: reduce) { .mtgfade { animation: none; } }
+@media (max-width: 640px) { .mtgrot { min-height: 44px; } }
+
 /* Countdown strip: the season, then the next four milestones as small cards; they wrap on a narrow window. */
 .mtgstrip { display: grid; grid-template-columns: repeat(auto-fit, minmax(190px, 1fr)); gap: 10px; }
 .mtgseason, .mtgms { background: #111829; border: 1px solid rgba(255,255,255,.08); border-radius: 12px; padding: 8px 12px; min-width: 0; display: grid; align-content: start; gap: 1px; color: inherit; font: inherit; text-align: left; line-height: 1.3; }

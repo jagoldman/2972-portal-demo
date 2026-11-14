@@ -170,10 +170,29 @@ The Tasks timeline is for everyone but parents. Four rules:
    visit: divisions open, projects closed except the person's own. "Open all" / "Close all" sits at the right of the
    help line. The choice is kept per person and cleared by Reset.
 
-## Projector: Meeting view (decided 2026-11-13, D146)
+## Projector: Practice, Meeting and Build plan (decided 2026-11-13, D146 and D147)
 
-The Projector (Tasks menu, staff; and the Display role's shop screen) has a switch at its top right, kept as a saved
-choice (Reset clears it). **Meeting** shows two lists for the team meeting around the shop TV:
+The Projector (Tasks menu, staff; and the Display role's shop screen) has a switch at its top right: **Meeting |
+Practice | Build plan**, kept as a saved choice (Reset clears it). A first visit shows Practice. Each view is one
+screen on a TV, in short lines.
+
+**Countdown strip** (top of Meeting and Practice): "Kickoff · Sat, Jan 9 · 60 days · 13 practices", then the next four
+milestones not yet met, by date, each a small card (project, name, date, "in 2 days · 1 practice left", "today" or
+"3 days late" in words, a thin bar and "1 of 5 tasks done"). The kickoff date is the Calendar's kickoff event
+(`D.calApi.kickoff`); days and practices are counted (practices are the Calendar's meet days from today up to the day
+before). The Build plan's heading reads the same value. Staff open the project from a card.
+
+**Practice** (the general display, unattended): the demo's time, large; "Practice until 6:00 pm · 2 h 18 min left ·
+Clean-up starts at 5:45 pm · 5 people in the shop now" (on a day with no practice, the next practice); the countdown;
+then **Working on now** (in progress, by project, with who), **Needs help** (blocked, with what each waits on, as a
+word and a mark) and **Ready to pick up** (to do, nobody assigned, due by the second practice from today; if none,
+the to-do tasks due soonest). Only Ready to pick up stops at what fits ("and 11 more in Tasks"). "Rotate with the build
+plan" (on for the Display role, off for staff, saved) makes Practice and the Build plan take turns every 45 s, held
+while someone pressed a key or moved the pointer in the last 60 s; with reduced motion the change has no fade.
+
+**Meeting** adds, above its lists, **Today at a glance** (practice time, mentors coming, snacks, parts arrived since
+the last practice, each read from the app that owns it and shown only when there is one) and a **Note for today**
+that staff edit in place (Enter saves, Escape cancels; absent when empty). Then the two lists:
 - **Last practice · Thu, Nov 5**: the last day the team met before today, read from the Calendar
   (`D.calApi.meetDays`), so a practice cancelled or added there moves it. Every top-level task that was due that day
   or was finished that day (a task keeps the day it was marked done, `doneOn`), each saying how it ended: "Done", or
