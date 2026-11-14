@@ -1,5 +1,5 @@
 /* Tasks at working depth: its own left sidebar (views and the Division > Project > Subteam tree), list and board per subteam, milestone grid per project,
-   My tasks, This week, Dashboard, Calendar, Timeline, a full task panel (subtasks, dependencies, labels, links, comments, history), lead and simple modes, the assistant, and the projector. */
+   My tasks, This week, Dashboard, Due dates, Timeline, a full task panel (subtasks, dependencies, labels, links, comments, history), lead and simple modes, the assistant, and the projector. */
 (function () {
 "use strict";
 var esc = D.esc;
@@ -137,7 +137,7 @@ function sidebar() {
   if (D.S.role === "parent") return "";
   return '<nav class="tside" aria-label="Tasks" data-keepscroll="tside">' + close + '<button class="btn tnew" data-act="tnew">' + D.ic("plus", 16) + " New task</button>" +
     // Everyone but parents sees the Timeline (students read it; leads also move bars). For students it follows This week.
-    nav("my", "My tasks", "user", mine) + nav("week", "This week", "calendar") + (staff ? nav("dash", "Dashboard", "home") : nav("timeline", "Timeline", "schedule")) + nav("calendar", "Calendar", "calendar") + (staff ? nav("timeline", "Timeline", "schedule") : "") +
+    nav("my", "My tasks", "user", mine) + nav("week", "This week", "calendar") + (staff ? nav("dash", "Dashboard", "home") : nav("timeline", "Timeline", "schedule")) + nav("calendar", "Due dates", "calendar") + (staff ? nav("timeline", "Timeline", "schedule") : "") +
     (staff ? '<button class="tnav" data-act="go" data-v="projector" data-tip="Show the practice screen, the meeting lists or the build plan on the shop TV.">' + D.ic("projector", 17) + '<span class="lbl">Projector</span></button>' : "") +
     '<div class="sect"><span>Divisions</span>' + (D.S.role === "admin" ? '<button class="btn ghost sm" data-act="tnewdiv">+ New</button>' : "") + "</div>" + tree +
     '<div class="sect"><span>Options</span></div>' +
@@ -150,7 +150,7 @@ function sidebar() {
 function frame(title, crumbs, tools, body) {
   var tt = T(), parent = D.S.role === "parent";
   var head = parent ?
-    '<header class="topbar"><div class="tabs" role="group"><button class="tab" data-act="tgo" data-v="week" aria-pressed="' + (tt.at.v === "week") + '"' + D.tabTip("tasks", "week") + '>This week</button><button class="tab" data-act="tgo" data-v="calendar" aria-pressed="' + (tt.at.v === "calendar") + '"' + D.tabTip("tasks", "calendar") + '>Calendar</button></div><div class="right">' + (tt.at.v === "calendar" ? tools : "") + "</div></header>" :
+    '<header class="topbar"><div class="tabs" role="group"><button class="tab" data-act="tgo" data-v="week" aria-pressed="' + (tt.at.v === "week") + '"' + D.tabTip("tasks", "week") + '>This week</button><button class="tab" data-act="tgo" data-v="calendar" aria-pressed="' + (tt.at.v === "calendar") + '"' + D.tabTip("tasks", "calendar") + '>Due dates</button></div><div class="right">' + (tt.at.v === "calendar" ? tools : "") + "</div></header>" :
     '<header class="topbar"><button class="btn sm tmenu" data-act="tside" aria-label="Show or hide the task menu" data-tip="Your views, projects and subteams.">' + D.ic("menu", 18) + '</button><div class="ttl">' + (crumbs ? '<p class="who">' + crumbs + "</p>" : "") + "<h1>" + esc(title) + '</h1></div><div class="right">' + (tools || "") + (tt.lead ? '<span class="leadchip">Lead mode</span>' : "") + "</div></header>";
   return '<div class="tsk' + (parent || !tt.side ? " collapsed" : "") + (tt.mopen ? " mopen" : "") + '">' + sidebar() + (tt.mopen && !parent ? '<button class="drawer-scrim tscrim" data-act="tside" aria-label="Close menu"></button>' : "") +
     '<div class="tmain">' + head + '<div class="content">' + body + "</div></div></div>";
@@ -163,7 +163,7 @@ D.views.tasks = function () {
   if (!lead() && at.v === "dash") T().at = at = { v: "my" };
   if (at.v === "week") return frame("This week", "", "", week());
   if (at.v === "dash") return frame("Dashboard", "Team", "", dashboard());
-  if (at.v === "calendar") return frame("Calendar", "", "", calendar());
+  if (at.v === "calendar") return frame("Due dates", "", "", calendar());
   if (at.v === "timeline") return frame("Timeline", "All divisions", "", timeline());
   if (at.v === "project") return projectPage(at.p);
   if (at.v === "list") return listPage(at.p, at.l);
