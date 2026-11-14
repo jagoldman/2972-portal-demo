@@ -265,11 +265,12 @@ button.tev:hover { background: var(--surface-3); }
 /* Shared by the Projector's views: a header with the title on the left and the page buttons, the view switch and Exit on
    the right. The Display role's "Change screen" button sits in the top right corner, so its header leaves room. */
 .mtgscreen [hidden] { display: none !important; }
-.mtgscreen { --mtgt: 1.3rem; --mtgm: 1.02rem; --mtgpad: 7px; gap: 16px; padding-bottom: 20px; }
+.mtgscreen { --mtgt: 1.3rem; --mtgm: 1.02rem; --mtgpad: 7px; gap: 14px; padding-bottom: 20px; }
+@media (max-height: 800px) and (min-width: 1024px) { .mtgscreen { gap: 10px; padding-top: 16px; padding-bottom: 14px; } }
 .mtghead { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 10px 20px; min-width: 0; }
 .mtghead h1 { font-size: clamp(1.4rem, 2.4vw, 2.2rem); margin: 0; line-height: 1.15; }
-.mtghead .dmute { margin: 2px 0 0; }
-.mtgttl { min-width: 0; }
+.mtghead .dmute { margin: 0; }
+.mtgttl { min-width: 0; display: flex; flex-wrap: wrap; align-items: baseline; gap: 2px 16px; }
 @media (min-width: 641px) { .mtghead.mtgdisp { padding-right: 150px; } }
 .mtgctl { display: flex; flex-wrap: wrap; align-items: center; gap: 10px; min-width: 0; }
 .mtgsw { display: inline-flex; gap: 2px; padding: 3px; background: #111829; border: 1px solid rgba(255,255,255,.16); border-radius: 10px; }
@@ -286,22 +287,35 @@ button.tev:hover { background: var(--surface-3); }
 .mtgseason, .mtgms { background: #111829; border: 1px solid rgba(255,255,255,.08); border-radius: 12px; padding: 8px 12px; min-width: 0; display: grid; align-content: start; gap: 1px; color: inherit; font: inherit; text-align: left; line-height: 1.3; }
 .mtgseason { border-color: rgba(246,215,122,.45); }
 .mtgkick { font-size: .85rem; font-weight: 700; color: #f6d77a; text-transform: uppercase; letter-spacing: .06em; }
-.mtgseason b { font-size: 1rem; }
 .mtgbig { font-size: 1.6rem; font-weight: 700; line-height: 1.15; }
 .mtgseason .num:last-child { color: #c3cad8; }
 button.mtgms { cursor: pointer; }
 button.mtgms:hover { border-color: rgba(255,255,255,.3); }
 button.mtgms:focus-visible { outline: 3px solid #f6d77a; outline-offset: 1px; }
 .mtgms.late { border-color: rgba(255,155,146,.6); }
-.mtgmsp { display: flex; align-items: center; gap: 6px; font-size: .85rem; color: #c3cad8; font-weight: 600; }
+.mtgmsp { display: flex; align-items: center; justify-content: space-between; gap: 6px; font-size: .85rem; color: #c3cad8; font-weight: 600; }
+.mtgmspn { display: flex; align-items: center; gap: 6px; min-width: 0; }
+.mtgmsp > .num { white-space: nowrap; }
+.mtgmsdone { display: flex; align-items: center; gap: 8px; }
 .mtgmsn { font-size: 1.08rem; font-weight: 700; overflow-wrap: anywhere; }
-.mtgmsd { font-size: .9rem; color: #c3cad8; }
-.mtgaway { color: #f1f3f8; }
+.mtgaway { color: #f1f3f8; font-size: .92rem; }
 .mtgaway.late { color: #ff9b92; }
-.mtgmsbar { display: block; height: 5px; border-radius: 3px; background: rgba(255,255,255,.14); margin-top: 4px; overflow: hidden; }
+.mtgmsbar { display: block; flex: 1 1 40px; height: 5px; border-radius: 3px; background: rgba(255,255,255,.14); overflow: hidden; }
 .mtgmsbar i { display: block; height: 100%; background: #2e9e6a; }
-.mtgmst { font-size: .82rem; color: #aab2c5; }
+.mtgmst { font-size: .82rem; color: #aab2c5; white-space: nowrap; }
 @media (max-height: 760px) and (min-width: 1024px) { .mtgseason, .mtgms { padding: 6px 10px; } .mtgbig { font-size: 1.3rem; } .mtgmsn { font-size: 1rem; } }
+
+/* Today at a glance (one row of short facts) and the note for today. */
+.mtgglance { list-style: none; margin: 0; padding: 0; display: flex; flex-wrap: wrap; gap: 2px 22px; font-size: 1rem; color: #e6e9f0; }
+.mtgglance li { min-width: 0; overflow-wrap: anywhere; }
+.mtggl { font-size: .8rem; font-weight: 700; color: #f6d77a; text-transform: uppercase; letter-spacing: .06em; margin-right: 4px; }
+.mtgnote { display: flex; flex-wrap: wrap; align-items: center; gap: 6px 12px; padding: 4px 12px; border-left: 4px solid #f6d77a; background: rgba(246,215,122,.08); border-radius: 0 10px 10px 0; min-width: 0; }
+.mtgnotet { font-size: 1.15rem; font-weight: 600; min-width: 0; overflow-wrap: anywhere; flex: 1 1 260px; }
+.mtgnotebtn { min-height: 32px; padding: 0 12px; font-size: .9rem; }
+.mtgnotein { flex: 1 1 320px; min-width: 0; min-height: 40px; padding: 0 12px; border-radius: 8px; border: 1px solid rgba(255,255,255,.4); background: #05070c; color: #f1f3f8; font: inherit; font-size: 1.1rem; }
+.mtgnotein:focus { outline: 3px solid #f6d77a; outline-offset: 1px; }
+.mtgnoteh { font-size: .85rem; }
+@media (max-width: 640px) { .mtgnotebtn { min-height: 44px; } .mtgnotein { min-height: 44px; font-size: 16px; } }
 
 /* Meeting view: two lists side by side on a wide window, stacked below 1024 px. data-dense (0 to 4) is set by the
    fitting code in tasks.js: smaller type first, then two columns inside each list, then pages. */
@@ -330,7 +344,7 @@ button.mtgrow:focus-visible { outline: 3px solid #f6d77a; outline-offset: -1px; 
 .mtgmark svg { width: 80%; height: 80%; stroke-width: 3; }
 .mtgbody { display: block; min-width: 0; }
 .mtgtitle { font-size: var(--mtgt); font-weight: 600; line-height: 1.25; overflow-wrap: anywhere; }
-.mtgfrom { display: inline-block; margin-left: 8px; padding: 0 7px; border-radius: 999px; border: 1px solid rgba(246,215,122,.6); font-size: calc(var(--mtgm) * .88); line-height: 1.5; color: #f6d77a; vertical-align: 2px; white-space: nowrap; }
+.mtgfrom { display: inline-block; margin-right: 8px; padding: 0 7px; border-radius: 999px; border: 1px solid rgba(246,215,122,.6); font-size: calc(var(--mtgm) * .88); line-height: 1.5; color: #f6d77a; vertical-align: 2px; white-space: nowrap; }
 .mtgmeta { display: block; font-size: var(--mtgm); color: #aab2c5; line-height: 1.3; }
 .mtgout { font-weight: 700; color: #f1f3f8; }
 .mtgout.ok { color: #6fdca6; }

@@ -4,6 +4,7 @@
 "use strict";
 var esc = D.esc;
 var TODAYS = "2026-11-10";
+var NOW = "15:42"; // The demo's time of day (the Projector's clock and "Updated 3:42 pm").
 function parse(s) { var p = s.split("-"); return new Date(+p[0], +p[1] - 1, +p[2]); }
 function iso(d) { return d.getFullYear() + "-" + ("0" + (d.getMonth() + 1)).slice(-2) + "-" + ("0" + d.getDate()).slice(-2); }
 function add(s, n) { var d = parse(s); return iso(new Date(d.getFullYear(), d.getMonth(), d.getDate() + n)); }
@@ -80,6 +81,8 @@ D.inits.push(function (S) {
   var d = seed();
   S.tasks = { divs: d.divs, list: d.list, nextId: d.nextId, at: { v: "my" }, mode: "list", group: "milestone", q: "", who: "all", label: "", expanded: { intake: true }, lead: false, simple: null, side: true, mopen: false, cal: "project",
     cols: ["todo", "doing", "blocked", "done"], openSubs: {},
+    // One line for today's team meeting, typed by a mentor or admin on the Projector's Meeting view.
+    note: "Safety glasses check. Outreach forms due Friday.",
     saves: [ { name: "Before Saturday's re-plan", when: "Nov 7, 9:02 pm", by: "Ms. Rivera" }, { name: "Daily", when: "Nov 10, 2:00 am", by: "automatic" }, { name: "Daily", when: "Nov 9, 2:00 am", by: "automatic" } ],
     chat: [] };
   S.notices.push({ to: "student", app: "tasks", text: "Leo mentioned you on “Cut polycarb side plates”.", when: "2 h ago", read: false });
@@ -621,7 +624,7 @@ function pjSwitch(cur) {
 function pjHead(title, cur) {
   var disp = D.S.role === "display";
   var pager = cur === "meeting" ? '<div class="mtgpager" hidden><button class="btn mtgpg" data-act="mtgpage" data-v="-1" aria-label="Previous page" data-tip="Show the previous page of tasks (Left arrow)">' + D.ic("chevron", 18) + '</button><span class="mtgpgn num" aria-live="polite">1 / 1</span><button class="btn mtgpg mtgnext" data-act="mtgpage" data-v="1" aria-label="Next page" data-tip="Show the next page of tasks (Right arrow)">' + D.ic("chevron", 18) + "</button></div>" : "";
-  return '<div class="mtghead' + (disp ? " mtgdisp" : "") + '"><div class="mtgttl"><h1>' + esc(title) + '</h1><p class="dmute">Updated 3:42 pm</p></div><div class="mtgctl">' + pager + pjSwitch(cur) +
+  return '<div class="mtghead' + (disp ? " mtgdisp" : "") + '"><div class="mtgttl"><h1>' + esc(title) + '</h1><p class="dmute">Updated ' + clock(NOW) + '</p></div><div class="mtgctl">' + pager + pjSwitch(cur) +
     (disp ? "" : '<button class="btn mtgexit" data-act="go" data-v="tasks" data-tip="Back to Tasks">Exit projector</button>') + "</div></div>";
 }
 /* Countdown strip (top of Meeting and Practice): the season and the next four milestones not yet met.
@@ -645,11 +648,11 @@ function msAway(date) {
 }
 function countdown() {
   var s = season(), staff = D.S.role !== "display";
-  var head = s ? '<div class="mtgseason"><span class="mtgkick">Kickoff</span><b>' + esc(fmt(s.date)) + '</b><span class="mtgbig num">' + plural(s.days, "day") + '</span><span class="num">' + plural(s.practices, "practice") + "</span></div>" : "";
+  var head = s ? '<div class="mtgseason"><span class="mtgmsp"><span class="mtgkick">Kickoff</span><span class="num">' + esc(fmt(s.date)) + '</span></span><span class="mtgbig num">' + plural(s.days, "day") + '</span><span class="num">' + plural(s.practices, "practice") + "</span></div>" : "";
   var cards = nextMilestones(4).map(function (m) {
     var xs = T().list.filter(function (x) { return x.p === m.p.id && x.ms === m.id && !x.parent; }), dn = xs.filter(function (x) { return x.st === "done"; }).length, late = days(m.date) < 0;
-    var inner = '<span class="mtgmsp"><i class="mtgdot" style="background:' + m.p.color + '"></i>' + esc(m.p.name) + '</span><span class="mtgmsn">' + esc(m.name) + '</span><span class="mtgmsd"><span class="num">' + esc(fmt(m.date)) + '</span> · <b class="mtgaway' + (late ? " late" : "") + '">' + esc(msAway(m.date)) + "</b></span>" +
-      (xs.length ? '<span class="mtgmsbar" aria-hidden="true"><i style="width:' + D.pct(dn, xs.length) + '%"></i></span><span class="mtgmst num">' + dn + " of " + plural(xs.length, "task") + " done</span>" : '<span class="mtgmst">No tasks yet</span>');
+    var inner = '<span class="mtgmsp"><span class="mtgmspn"><i class="mtgdot" style="background:' + m.p.color + '"></i>' + esc(m.p.name) + '</span><span class="num">' + esc(fmt(m.date)) + '</span></span><span class="mtgmsn">' + esc(m.name) + '</span><b class="mtgaway' + (late ? " late" : "") + '">' + esc(msAway(m.date)) + "</b>" +
+      '<span class="mtgmsdone">' + (xs.length ? '<span class="mtgmsbar" aria-hidden="true"><i style="width:' + D.pct(dn, xs.length) + '%"></i></span><span class="mtgmst num">' + dn + " of " + plural(xs.length, "task") + " done</span>" : '<span class="mtgmst">No tasks yet</span>') + "</span>";
     return staff ? '<button class="mtgms' + (late ? " late" : "") + '" data-act="mtgproj" data-v="' + m.p.id + '" data-tip="Open the ' + esc(m.p.name) + ' project in Tasks">' + inner + "</button>" : '<div class="mtgms' + (late ? " late" : "") + '">' + inner + "</div>";
   }).join("");
   return '<div class="mtgstrip" role="group" aria-label="Countdown">' + head + cards + "</div>";
@@ -657,7 +660,7 @@ function countdown() {
 D.views.projector = function () {
   if (!(lead() || D.S.role === "display")) return D.denied("Projector");
   var v = pjView();
-  if (v === "meeting") return '<div class="display mtgscreen" data-pv="meeting">' + pjHead("Team meeting · " + fmt(TODAYS), v) + countdown() + meetingLists() + "</div>";
+  if (v === "meeting") return '<div class="display mtgscreen" data-pv="meeting">' + pjHead("Team meeting · " + fmt(TODAYS), v) + countdown() + glance() + noteLine() + meetingLists() + "</div>";
   var s = season();
   return '<div class="display mtgscreen" data-pv="plan">' + pjHead("Build plan" + (s ? " · " + plural(s.days, "day") + " to kickoff" : ""), v) + buildPlan() + "</div>";
 };
@@ -722,7 +725,7 @@ function mtgRow(x, side, staff) {
   bits.push('<span class="mtgsub">' + esc(x.sub) + "</span>");
   var sp = steps(x); if (sp) bits.push('<span class="mtgsteps">' + sp + "</span>");
   var carried = side === "right" && x.due && x.due < TODAYS && x.st !== "done" ? '<span class="mtgfrom">from ' + esc(fmt(x.due)) + "</span>" : "";
-  var inner = mtgMark(x) + '<span class="mtgbody"><span class="mtgtitle">' + esc(x.title) + "</span>" + carried + '<span class="mtgmeta">' + (st ? st + '<span class="mtgsep"> · </span>' : "") + bits.join('<span class="mtgsep"> · </span>') + "</span></span>";
+  var inner = mtgMark(x) + '<span class="mtgbody"><span class="mtgtitle">' + esc(x.title) + '</span><span class="mtgmeta">' + carried + (st ? st + '<span class="mtgsep"> · </span>' : "") + bits.join('<span class="mtgsep"> · </span>') + "</span></span>";
   var label = x.title + ", " + (side === "left" ? (x.st === "done" ? "done" : "not finished, " + ST[x.st][0]) : ST[x.st][0]);
   return staff ? '<button class="mtgrow" data-act="mtgopen" data-v="' + x.id + '" data-tip="Open this task" aria-label="' + esc(label) + '">' + inner + "</button>" : '<div class="mtgrow" data-v="' + x.id + '">' + inner + "</div>";
 }
@@ -733,6 +736,30 @@ function mtgSection(id, title, count, xs, side, empty) {
   }).join("");
   return '<section class="mtgsec" aria-labelledby="' + id + '"><div class="mtgsh"><h2 id="' + id + '">' + esc(title) + '</h2><span class="mtgcount num">' + esc(count) + "</span></div>" +
     (xs.length ? '<div class="mtgcols">' + groups + '</div><p class="mtgelse dmute" hidden></p>' : '<p class="mtgempty">' + esc(empty) + "</p>") + "</section>";
+}
+// "h:mm am/pm" from "15:30"; minutes always shown ("6:00 pm").
+function clock(hm) { var p = hm.split(":"), h = +p[0]; return (h % 12 || 12) + ":" + p[1] + (h < 12 ? " am" : " pm"); }
+function clockSpan(a, b) { var A = clock(a), B = clock(b); return A.slice(-2) === B.slice(-2) ? A.slice(0, -3) + " to " + B : A + " to " + B; }
+// Today at a glance: short facts, each read from the app that owns it, each shown only when there is something to say.
+function glance() {
+  var api = D.calApi, out = [], lp = lastPractice();
+  var pr = api && api.practiceOn ? api.practiceOn(TODAYS) : null;
+  if (pr) out.push(["Practice", clockSpan(pr.start, pr.end)]);
+  var ms = api && api.mentorsOn ? api.mentorsOn(TODAYS) : [];
+  if (ms.length) out.push(["Mentors", ms.join(", ")]);
+  var sn = api && api.snacksOn ? api.snacksOn(TODAYS) : [];
+  if (sn.length) out.push(["Snacks", sn.join(", ")]);
+  var arr = lp && D.partsApi && D.partsApi.arrivedSince ? D.partsApi.arrivedSince(lp) : [];
+  if (arr.length) out.push([plural(arr.length, "part") + " in since " + fmt(lp, { weekday: "short" }), arr.slice(0, 3).map(function (a) { return a.name; }).join(", ") + (arr.length > 3 ? ", and " + (arr.length - 3) + " more" : "")]);
+  if (!out.length) return "";
+  return '<ul class="mtgglance" aria-label="Today at a glance">' + out.map(function (f) { return '<li><span class="mtggl">' + esc(f[0]) + "</span> " + esc(f[1]) + "</li>"; }).join("") + "</ul>";
+}
+// Note for today: staff edit it in place (Enter saves, Escape cancels); the Display role only reads it; empty is absent.
+function noteLine() {
+  var note = T().note || "", staff = D.S.role !== "display";
+  if (staff && PJ.noteEdit) return '<div class="mtgnote mtgnoteed"><label class="mtggl" for="mtg-note">Note for today</label><input id="mtg-note" class="mtgnotein" value="' + esc(note) + '" maxlength="140" placeholder="One line for the meeting" aria-describedby="mtg-note-help"><span id="mtg-note-help" class="dmute mtgnoteh">Enter saves · Escape cancels</span><button class="btn mtgnotebtn" data-act="mtgnotesave" data-tip="Save the note">Save</button><button class="btn mtgnotebtn" data-act="mtgnotecancel" data-tip="Keep the note as it was">Cancel</button></div>';
+  if (!note) return staff ? '<div class="mtgnote"><button class="btn mtgnotebtn" data-act="mtgnoteedit" data-tip="Write one line for today\'s meeting; it shows on the shop screen too">Add a note for today</button></div>' : "";
+  return '<div class="mtgnote"><span class="mtggl">Note</span><span class="mtgnotet">' + esc(note) + "</span>" + (staff ? '<button class="btn mtgnotebtn" data-act="mtgnoteedit" data-tip="Change the note for today\'s meeting">Edit note</button>' : "") + "</div>";
 }
 function meetingLists() {
   var M = mtgModel(), dn = M.left.filter(function (x) { return x.st === "done"; }).length;
@@ -804,6 +831,11 @@ function mtgTurn(dir, byHand) {
 }
 function mtgOn() { return D.S.route === "projector" && pjView() === "meeting" && (lead() || D.S.role === "display"); }
 D.acts.mtgpage = function (b) { var dir = +b.dataset.v; PJ.focusPg = dir; mtgTurn(dir, true); };
+D.acts.mtgnoteedit = function () { PJ.noteEdit = true; D.render(); var i = document.getElementById("mtg-note"); if (i) { i.focus(); i.setSelectionRange(i.value.length, i.value.length); } };
+function noteDone(save) { var i = document.getElementById("mtg-note"); if (save && i) T().note = i.value.trim(); PJ.noteEdit = false; D.render(); var b = document.querySelector('[data-act="mtgnoteedit"]'); if (b) b.focus(); }
+D.acts.mtgnotesave = function () { noteDone(true); };
+D.acts.mtgnotecancel = function () { noteDone(false); };
+document.addEventListener("keydown", function (e) { if (e.target && e.target.id === "mtg-note") { if (e.key === "Enter") { e.preventDefault(); noteDone(true); } else if (e.key === "Escape") { e.preventDefault(); e.stopPropagation(); noteDone(false); } } }, true);
 D.acts.mtgproj = function (b) { var tt = T(); tt.expanded[b.dataset.v] = true; tt.at = { v: "project", p: b.dataset.v }; tt.mopen = false; D.go("tasks"); };
 D.acts.mtgopen = function (b) { PJ.focus = b.dataset.v; D.openDrawer("task", { id: b.dataset.v }); };
 D.acts.pjview = function (b) { var v = b.dataset.v; if (pjView() === v) return; D.setPref("projview", v); PJ.page = 0; D.render(); var el = document.querySelector('.mtgsw [data-v="' + v + '"]'); if (el) el.focus(); };
