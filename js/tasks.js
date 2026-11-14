@@ -274,7 +274,8 @@ function projectPage(pid) {
     }).join("");
     return '<section class="pstack-ms"><div class="row between">' + msHead(m) + "</div>" + (groups || '<p class="small mute">No tasks yet.</p>') + add1(m, p.subs[0]) + "</section>";
   }).join("") + "</div>";
-  grid = '<div class="hide-sm">' + grid + "</div>" + stack;
+  // The grid needs about 180 px per subteam; when the card is narrower (a laptop window), it scrolls sideways in its own box.
+  grid = '<div class="hide-sm tablewrap" data-keepscroll="pgrid">' + grid + "</div>" + stack;
   var cross = xs.filter(function (x) { return x.by.some(function (b) { var bt = task(b); return bt && bt.sub !== x.sub; }); });
   var tools = (lead() ? '<button class="btn sm" data-act="tmsadd" data-v="' + p.id + '">+ Milestone</button><button class="btn ghost sm" data-act="tsaves">' + D.ic("history", 16) + " Save points</button>" : "");
   return frame(p.name, esc(d.name), tools, filtersBar() + '<div class="card pgcard">' + grid + "</div>" +
