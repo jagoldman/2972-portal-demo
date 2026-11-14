@@ -72,27 +72,6 @@
 
 .pstack-sub .linkbtn { justify-self: start; font-size: .8rem; }
 
-.tl { display: grid; grid-template-columns: minmax(150px, 260px) minmax(520px, 1fr); gap: 6px 12px; align-items: center; }
-
-.tltrack { position: relative; height: 26px; background: var(--surface-2); border-radius: 5px; }
-
-.tltrack i { position: absolute; top: 4px; bottom: 4px; border-radius: 4px; background: var(--gold); opacity: .85; }
-
-.tltrack i.done { background: var(--ok); }
-
-.tltrack i.task { top: 7px; bottom: 7px; background: var(--info); }
-
-.tltrack i.ms { width: 10px; height: 10px; top: 8px; bottom: auto; transform: rotate(45deg); border-radius: 2px; background: var(--text); opacity: 1; }
-
-.tltrack .today { position: absolute; top: -4px; bottom: -4px; width: 2px; background: var(--bad); }
-
-.tlaxis { position: relative; height: 34px; font-size: .72rem; color: var(--mute); }
-
-.tlaxis span, .tlaxis b { position: absolute; top: 16px; transform: translateX(-50%); white-space: nowrap; }
-
-.tlaxis span::before { content: ""; position: absolute; left: 50%; top: 16px; height: 5px; border-left: 1px solid var(--line-2); }
-
-.tlaxis b { color: var(--bad); font-weight: 700; top: 0; }
 
 @media (max-width: 860px) {
   .tsk { grid-template-columns: minmax(0,1fr); }
@@ -105,8 +84,6 @@
 
 @media (max-width: 640px) {
   .pstack { display: grid; }
-  .tl { grid-template-columns: minmax(0,1fr); gap: 2px; }
-  .tl .ttitle { white-space: normal; margin-top: 6px; }
 }
 
 /* Tasks: the left menu, the page bar, task rows, the milestone grid, board, timeline, calendar and the task panel.
@@ -270,15 +247,6 @@ button.tev:hover { background: var(--surface-3); }
 .tev.done { text-decoration: line-through; opacity: .65; }
 @media (max-width: 640px) { .tev { font-size: .66rem; padding: 1px 3px; } .tev .dotc { margin-right: 3px; } }
 
-/* ---------- Timeline ---------- */
-.tlgrp { grid-column: 1 / -1; margin-top: 10px; font-size: .9rem; }
-.tlp { font-weight: 600; display: flex; gap: 6px; align-items: center; }
-.tlt { font-weight: 500; padding-left: 16px; }
-.tltask { height: 20px; }
-.tltrack i.task { top: 4px; bottom: 4px; background: var(--accent); opacity: .7; }
-.tltrack i.task.done { background: var(--ok); }
-.tl .pill { margin-left: 6px; font-size: .78rem; }
-@media (max-width: 640px) { .tlt, .tlp { min-height: 32px; } }
 
 /* ---------- Task panel ---------- */
 .psec { display: grid; gap: 6px; }
@@ -297,3 +265,44 @@ button.tev:hover { background: var(--surface-3); }
 
 .tkr .btn { margin-left: auto; }
 @media (max-width: 640px) { .tkr .grow { flex-basis: 100%; } .tkr .due { flex: 1; } }
+
+/* ---------- Timeline: one column per practice or build day (from the Calendar), marker and break columns ---------- */
+.tlwrap { overflow-x: auto; overscroll-behavior-x: contain; }
+.tl { --tlname: minmax(150px, 220px); --tlday: 34px; --tlmark: 16px; --tlgap: 26px; display: grid; width: max-content; min-width: 100%; align-items: center; position: relative; grid-auto-rows: minmax(32px, auto); }
+.tlcorner, .tlgrp, .tlp, .tlt { grid-column: 1; position: sticky; left: 0; z-index: 3; background: var(--surface); }
+.tlcorner { align-self: stretch; }
+.tlgrp { margin: 10px 0 2px; padding-right: 8px; font-size: .9rem; align-self: end; }
+.tlp { font-weight: 600; display: flex; gap: 6px; align-items: center; min-height: 32px; padding-right: 8px; }
+.tlt { font-weight: 500; padding-left: 16px; padding-right: 8px; min-height: 32px; }
+.tl .pill { margin-left: 6px; font-size: .78rem; }
+.tlweek { grid-row: 1; align-self: end; padding: 2px 4px; border-left: 1px solid var(--line-2); font-size: .72rem; font-weight: 600; color: var(--text-2); white-space: nowrap; overflow: hidden; }
+.tlday, .tlmarkh { display: grid; justify-items: center; align-self: stretch; padding: 2px 0 6px; font-size: .68rem; line-height: 1.15; color: var(--mute); border-bottom: 1px solid var(--line-2); }
+.tlday b { font-size: .8rem; font-weight: 600; color: var(--text-2); }
+.tlday.istoday b { color: var(--text); }
+.tlday.istoday { box-shadow: inset 0 -3px 0 var(--gold); }
+.tlmarkh b { font-size: .68rem; font-weight: 600; }
+.tlcol { align-self: stretch; border-left: 1px solid var(--line); }
+.tlcol.build { background: var(--tint); }
+.tlcol.mark { background: var(--surface-2); }
+.tlcol.today { box-shadow: inset 0 0 0 2px var(--gold); }
+.tlcol.gap { display: flex; justify-content: center; padding-top: 6px; background: repeating-linear-gradient(135deg, var(--surface-3) 0 3px, transparent 3px 7px); }
+.tlcol.gap span { writing-mode: vertical-rl; padding: 6px 2px; border-radius: 4px; background: var(--surface); color: var(--text-2); font-size: .7rem; font-weight: 600; white-space: nowrap; }
+.tlbar, .tlpbar { position: relative; z-index: 1; min-width: 0; margin: 0 3px; padding: 0; border: 0; border-radius: 4px; cursor: pointer; }
+.tlbar { height: 14px; background: var(--accent); opacity: .75; }
+.tlbar.done { background: var(--ok); }
+.tlbar.movable { cursor: grab; touch-action: pan-x pan-y; }
+.tlbar:hover, .tlpbar:hover { opacity: 1; }
+.tlbar:focus-visible, .tlpbar:focus-visible { opacity: 1; outline: 2px solid var(--accent); outline-offset: 2px; }
+.tlbar.after { border-top-right-radius: 0; border-bottom-right-radius: 0; }
+.tlbar.before { border-top-left-radius: 0; border-bottom-left-radius: 0; }
+.tlpbar { height: 10px; background: var(--pc, var(--gold)); opacity: .85; }
+.tlms { z-index: 2; justify-self: center; width: 10px; height: 10px; border-radius: 2px; transform: rotate(45deg); background: var(--text); }
+.tlms.met { background: var(--ok); }
+.tltoday { z-index: 2; justify-self: start; align-self: stretch; width: 2px; margin-left: -1px; background: var(--bad); }
+.tltoday.end { justify-self: end; margin: 0 -1px 0 0; }
+@media (max-width: 640px) {
+  .tl { --tlname: minmax(118px, 140px); --tlday: 32px; }
+  .tlt { font-size: .85rem; white-space: normal; }
+  /* A taller tap area than the drawn bar, so a finger finds it. */
+  .tlbar::before, .tlpbar::before { content: ""; position: absolute; inset: -9px 0; }
+}

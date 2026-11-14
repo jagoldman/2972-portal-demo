@@ -228,20 +228,100 @@ function calendar() {
   var seg = '<span class="seg" role="group" aria-label="Color by"><button data-act="tcal" data-v="project" aria-pressed="' + (T().cal === "project") + '" data-tip="Colour each task by its project">By project</button><button data-act="tcal" data-v="sub" aria-pressed="' + (T().cal === "sub") + '" data-tip="Colour each task by its subteam">By subteam</button></span>';
   return '<div class="card"><div class="row between"><h2>November 2026</h2>' + seg + '</div><div class="tablewrap"><div class="month tmonth">' + ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"].map(function (x) { return '<div class="dh">' + x + "</div>"; }).join("") + cells + '</div></div><p class="who">◆ is a milestone. Practices and events are in the Calendar app.</p></div>';
 }
+/* ---------- Timeline ----------
+   Columns are only the days the team meets, read from the Calendar (D.calApi.meetDays), all the same width. A milestone
+   or competition on a day the team does not meet gets a narrow marker column on its date; a break (a stretch with no
+   practice longer than a normal weekend) gets one thin gap column that says so. A task's bar ends on the last practice
+   day on or before its due date and is as long as the work it needs (about one practice per 2.5 h of estimate, two
+   when there is no estimate). The bar is the task: a click opens it. Leads also move it (see "Moving a bar" below). */
+var TL_FROM = "2026-10-26", TL_TO = "2027-01-04", PRACTICE_H = 2.5;
+function short(s) { return fmt(s, { month: "short", day: "numeric" }); }
+function tlLen(x) { return x.est ? Math.max(1, Math.ceil(x.est / PRACTICE_H)) : 2; }
+function tlModel() {
+  var api = D.calApi, meet = api && api.meetDays ? api.meetDays(TL_FROM, TL_TO) : [], isMeet = {};
+  meet.forEach(function (m) { isMeet[m.date] = m.kind; });
+  var divs = T().divs.filter(function (d) { return d.id === "eng" || d.id === "out"; });
+  var cols = meet.map(function (m) { return { type: "day", date: m.date, kind: m.kind }; }), marks = {};
+  function mark(date, what) { if (date < TL_FROM || date > TL_TO || isMeet[date]) return; (marks[date] = marks[date] || []).push(what); }
+  divs.forEach(function (d) { d.projects.forEach(function (p) { p.ms.forEach(function (m) { mark(m[2], "Milestone: " + p.name + ", " + m[1]); }); }); });
+  if (api && api.eventsIn) api.eventsIn(TL_FROM, TL_TO, ["comp"]).forEach(function (e) { mark(e.date, "Competition: " + e.name); });
+  Object.keys(marks).forEach(function (d) { cols.push({ type: "mark", date: d, items: marks[d] }); });
+  // Breaks: more than 5 days between two meeting days (a normal week's longest gap is Thursday to Tuesday).
+  var edges = [add(TL_FROM, -1)].concat(meet.map(function (m) { return m.date; })).concat([add(TL_TO, 1)]);
+  for (var i = 1; i < edges.length; i++) {
+    var a = edges[i - 1], b = edges[i], gap = days(b) - days(a);
+    if (gap > 5) cols.push({ type: "gap", from: add(a, 1), to: add(b, -1), date: add(b, -1) + "~" });
+  }
+  // By date; a break sorts by its last day, so a marker inside a break stands before the break's note.
+  cols.sort(function (p, q) { return p.date < q.date ? -1 : p.date > q.date ? 1 : 0; });
+  var dayK = []; cols.forEach(function (c, k) { if (c.type === "day") { c.di = dayK.length; dayK.push(k); } });
+  return { cols: cols, dayK: dayK, divs: divs, isMeet: isMeet };
+}
+// The day column (index among practice days) a date lands on: the last practice day on or before it.
+function dayFor(M, date) {
+  var i = -1; M.dayK.forEach(function (k, di) { if (M.cols[k].date <= date) i = di; });
+  return Math.max(0, i);
+}
+function colOfDate(M, date) { for (var k = 0; k < M.cols.length; k++) if (M.cols[k].date === date) return k; return -1; }
+function tlStateWord(x) { return ST[x.st][0]; }
+function tlBar(M, x, row, canMove) {
+  var end = dayFor(M, x.due), len = tlLen(x), start = Math.max(0, end - len + 1);
+  var after = x.due > TL_TO, before = M.dayK.length && x.due < M.cols[M.dayK[0]].date;
+  var label = x.title + ", " + tlStateWord(x) + ", due " + fmt(x.due) + (after ? " (after this chart)" : "");
+  var tip = x.title + " · " + (x.who.length ? x.who.join(", ") : "nobody yet") + " · due " + fmt(x.due);
+  var movable = canMove && x.st !== "done";
+  return '<button class="tlbar' + (x.st === "done" ? " done" : "") + (after ? " after" : "") + (before ? " before" : "") + (movable ? " movable" : "") + '" data-act="topen" data-v="' + x.id + '" data-end="' + end + '" data-len="' + (end - start + 1) + '"' +
+    ' style="grid-row:' + row + ";grid-column:" + (M.dayK[start] + 2) + " / " + (M.dayK[end] + 3) + '" aria-label="' + esc(label) + (movable ? ". Arrow keys move it one practice day" : "") + '" data-tip="' + esc(tip) + '"></button>';
+}
 function timeline() {
-  var start = "2026-10-26", span = 70;
-  function pos(s) { return Math.max(0, Math.min(100, (days(s) - days(start)) / span * 100)); }
-  var axis = '<span></span><div class="tlaxis">' + ["2026-11-01", "2026-11-15", "2026-12-01", "2026-12-15", "2027-01-01"].map(function (t) { return '<span style="left:' + pos(t) + '%">' + fmt(t, { month: "short", day: "numeric" }) + "</span>"; }).join("") + '<b style="left:' + pos(TODAYS) + '%">Today</b></div>';
-  var html = axis + T().divs.filter(function (d) { return d.id === "eng" || d.id === "out"; }).map(function (d) {
-    return '<h3 class="tlgrp">' + esc(d.name) + "</h3>" + d.projects.map(function (p) {
-      var xs = T().list.filter(function (x) { return x.p === p.id && x.due && !x.parent; }); if (!xs.length) return "";
-      var lo = xs.reduce(function (a, x) { return x.due < a ? x.due : a; }, xs[0].due), hi = xs.reduce(function (a, x) { return x.due > a ? x.due : a; }, xs[0].due); lo = add(lo, -7);
-      var row = '<button class="ttitle tlp" data-act="tproj" data-v="' + p.id + '"><span class="sw2" style="background:' + p.color + '"></span> ' + esc(p.name) + '</button><div class="tltrack"><i style="left:' + pos(lo) + "%;width:" + Math.max(1, pos(hi) - pos(lo)) + "%;background:" + p.color + '"></i>' + p.ms.map(function (m) { return '<i class="ms" style="left:calc(' + pos(m[2]) + '% - 5px)" data-tip="Milestone: ' + esc(m[1]) + '"></i>'; }).join("") + '<span class="today" style="left:' + pos(TODAYS) + '%"></span></div>';
-      row += xs.map(function (x) { var bb = x.by.map(task).filter(function (b) { return b && b.due > x.due; }); var s0 = add(x.due, -(x.est ? Math.ceil(x.est) + 2 : 4)); return '<button class="ttitle tlt" data-act="topen" data-v="' + x.id + '">' + esc(x.title) + (bb.length ? ' <span class="pill bad" data-tip="Due before something it waits on">Out of order</span>' : "") + '</button><div class="tltrack tltask"><i class="task' + (x.st === "done" ? " done" : "") + '" style="left:' + pos(s0) + "%;width:" + Math.max(1, pos(x.due) - pos(s0)) + '%"></i><span class="today" style="left:' + pos(TODAYS) + '%"></span></div>'; }).join("");
-      return row;
-    }).join("");
-  }).join("");
-  return '<div class="card"><p class="who">Oct 26 – Jan 4. Bars run to each due date, ◆ is a milestone, the red line is today.</p><div class="tablewrap"><div class="tl">' + html + "</div></div></div>";
+  var M = tlModel(), cols = M.cols, canMove = lead(), html = "", row = 3, n = cols.length;
+  if (!M.dayK.length) return '<div class="card"><p class="mute">No practices are on the Calendar between Oct 26 and Jan 4.</p></div>';
+  var tmpl = "var(--tlname) " + cols.map(function (c) { return c.type === "day" ? "minmax(var(--tlday), 1fr)" : c.type === "mark" ? "var(--tlmark)" : "var(--tlgap)"; }).join(" ");
+  // Week labels: one per week, spanning that week's columns (a break column has none).
+  var heads = '<div class="tlcorner" style="grid-row:1 / 3"></div>', wk = null, wkStart = 0;
+  function monday(s) { var d = parse(s); return add(s, -((d.getDay() + 6) % 7)); }
+  function closeWeek(k) { if (wk) heads += '<div class="tlweek" style="grid-row:1;grid-column:' + (wkStart + 2) + " / " + (k + 2) + '">' + esc(short(wk)) + "</div>"; }
+  cols.forEach(function (c, k) {
+    var m = c.type === "gap" ? null : monday(c.date);
+    if (m !== wk) { closeWeek(k); wk = m; wkStart = k; }
+    if (c.type === "day") heads += '<div class="tlday' + (c.date === TODAYS ? " istoday" : "") + '" style="grid-row:2;grid-column:' + (k + 2) + '" data-date="' + c.date + '" data-tip="' + esc(fmt(c.date) + " · " + (c.kind === "build" ? "Build day" : "Practice") + (c.date === TODAYS ? " · today" : "")) + '"><span>' + fmt(c.date, { weekday: "short" }) + "</span><b>" + parse(c.date).getDate() + "</b></div>";
+    else if (c.type === "mark") heads += '<div class="tlmarkh" style="grid-row:2;grid-column:' + (k + 2) + '" data-date="' + c.date + '" data-tip="' + esc(c.items.join("; ") + " · " + fmt(c.date) + ", no practice that day") + '"><span aria-hidden="true">◆</span><b>' + parse(c.date).getDate() + "</b></div>";
+  });
+  closeWeek(n);
+  // Body rows: a division heading, then each project with its bar and milestones, then its tasks.
+  var body = "";
+  M.divs.forEach(function (d) {
+    body += '<h3 class="tlgrp" style="grid-row:' + row++ + '">' + esc(d.name) + "</h3>";
+    d.projects.forEach(function (p) {
+      var xs = T().list.filter(function (x) { return x.p === p.id && x.due && !x.parent; }); if (!xs.length) return;
+      var ends = xs.map(function (x) { return dayFor(M, x.due); }), starts = xs.map(function (x, i) { return Math.max(0, ends[i] - tlLen(x) + 1); });
+      var lo = Math.min.apply(null, starts), hi = Math.max.apply(null, ends);
+      body += '<button class="ttitle tlp" data-act="tproj" data-v="' + p.id + '" style="grid-row:' + row + '"><span class="sw2" style="background:' + p.color + '"></span> ' + esc(p.name) + "</button>" +
+        '<button class="tlpbar" data-act="tproj" data-v="' + p.id + '" style="grid-row:' + row + ";grid-column:" + (M.dayK[lo] + 2) + " / " + (M.dayK[hi] + 3) + ";--pc:" + p.color + '" aria-label="' + esc(p.name + ", project, " + short(M.cols[M.dayK[lo]].date) + " to " + short(M.cols[M.dayK[hi]].date)) + '" data-tip="' + esc(p.name + " · " + xs.length + (xs.length === 1 ? " task" : " tasks") + " · open the project") + '"></button>' +
+        p.ms.map(function (m) { var k = M.isMeet[m[2]] ? M.dayK[dayFor(M, m[2])] : colOfDate(M, m[2]); if (k < 0 || m[2] < TL_FROM || m[2] > TL_TO) return ""; return '<i class="tlms' + (m[3] ? " met" : "") + '" style="grid-row:' + row + ";grid-column:" + (k + 2) + '" data-tip="' + esc("Milestone: " + m[1] + " · " + fmt(m[2])) + '"></i>'; }).join("");
+      row++;
+      xs.forEach(function (x) {
+        var bb = x.by.map(task).filter(function (b) { return b && b.due > x.due; });
+        body += '<button class="ttitle tlt" data-act="topen" data-v="' + x.id + '" style="grid-row:' + row + '">' + esc(x.title) + (bb.length ? ' <span class="pill bad" data-tip="Due before something it waits on">Out of order</span>' : "") + "</button>" + tlBar(M, x, row, canMove);
+        row++;
+      });
+    });
+  });
+  // Column backgrounds behind the bars: practice days, marker columns, breaks with their note, and today.
+  var rows = row - 3, todayK = colOfDate(M, TODAYS), back = "";
+  cols.forEach(function (c, k) {
+    var cls = c.type === "day" ? "tlcol" + (c.kind === "build" ? " build" : "") + (k === todayK ? " today" : "") : c.type === "mark" ? "tlcol mark" : "tlcol gap";
+    back += '<div class="' + cls + '" style="grid-row:3 / span ' + rows + ";grid-column:" + (k + 2) + '"' + (c.type === "gap" ? ' data-tip="' + esc("No practice from " + fmt(c.from) + " to " + fmt(c.to)) + '"><span>No practice ' + esc(short(c.from) + "–" + short(c.to)) + "</span></div>" : "></div>");
+  });
+  var todayNote = "the gold column is today";
+  if (todayK < 0) {
+    // Today is not a practice day: a red line on the boundary before the next column after today.
+    var next = 0; while (next < n && (cols[next].type === "gap" ? cols[next].from : cols[next].date) <= TODAYS) next++;
+    back += '<div class="tltoday' + (next >= n ? " end" : "") + '" style="grid-row:1 / span ' + (rows + 2) + ";grid-column:" + (Math.min(next, n - 1) + 2) + '" data-tip="Today, ' + esc(fmt(TODAYS)) + '"></div>';
+    todayNote = "the red line is today";
+  }
+  var help = "Each column is a practice or build day. Bars end on the due date, ◆ is a milestone, " + todayNote + "." + (canMove ? " Drag a bar, or focus it and use the arrow keys, to move its due date." : "");
+  return '<div class="card"><p class="who tlhelp">' + help + '</p><div class="tablewrap tlwrap" data-keepscroll="tl"><div class="tl" style="grid-template-columns:' + tmpl + '">' + heads + back + body + "</div></div></div>";
 }
 function filtersBar() {
   var tt = T();
