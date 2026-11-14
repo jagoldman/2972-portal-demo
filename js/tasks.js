@@ -333,12 +333,18 @@ function timeline() {
 // pointer press, so a later real click always counts; a keyboard click (detail 0) is never eaten.
 var DRAG_PX = 4, tlDrag = null, eatClick = false;
 function tlDayCells() { return Array.from(document.querySelectorAll(".tl .tlday")).map(function (c) { var r = c.getBoundingClientRect(); return { date: c.dataset.date, k: +c.dataset.k, mid: r.left + r.width / 2 }; }); }
+/* Moves of the same task by the same person within 5 seconds (holding an arrow key, a few drags in a row) are one
+   move: one history line with the final date and one Undo back to the date before the first of them. Undo takes back
+   that move's own history line, whatever was written after it. */
+var TL_MERGE_MS = 5000, tlLast = null;
 function tlMove(id, toDate) {
   var x = task(id); if (!x || x.st === "done" || x.due === toDate) return false;
-  var from = x.due, entry = null;
-  // Undo takes back this move's own history line, whatever was written after it (not just the last line).
-  D.withUndo("Moved to " + fmt(toDate) + ".", function () { x.due = toDate; h(x, "changed the due date to " + fmt(toDate) + " on the timeline", { st: x.st, due: toDate }); entry = x.hist[x.hist.length - 1]; },
-    function () { x.due = from; var i = x.hist.indexOf(entry); if (i >= 0) x.hist.splice(i, 1); });
+  var who = D.me().name, now = Date.now(), m = tlLast, what = "changed the due date to " + fmt(toDate) + " on the timeline";
+  if (m && m.id === String(id) && m.who === who && now - m.at < TL_MERGE_MS && x.hist.indexOf(m.entry) >= 0) { m.entry[1] = what; m.entry[3] = { st: x.st, due: toDate }; }
+  else { h(x, what, { st: x.st, due: toDate }); m = tlLast = { id: String(id), who: who, from: x.due, entry: x.hist[x.hist.length - 1] }; }
+  m.at = now; x.due = toDate;
+  D.toast("Moved to " + fmt(toDate) + ".", function () { x.due = m.from; var i = x.hist.indexOf(m.entry); if (i >= 0) x.hist.splice(i, 1); if (tlLast === m) tlLast = null; });
+  D.render();
   return true;
 }
 function tlLabel(text, el) {
