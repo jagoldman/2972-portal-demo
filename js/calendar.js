@@ -78,7 +78,24 @@ function t12(s) { if (!s) return ""; var p = s.split(":"), h = +p[0], m = p[1]; 
 function span(e) { return e.start ? t12(e.start) + "–" + t12(e.end) : "All day"; }
 function availOf(m, date) { var a = C().avail[m]; if (a.one[date]) return a.one[date]; return a.usual.indexOf(parse(date).getDay()) >= 0 ? "usual" : "none"; }
 function practiceDays(n) { return upcoming(40, ["practice", "build"]).filter(function (e) { return e.auto || e.kind === "build"; }).filter(function (e, i, arr) { return !arr.slice(0, i).some(function (x) { return x.date === e.date; }); }).slice(0, n); }
-D.calApi = { practiceDays: practiceDays, upcoming: upcoming, fmt: fmt, span: span, TODAYS: TODAYS, currentEvent: function () { return C().events.filter(function (e) { return e.kind === "comp" && e.tba; })[0]; } };
+/* The days the team meets between two dates, read from the events list, so they follow the Calendar: the weekly pattern
+   (minus days off), plus any practice or build day added there, minus a cancelled practice (cancelling adds an "off"
+   event on that date). Each: { date, kind: "practice" | "build" }. Other apps call this; they never copy the pattern. */
+function meetDays(from, to) {
+  var off = {}, by = {};
+  C().events.forEach(function (e) { if (e.kind === "off" && e.date >= from && e.date <= to) off[e.date] = true; });
+  C().events.forEach(function (e) {
+    if ((e.kind !== "practice" && e.kind !== "build") || e.date < from || e.date > to || off[e.date]) return;
+    by[e.date] = by[e.date] === "build" || e.kind === "build" ? "build" : "practice";
+  });
+  return Object.keys(by).sort().map(function (d) { return { date: d, kind: by[d] }; });
+}
+// Events between two dates, optionally of some kinds (for example competitions), as plain copies.
+function eventsIn(from, to, kinds) {
+  return C().events.filter(function (e) { return e.date >= from && e.date <= to && (!kinds || kinds.indexOf(e.kind) >= 0); })
+    .map(function (e) { return { date: e.date, end2: e.end2 || "", kind: e.kind, name: e.name }; }).sort(function (a, b) { return a.date < b.date ? -1 : a.date > b.date ? 1 : 0; });
+}
+D.calApi = { practiceDays: practiceDays, upcoming: upcoming, fmt: fmt, span: span, TODAYS: TODAYS, meetDays: meetDays, eventsIn: eventsIn, currentEvent: function () { return C().events.filter(function (e) { return e.kind === "comp" && e.tba; })[0]; } };
 
 /* ---------- The app: three tabs, each with its own small switch ---------- */
 function snackName() { return D.S.role === "parent" ? "Ortiz family" : D.me().name; }
