@@ -327,7 +327,11 @@ button.tev:hover { background: var(--surface-3); }
   .tlp { white-space: normal; line-height: 1.25; }
 }
 /* A finger needs 44 px: phones and any coarse pointer get taller rows (the drawn bar stays slim). */
-@media (pointer: coarse), (max-width: 640px) { .tl { --tlrow: 44px; grid-auto-rows: minmax(var(--tlrow), auto); } }
+@media (pointer: coarse), (max-width: 640px) {
+  .tl { --tlrow: 44px; grid-auto-rows: minmax(var(--tlrow), auto); }
+  /* A one-column bar is about 34 px wide: an invisible ::before makes its tap area at least 44 px wide. */
+  .tkbar::before { content: ""; position: absolute; top: 0; bottom: 0; left: 50%; width: max(100%, 44px); transform: translateX(-50%); }
+}
 /* While a bar is dragged: it sits on top, and a small label names the day it will land on. */
 .tkbar.dragging { z-index: 4; cursor: grabbing; }
 .tkbar.dragging::after { opacity: 1; box-shadow: 0 4px 12px rgba(0,0,0,.25); }
