@@ -461,7 +461,7 @@ function overview() {
     Object.keys(P[st]).forEach(function (k) { if (P[st][k].s === "progress") prog++; });
     return '<tr class="click" data-act="skstudent" data-v="' + esc(st) + '"><td><b>' + esc(st) + "</b>" + (st === "Sam Ortiz" && S.role === "student" ? ' <span class="who">(you)</span>' : "") + "</td>" + cells + '<td class="num">' + d + '</td><td class="num">' + prog + '</td><td class="num">' + D.pct(d, all) + "%</td></tr>";
   }).join("");
-  html += '<div class="card"><div class="row between"><h2>Students</h2><span class="who">Tap a row to open their trees.</span></div><div class="tablewrap"><table class="sktable"><thead><tr><th>Student</th>' + TREES.map(function (t) { return '<th data-tip="' + esc(t.name) + '">' + t.tag + "</th>"; }).join("") + "<th>Done</th><th>Started</th><th>Overall</th></tr></thead><tbody>" + rows + "</tbody></table></div></div>";
+  html += '<div class="card"><div class="row between"><h2>Students</h2><span class="who">Tap a row to open their trees.</span></div><div class="tablewrap" data-keepscroll="skstudents"><table class="sktable"><thead><tr><th>Student</th>' + TREES.map(function (t) { return '<th data-tip="' + esc(t.name) + '">' + t.tag + "</th>"; }).join("") + "<th>Done</th><th>Started</th><th>Overall</th></tr></thead><tbody>" + rows + "</tbody></table></div></div>";
   return html;
 }
 function permitState(p, tool) {
@@ -488,7 +488,7 @@ function permitsView() {
     }).join("");
     return "<tr><td><b>" + esc(st) + "</b>" + you + "</td>" + cells + "</tr>";
   }).join("");
-  return '<div class="card"><div><h2>Who can use which machine</h2><p class="who">Yes means the written test and the demonstration are signed off. Tap a cell to open that skill.</p></div><div class="tablewrap"><table class="sktable skperms"><thead><tr><th>Student</th>' + heads + "</tr></thead><tbody>" + rows + "</tbody></table></div></div>";
+  return '<div class="card"><div><h2>Who can use which machine</h2><p class="who">Yes means the written test and the demonstration are signed off. Tap a cell to open that skill.</p></div><div class="tablewrap" data-keepscroll="skpermits"><table class="sktable skperms"><thead><tr><th>Student</th>' + heads + "</tr></thead><tbody>" + rows + "</tbody></table></div></div>";
 }
 function studentPicker() {
   var S = D.S;
@@ -496,7 +496,7 @@ function studentPicker() {
 }
 function treesView() {
   var S = D.S, st = S.sk.student, P = S.sk.prog[st], t = tree(S.sk.tree);
-  var chips = '<div class="chips skchips" role="group" aria-label="Skill trees">' + TREES.map(function (x) {
+  var chips = '<div class="chips skchips" data-keepscroll="skchips" role="group" aria-label="Skill trees">' + TREES.map(function (x) {
     var r = treePct(P, x);
     return '<button class="chip' + (treeLocked(P, x) ? " locked" : "") + '" data-act="sktree" data-v="' + x.id + '" aria-pressed="' + (x.id === t.id) + '">' + esc(x.name) + ' <span class="pct">' + r.pct + "%</span></button>";
   }).join("") + "</div>";

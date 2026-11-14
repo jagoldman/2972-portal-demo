@@ -187,7 +187,7 @@ function agenda() {
 }
 function setup() {
   var c = C();
-  return '<div class="grid2"><div class="card"><h2>Practice pattern</h2><p class="small mute">Practices fill in from this. Change a single day on its event.</p><div class="tablewrap"><table><thead><tr><th>Season</th><th>Dates</th><th>Days and times</th></tr></thead><tbody>' +
+  return '<div class="grid2"><div class="card"><h2>Practice pattern</h2><p class="small mute">Practices fill in from this. Change a single day on its event.</p><div class="tablewrap" data-keepscroll="calsetup"><table><thead><tr><th>Season</th><th>Dates</th><th>Days and times</th></tr></thead><tbody>' +
     '<tr><td><b>Fall</b></td><td>Sep 1 – Jan 8</td><td class="wrap">Tue, Thu 3:30–6:00 pm</td></tr><tr><td><b>Build season</b></td><td>Jan 9 – Apr 30</td><td class="wrap">Mon, Tue, Thu 3:30–6:00 pm · Sat 10 am–2 pm</td></tr><tr><td><b>Summer</b></td><td>Jun 1 – Aug 15</td><td class="wrap">Off-season projects, Wed 4–6 pm</td></tr></tbody></table></div>' +
     '<p class="flabel">Days off</p><div class="list">' + DAYS_OFF.map(function (r) { return '<div class="li"><b class="grow">' + esc(r.name) + '</b><span class="who">' + esc(r.shown) + "</span></div>"; }).join("") + '</div><div class="row"><button class="btn sm">Edit pattern</button><button class="btn sm">Add a day off</button></div></div>' +
     '<div class="card"><h2>Google Calendar</h2><div class="row"><span class="pill ok">Up to date</span><span class="who">Last copied ' + esc(c.sync.last) + " · " + c.sync.count + " events</span></div>" +
@@ -202,7 +202,7 @@ D.drawers.calev = function (d) {
     html += (D.S.role !== "parent" ? '<div><p class="flabel">Mentors</p><div class="list">' + ms + "</div></div>" : "") + (function (d) { return d ? '<div><p class="flabel">At this practice</p>' + d + "</div>" : ""; })(dayDoors(e, true));
   }
   if (e.kind === "comp") {
-    html += '<div class="tablewrap"><table><tbody><tr><th>TBA event code</th><td class="mono">' + esc(e.tba || "not set") + '</td></tr><tr><th>Nexus event code</th><td class="mono">' + esc(e.nexus || "not set") + "</td></tr><tr><th>Livestream</th><td>" + esc(e.stream || "not set") + '</td></tr></tbody></table></div>';
+    html += '<div class="tablewrap" data-keepscroll="calevent"><table><tbody><tr><th>TBA event code</th><td class="mono">' + esc(e.tba || "not set") + '</td></tr><tr><th>Nexus event code</th><td class="mono">' + esc(e.nexus || "not set") + "</td></tr><tr><th>Livestream</th><td>" + esc(e.stream || "not set") + '</td></tr></tbody></table></div>';
   }
   if (staff) html += '<div class="row"><button class="btn sm">Edit</button>' + (e.auto ? '<button class="btn sm danger" data-act="calcancel" data-v="' + e.id + '">Cancel this practice</button>' : '<button class="btn sm danger" data-act="caldelete" data-v="' + e.id + '">Delete</button>') + "</div>";
   return html;
@@ -255,7 +255,7 @@ function board() {
     }).join("") + "</div>";
   return '<div class="card"><div class="row between"><div><h2>Hours this school year</h2><span class="who">Since Aug 1 · the last 12 practices</span></div><div class="row"><label class="row small togglab"><button class="toggle" data-act="herestud" aria-pressed="' + c.studentsOnly + '" aria-label="Students only"></button> Students only</label>' +
     '<select class="chipsel" data-change="heresort" aria-label="Sort"><option value="hours"' + (c.sort === "hours" ? " selected" : "") + '>Most hours</option><option value="meetings"' + (c.sort === "meetings" ? " selected" : "") + '>Most meetings</option><option value="name"' + (c.sort === "name" ? " selected" : "") + ">Name</option></select>" + (D.isStaff() ? '<button class="btn sm" data-act="herecsv">Download CSV</button>' : "") + "</div></div>" +
-    '<div class="tablewrap heatwrap">' + grid + '</div><div class="legend"><span><i class="dotc" style="background:var(--heat-1)"></i>Under 2.5 h</span><span><i class="dotc" style="background:var(--heat-2)"></i>2.5 h</span><span><i class="dotc" style="background:var(--heat-3)"></i>3 h or more</span><span><span class="ring"></span>In the shop now</span><span><i class="dotc missdot"></i>Missed sign-out</span></div></div>';
+    '<div class="tablewrap heatwrap" data-keepscroll="heatboard">' + grid + '</div><div class="legend"><span><i class="dotc" style="background:var(--heat-1)"></i>Under 2.5 h</span><span><i class="dotc" style="background:var(--heat-2)"></i>2.5 h</span><span><i class="dotc" style="background:var(--heat-3)"></i>3 h or more</span><span><span class="ring"></span>In the shop now</span><span><i class="dotc missdot"></i>Missed sign-out</span></div></div>';
 }
 function mine() {
   var n = D.S.role === "student" ? "Sam Ortiz" : D.S.role === "parent" ? "Sam Ortiz" : D.me().name; if (!C().att[n]) n = "Sam Ortiz";
