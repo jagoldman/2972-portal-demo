@@ -181,7 +181,10 @@
 .tsub { font-size: .82rem; color: var(--mute); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .tsub .lab { vertical-align: baseline; }
 .tline { display: flex; align-items: center; gap: 2px; min-width: 0; }
-.tex { border: 0; background: none; color: var(--mute); width: 28px; height: 28px; padding: 0; margin-left: -6px; flex: none; }
+/* The subtask caret: its glyph sits where it always did, but the button no longer leaves its row (no negative margin);
+   an invisible ::before keeps the old 28 px hit area (36 px on phones). */
+.tex { position: relative; border: 0; background: none; color: var(--mute); width: 16px; height: 28px; padding: 0; flex: none; }
+.tex::before { content: ""; position: absolute; inset: 0 -6px; }
 .tcheck { position: relative; width: 24px; height: 24px; }
 .tcheck::after { content: ""; position: absolute; inset: -10px; }
 /* In progress: a thicker ring in the blue ink, not filled. The button's label says it too. */
@@ -194,7 +197,7 @@
   .trowx > .tst { justify-self: start; }
   .trowx .ttitle { white-space: normal; text-overflow: clip; overflow: visible; }
   .trowx .tsub { white-space: normal; }
-  .tex { width: 36px; height: 36px; }
+  .tex { width: 24px; height: 36px; }
   .taddrow { align-items: stretch; }
   .taddin { flex: 1 1 100%; }
 }
