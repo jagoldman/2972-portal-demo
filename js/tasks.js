@@ -399,6 +399,8 @@ function tlEdgeScroll() {
 }
 document.addEventListener("pointermove", function (e) {
   var d = tlDrag; if (!d) return;
+  // The release was lost (it happened outside the window): no button is held any more, so the drag is cancelled.
+  if (e.pointerType !== "touch" && e.buttons === 0) { tlCancel(); return; }
   d.cx = e.clientX;
   var sl = d.wrap ? d.wrap.scrollLeft : 0, dx = e.clientX + sl - d.x0;
   if (!d.moved && Math.abs(dx) < DRAG_PX) return;
@@ -412,8 +414,11 @@ document.addEventListener("pointermove", function (e) {
   }
 });
 document.addEventListener("scroll", function (e) { var d = tlDrag; if (d && d.moved && e.target === d.wrap) tlUpdate(d); }, true);
-document.addEventListener("pointerup", function () {
+document.addEventListener("pointerup", function (e) {
   var d = tlDrag; if (!d) return;
+  // Released well above or below the chart (more than 40 px): that is a change of mind, not a move.
+  var chart = d.el.closest(".tl"), cr = chart && chart.getBoundingClientRect();
+  if (d.moved && cr && (e.clientY < cr.top - 40 || e.clientY > cr.bottom + 40)) { tlCancel(); return; }
   if (d.moved) {
     eatClick = true;
     var to = d.cells[d.end].date; tlEndDrag();
