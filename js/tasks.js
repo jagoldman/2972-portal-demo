@@ -608,34 +608,45 @@ D.modals.tmenu = function (d) {
 };
 
 /* ---------- Projector ----------
-   One screen for the shop TV with a switch between its views (Build plan, Meeting). The choice is a saved choice
-   (D.setPref "projview"), so Reset clears it. Staff and the Display role both get the switch. */
+   One screen for the shop TV with a switch between its views (Meeting, Practice, Build plan). The choice is a saved
+   choice (D.setPref "projview"), so Reset clears it. Staff and the Display role both get the switch. */
 var PJ_VIEWS = [["meeting", "Meeting", "Last practice's and today's tasks, for a team meeting"], ["practice", "Practice", "The practice screen: the clock, the countdown and who is working on what"], ["plan", "Build plan", "The build plan chart: projects, milestones and today"]];
 var PJ_DEFAULT = "practice";
 function pjView() { var v = D.pref("projview", PJ_DEFAULT); return PJ_VIEWS.some(function (x) { return x[0] === v; }) ? v : PJ_DEFAULT; }
-// Page state for the Meeting lists: kept while the page is open (a redraw keeps the page you are on).
-var PJ = { page: 0, pages: 1, turned: 0, manual: -1e12, focus: null, focusPg: 0, rot: null, rotAt: 0, input: -1e12, fade: false };
+// The Projector's own state while it is open: the page, the automatic turns, the rotation's current turn, the note
+// being edited (with its draft), and the lists the fitting code lays out. Reset (D.inits) and a role change clear it.
+var PJ = { lists: {} };
+function pjClear() { PJ.page = 0; PJ.pages = 1; PJ.turned = 0; PJ.manual = -1e12; PJ.input = -1e12; PJ.focus = null; PJ.rot = null; PJ.rotAt = 0; PJ.fade = false; PJ.noteEdit = false; PJ.draft = null; }
+pjClear();
+D.inits.push(pjClear);
+(D.onRole = D.onRole || []).push(pjClear);
 // Rotate with the build plan: on for the Display role by default, off for staff (a saved choice).
 function rotOn() { return !!D.pref("projrotate", D.S.role === "display"); }
 // The view on screen: the saved one, or the build plan / practice view the rotation has turned to.
 function pjShown() { var v = pjView(); return PJ.rot && rotOn() && (v === "practice" || v === "plan") ? PJ.rot : v; }
+// Only mentors and admins write the note; anyone who can open the Projector but the Display role opens tasks from rows.
+function noteEditor() { return D.isStaff(); }
+function rowsOpen() { return D.S.role !== "display"; }
 function pjSwitch(cur) {
   return '<div class="mtgsw" role="group" aria-label="What the projector shows">' + PJ_VIEWS.map(function (v) {
     return '<button data-act="pjview" data-v="' + v[0] + '" aria-pressed="' + (v[0] === cur) + '" data-tip="' + esc(v[2]) + '">' + esc(v[1]) + "</button>";
   }).join("") + "</div>";
 }
-// The header every view shares: title and "Updated" on the left; page buttons (Meeting), the switch and Exit on the right.
+// The header every view shares: title and a muted line on the left; page buttons (Meeting, Practice), the switch,
+// Rotate (Practice, Build plan) and Exit on the right.
 function pjHead(title, cur, sub) {
   var disp = D.S.role === "display";
-  var pager = cur === "meeting" ? '<div class="mtgpager" hidden><button class="btn mtgpg" data-act="mtgpage" data-v="-1" aria-label="Previous page" data-tip="Show the previous page of tasks (Left arrow)">' + D.ic("chevron", 18) + '</button><span class="mtgpgn num" aria-live="polite">1 / 1</span><button class="btn mtgpg mtgnext" data-act="mtgpage" data-v="1" aria-label="Next page" data-tip="Show the next page of tasks (Right arrow)">' + D.ic("chevron", 18) + "</button></div>" : "";
+  var pager = cur === "meeting" || cur === "practice" ? '<div class="mtgpager" hidden><button class="btn mtgpg" data-act="mtgpage" data-v="-1" aria-label="Previous page" data-tip="Show the previous page of tasks (Left arrow)">' + D.ic("chevron", 18) + '</button><span class="mtgpgn num" aria-live="polite">1 / 1</span><button class="btn mtgpg mtgnext" data-act="mtgpage" data-v="1" aria-label="Next page" data-tip="Show the next page of tasks (Right arrow)">' + D.ic("chevron", 18) + "</button></div>" : "";
   return '<div class="mtghead' + (disp ? " mtgdisp" : "") + '"><div class="mtgttl"><h1' + (cur === "practice" ? ' class="mtgclock num"' : "") + ">" + esc(title) + '</h1><p class="dmute">' + (sub || "Updated " + clock(NOW)) + '</p></div><div class="mtgctl">' + pager + pjSwitch(cur) +
     (cur === "practice" || cur === "plan" ? '<button class="mtgrot" data-act="pjrotate" aria-pressed="' + rotOn() + '" data-tip="Take turns with the ' + (cur === "plan" ? "practice screen" : "build plan") + ' every 45 seconds"><span class="mtgrotk" aria-hidden="true"></span>Rotate with the build plan</button>' : "") +
     (disp ? "" : '<button class="btn mtgexit" data-act="go" data-v="tasks" data-tip="Back to Tasks">Exit projector</button>') + "</div></div>";
 }
 /* Countdown strip (top of Meeting and Practice): the season and the next four milestones not yet met.
-   The kickoff date is the Calendar's kickoff event (D.calApi.kickoff); days are counted, and "practices" are the days
-   the team meets from today up to the day before (D.calApi.meetDays), never typed in. */
+   The kickoff date is the Calendar's kickoff event (D.calApi.kickoff). Days are counted. A milestone's due day is a
+   working day, so its "practices left" are the days the team meets from today through that day; the kickoff is an
+   event, so it counts the practices before it (D.calApi.meetDays), never typed in. */
 function meetsBefore(date) { var api = D.calApi; return api && api.meetDays && date > TODAYS ? api.meetDays(TODAYS, add(date, -1)).length : 0; }
+function meetsThrough(date) { var api = D.calApi; return api && api.meetDays && date >= TODAYS ? api.meetDays(TODAYS, date).length : 0; }
 function plural(n, one, many) { return n + " " + (n === 1 ? one : many || one + "s"); }
 function season() { var k = D.calApi && D.calApi.kickoff ? D.calApi.kickoff() : null; return k ? { date: k.date, days: days(k.date), practices: meetsBefore(k.date) } : null; }
 function nextMilestones(n) {
@@ -643,30 +654,40 @@ function nextMilestones(n) {
   T().divs.forEach(function (d) { d.projects.forEach(function (p) { p.ms.forEach(function (m) { if (!m[3]) out.push({ p: p, id: m[0], name: m[1], date: m[2] }); }); }); });
   return out.sort(function (a, b) { return a.date < b.date ? -1 : a.date > b.date ? 1 : 0; }).slice(0, n);
 }
-// How far away, in the two units that matter: days and practices left ("today"; "3 days late" in words).
-function msAway(date) {
+// How far away, in the two units that matter: "in 2 days" and "2 practices left"; "today"; "3 days late" in words.
+function msWhen(date) {
   var n = days(date);
-  if (n === 0) return "today";
-  if (n < 0) return plural(-n, "day") + " late";
-  var k = meetsBefore(date);
-  return "in " + plural(n, "day") + " · " + (k ? plural(k, "practice") + " left" : "no practice left");
+  if (n === 0) return { days: "", left: "today" };
+  if (n < 0) return { days: "", left: plural(-n, "day") + " late" };
+  var k = meetsThrough(date);
+  return { days: "in " + plural(n, "day"), left: k ? plural(k, "practice") + " left" : "no practice left" };
 }
+/* A card has three layouts: on a TV (four lines: project and date, name, how far, a bar and the tasks done), on a
+   window under 800 px tall (three lines: the "in N days" part and the word "tasks" drop, the bar shares the last
+   line), and on a phone (one line: dot, name, date and practices left; no bar). The phone line is its own element. */
 function countdown() {
-  var s = season(), staff = D.S.role !== "display";
-  var head = s ? '<div class="mtgseason"><span class="mtgmsp"><span class="mtgkick">Kickoff</span><span class="num">' + esc(fmt(s.date)) + '</span></span><span class="mtgbig num">' + plural(s.days, "day") + '</span><span class="num">' + plural(s.practices, "practice") + "</span></div>" : "";
+  var s = season(), open = rowsOpen();
+  var head = s ? '<div class="mtgseason"><span class="mtgmsp"><span class="mtgkick">Kickoff</span><span class="num">' + esc(fmt(s.date)) + '</span></span><span class="mtgbig num">' + plural(s.days, "day") + '</span><span class="num mtgbefore">' + plural(s.practices, "practice") + " before it</span>" +
+    '<span class="mtgmsph"><b>Kickoff</b> · <span class="num">' + esc(fmt(s.date)) + " · " + plural(s.days, "day") + " · " + plural(s.practices, "practice") + " before it</span></span></div>" : "";
   var cards = nextMilestones(4).map(function (m) {
-    var xs = T().list.filter(function (x) { return x.p === m.p.id && x.ms === m.id && !x.parent; }), dn = xs.filter(function (x) { return x.st === "done"; }).length, late = days(m.date) < 0;
-    var inner = '<span class="mtgmsp"><span class="mtgmspn"><i class="mtgdot" style="background:' + m.p.color + '"></i>' + esc(m.p.name) + '</span><span class="num">' + esc(fmt(m.date)) + '</span></span><span class="mtgmsn">' + esc(m.name) + '</span><b class="mtgaway' + (late ? " late" : "") + '">' + esc(msAway(m.date)) + "</b>" +
-      '<span class="mtgmsdone">' + (xs.length ? '<span class="mtgmsbar" aria-hidden="true"><i style="width:' + D.pct(dn, xs.length) + '%"></i></span><span class="mtgmst num">' + dn + " of " + plural(xs.length, "task") + " done</span>" : '<span class="mtgmst">No tasks yet</span>') + "</span>";
-    return staff ? '<button class="mtgms' + (late ? " late" : "") + '" data-act="mtgproj" data-v="' + m.p.id + '" data-tip="Open the ' + esc(m.p.name) + ' project in Tasks">' + inner + "</button>" : '<div class="mtgms' + (late ? " late" : "") + '">' + inner + "</div>";
+    var xs = T().list.filter(function (x) { return x.p === m.p.id && x.ms === m.id && !x.parent; }), dn = xs.filter(function (x) { return x.st === "done"; }).length, late = days(m.date) < 0, w = msWhen(m.date);
+    var dot = '<i class="mtgdot" style="background:' + m.p.color + '"></i>';
+    var inner = '<span class="mtgmsp"><span class="mtgmspn">' + dot + '<span class="mtgmspt">' + esc(m.p.name) + '</span></span><span class="num mtgmsdt">' + esc(fmt(m.date)) + '</span></span><span class="mtgmsn">' + esc(m.name) + "</span>" +
+      '<span class="mtgmsl"><b class="mtgaway' + (late ? " late" : "") + '">' + (w.days ? '<span class="mtgdays">' + w.days + " · </span>" : "") + esc(w.left) + '</b><span class="mtgmssep" aria-hidden="true"> · </span>' +
+      '<span class="mtgmsdone">' + (xs.length ? '<span class="mtgmsbar" aria-hidden="true"><i style="width:' + D.pct(dn, xs.length) + '%"></i></span><span class="mtgmst num">' + dn + " of " + xs.length + '<span class="mtgword"> ' + (xs.length === 1 ? "task" : "tasks") + "</span> done</span>" : '<span class="mtgmst">No tasks yet</span>') + "</span></span>" +
+      '<span class="mtgmsph">' + dot + "<b>" + esc(m.name) + '</b> <span class="num">' + esc(fmt(m.date)) + " · " + esc(w.left) + "</span></span>";
+    return open ? '<button class="mtgms' + (late ? " late" : "") + '" data-act="mtgproj" data-v="' + m.p.id + '" data-tip="Open the ' + esc(m.p.name) + ' project in Tasks">' + inner + "</button>" : '<div class="mtgms' + (late ? " late" : "") + '">' + inner + "</div>";
   }).join("");
   return '<div class="mtgstrip" role="group" aria-label="Countdown">' + head + cards + "</div>";
 }
 D.views.projector = function () {
   if (!(lead() || D.S.role === "display")) return D.denied("Projector");
   var v = pjShown(), fade = PJ.fade ? " mtgfade" : ""; PJ.fade = false;
+  // Leaving the Meeting view closes a note being edited, without saving it.
+  if (v !== "meeting") { PJ.noteEdit = false; PJ.draft = null; }
+  PJ.lists = {};
   if (v === "practice") return '<div class="display mtgscreen' + fade + '" data-pv="practice">' + practiceView() + "</div>";
-  if (v === "meeting") return '<div class="display mtgscreen' + fade + '" data-pv="meeting">' + pjHead("Team meeting · " + fmt(TODAYS), v) + countdown() + glance() + noteLine() + meetingLists() + "</div>";
+  if (v === "meeting") return '<div class="display mtgscreen' + fade + '" data-pv="meeting">' + pjHead("Team meeting · " + fmt(TODAYS), v) + countdown() + '<div class="mtgtop">' + glance() + noteLine() + "</div>" + meetingLists() + "</div>";
   var s = season();
   return '<div class="display mtgscreen' + fade + '" data-pv="plan">' + pjHead("Build plan" + (s ? " · " + plural(s.days, "day") + " to kickoff" : ""), v) + buildPlan() + "</div>";
 };
@@ -677,15 +698,16 @@ function buildPlan() {
     var xs = T().list.filter(function (x) { return x.p === p.id && x.due && !x.parent; }), dn = xs.filter(function (x) { return x.st === "done"; }).length;
     var lo = add(xs.reduce(function (a, x) { return x.due < a ? x.due : a; }, xs[0].due), -7), hi = xs.reduce(function (a, x) { return x.due > a ? x.due : a; }, xs[0].due);
     return "<b>" + esc(p.name) + '</b><div class="gtrack"><i style="left:' + pos(lo) + "%;width:" + (pos(hi) - pos(lo)) + "%;background:" + p.color + ';opacity:.5"></i><i class="done" style="left:' + pos(lo) + "%;width:" + (pos(hi) - pos(lo)) * dn / xs.length + '%"></i>' + p.ms.map(function (m) { return '<i class="ms" style="left:calc(' + pos(m[2]) + '% - 6px)"></i>'; }).join("") + '<span class="todayline" style="left:' + pos(TODAYS) + '%"></span></div>';
-  }).join("") + '</div></div><div class="grid3"><div class="dcard"><p class="dmute">Blocked</p><p class="dbig">' + T().list.filter(function (x) { return x.st === "blocked"; }).map(function (x) { return esc(x.title) + " (" + esc(x.who.join(", ")) + ")"; }).join("<br>") + '</p></div><div class="dcard"><p class="dmute">Next milestones</p><p class="dbig">Driving on carpet · Thu Nov 12<br>Prototype intaking · Sat Nov 14</p></div><div class="dcard"><p class="dmute">In the shop now</p><p class="dbig">' + (D.S.cal ? D.S.cal.here.length : 0) + ' people</p></div></div><p class="dmute">Green is done, colored bars are planned, diamonds are milestones, the white line is today.</p>';
+  }).join("") + '</div></div><div class="grid3"><div class="dcard"><p class="dmute">Blocked</p><p class="dbig">' + T().list.filter(function (x) { return x.st === "blocked"; }).map(function (x) { return esc(x.title) + " (" + esc(x.who.join(", ")) + ")"; }).join("<br>") + '</p></div><div class="dcard"><p class="dmute">Next milestones</p><p class="dbig mtgnextms">' + (nextMilestones(2).map(function (m) { return esc(m.name) + " · " + esc(fmt(m.date)); }).join("<br>") || "None planned") + '</p></div><div class="dcard"><p class="dmute">In the shop now</p><p class="dbig">' + (D.S.cal ? D.S.cal.here.length : 0) + ' people</p></div></div><p class="dmute">Green is done, colored bars are planned, diamonds are milestones, the white line is today.</p>';
 }
 
 /* Meeting view: two lists side by side (stacked on a narrow window).
    Last practice: the last day the team met before today, from the Calendar (D.calApi.meetDays). Every top-level task
-     that was due that day (whatever its state now) or was finished that day (doneOn).
-   Today: every top-level task due today, in progress, blocked, or overdue and not done.
+     that was due that day (whatever its state now) or was finished that day (doneOn). A row finished on or before
+     that day says "Done"; one finished after it says "Done since".
+   Today: every top-level task due today, in progress, blocked, overdue and not done, or finished today.
    Rows are grouped by project in the Tasks menu's order; inside a project: blocked, in progress, to do, done; then by
-   title. Nothing is cut: when the rows do not fit the TV, they get denser, then the lists split into pages (mtgFit). */
+   title. Nothing is cut: when the rows do not fit the TV, they get denser, then the lists split into pages (lmFit). */
 function lastPractice() {
   var api = D.calApi; if (!api || !api.meetDays) return null;
   var m = api.meetDays(add(TODAYS, -120), add(TODAYS, -1));
@@ -701,15 +723,12 @@ function mtgSort(xs) {
 function mtgModel() {
   var top = T().list.filter(function (x) { return !x.parent; }), lp = lastPractice();
   var left = lp ? top.filter(function (x) { return x.due === lp || x.doneOn === lp; }) : [];
-  var right = top.filter(function (x) { return x.due === TODAYS || x.st === "doing" || x.st === "blocked" || (x.due && x.due < TODAYS && x.st !== "done"); });
+  var right = top.filter(function (x) { return x.due === TODAYS || x.st === "doing" || x.st === "blocked" || (x.due && x.due < TODAYS && x.st !== "done") || (x.st === "done" && x.doneOn === TODAYS); });
   return { lp: lp, left: left, right: right };
 }
-// What a blocked task waits on: the unfinished tasks it waits on, then any part requested for it that has not arrived.
-function waitsOn(x) {
-  var out = blockedBy(x).map(function (b) { return "“" + b.title + "”"; });
-  if (D.S.parts) D.S.parts.requests.forEach(function (r) { if (r.task === x.title && ["needsok", "toorder", "ordered"].indexOf(r.status) >= 0) out.push("the part " + r.name); });
-  return out;
-}
+// What a task waits on: the unfinished tasks it waits on, then any part requested for it that has not arrived.
+function partsFor(x) { return D.S.parts ? D.S.parts.requests.filter(function (r) { return r.task === x.title && ["needsok", "toorder", "ordered"].indexOf(r.status) >= 0; }) : []; }
+function waitsOn(x) { return blockedBy(x).map(function (b) { return "“" + b.title + "”"; }).concat(partsFor(x).map(function (r) { return "the part " + r.name; })); }
 function steps(x) {
   var sc = subsOf(x);
   if (sc.length) return sc.filter(function (s) { return s.st === "done"; }).length + " of " + sc.length + " steps";
@@ -717,13 +736,18 @@ function steps(x) {
   return "";
 }
 // The state mark, as in the rest of Tasks: an empty ring (to do), a thick ring (in progress), a green tick (done), and
-// for blocked a square with "!" (never colour alone; the row also says "Blocked").
+// for blocked a square with "!" (never colour alone; the row also says "Blocked"). A state the row does not say in
+// words is read out to a screen reader (.vh).
 function mtgMark(x) {
   return '<span class="mtgmark st-' + x.st + '" aria-hidden="true">' + (x.st === "done" ? D.ic("check", 14) : x.st === "blocked" ? "!" : "") + "</span>";
 }
-function mtgRow(x, side, staff) {
+function srState(x) { return x.st === "doing" || x.st === "todo" ? '<span class="vh">' + ST[x.st][0] + ", </span>" : ""; }
+function rowWrap(x, inner) {
+  return rowsOpen() ? '<button class="mtgrow" data-act="mtgopen" data-v="' + x.id + '" data-tip="Open this task">' + inner + "</button>" : '<div class="mtgrow" data-v="' + x.id + '">' + inner + "</div>";
+}
+function mtgRow(x, side, lp) {
   var bits = [], st = "";
-  if (side === "left") st = x.st === "done" ? '<b class="mtgout ok">Done</b>' : '<b class="mtgout">Not finished · ' + ST[x.st][0] + "</b>";
+  if (side === "left") st = x.st === "done" ? '<b class="mtgout ok">' + (x.doneOn && x.doneOn > lp ? "Done since" : "Done") + "</b>" : '<b class="mtgout">Not finished · ' + ST[x.st][0] + "</b>";
   else if (x.st === "blocked") st = '<b class="mtgout bad">Blocked</b>';
   else if (x.st === "done") st = '<b class="mtgout ok">Done</b>';
   if (x.st === "blocked") { var w = waitsOn(x); if (w.length) bits.push('<span class="mtgwait">waits on ' + esc(w.join(", ")) + "</span>"); }
@@ -731,52 +755,65 @@ function mtgRow(x, side, staff) {
   bits.push('<span class="mtgsub">' + esc(x.sub) + "</span>");
   var sp = steps(x); if (sp) bits.push('<span class="mtgsteps">' + sp + "</span>");
   var carried = side === "right" && x.due && x.due < TODAYS && x.st !== "done" ? '<span class="mtgfrom">from ' + esc(fmt(x.due)) + "</span>" : "";
-  var inner = mtgMark(x) + '<span class="mtgbody"><span class="mtgtitle">' + esc(x.title) + '</span><span class="mtgmeta">' + carried + (st ? st + '<span class="mtgsep"> · </span>' : "") + bits.join('<span class="mtgsep"> · </span>') + "</span></span>";
-  var label = x.title + ", " + (side === "left" ? (x.st === "done" ? "done" : "not finished, " + ST[x.st][0]) : ST[x.st][0]);
-  return staff ? '<button class="mtgrow" data-act="mtgopen" data-v="' + x.id + '" data-tip="Open this task" aria-label="' + esc(label) + '">' + inner + "</button>" : '<div class="mtgrow" data-v="' + x.id + '">' + inner + "</div>";
+  return rowWrap(x, mtgMark(x) + '<span class="mtgbody"><span class="mtgtitle">' + esc(x.title) + '</span><span class="mtgmeta">' + carried + (side === "left" ? "" : srState(x)) + (st ? st + '<span class="mtgsep"> · </span>' : "") + bits.join('<span class="mtgsep"> · </span>') + "</span></span>");
 }
-function mtgSection(id, title, count, xs, side, empty) {
-  var staff = D.S.role !== "display";
-  var groups = mtgSort(xs).map(function (g) {
-    return '<div class="mtggrp"><h3 class="mtgph"><i class="mtgdot" style="background:' + g.p.color + '"></i>' + esc(g.p.name) + '<span class="mtgcont" hidden> (continued)</span></h3>' + g.xs.map(function (x) { return mtgRow(x, side, staff); }).join("") + "</div>";
-  }).join("");
+// A group heading, and its "(continued)" twin for a column or page that goes on with the same project.
+function grpHead(p, cont) { return '<h3 class="mtgph"><i class="mtgdot" style="background:' + p.color + '"></i><span class="mtgphn">' + esc(p.name) + "</span>" + (cont ? '<span class="mtgcont"> (continued)</span>' : "") + "</h3>"; }
+// Register a list for the fitting code and return its (empty) place on the page; lmFit fills it after the redraw.
+function lmList(key, groups, opts) { PJ.lists[key] = { groups: groups, max: opts && opts.max || 0 }; return '<div class="mtgview" data-list="' + key + '"></div>'; }
+function byProject(xs, row) { return mtgSort(xs).map(function (g) { return { head: grpHead(g.p, false), cont: grpHead(g.p, true), rows: g.xs.map(function (x) { return { id: x.id, html: row(x) }; }) }; }); }
+function mtgSection(id, title, count, xs, side, empty, lp) {
   return '<section class="mtgsec" aria-labelledby="' + id + '"><div class="mtgsh"><h2 id="' + id + '">' + esc(title) + '</h2><span class="mtgcount num">' + esc(count) + "</span></div>" +
-    (xs.length ? '<div class="mtgcols">' + groups + '</div><p class="mtgelse dmute" hidden></p>' : '<p class="mtgempty">' + esc(empty) + "</p>") + "</section>";
+    (xs.length ? lmList(id, byProject(xs, function (x) { return mtgRow(x, side, lp); })) + '<p class="mtgelse dmute" hidden></p>' : '<p class="mtgempty">' + esc(empty) + "</p>") + "</section>";
 }
 // "h:mm am/pm" from "15:30"; minutes always shown ("6:00 pm").
 function clock(hm) { var p = hm.split(":"), h = +p[0]; return (h % 12 || 12) + ":" + p[1] + (h < 12 ? " am" : " pm"); }
 function clockSpan(a, b) { var A = clock(a), B = clock(b); return A.slice(-2) === B.slice(-2) ? A.slice(0, -3) + " to " + B : A + " to " + B; }
+// The next day the team meets after today, with its times when it is a practice or build day.
+function nextPractice() {
+  var api = D.calApi, next = api && api.meetDays ? api.meetDays(add(TODAYS, 1), add(TODAYS, 90))[0] : null, np = next && api.practiceOn(next.date);
+  return next ? "Next practice: " + fmt(next.date) + ", " + (np ? clockSpan(np.start, np.end) : next.name) : "No practice is planned";
+}
 // Today at a glance: short facts, each read from the app that owns it, each shown only when there is something to say.
+// On a day without practice: "No practice today", the next one, and no mentors or snacks.
 function glance() {
   var api = D.calApi, out = [], lp = lastPractice();
   var pr = api && api.practiceOn ? api.practiceOn(TODAYS) : null;
-  if (pr) out.push(["Practice", clockSpan(pr.start, pr.end)]);
-  var ms = api && api.mentorsOn ? api.mentorsOn(TODAYS) : [];
-  if (ms.length) out.push(["Mentors", ms.join(", ")]);
-  var sn = api && api.snacksOn ? api.snacksOn(TODAYS) : [];
-  if (sn.length) out.push(["Snacks", sn.join(", ")]);
-  var arr = lp && D.partsApi && D.partsApi.arrivedSince ? D.partsApi.arrivedSince(lp) : [];
-  if (arr.length) out.push([plural(arr.length, "part") + " in since " + fmt(lp, { weekday: "short" }), arr.slice(0, 3).map(function (a) { return a.name; }).join(", ") + (arr.length > 3 ? ", and " + (arr.length - 3) + " more" : "")]);
-  if (!out.length) return "";
+  if (pr) {
+    out.push(["Practice", clockSpan(pr.start, pr.end)]);
+    var ms = api.mentorsOn ? api.mentorsOn(TODAYS) : [];
+    if (ms.length) out.push(["Mentors", ms.join(", ")]);
+    var sn = api.snacksOn ? api.snacksOn(TODAYS) : [];
+    if (sn.length) out.push(["Snacks", sn.join(", ")]);
+  } else out.push(["No practice today", "· " + nextPractice()]);
+  var arr = lp && D.partsApi && D.partsApi.arrivedSince ? D.partsApi.arrivedSince(lp) : [], seen = {}, nm = [];
+  arr.forEach(function (a) { if (!seen[a.name]) { seen[a.name] = 1; nm.push(a.name); } });
+  if (nm.length) out.push(["Parts in since " + fmt(lp, { weekday: "short" }) + ":", nm.slice(0, 3).join(", ") + (nm.length > 3 ? ", and " + (nm.length - 3) + " more" : "")]);
   return '<ul class="mtgglance" aria-label="Today at a glance">' + out.map(function (f) { return '<li><span class="mtggl">' + esc(f[0]) + "</span> " + esc(f[1]) + "</li>"; }).join("") + "</ul>";
 }
-// Note for today: staff edit it in place (Enter saves, Escape cancels); the Display role only reads it; empty is absent.
+// Note for today: mentors and admins edit it in place (Enter saves, Escape cancels; the draft survives redraws while
+// the Meeting view stays open); everyone else only reads it; empty is absent.
+var NOTE_MAX = 140;
 function noteLine() {
-  var note = T().note || "", staff = D.S.role !== "display";
-  if (staff && PJ.noteEdit) return '<div class="mtgnote mtgnoteed"><label class="mtggl" for="mtg-note">Note for today</label><input id="mtg-note" class="mtgnotein" value="' + esc(note) + '" maxlength="140" placeholder="One line for the meeting" aria-describedby="mtg-note-help"><span id="mtg-note-help" class="dmute mtgnoteh">Enter saves · Escape cancels</span><button class="btn mtgnotebtn" data-act="mtgnotesave" data-tip="Save the note">Save</button><button class="btn mtgnotebtn" data-act="mtgnotecancel" data-tip="Keep the note as it was">Cancel</button></div>';
-  if (!note) return staff ? '<div class="mtgnote"><button class="btn mtgnotebtn" data-act="mtgnoteedit" data-tip="Write one line for today\'s meeting; it shows on the shop screen too">Add a note for today</button></div>' : "";
-  return '<div class="mtgnote"><span class="mtggl">Note</span><span class="mtgnotet">' + esc(note) + "</span>" + (staff ? '<button class="btn mtgnotebtn" data-act="mtgnoteedit" data-tip="Change the note for today\'s meeting">Edit note</button>' : "") + "</div>";
+  var note = T().note || "", ed = noteEditor();
+  if (ed && PJ.noteEdit) {
+    var v = PJ.draft != null ? PJ.draft : note;
+    return '<div class="mtgnote mtgnoteed"><label class="mtggl" for="mtg-note">Note for today</label><input id="mtg-note" class="mtgnotein" data-input="mtgnote" value="' + esc(v) + '" maxlength="' + NOTE_MAX + '" placeholder="One line for the meeting" aria-describedby="mtg-note-help mtg-note-count"><span id="mtg-note-count" class="dmute mtgnotec num">' + v.length + " / " + NOTE_MAX + '</span><span id="mtg-note-help" class="dmute mtgnoteh">Enter saves · Escape cancels</span><button class="btn mtgnotebtn" data-act="mtgnotesave" data-tip="Save the note">Save</button><button class="btn mtgnotebtn" data-act="mtgnotecancel" data-tip="Keep the note as it was">Cancel</button></div>';
+  }
+  if (!note) return ed ? '<div class="mtgnote"><button class="btn mtgnotebtn" data-act="mtgnoteedit" data-tip="Write one line for today\'s meeting; it shows on the shop screen too">Add a note for today</button></div>' : "";
+  return '<div class="mtgnote"><span class="mtggl">Note</span><span class="mtgnotet">' + esc(note) + "</span>" + (ed ? '<button class="btn mtgnotebtn" data-act="mtgnoteedit" data-tip="Change the note for today\'s meeting">Edit note</button>' : "") + "</div>";
 }
 function meetingLists() {
   var M = mtgModel(), dn = M.left.filter(function (x) { return x.st === "done"; }).length;
   return '<div class="mtglists">' +
-    mtgSection("mtg-last", "Last practice" + (M.lp ? " · " + fmt(M.lp) : ""), M.left.length ? dn + " of " + M.left.length + " done" : "", M.left, "left", "No tasks were due last practice.") +
-    mtgSection("mtg-today", "Today · " + fmt(TODAYS), M.right.length + (M.right.length === 1 ? " task" : " tasks"), M.right, "right", "Nothing is due today.") + "</div>";
+    mtgSection("mtg-last", "Last practice" + (M.lp ? " · " + fmt(M.lp) : ""), M.left.length ? dn + " of " + M.left.length + " done" : "", M.left, "left", "No tasks were due last practice.", M.lp) +
+    mtgSection("mtg-today", "Today · " + fmt(TODAYS), M.right.length + (M.right.length === 1 ? " task" : " tasks"), M.right, "right", "Nothing is due today.", M.lp) + "</div>";
 }
 /* Practice view: the general display, unattended, read from across the shop. The clock and practice time (from the
    Calendar), the countdown strip, then Working on now (in progress), Needs help (blocked, and what each waits on) and
-   Ready to pick up (to do, nobody assigned, due by the second practice from today; else the to-do tasks due soonest).
-   Only Ready to pick up may stop at what fits ("and 4 more in Tasks"). */
+   Ready to pick up: top-level to-do tasks with nobody assigned, nothing unfinished they wait on and no part still to
+   arrive; dated ones first by date, then undated. Working on now and Needs help always show every task (denser, two
+   columns, then pages); Ready to pick up shows at most 6 rows (down to 3 when room is short), then "and 4 more". */
 function hm(s) { var p = s.split(":"); return +p[0] * 60 + +p[1]; }
 function dur(min) { var h = Math.floor(min / 60), m = min % 60; return (h ? h + " h" : "") + (h && m ? " " : "") + (m || !h ? m + " min" : ""); }
 function practiceLine() {
@@ -787,127 +824,208 @@ function practiceLine() {
     var clean = hm(pr.end) - 15, ch = Math.floor(clean / 60), cm = ("0" + clean % 60).slice(-2);
     return "Practice until " + clock(pr.end) + " · " + dur(hm(pr.end) - now) + " left · Clean-up starts at " + clock(ch + ":" + cm) + " · " + shop;
   }
-  var next = api && api.meetDays ? api.meetDays(add(TODAYS, 1), add(TODAYS, 90))[0] : null, np = next && api.practiceOn(next.date);
-  return (next ? "Next practice: " + fmt(next.date) + (np ? " · " + clockSpan(np.start, np.end) : " · " + next.name) : "No practice is planned") + " · " + shop;
+  return (pr ? "Practice is over · " : "No practice today · ") + nextPractice() + " · " + shop;
 }
+var READY_MAX = 6, READY_MIN = 3;
 function readyList() {
-  var api = D.calApi, meets = api && api.meetDays ? api.meetDays(TODAYS, add(TODAYS, 90)) : [], by = meets.length ? meets[Math.min(1, meets.length - 1)].date : TODAYS;
-  var top = T().list.filter(function (x) { return !x.parent && x.st === "todo"; });
-  var open = top.filter(function (x) { return !x.who.length && x.due && x.due <= by; });
-  if (open.length) return { note: "Nobody has these yet. Due by " + fmt(by) + ".", xs: open.sort(byDue) };
-  return { note: "Due soonest", xs: top.filter(function (x) { return x.due; }).sort(byDue) };
+  return T().list.filter(function (x) { return !x.parent && x.st === "todo" && !x.who.length && !blockedBy(x).length && !partsFor(x).length; })
+    .sort(function (a, b) { return a.due && b.due ? (a.due < b.due ? -1 : a.due > b.due ? 1 : a.title.localeCompare(b.title)) : a.due ? -1 : b.due ? 1 : a.title.localeCompare(b.title); });
 }
-function byDue(a, b) { return a.due < b.due ? -1 : a.due > b.due ? 1 : a.title.localeCompare(b.title); }
-function pracRow(x, staff, flat) {
+function pracRow(x, flat) {
   var bits = [];
   if (x.st === "blocked") { bits.push('<b class="mtgout bad">Blocked</b>'); var w = waitsOn(x); bits.push(w.length ? '<span class="mtgwait">waits on ' + esc(w.join(", ")) + "</span>" : '<span class="mtgwait">needs a hand</span>'); }
   if (flat) bits.push('<span class="mtgwho">' + esc(proj(x.p).name) + "</span>");
-  bits.push('<span class="mtgwho">' + (x.who.length ? x.who.map(esc).join(", ") : "Nobody yet") + "</span>");
-  if (x.st === "todo" && x.due) bits.push('<span class="mtgsub">due ' + esc(fmt(x.due)) + "</span>");
-  var inner = mtgMark(x) + '<span class="mtgbody"><span class="mtgtitle">' + esc(x.title) + '</span><span class="mtgmeta">' + bits.join('<span class="mtgsep"> · </span>') + "</span></span>";
-  return staff ? '<button class="mtgrow" data-act="mtgopen" data-v="' + x.id + '" data-tip="Open this task" aria-label="' + esc(x.title + ", " + ST[x.st][0]) + '">' + inner + "</button>" : '<div class="mtgrow" data-v="' + x.id + '">' + inner + "</div>";
+  if (x.st !== "todo") bits.push('<span class="mtgwho">' + names(x.who) + "</span>");
+  bits.push('<span class="mtgsub">' + esc(x.sub) + "</span>");
+  if (x.st === "todo") bits.push('<span class="mtgsub">' + (x.due ? "due " + esc(fmt(x.due)) : "no date") + "</span>");
+  return rowWrap(x, mtgMark(x) + '<span class="mtgbody"><span class="mtgtitle">' + esc(x.title) + '</span><span class="mtgmeta">' + srState(x) + bits.join('<span class="mtgsep"> · </span>') + "</span></span>");
 }
 function pracPanel(id, title, sub, body, empty, extra) {
   return '<section class="mtgsec mtgpsec" aria-labelledby="' + id + '"><div class="mtgsh"><h2 id="' + id + '">' + esc(title) + '</h2><span class="mtgcount">' + esc(sub) + "</span></div>" + (body || '<p class="mtgempty">' + esc(empty) + "</p>") + (extra || "") + "</section>";
 }
 function practiceView() {
-  var staff = D.S.role !== "display", top = T().list.filter(function (x) { return !x.parent; });
-  var doing = top.filter(function (x) { return x.st === "doing"; }), blocked = top.filter(function (x) { return x.st === "blocked"; }), R = readyList();
-  var groups = mtgSort(doing).map(function (g) { return '<div class="mtggrp"><h3 class="mtgph"><i class="mtgdot" style="background:' + g.p.color + '"></i>' + esc(g.p.name) + "</h3>" + g.xs.map(function (x) { return pracRow(x, staff); }).join("") + "</div>"; }).join("");
+  var top = T().list.filter(function (x) { return !x.parent; });
+  var doing = top.filter(function (x) { return x.st === "doing"; }), blocked = mtgSort(top.filter(function (x) { return x.st === "blocked"; })).reduce(function (a, g) { return a.concat(g.xs); }, []), R = readyList();
+  var flat = function (xs) { return [{ head: "", cont: "", rows: xs.map(function (x) { return { id: x.id, html: pracRow(x, true) }; }) }]; };
   return pjHead(clock(NOW), "practice", esc(practiceLine())) + countdown() + '<div class="mtgp3">' +
-    pracPanel("pr-now", "Working on now", plural(doing.length, "task"), groups ? '<div class="mtgcols">' + groups + "</div>" : "", "Nothing is in progress.") +
-    pracPanel("pr-help", "Needs help", plural(blocked.length, "task"), blocked.length ? '<div class="mtgcols">' + blocked.map(function (x) { return pracRow(x, staff, true); }).join("") + "</div>" : "", "Nothing is blocked.") +
-    pracPanel("pr-ready", "Ready to pick up", R.note, R.xs.length ? '<div class="mtgcols mtgready">' + R.xs.map(function (x) { return pracRow(x, staff, true); }).join("") + "</div>" : "", "Nothing to pick up.", '<p class="mtgelse dmute mtgmore" hidden></p>') + "</div>";
+    pracPanel("pr-now", "Working on now", plural(doing.length, "task"), doing.length ? lmList("pr-now", byProject(doing, function (x) { return pracRow(x, false); })) + '<p class="mtgelse dmute" hidden></p>' : "", "Nothing is in progress.") +
+    pracPanel("pr-help", "Needs help", plural(blocked.length, "task"), blocked.length ? lmList("pr-help", flat(blocked)) + '<p class="mtgelse dmute" hidden></p>' : "", "Nothing is blocked.") +
+    pracPanel("pr-ready", "Ready to pick up", R.length ? plural(R.length, "task") + ", nobody on them" : "", R.length ? lmList("pr-ready", flat(R), { max: READY_MAX }) : "", "Nothing is waiting for a person. Ask a mentor what is next.", R.length ? '<p class="mtgelse dmute mtgmore" hidden></p>' : "") + "</div>";
 }
-// Fit the Practice view to a wide window: smaller type step by step until Working on now and Needs help fit; Ready to
-// pick up then shows as many rows as fit and says how many more are in Tasks.
-function pracFit() {
-  var scr = document.querySelector('.mtgscreen[data-pv="practice"]'); if (!scr) return;
-  var ready = Array.prototype.slice.call(scr.querySelectorAll(".mtgready .mtgrow")), more = scr.querySelector(".mtgmore"), secs = scr.querySelectorAll(".mtgpsec");
-  ready.forEach(function (r) { r.hidden = false; }); more.hidden = true;
-  if (!window.matchMedia(MTG_WIDE).matches) { scr.dataset.dense = "0"; return; }
-  var pad = parseFloat(getComputedStyle(scr).paddingBottom) || 0, bottom = window.innerHeight - pad + 0.5;
-  var fits = function (s) { return s.getBoundingClientRect().bottom <= bottom; };
-  for (var d = 0; d < MTG_STEPS; d++) { scr.dataset.dense = String(d); if (fits(secs[0]) && fits(secs[1])) break; }
-  if (fits(secs[2])) return;
-  more.hidden = false;
-  for (var n = ready.length - 1; n >= 1; n--) {
-    ready[n].hidden = true; more.textContent = "and " + (ready.length - n) + " more in Tasks";
-    if (fits(secs[2])) return;
-  }
+
+/* ---------- Fitting the lists to the window (both views) ----------
+   A list is a set of groups (a project heading and its rows; Needs help and Ready have no headings). On a wide window
+   (1024 px and up) the lists must end above the bottom of the window. Each density step is tried in turn (0: as large
+   as the Projector's body text; 1: smaller; 2: two columns; 3 and 4: smaller still). A list is packed into columns and
+   pages by rows: a group that goes on in the next column or on the next page repeats its heading with "(continued)";
+   a group is kept whole in one column when that costs no extra page; the last two pages are balanced so no page holds a
+   lone row when that can be avoided. If even step 4 needs more than one page, the view turns pages ("1 / 3", the
+   arrow keys, two buttons; the Display role every 20 s). On a narrow window the lists stack and the page scrolls. */
+var MTG_WIDE = "(min-width: 1024px)", MTG_STEPS = 5, LM_GAP = 6, LM_COLGAP = 24, LM_PADTOP = 6, LM_MINCOL = 240;
+function lmEl(html) { var t = document.createElement("template"); t.innerHTML = html.trim(); return t.content.firstChild; }
+function lmMeasure(view, L, ncols) {
+  var W = view.clientWidth, colW = (W - LM_COLGAP * (ncols - 1)) / ncols;
+  view.innerHTML = ""; view.style.gridTemplateColumns = colW + "px";
+  var col = document.createElement("div"); col.className = "mtgcol"; view.appendChild(col);
+  var h = function (html) { var e = lmEl(html); col.appendChild(e); return e.getBoundingClientRect().height; };
+  var M = L.groups.map(function (g) { return { hh: g.head ? h(g.head) : 0, ch: g.head ? h(g.cont) : 0, rh: g.rows.map(function (r) { return h(r.html); }) }; });
+  view.innerHTML = "";
+  return M;
 }
-/* Fitting the lists to the TV. On a wide window (side by side) the lists must end above the bottom of the window:
-   try each density step in turn (0: as large as the Projector's body text; 1: smaller; 2: two columns inside a section;
-   3 and 4: smaller still); if even step 4 is too tall, split each list into pages by whole project groups (a group taller
-   than a page is split by rows, its heading marked "continued"). On a narrow window the lists stack and the page scrolls. */
-var MTG_WIDE = "(min-width: 1024px)", MTG_STEPS = 5;
-function mtgShow(sec, set) {
-  sec.querySelectorAll(".mtggrp").forEach(function (g) {
-    var rows = g.querySelectorAll(".mtgrow"), any = false;
-    rows.forEach(function (r) { var on = !set || set.indexOf(r) >= 0; r.hidden = !on; if (on) any = true; });
-    g.hidden = !any; g.querySelector(".mtgcont").hidden = !(any && set && set.indexOf(rows[0]) < 0);
+// Pack the rows into pages of ncols columns, each at most capH tall. limits: optional { pageIndex: most rows }.
+function lmPack(L, M, capH, ncols, whole, limits) {
+  var pages = [], page, col, used;
+  function newPage() { page = { cols: [], rows: 0 }; pages.push(page); newCol(true); }
+  function newCol(fresh) { if (!fresh && page.cols.length >= ncols) { newPage(); return; } col = { items: [], g: -1 }; page.cols.push(col); used = 0; }
+  newPage();
+  L.groups.forEach(function (g, gi) {
+    var m = M[gi], total = m.hh + m.rh.reduce(function (a, b) { return a + b; }, 0);
+    if (whole && g.head && col.items.length && used + LM_GAP + total > capH && total <= capH) newCol(false);
+    g.rows.forEach(function (r, ri) {
+      var lim = limits && limits[pages.length - 1];
+      if (lim != null && page.rows >= lim) newPage();
+      var head = !!g.head && col.g !== gi, need = m.rh[ri] + (head ? (ri ? m.ch : m.hh) + (col.items.length ? LM_GAP : 0) : 0);
+      if (col.items.length && used + need > capH) { newCol(false); head = !!g.head; need = m.rh[ri] + (head ? (ri ? m.ch : m.hh) : 0); }
+      if (head) { col.items.push({ h: gi, cont: ri > 0 }); col.g = gi; }
+      col.items.push({ r: [gi, ri] }); used += need; page.rows++;
+    });
   });
-}
-function mtgPaginate(sec, fits) {
-  var pages = [], cur = [];
-  function tryWith(extra) { mtgShow(sec, cur.concat(extra)); return fits(sec); }
-  sec.querySelectorAll(".mtggrp").forEach(function (g) {
-    var rows = Array.prototype.slice.call(g.querySelectorAll(".mtgrow"));
-    if (tryWith(rows)) { cur = cur.concat(rows); return; }
-    if (cur.length) { pages.push(cur); cur = []; if (tryWith(rows)) { cur = rows.slice(); return; } }
-    rows.forEach(function (r) { if (cur.length && !tryWith([r])) { pages.push(cur); cur = []; } cur.push(r); });
-  });
-  if (cur.length) pages.push(cur);
   return pages;
 }
-function mtgFit() {
+function lmLayout(L, M, capH, ncols) {
+  var byRows = lmPack(L, M, capH, ncols, false), whole = lmPack(L, M, capH, ncols, true), useWhole = whole.length <= byRows.length, pages = useWhole ? whole : byRows, n = pages.length;
+  if (n > 1 && pages[n - 1].rows < 2) {
+    var R = pages[n - 2].rows + pages[n - 1].rows, lim = {};
+    if (R >= 3) { lim[n - 2] = Math.ceil(R / 2); var p2 = lmPack(L, M, capH, ncols, useWhole, lim); if (p2.length === n) pages = p2; }
+  }
+  return pages;
+}
+function lmAll(L) { var items = []; L.groups.forEach(function (g, gi) { g.rows.forEach(function (r, ri) { if (!ri && g.head) items.push({ h: gi, cont: false }); items.push({ r: [gi, ri] }); }); }); return { cols: [{ items: items }], rows: items.length }; }
+function lmRender(view, L, page, ncols) {
+  view.innerHTML = ""; view.style.gridTemplateColumns = "repeat(" + ncols + ", minmax(0, 1fr))";
+  if (!page) return;
+  page.cols.forEach(function (c) {
+    var col = document.createElement("div"); col.className = "mtgcol";
+    c.items.forEach(function (it) { var g = L.groups["h" in it ? it.h : it.r[0]]; col.appendChild(lmEl("h" in it ? (it.cont ? g.cont : g.head) : g.rows[it.r[1]].html)); });
+    view.appendChild(col);
+  });
+}
+// The bottom a section's content must stay above, and the room its list has.
+function lmLimit(scr, sec) { var cs = getComputedStyle(sec); return window.innerHeight - (parseFloat(getComputedStyle(scr).paddingBottom) || 0) - parseFloat(cs.paddingBottom) - parseFloat(cs.borderBottomWidth); }
+function lmCap(scr, view, below) { return lmLimit(scr, view.closest(".mtgsec")) - view.getBoundingClientRect().top - LM_PADTOP - (below || 0) - 2; }
+function lmOver(scr, view) { var sec = view.closest(".mtgsec"), last = sec.lastElementChild; while (last && last.hidden) last = last.previousElementSibling; var b = Math.max(view.getBoundingClientRect().bottom, last ? last.getBoundingClientRect().bottom : 0); return b - lmLimit(scr, sec); }
+// A plan for one list at the current density: its pages. Re-measured and repacked if the drawn page runs over.
+function lmPlan(scr, view, ncols, below) { var L = PJ.lists[view.dataset.list], M = lmMeasure(view, L, ncols); return { view: view, L: L, M: M, ncols: ncols, cap: lmCap(scr, view, below), pages: null }; }
+function lmPages(p) { p.pages = lmLayout(p.L, p.M, p.cap, p.ncols); return p.pages.length; }
+function lmShow(p, i) {
+  var e = p.view.parentNode.querySelector(".mtgelse");
+  lmRender(p.view, p.L, p.pages[i], p.ncols);
+  if (e) { e.hidden = i < p.pages.length; e.textContent = "All shown on " + (p.pages.length === 1 ? "page 1." : "pages 1 to " + p.pages.length + "."); }
+}
+function lmViews(scr, sel) { return Array.prototype.slice.call(scr.querySelectorAll(sel)).filter(function (v) { return PJ.lists[v.dataset.list]; }); }
+function pjFit() {
   var scr = document.querySelector(".mtgscreen"); if (!scr) return;
   // The screen fills the window below the demo strip, so a TV shows no strip of page colour and no scroll bar.
   scr.style.minHeight = Math.max(0, window.innerHeight - (scr.getBoundingClientRect().top + window.scrollY)) + "px";
-  var lists = scr.querySelector(".mtglists"); if (!lists) return;
-  var secs = Array.prototype.slice.call(lists.querySelectorAll(".mtgsec")), pager = scr.querySelector(".mtgpager");
-  secs.forEach(function (s) { mtgShow(s, null); var e = s.querySelector(".mtgelse"); if (e) e.hidden = true; });
-  pager.hidden = true; PJ.pagesBefore = PJ.pages;
-  if (!window.matchMedia(MTG_WIDE).matches) { scr.dataset.dense = "0"; PJ.pages = 1; PJ.page = 0; return; }
-  var pad = parseFloat(getComputedStyle(scr).paddingBottom) || 0;
-  var fits = function (s) { return s.getBoundingClientRect().bottom <= window.innerHeight - pad + 0.5; };
-  for (var d = 0; d < MTG_STEPS; d++) { scr.dataset.dense = String(d); if (secs.every(fits)) { PJ.pages = 1; PJ.page = 0; return; } }
+  var pv = scr.dataset.pv; if (pv !== "meeting" && pv !== "practice") return;
+  var pager = scr.querySelector(".mtgpager"), before = PJ.pages;
+  pager.hidden = true;
+  scr.querySelectorAll(".mtgelse").forEach(function (e) { e.hidden = true; });
+  var ready = pv === "practice" ? lmViews(scr, '.mtgview[data-list="pr-ready"]')[0] : null, more = scr.querySelector(".mtgmore");
+  var main = lmViews(scr, pv === "meeting" ? ".mtglists .mtgview" : '.mtgview[data-list="pr-now"], .mtgview[data-list="pr-help"]');
+  var R = ready ? PJ.lists["pr-ready"] : null;
+  function showReady(n) {
+    if (!ready) return;
+    var L = { groups: [{ head: "", cont: "", rows: R.groups[0].rows.slice(0, n) }] }, rest = R.groups[0].rows.length - n;
+    lmRender(ready, L, lmAll(L), 1); more.hidden = rest <= 0; more.textContent = rest > 0 ? "and " + rest + " more" : "";
+  }
+  function done(pages) {
+    PJ.pages = pages; if (PJ.page >= pages) PJ.page = 0;
+    if (pages > 1 && before < 2) PJ.turned = Date.now();
+    pager.querySelector(".mtgpgn").textContent = (PJ.page + 1) + " / " + pages;
+  }
+  if (!window.matchMedia(MTG_WIDE).matches) {
+    scr.dataset.dense = "0";
+    main.forEach(function (v) { var L = PJ.lists[v.dataset.list]; lmRender(v, L, lmAll(L), 1); });
+    showReady(READY_MAX); done(1); return;
+  }
+  // Two columns from step 2 (in Practice, only Working on now), when each column is still at least 240 px wide.
+  var ncolsFor = function (v, d) { return d >= 2 && (pv === "meeting" || v.dataset.list === "pr-now") && (v.clientWidth - LM_COLGAP) / 2 >= LM_MINCOL ? 2 : 1; };
+  for (var d = 0; d < MTG_STEPS; d++) {
+    scr.dataset.dense = String(d);
+    var plans = main.map(function (v) { return lmPlan(scr, v, ncolsFor(v, d)); });
+    if (!plans.every(function (p) { return lmPages(p) === 1; })) continue;
+    plans.forEach(function (p) { lmShow(p, 0); });
+    if (plans.some(function (p) { return lmOver(scr, p.view) > 0.5; })) continue;
+    if (ready) {
+      var n = Math.min(READY_MAX, R.groups[0].rows.length), lo = Math.min(READY_MIN, n);
+      for (; n >= lo; n--) { showReady(n); if (lmOver(scr, ready) <= 0.5) break; }
+      if (n < lo) { if (d < MTG_STEPS - 1) continue; showReady(lo); }
+    }
+    done(1); return;
+  }
+  // Pages, at the densest step. The pager shows first, since it can make the header taller.
   pager.hidden = false;
-  var all = secs.map(function (s) { return s.querySelector(".mtgcols") ? mtgPaginate(s, fits) : []; });
-  PJ.pages = Math.max(1, Math.max.apply(null, all.map(function (p) { return p.length; })));
-  if (PJ.page >= PJ.pages) PJ.page = 0;
-  if (PJ.pagesBefore === 1) PJ.turned = Date.now();
-  secs.forEach(function (s, i) {
-    var p = all[i]; if (!s.querySelector(".mtgcols")) return;
-    if (PJ.page < p.length) mtgShow(s, p[PJ.page]);
-    else { mtgShow(s, []); var e = s.querySelector(".mtgelse"); e.textContent = "All shown on " + (p.length === 1 ? "page 1." : "pages 1 to " + p.length + "."); e.hidden = false; }
-  });
-  pager.querySelector(".mtgpgn").textContent = (PJ.page + 1) + " / " + PJ.pages;
+  if (ready) showReady(Math.min(READY_MIN, R.groups[0].rows.length));
+  // One packing for all pages: every page is drawn and checked against the window; if any runs over (a measuring
+  // difference), the room is cut and everything is packed again, so no row can fall between two pages.
+  var cut = 0, all, n2;
+  for (var tries = 0; tries < 4; tries++) {
+    all = main.map(function (v) { var p = lmPlan(scr, v, ncolsFor(v, MTG_STEPS - 1)); p.cap -= cut; lmPages(p); return p; });
+    n2 = Math.max.apply(null, all.map(function (p) { return p.pages.length; }).concat([1]));
+    var over = 0;
+    for (var i = 0; i < n2; i++) { all.forEach(function (p) { lmShow(p, i); }); over = Math.max.apply(null, [over].concat(all.map(function (p) { return lmOver(scr, p.view); }))); }
+    if (over <= 0.5) break;
+    cut += over + 4;
+  }
+  if (PJ.page >= n2) PJ.page = 0;
+  all.forEach(function (p) { lmShow(p, PJ.page); });
+  done(Math.max.apply(null, all.map(function (p) { return p.pages.length; }).concat([1])));
 }
+/* Focus: the Projector redraws itself (page turns, rotation, the clock); the control that had the focus gets it back.
+   A row that left the screen with its page hands the focus to the Next page button. */
+function pjKey(el) {
+  if (!el || !el.closest || !el.closest(".mtgscreen")) return null;
+  if (el.id) return { id: el.id };
+  var a = el.getAttribute("data-act"); return a ? { act: a, v: el.getAttribute("data-v") } : null;
+}
+function pjRefocus(k) {
+  if (!k || D.S.route !== "projector" || D.S.drawer || D.S.modal) return;
+  var a = document.activeElement; if (a && a !== document.body && a !== document.documentElement) return;
+  var el = k.id ? document.getElementById(k.id) : document.querySelector('.mtgscreen [data-act="' + k.act + '"]' + (k.v != null ? '[data-v="' + k.v + '"]' : ""));
+  if ((!el || !el.getClientRects().length) && k.act === "mtgopen") el = document.querySelector(".mtgpager:not([hidden]) .mtgnext");
+  if (el && el.getClientRects().length) el.focus({ preventScroll: true });
+}
+var coreRender = D.render;
+D.render = function () { var k = pjKey(document.activeElement), r = coreRender.apply(this, arguments); pjRefocus(k); return r; };
 D.after.push(function () {
-  if (D.S.route !== "projector") return;
-  mtgFit(); pracFit();
+  if (D.S.route !== "projector") { PJ.noteEdit = false; PJ.draft = null; return; }
+  pjFit();
   // Back from a task panel opened on a row: the focus returns to that row.
-  if (PJ.focus != null && !D.S.drawer) { var r = document.querySelector('.mtgrow[data-v="' + PJ.focus + '"]:not([hidden])'); PJ.focus = null; if (r) r.focus(); }
-  if (PJ.focusPg) { var b = document.querySelector('.mtgpg[data-v="' + PJ.focusPg + '"]'); PJ.focusPg = 0; if (b) b.focus(); }
+  if (PJ.focus != null && !D.S.drawer) { var r = document.querySelector('.mtgrow[data-v="' + PJ.focus + '"]'); PJ.focus = null; if (r) r.focus(); }
 });
-var mtgResize = null;
-window.addEventListener("resize", function () { if (D.S && D.S.route === "projector") { clearTimeout(mtgResize); mtgResize = setTimeout(mtgFit, 80); } });
+// A new window size (F11 on the TV, a resized window) refits at once, without a redraw.
+var pjResize = 0;
+window.addEventListener("resize", function () {
+  if (!D.S || D.S.route !== "projector" || pjResize) return;
+  pjResize = requestAnimationFrame(function () { pjResize = 0; var k = pjKey(document.activeElement); pjFit(); pjRefocus(k); });
+});
 function mtgTurn(dir, byHand) {
   if (PJ.pages < 2) return;
   PJ.page = (PJ.page + dir + PJ.pages) % PJ.pages; PJ.turned = Date.now(); if (byHand) PJ.manual = Date.now();
   D.render();
 }
-function mtgOn() { return D.S.route === "projector" && pjShown() === "meeting" && (lead() || D.S.role === "display"); }
-D.acts.mtgpage = function (b) { var dir = +b.dataset.v; PJ.focusPg = dir; mtgTurn(dir, true); };
-D.acts.mtgnoteedit = function () { PJ.noteEdit = true; D.render(); var i = document.getElementById("mtg-note"); if (i) { i.focus(); i.setSelectionRange(i.value.length, i.value.length); } };
-function noteDone(save) { var i = document.getElementById("mtg-note"); if (save && i) T().note = i.value.trim(); PJ.noteEdit = false; D.render(); var b = document.querySelector('[data-act="mtgnoteedit"]'); if (b) b.focus(); }
+function mtgOn() { var v = pjShown(); return D.S.route === "projector" && (v === "meeting" || v === "practice") && (lead() || D.S.role === "display"); }
+D.acts.mtgpage = function (b) { mtgTurn(+b.dataset.v, true); };
+D.acts.mtgnoteedit = function () { PJ.noteEdit = true; PJ.draft = T().note || ""; D.render(); var i = document.getElementById("mtg-note"); if (i) { i.focus(); i.setSelectionRange(i.value.length, i.value.length); } };
+D.inputs.mtgnote = function (el) { PJ.draft = el.value; var c = document.getElementById("mtg-note-count"); if (c) c.textContent = el.value.length + " / " + NOTE_MAX; };
+function noteDone(save) { if (save && PJ.draft != null) T().note = PJ.draft.trim(); PJ.noteEdit = false; PJ.draft = null; D.render(); var b = document.querySelector('[data-act="mtgnoteedit"]'); if (b) b.focus(); }
 D.acts.mtgnotesave = function () { noteDone(true); };
 D.acts.mtgnotecancel = function () { noteDone(false); };
 document.addEventListener("keydown", function (e) { if (e.target && e.target.id === "mtg-note") { if (e.key === "Enter") { e.preventDefault(); noteDone(true); } else if (e.key === "Escape") { e.preventDefault(); e.stopPropagation(); noteDone(false); } } }, true);
 D.acts.mtgproj = function (b) { var tt = T(); tt.expanded[b.dataset.v] = true; tt.at = { v: "project", p: b.dataset.v }; tt.mopen = false; D.go("tasks"); };
 D.acts.mtgopen = function (b) { PJ.focus = b.dataset.v; D.openDrawer("task", { id: b.dataset.v }); };
-D.acts.pjview = function (b) { var v = b.dataset.v; PJ.rotAt = Date.now(); if (pjShown() === v) return; D.setPref("projview", v); PJ.rot = null; PJ.page = 0; D.render(); var el = document.querySelector('.mtgsw [data-v="' + v + '"]'); if (el) el.focus(); };
+D.acts.pjview = function (b) { var v = b.dataset.v; PJ.rotAt = Date.now(); if (pjShown() === v) return; D.setPref("projview", v); PJ.rot = null; PJ.page = 0; D.render(); };
 // Left and Right arrows turn the page (not while typing, or while a panel or dialog is open).
 document.addEventListener("keydown", function (e) {
   if ((e.key !== "ArrowLeft" && e.key !== "ArrowRight") || !mtgOn() || D.S.drawer || D.S.modal || PJ.pages < 2) return;
@@ -917,22 +1035,21 @@ document.addEventListener("keydown", function (e) {
 D.acts.pjrotate = function () {
   var on = !rotOn(); if (!on) D.setPref("projview", pjShown());
   D.setPref("projrotate", on); PJ.rot = null; PJ.rotAt = Date.now(); D.render();
-  var b = document.querySelector(".mtgrot"); if (b) b.focus();
 };
-// A key press or a pointer move anywhere holds the rotation for a minute.
+// A key press or a pointer move anywhere holds the rotation and the automatic page turn for a minute.
 ["keydown", "pointermove", "pointerdown", "wheel", "touchstart"].forEach(function (k) { document.addEventListener(k, function () { PJ.input = Date.now(); }, { capture: true, passive: true }); });
 setInterval(function () {
   if (!D.S || D.S.route !== "projector") return;
-  var now = Date.now();
-  // The Display role turns the Meeting view's page by itself every 20 seconds; a turn by hand pauses that for 60 s.
-  if (D.S.role === "display" && mtgOn() && PJ.pages > 1 && now - PJ.manual >= 60000 && now - PJ.turned >= 20000) { mtgTurn(1, false); return; }
+  var now = Date.now(), quiet = now - Math.max(PJ.manual, PJ.input) >= 60000;
+  // The Display role turns the page by itself every 20 seconds, after a minute with no key press or pointer move.
+  if (D.S.role === "display" && mtgOn() && PJ.pages > 1 && !D.S.drawer && quiet && now - PJ.turned >= 20000) { mtgTurn(1, false); return; }
   // Rotation: the Practice view and the Build plan take turns every 45 s, unless someone pressed a key or moved the
   // pointer in the last 60 s, or a panel or dialog is open. With reduced motion the change has no fade.
   var v = pjView();
   if (!rotOn() || (v !== "practice" && v !== "plan") || D.S.drawer || D.S.modal || !(lead() || D.S.role === "display")) { PJ.rotAt = 0; return; }
   if (!PJ.rotAt) { PJ.rotAt = now; return; }
   if (now - PJ.rotAt >= 45000 && now - PJ.input >= 60000) {
-    PJ.rot = pjShown() === "practice" ? "plan" : "practice"; PJ.rotAt = now;
+    PJ.rot = pjShown() === "practice" ? "plan" : "practice"; PJ.rotAt = now; PJ.page = 0;
     PJ.fade = !(window.matchMedia && window.matchMedia("(prefers-reduced-motion: reduce)").matches);
     D.render();
   }
@@ -988,7 +1105,7 @@ A.tarchive = function (b) { var x = task(b.dataset.v), tt = T(), i = tt.list.ind
 A.tnew = function () { D.openModal("tnew", {}); };
 A.tnewin = function (b) { D.openModal("tnew", { p: b.dataset.p, s: b.dataset.s, m: b.dataset.m || null, st: b.dataset.st }); };
 D.changes.tnewp = function (el) { D.S.modal.data.p = el.value; D.S.modal.data.s = null; D.render(); };
-A.tnewgo = function (b) { var tt = T(), p = D.val("tn-p"), x = { id: tt.nextId++, title: D.val("tn-title"), p: p, sub: D.val("tn-sub"), ms: D.val("tn-ms") || null, who: D.val("tn-who") === "Me" ? [me()] : [], due: D.val("tn-due"), st: b.dataset.st || "todo", parent: null, labels: [], est: null, by: [], rel: [], links: [], desc: "", check: [], comments: [], hist: [[D.me().name, "created it", "Just now", { st: "todo", due: D.val("tn-due") }]] }; tt.list.push(x); D.S.modal = null; D.log("added “" + x.title + "”", "tasks"); D.toast("Added to " + proj(p).name + " › " + x.sub + "."); D.render(); };
+A.tnewgo = function (b) { var tt = T(), p = D.val("tn-p"), x = { id: tt.nextId++, title: D.val("tn-title"), p: p, sub: D.val("tn-sub"), ms: D.val("tn-ms") || null, who: D.val("tn-who") === "Me" ? [me()] : [], due: D.val("tn-due"), st: b.dataset.st || "todo", doneOn: b.dataset.st === "done" ? TODAYS : null, parent: null, labels: [], est: null, by: [], rel: [], links: [], desc: "", check: [], comments: [], hist: [[D.me().name, "created it", "Just now", { st: "todo", due: D.val("tn-due") }]] }; tt.list.push(x); D.S.modal = null; D.log("added “" + x.title + "”", "tasks"); D.toast("Added to " + proj(p).name + " › " + x.sub + "."); D.render(); };
 D.inputs.taddtxt = function () {};
 A.tquick = function (b) { var v = D.val("t-add").trim(); if (!v) return; var tt = T(); tt.list.push({ id: tt.nextId++, title: v, p: b.dataset.p, sub: b.dataset.s, ms: null, who: [], due: "", st: "todo", parent: null, labels: [], est: null, by: [], rel: [], links: [], desc: "", check: [], comments: [], hist: [[D.me().name, "created it", "Just now", { st: "todo", due: "" }]] }); D.render(); };
 document.addEventListener("keydown", function (e) { if (e.key === "Enter" && e.target.id === "t-add") { var b = document.querySelector('[data-act="tquick"]'); if (b) A.tquick(b); } if (e.key === "Enter" && e.target.id === "tc-in") A.tsend(); });
