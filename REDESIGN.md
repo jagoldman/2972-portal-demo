@@ -146,7 +146,8 @@ phones), Appearance, Build or Competition mode, Sign-in. Plain words: "team sign
 The Tasks timeline is for everyone but parents. Four rules:
 1. **Students read it.** Timeline is in a student's Tasks menu after This week; they can open any task from it but not
    move it. Lead mode lets a student move bars, like its other edits.
-2. **Only the days the team meets.** One equal column per practice or build day, read from the Calendar app
+2. **Only the days the team meets.** One equal column per practice, build or competition day (a competition replaces a
+   practice on its day, with its own tint and name), read from the Calendar app
    (`D.calApi.meetDays`), never a copy of the pattern, so cancelling or adding a practice there changes the timeline.
    A milestone or competition on another day gets a narrow marker column on its date; each of the Calendar's days off
    gets one thin column with its own dates ("No practice Nov 23–28"); an ordinary Friday to Monday gets nothing. Week
@@ -161,7 +162,13 @@ The Tasks timeline is for everyone but parents. Four rules:
 4. **Leads move tasks by dragging.** Mentors, admins and Lead-mode students drag a bar sideways: it snaps to practice
    days, shows the day it will land on, keeps its length, and the drop sets the due date (toast with Undo, a line in
    the task's history). Under 4 px is a click. Left and Right move a focused bar one practice day. No dragging on touch
-   screens (the chart scrolls); done tasks do not move.
+   screens (the chart scrolls); done tasks do not move, nor do tasks due outside the chart's dates (use the task panel).
+   Escape cancels a drag; a release far above or below the chart cancels; near the chart's edge it scrolls by itself.
+   Quick moves of one task (within 5 s) are one history line and one Undo. Nothing redraws the chart while a bar is
+   held. A bar's state is never colour alone: blocked is hatched with a red edge, done has a ✓.
+5. **Rows open and close.** A caret before each division and project; a closed project shows only its own row. First
+   visit: divisions open, projects closed except the person's own. "Open all" / "Close all" sits at the right of the
+   help line. The choice is kept per person and cleared by Reset.
 
 ## Apps, Tools and More (decided 2026-11-13, D139)
 
