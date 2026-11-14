@@ -36,7 +36,8 @@ var ICON = {
   trace: "M12 19l7-7 3 3-7 7zM18 13l-1.5-7.5L2 2l3.5 14.5L13 18zM2 2l7.6 7.6M11 13a2 2 0 1 0 0-4 2 2 0 0 0 0 4z",
   gear: "M12 15a3 3 0 1 0 0-6 3 3 0 0 0 0 6zM10.3 3h3.4l.5 2.4 1.7.7 2-1.4 2.4 2.4-1.4 2 .7 1.7 2.4.5v3.4l-2.4.5-.7 1.7 1.4 2-2.4 2.4-2-1.4-1.7.7-.5 2.4h-3.4l-.5-2.4-1.7-.7-2 1.4-2.4-2.4 1.4-2-.7-1.7L3 13.7v-3.4l2.4-.5.7-1.7-1.4-2 2.4-2.4 2 1.4 1.7-.7z",
   camera: "M3 8h4l2-3h6l2 3h4v11H3zM12 17a4 4 0 1 0 0-8 4 4 0 0 0 0 8z",
-  download: "M12 3v12M7 10l5 5 5-5M5 21h14"
+  download: "M12 3v12M7 10l5 5 5-5M5 21h14",
+  editor: "M4 20h4L19 9l-4-4L4 16zM14 6l4 4"
 };
 D.ICON = ICON;
 D.ic = function (name, size) { size = size || 20; return '<svg width="' + size + '" height="' + size + '" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="' + (ICON[name] || ICON.more) + '"/></svg>'; };
@@ -64,7 +65,8 @@ D.TILES = [
   { id: "onshape", name: "Onshape", icon: "onshape", svc: "link", desc: "Robot CAD.", modes: ["build"], groups: BUILDERS, more: true, ext: true },
   { id: "github", name: "GitHub", icon: "github", svc: "link", desc: "Robot code for every season.", modes: ["build"], groups: BUILDERS, more: true, ext: true },
   { id: "drive", name: "Team Drive", icon: "drive", svc: "link", desc: "Shared files.", modes: ["build"], groups: BUILDERS, more: true, ext: true },
-  { id: "admin", name: "Admin", icon: "admin", svc: "admin.", desc: "Approve accounts and manage groups.", modes: ["build"], groups: ["admin"], more: true, ext: true },
+  { id: "admin", name: "Admin", icon: "admin", svc: "admin.", desc: "Approve accounts and manage groups.", modes: ["build", "competition"], groups: ["admin"], adm: true, ext: true },
+  { id: "editor", name: "Website editor", icon: "editor", svc: "editor.", desc: "Edit the public website, preview, then publish.", modes: ["build", "competition"], groups: ["admin", "mentor"], adm: true, ext: true },
   { id: "handbook", name: "Team Handbook", icon: "handbook", svc: "link", desc: "Student, family and mentor handbook.", modes: ["build"], groups: ALL, more: true, ext: true }
 ];
 /* Tools: small helpers that open inside the site, in the same tab. They are not apps and not link-outs, so they get
@@ -166,9 +168,9 @@ D.modalHead = function (title) { return '<div class="row between nowrap"><h2>' +
 /* ---------- Shell pieces ---------- */
 // Short descriptions for the Home tiles and the Apps menu.
 // What each tile is for, as its hover description (never the same words as the short line under its name).
-var TILETIP = { tasks: "Your next task, projects and the build plan.", calendar: "See practices, sign in at the door and sign up for snacks.", parts: "Ask for a part, follow orders and find spares on the shelves.", skills: "Training trees that unlock step by step, with mentor sign-offs.", schedule: "Who does which role at the event, and when.", pit: "Match checklists, robot issues and battery charge.", scouting: "Match forms, assignments, team stats and the pick list.", onshape: "The team's robot CAD, in a new tab.", github: "Robot code for every season, in a new tab.", drive: "The team's shared files, in a new tab.", admin: "Approve new accounts and set people's groups.", handbook: "Rules and info for students, families and mentors." };
+var TILETIP = { tasks: "Your next task, projects and the build plan.", calendar: "See practices, sign in at the door and sign up for snacks.", parts: "Ask for a part, follow orders and find spares on the shelves.", skills: "Training trees that unlock step by step, with mentor sign-offs.", schedule: "Who does which role at the event, and when.", pit: "Match checklists, robot issues and battery charge.", scouting: "Match forms, assignments, team stats and the pick list.", onshape: "The team's robot CAD, in a new tab.", github: "Robot code for every season, in a new tab.", drive: "The team's shared files, in a new tab.", admin: "Approve new accounts and set people's groups.", editor: "Change the team's public pages and check them before they go live.", handbook: "Rules and info for students, families and mentors." };
 D.tileTip = function (id) { return TILETIP[id] ? ' data-tip="' + esc(TILETIP[id]) + '"' : ""; };
-var SHORT = { tasks: "Your tasks", calendar: "Practices, attendance and snacks", parts: "Request and find parts", skills: "Training and sign-offs", schedule: "Your event roles", pit: "Checklists and batteries", scouting: "Match forms", onshape: "Robot CAD", github: "Robot code", drive: "Shared files", admin: "Accounts and groups", handbook: "Team rules and info" };
+var SHORT = { tasks: "Your tasks", calendar: "Practices, attendance and snacks", parts: "Request and find parts", skills: "Training and sign-offs", schedule: "Your event roles", pit: "Checklists and batteries", scouting: "Match forms", onshape: "Robot CAD", github: "Robot code", drive: "Shared files", admin: "Accounts and groups", editor: "The public website", handbook: "Team rules and info" };
 function demobar() {
   var S = D.S;
   var roles = ["student", "mentor", "admin", "parent", "display"].map(function (r) {
@@ -200,13 +202,13 @@ function accountMenu() {
     '</div><a class="accountchoice" href="#account" data-act="accountnotifications">Notification settings</a><a class="accountchoice" href="#account" data-act="go" data-v="account">All account settings</a><button class="accountchoice" data-act="demosignout">Sign out</button></div>';
 
 }
-/* Tools and More: one quiet row each, closed by default, that opens a short list. The row is a real button with
+/* Tools, Admin apps and More (in that order): one quiet row each, closed by default, that opens a short list. The row is a real button with
    aria-expanded and its chevron turns. A group with nothing in it for this person is not shown. */
 // The guide may open a group for one stop (D.S.guideOpen) without changing the saved choice.
 D.groupOpen = function (id) { return !!D.pref("open-" + id, false) || !!(D.S.guideOpen && D.S.guideOpen[id]); };
-function groupRow(id, label, count, place, body) {
+function groupRow(id, label, count, place, body, tip) {
   var open = D.groupOpen(id), bid = "grp-" + place + "-" + id;
-  return '<div class="grp" data-grp="' + id + '"><button class="grphead" id="' + bid + '-btn" data-act="grp" data-v="' + id + '" data-place="' + place + '" aria-expanded="' + open + '" aria-controls="' + bid + '">' +
+  return '<div class="grp" data-grp="' + id + '"><button class="grphead" id="' + bid + '-btn" data-act="grp" data-v="' + id + '" data-place="' + place + '" aria-expanded="' + open + '" aria-controls="' + bid + '"' + (tip ? ' data-tip="' + esc(tip) + '"' : "") + ">" +
     '<span class="grpname">' + esc(label) + '</span><span class="tcount">' + count + '</span><span class="grpchev" aria-hidden="true">' + D.ic("chevron", 16) + "</span></button>" +
     '<div class="grpbody" id="' + bid + '"' + (open ? "" : " hidden") + ">" + body + "</div></div>";
 }
@@ -215,14 +217,22 @@ function toolsGroup(place) {
   var tools = D.visibleTools(); if (!tools.length) return "";
   return groupRow("tools", "Tools", tools.length, place, tools.map(D.toolRow).join("") + '<a class="toolrow all" href="#tools" data-act="go" data-v="tools"><span>All tools</span><span class="chev" aria-hidden="true">›</span></a>');
 }
+/* Admin apps: the link-out apps for the people who run the site (Admin, Website editor). The group shows only when
+   this person may open at least one of them, and lists only those. */
+var ADMTIP = "Apps for the people who run the team's accounts and its public website.";
+function isCore(t) { return !t.more && !t.adm; }
+function adminGroup(place, tiles, draw) {
+  var adm = tiles.filter(function (t) { return t.adm; }); if (!adm.length) return "";
+  return groupRow("adminapps", "Admin apps", adm.length, place, draw(adm), ADMTIP);
+}
 function appsMenu() {
   var S = D.S, tiles = D.visibleTiles();
   // Name only, two columns at every width (as the real bar's kit 0.2.3): the description is the tile's tip.
   function item(t) { return '<a class="appitem" href="' + D.appHref(t.id) + '" target="_blank" rel="noopener noreferrer" aria-label="' + esc(t.name) + ' (opens in a new tab)"' + D.tileTip(t.id) + (S.route === t.id ? ' aria-current="page"' : "") + '><span class="ic">' + D.ic(t.icon, 20) + "</span><b>" + esc(t.name) + (t.ext ? " ↗" : "") + "</b></a>"; }
   var more = tiles.filter(function (t) { return t.more; });
   return '<div class="appsmenu" role="dialog" aria-label="All apps" data-keepscroll="appsmenu"><div class="menuhead"><div class="seg" role="group" aria-label="Mode"><button data-act="mode" data-v="build" aria-pressed="' + (S.mode === "build") + '" data-tip="Show the apps for build season.">Build</button><button data-act="mode" data-v="competition" aria-pressed="' + (S.mode === "competition") + '" data-tip="Show the event apps: schedule, pit and scouting.">Competition</button></div><button class="xbtn" data-act="apps" aria-label="Close" data-tip="Close the apps menu.">×</button></div>' +
-    '<div class="appgrid">' + tiles.filter(function (t) { return !t.more; }).map(item).join("") + "</div>" +
-    '<div class="menugroups">' + toolsGroup("menu") + (more.length ? groupRow("more", "More", more.length, "menu", '<div class="appgrid">' + more.map(item).join("") + "</div>") : "") + "</div></div>";
+    '<div class="appgrid">' + tiles.filter(isCore).map(item).join("") + "</div>" +
+    '<div class="menugroups">' + toolsGroup("menu") + adminGroup("menu", tiles, function (l) { return '<div class="appgrid">' + l.map(item).join("") + "</div>"; }) + (more.length ? groupRow("more", "More", more.length, "menu", '<div class="appgrid">' + more.map(item).join("") + "</div>") : "") + "</div></div>";
 }
 function bellPanel() {
   var list = D.myNotices();
@@ -283,7 +293,8 @@ function practiceRows() {
 }
 D.views.portal = function () {
   var S = D.S, tiles = D.visibleTiles(), staff = D.isStaff();
-  var main = tiles.filter(function (t) { return !t.more; }), more = tiles.filter(function (t) { return t.more; });
+  function link(t) { return '<li><a href="' + D.appHref(t.id) + '" target="_blank" rel="noopener noreferrer"' + D.tileTip(t.id) + '>' + D.ic(t.icon, 16) + esc(t.name) + (t.ext ? " ↗" : "") + "</a></li>"; }
+  var main = tiles.filter(isCore), more = tiles.filter(function (t) { return t.more; });
   function tile(t) { return '<a class="apptile" href="' + D.appHref(t.id) + '" target="_blank" rel="noopener noreferrer" aria-label="' + esc(t.name) + ' (opens in a new tab)"' + D.tileTip(t.id) + '><span class="ic">' + D.ic(t.icon, 20) + "</span><b>" + esc(t.name) + (t.ext ? " ↗" : "") + "</b><small>" + esc(SHORT[t.id] || t.desc) + "</small></a>"; }
   var d = new Date(2026, 10, 10); try { if (D.calApi && D.calApi.TODAYS) { var q = D.calApi.TODAYS.split("-"); d = new Date(+q[0], +q[1] - 1, +q[2]); } } catch (e) {}
   var date = d.toLocaleDateString("en-US", { weekday: "long", month: "long", day: "numeric" });
@@ -298,7 +309,8 @@ D.views.portal = function () {
   return '<div class="content home"><div class="homehead"><p class="homedate">' + esc(date) + "</p><h1>Hi " + esc(D.me().short) + ".</h1></div>" + (D.guideCard ? D.guideCard() : "") + cards +
     '<section class="stack"><h2 style="margin-bottom:10px">Apps</h2><div class="apptiles">' + main.map(tile).join("") + "</div>" +
     '<div class="homegroups">' + toolsGroup("home") +
-    (more.length ? groupRow("more", "More", more.length, "home", '<ul class="morelinks">' + more.map(function (t) { return '<li><a href="' + D.appHref(t.id) + '" target="_blank" rel="noopener noreferrer"' + D.tileTip(t.id) + '>' + D.ic(t.icon, 16) + esc(t.name) + (t.ext ? " ↗" : "") + "</a></li>"; }).join("") + "</ul>") : "") +
+    adminGroup("home", tiles, function (l) { return '<ul class="morelinks">' + l.map(link).join("") + "</ul>"; }) +
+    (more.length ? groupRow("more", "More", more.length, "home", '<ul class="morelinks">' + more.map(link).join("") + "</ul>") : "") +
     "</div></section>" + act + "</div>";
 };
 function displayHome(blocked) {
