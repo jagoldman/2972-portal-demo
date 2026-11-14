@@ -269,8 +269,10 @@ function tlBar(M, x, row, canMove) {
   var label = x.title + ", " + tlStateWord(x) + ", due " + fmt(x.due) + (after ? " (after this chart)" : "");
   var tip = x.title + " · " + (x.who.length ? x.who.join(", ") : "nobody yet") + " · due " + fmt(x.due);
   var movable = canMove && x.st !== "done";
-  return '<button class="tkbar' + (x.st === "done" ? " done" : "") + (after ? " after" : "") + (before ? " before" : "") + (movable ? " movable" : "") + '" data-act="topen" data-v="' + x.id + '" data-end="' + end + '" data-len="' + (end - start + 1) + '"' +
-    ' style="grid-row:' + row + ";grid-column:" + (M.dayK[start] + 2) + " / " + (M.dayK[end] + 3) + '" aria-label="' + esc(label) + (movable ? ". Arrow keys move it one practice day" : "") + '" data-tip="' + esc(tip) + '"></button>';
+  // Drawn in the project's colour: lighter for to do, full for in progress or blocked, green when done. The state is
+  // also in the bar's name and tip, never in colour alone.
+  return '<button class="tkbar st-' + x.st + (x.st === "done" ? " done" : "") + (after ? " after" : "") + (before ? " before" : "") + (movable ? " movable" : "") + '" data-act="topen" data-v="' + x.id + '" data-end="' + end + '" data-len="' + (end - start + 1) + '"' +
+    ' style="grid-row:' + row + ";grid-column:" + (M.dayK[start] + 2) + " / " + (M.dayK[end] + 3) + ";--pc:" + proj(x.p).color + '" aria-label="' + esc(label) + (movable ? ". Arrow keys move it one practice day" : "") + '" data-tip="' + esc(tip) + '"></button>';
 }
 function timeline() {
   var M = tlModel(), cols = M.cols, canMove = lead(), html = "", row = 3, n = cols.length;

@@ -293,11 +293,16 @@ button.tev:hover { background: var(--surface-3); }
 /* A bar is a button the height of its row; what you see is its slim ::after. */
 .tkbar, .tlpbar { position: relative; z-index: 1; align-self: stretch; min-width: 0; margin: 0 3px; padding: 0; border: 0; background: none; cursor: pointer; }
 .tkbar::after, .tlpbar::after { content: ""; position: absolute; left: 0; right: 0; top: 50%; transform: translateY(-50%); border-radius: 4px; }
-.tkbar::after { height: 14px; background: var(--accent); opacity: .8; }
-.tkbar.done::after { background: var(--ok); }
+/* The project's colour, with an edge mixed toward the text colour (darker in light, lighter in dark) so every bar
+   stands out from the track at 3:1 or more, whatever the project's colour. */
+.tkbar { --pc: var(--accent); }
+.tkbar::after { height: 14px; background: var(--pc); border: 1.5px solid color-mix(in srgb, var(--pc) 55%, var(--text)); }
+.tkbar.st-todo::after { background: color-mix(in srgb, var(--pc) 45%, var(--surface)); }
+.tkbar.done::after { background: var(--ok); border-color: color-mix(in srgb, var(--ok) 60%, var(--text)); }
 .tlpbar::after { height: 16px; background: var(--pc, var(--gold)); opacity: .85; }
 .tkbar.movable { cursor: grab; touch-action: pan-x pan-y; }
-.tkbar:hover::after, .tlpbar:hover::after { opacity: 1; }
+.tlpbar:hover::after { opacity: 1; }
+.tkbar:hover::after { filter: saturate(1.25); }
 .tkbar:focus-visible, .tlpbar:focus-visible { outline: none; }
 .tkbar:focus-visible::after, .tlpbar:focus-visible::after { opacity: 1; outline: 2px solid var(--accent); outline-offset: 2px; }
 .tkbar.after::after { border-top-right-radius: 0; border-bottom-right-radius: 0; }
