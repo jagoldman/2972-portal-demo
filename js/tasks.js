@@ -374,22 +374,44 @@ document.addEventListener("pointerdown", function (e) {
   eatClick = false;
   var el = e.target.closest && e.target.closest(".tkbar.movable");
   if (!el || e.button !== 0 || e.pointerType === "touch") return;
-  var cells = tlDayCells(), end = +el.dataset.end, len = +el.dataset.len;
-  tlDrag = { el: el, id: el.dataset.v, x0: e.clientX, cells: cells, end0: end, end: end, len: len, moved: false, pointerId: e.pointerId };
+  // Positions are kept in the chart's own coordinates (screen x plus its sideways scroll), so a scroll during the
+  // drag, by the edge or by a wheel, keeps the bar and its label under the pointer.
+  var wrap = el.closest(".tlwrap"), sl = wrap ? wrap.scrollLeft : 0, end = +el.dataset.end, len = +el.dataset.len;
+  var cells = tlDayCells().map(function (c) { c.mid += sl; return c; });
+  tlDrag = { el: el, id: el.dataset.v, wrap: wrap, x0: e.clientX + sl, cx: e.clientX, cells: cells, end0: end, end: end, len: len, moved: false, pointerId: e.pointerId, speed: 0 };
   try { el.setPointerCapture(e.pointerId); } catch (err) {}
 });
-document.addEventListener("pointermove", function (e) {
-  var d = tlDrag; if (!d) return;
-  var dx = e.clientX - d.x0;
-  if (!d.moved && Math.abs(dx) < DRAG_PX) return;
-  if (!d.moved) { d.moved = true; d.el.classList.add("dragging"); D.hideTip && D.hideTip(); }
-  // Snap: the practice day whose middle is nearest to where the bar's end has been dragged; never off either end.
-  var want = d.cells[d.end0].mid + dx, best = d.end0;
+// Snap: the practice day whose middle is nearest to where the bar's end has been dragged; never off either end.
+function tlUpdate(d) {
+  var sl = d.wrap ? d.wrap.scrollLeft : 0, want = d.cells[d.end0].mid + (d.cx + sl - d.x0), best = d.end0;
   d.cells.forEach(function (c, i) { if (Math.abs(c.mid - want) < Math.abs(d.cells[best].mid - want)) best = i; });
   best = Math.max(d.len - 1, Math.min(d.cells.length - 1, best));
   d.end = best;
   if (document.contains(d.el)) { d.el.style.gridColumn = (d.cells[best - d.len + 1].k + 2) + " / " + (d.cells[best].k + 3); tlLabel(fmt(d.cells[best].date), d.el); }
+}
+// Near the chart's left or right edge the chart scrolls by itself, faster the closer the pointer is.
+var TL_EDGE = 48;
+function tlEdgeScroll() {
+  var d = tlDrag; if (!d || !d.speed || !d.wrap) { if (d) d.scrolling = false; return; }
+  var before = d.wrap.scrollLeft; d.wrap.scrollLeft += d.speed;
+  if (d.wrap.scrollLeft !== before) tlUpdate(d);
+  requestAnimationFrame(tlEdgeScroll);
+}
+document.addEventListener("pointermove", function (e) {
+  var d = tlDrag; if (!d) return;
+  d.cx = e.clientX;
+  var sl = d.wrap ? d.wrap.scrollLeft : 0, dx = e.clientX + sl - d.x0;
+  if (!d.moved && Math.abs(dx) < DRAG_PX) return;
+  if (!d.moved) { d.moved = true; d.el.classList.add("dragging"); D.hideTip && D.hideTip(); }
+  tlUpdate(d);
+  if (d.wrap && d.wrap.scrollWidth > d.wrap.clientWidth) {
+    var corner = d.wrap.querySelector(".tlcorner"), r = d.wrap.getBoundingClientRect(), left = r.left + (corner ? corner.offsetWidth : 0); // past the pinned names
+    d.speed = e.clientX < left + TL_EDGE ? -Math.ceil((left + TL_EDGE - e.clientX) / 4) : e.clientX > r.right - TL_EDGE ? Math.ceil((e.clientX - r.right + TL_EDGE) / 4) : 0;
+    d.speed = Math.max(-24, Math.min(24, d.speed));
+    if (d.speed && !d.scrolling) { d.scrolling = true; requestAnimationFrame(tlEdgeScroll); }
+  }
 });
+document.addEventListener("scroll", function (e) { var d = tlDrag; if (d && d.moved && e.target === d.wrap) tlUpdate(d); }, true);
 document.addEventListener("pointerup", function () {
   var d = tlDrag; if (!d) return;
   if (d.moved) {
