@@ -78,9 +78,9 @@ var S_SNACK = { id: "snack", name: "Sign up for snacks", line: "Families take tu
   go: function () { D.go("snacks"); }, target: function () { return q('.snrow [data-act="snack"]'); },
   snap: function () { return JSON.stringify(cal().snacks); }, done: function (s, g) { return g.clicked || JSON.stringify(cal().snacks) !== s; } };
 var S_ADMIN = { id: "admin", name: "Let new people in", line: "Approve new accounts and set their groups.", covered: "letting new people in",
-  title: "Let new people in", text: "Open Admin, under More, to approve new accounts and put people in groups.",
-  missing: "In Build mode, Admin is under More on Home; open it to approve new accounts.",
-  go: function () { D.S.guideOpen = { more: true }; D.go("portal"); }, target: function () { return q('.homegroups [data-grp="more"] a[href*="#admin"]'); },
+  title: "Let new people in", text: "Open Admin, under Admin apps, to approve new accounts and put people in groups.",
+  missing: "Admin is under Admin apps on Home; open it to approve new accounts.",
+  go: function () { D.S.guideOpen = { adminapps: true }; D.go("portal"); }, target: function () { return q('.homegroups [data-grp="adminapps"] a[href*="#admin"]'); },
   done: function (s, g) { return g.clicked; } };
 var S_PATTERN = { id: "pattern", name: "Set when the team practices", line: "The weekly pattern, days off and phone links.", covered: "the practice pattern",
   title: "Set when the team practices", text: "Open Practice pattern and sync to set weekly practices and days off; only admins can change it.",
