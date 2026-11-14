@@ -126,7 +126,10 @@ function practiceOn(date) {
 function mentorsOn(date) { return MENTORS.filter(function (m) { var a = availOf(m, date); return a === "usual" || a === "coming"; }); }
 // The families bringing snacks on a date (empty slots left out), from Snacks.
 function snacksOn(date) { return (C().snacks[date] || []).filter(Boolean); }
-D.calApi = { kickoff: kickoff, practiceOn: practiceOn, mentorsOn: mentorsOn, snacksOn: snacksOn, practiceDays: practiceDays, upcoming: upcoming, fmt: fmt, span: span, TODAYS: TODAYS, meetDays: meetDays, eventsIn: eventsIn, daysOff: daysOff, currentEvent: function () { return C().events.filter(function (e) { return e.kind === "comp" && e.tba; })[0]; } };
+/* How many snack spots are filled and open on a date, and never who fills them (D151): the Projector is a shop screen
+   students see, and the Calendar hides snack sign-ups from students. null when the day has no snack sign-up. */
+function snackCount(date) { var s = C().snacks[date]; if (!s || !s.length) return null; var f = s.filter(Boolean).length; return { filled: f, open: s.length - f }; }
+D.calApi = { kickoff: kickoff, practiceOn: practiceOn, mentorsOn: mentorsOn, snacksOn: snacksOn, snackCount: snackCount, practiceDays: practiceDays, upcoming: upcoming, fmt: fmt, span: span, TODAYS: TODAYS, meetDays: meetDays, eventsIn: eventsIn, daysOff: daysOff, currentEvent: function () { return C().events.filter(function (e) { return e.kind === "comp" && e.tba; })[0]; } };
 
 /* ---------- The app: three tabs, each with its own small switch ---------- */
 function snackName() { return D.S.role === "parent" ? "Ortiz family" : D.me().name; }

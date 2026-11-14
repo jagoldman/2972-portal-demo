@@ -199,7 +199,9 @@ pressed a key or moved the pointer in the last 60 s; with reduced motion the cha
 **Meeting** adds, above its lists, **Today at a glance** (practice time, mentors coming, snacks, parts in since the
 last practice, each read from the app that owns it and shown only when there is one; on a day with no practice: "No
 practice today · Next practice: Thu, Nov 12, 3:30 to 6:00 pm", and no mentors or snacks) and a **Note for today**
-(they share a row when both fit). Mentors and admins edit the note in place (Enter saves, Escape cancels, "118 / 140";
+(they share a row when both fit). The snacks fact is numbers only, never a family's name, for every role ("2 of 2
+covered", "1 of 2 covered · 1 spot open", "2 spots open"), because students see this shop screen and the Calendar hides
+snack sign-ups from students, so it gives the Task App only the counts (D151). Mentors and admins edit the note in place (Enter saves, Escape cancels, "118 / 140";
 the draft survives redraws while the Meeting view stays open; leaving the view drops it); it is absent when empty.
 Then the two lists:
 - **Last practice · Thu, Nov 5**: the last day the team met before today, read from the Calendar
