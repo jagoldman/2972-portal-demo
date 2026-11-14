@@ -288,7 +288,7 @@ function timeline() {
     var m = c.type === "gap" ? null : monday(c.date);
     if (m !== wk) { closeWeek(k); wk = m; wkStart = k; }
     if (c.type === "day") heads += '<div class="tlday' + (c.date === TODAYS ? " istoday" : "") + '" style="grid-row:2;grid-column:' + (k + 2) + '" data-date="' + c.date + '" data-k="' + k + '" data-tip="' + esc(fmt(c.date) + " · " + (c.kind === "build" ? "Build day" : "Practice") + (c.date === TODAYS ? " · today" : "")) + '"><span>' + fmt(c.date, { weekday: "short" }) + "</span><b>" + parse(c.date).getDate() + "</b></div>";
-    else if (c.type === "mark") heads += '<div class="tlmarkh" style="grid-row:2;grid-column:' + (k + 2) + '" data-date="' + c.date + '" data-tip="' + esc(c.items.join("; ") + " · " + fmt(c.date) + ", no practice that day") + '"><b>' + parse(c.date).getDate() + "</b></div>";
+    else if (c.type === "mark") { var says = c.items.join("; ") + " · " + fmt(c.date) + ", no practice that day"; heads += '<div class="tlmarkh" tabindex="0" role="img" aria-label="' + esc(says) + '" style="grid-row:2;grid-column:' + (k + 2) + '" data-date="' + c.date + '" data-tip="' + esc(says) + '"><b aria-hidden="true">' + parse(c.date).getDate() + "</b></div>"; }
   });
   closeWeek(n);
   // Body rows: a division heading, then each project with its bar and milestones, then its tasks.
@@ -301,7 +301,8 @@ function timeline() {
       var lo = Math.min.apply(null, starts), hi = Math.max.apply(null, ends);
       body += '<button class="ttitle tlp" data-act="tproj" data-v="' + p.id + '" style="grid-row:' + row + '"><span class="sw2" style="background:' + p.color + '"></span> ' + esc(p.name) + "</button>" +
         '<button class="tlpbar" data-act="tproj" data-v="' + p.id + '" style="grid-row:' + row + ";grid-column:" + (M.dayK[lo] + 2) + " / " + (M.dayK[hi] + 3) + ";--pc:" + p.color + '" aria-label="' + esc(p.name + ", project, " + short(M.cols[M.dayK[lo]].date) + " to " + short(M.cols[M.dayK[hi]].date)) + '" data-tip="' + esc(p.name + " · " + xs.length + (xs.length === 1 ? " task" : " tasks") + " · open the project") + '"></button>' +
-        p.ms.map(function (m) { var k = M.isMeet[m[2]] ? M.dayK[dayFor(M, m[2])] : colOfDate(M, m[2]); if (k < 0 || m[2] < TL_FROM || m[2] > TL_TO) return ""; return '<i class="tlms' + (m[3] ? " met" : "") + '" style="grid-row:' + row + ";grid-column:" + (k + 2) + '" data-tip="' + esc("Milestone: " + m[1] + " · " + fmt(m[2])) + '"></i>'; }).join("");
+        p.ms.map(function (m) { var k = M.isMeet[m[2]] ? M.dayK[dayFor(M, m[2])] : colOfDate(M, m[2]); if (k < 0 || m[2] < TL_FROM || m[2] > TL_TO) return ""; // A milestone is a button: its own name and tip, and a click opens the project.
+          return '<button class="tlms' + (m[3] ? " met" : "") + '" data-act="tproj" data-v="' + p.id + '" style="grid-row:' + row + ";grid-column:" + (k + 2) + '" aria-label="' + esc("Milestone: " + m[1] + ", " + fmt(m[2]) + (m[3] ? ", met" : "")) + '" data-tip="' + esc("Milestone: " + m[1] + " · " + fmt(m[2]) + (m[3] ? " · met" : "") + " · open " + p.name) + '"></button>'; }).join("");
       row++;
       xs.forEach(function (x) {
         var bb = x.by.map(task).filter(function (b) { return b && b.due > x.due; });
