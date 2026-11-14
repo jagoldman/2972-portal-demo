@@ -170,42 +170,57 @@ The Tasks timeline is for everyone but parents. Four rules:
    visit: divisions open, projects closed except the person's own. "Open all" / "Close all" sits at the right of the
    help line. The choice is kept per person and cleared by Reset.
 
-## Projector: Practice, Meeting and Build plan (decided 2026-11-13, D146 and D147)
+## Projector: Practice, Meeting and Build plan (decided 2026-11-13, D146 and D147; fix round 2026-11-14)
 
 The Projector (Tasks menu, staff; and the Display role's shop screen) has a switch at its top right: **Meeting |
-Practice | Build plan**, kept as a saved choice (Reset clears it). A first visit shows Practice. Each view is one
-screen on a TV, in short lines.
+Practice | Build plan**, kept as a saved choice (Reset clears it, and the Projector's own state: a note being edited,
+the page, the rotation's turn). A first visit shows Practice. Each view is one screen on a TV, in short lines.
 
-**Countdown strip** (top of Meeting and Practice): "Kickoff · Sat, Jan 9 · 60 days · 13 practices", then the next four
-milestones not yet met, by date, each a small card (project, name, date, "in 2 days · 1 practice left", "today" or
-"3 days late" in words, a thin bar and "1 of 5 tasks done"). The kickoff date is the Calendar's kickoff event
-(`D.calApi.kickoff`); days and practices are counted (practices are the Calendar's meet days from today up to the day
-before). The Build plan's heading reads the same value. Staff open the project from a card.
+**Countdown strip** (top of Meeting and Practice): "Kickoff · Sat, Jan 9 · 60 days · 13 practices before it", then the
+next four milestones not yet met, by date, each a small card (project, date, name, "in 2 days · 2 practices left",
+"today" or "3 days late" in words, a thin bar and "1 of 5 tasks done"). The kickoff date is the Calendar's kickoff
+event (`D.calApi.kickoff`); days and practices are counted from the Calendar's meet days, never typed in. **A
+milestone's due day is a working day**, so its practices left run from today through that day; the kickoff is an
+event, so it counts the practices before it. The Build plan's heading and its "Next milestones" card read the same
+data. Staff open the project from a card. On a window under 800 px tall a card is three lines (project and date; name;
+"2 practices left · 1 of 5 done" with the bar); on a phone the season and each milestone are one short line, no bar.
 
 **Practice** (the general display, unattended): the demo's time, large; "Practice until 6:00 pm · 2 h 18 min left ·
 Clean-up starts at 5:45 pm · 5 people in the shop now" (on a day with no practice, the next practice); the countdown;
 then **Working on now** (in progress, by project, with who), **Needs help** (blocked, with what each waits on, as a
-word and a mark) and **Ready to pick up** (to do, nobody assigned, due by the second practice from today; if none,
-the to-do tasks due soonest). Only Ready to pick up stops at what fits ("and 11 more in Tasks"). "Rotate with the build
-plan" (on for the Display role, off for staff, saved) makes Practice and the Build plan take turns every 45 s, held
-while someone pressed a key or moved the pointer in the last 60 s; with reduced motion the change has no fade.
+word and a mark) and **Ready to pick up**: top-level to-do tasks with **nobody assigned, nothing unfinished they wait
+on and no part still to arrive**, with or without a due date (dated first, by date). It shows at most 6 rows, then
+"and 4 more"; with nothing free it says "Nothing is waiting for a person. Ask a mentor what is next." Working on now and
+Needs help always show every task: first Ready shrinks to 3 rows, then the type gets denser and Working on now takes
+half the width in two columns, then the view turns pages as the Meeting view does. "Rotate with the build plan" (on for
+the Display role, off for staff, saved) makes Practice and the Build plan take turns every 45 s, held while someone
+pressed a key or moved the pointer in the last 60 s; with reduced motion the change has no fade.
 
-**Meeting** adds, above its lists, **Today at a glance** (practice time, mentors coming, snacks, parts arrived since
-the last practice, each read from the app that owns it and shown only when there is one) and a **Note for today**
-that staff edit in place (Enter saves, Escape cancels; absent when empty). Then the two lists:
+**Meeting** adds, above its lists, **Today at a glance** (practice time, mentors coming, snacks, parts in since the
+last practice, each read from the app that owns it and shown only when there is one; on a day with no practice: "No
+practice today · Next practice: Thu, Nov 12, 3:30 to 6:00 pm", and no mentors or snacks) and a **Note for today**
+(they share a row when both fit). Mentors and admins edit the note in place (Enter saves, Escape cancels, "118 / 140";
+the draft survives redraws while the Meeting view stays open; leaving the view drops it); it is absent when empty.
+Then the two lists:
 - **Last practice · Thu, Nov 5**: the last day the team met before today, read from the Calendar
   (`D.calApi.meetDays`), so a practice cancelled or added there moves it. Every top-level task that was due that day
-  or was finished that day (a task keeps the day it was marked done, `doneOn`), each saying how it ended: "Done", or
-  "Not finished" and its state now. The heading counts "3 of 5 done".
-- **Today · Tue, Nov 10**: every top-level task due today, in progress, blocked, or overdue and not done. A row carried
-  from before today has a small "from Thu, Nov 5" tag. A task can be in both lists.
+  or was finished that day (a task keeps the day it was marked done, `doneOn`, also when it is made straight into
+  Done), each saying how it ended: "Done" (finished on or before that day), **"Done since"** (finished after it), or
+  "Not finished" and its state now. The heading counts what is done now: "3 of 5 done".
+- **Today · Tue, Nov 10**: every top-level task due today, in progress, blocked, overdue and not done, **or finished
+  today** (it stays, marked Done, so the list shows the day's progress). A row carried from before today has a small
+  "from Thu, Nov 5" tag. A task can be in both lists.
 
 Rows are grouped by project (Tasks menu order), then blocked, in progress, to do, done, then title. Each shows the
 state mark used in Tasks (blocked is a square with "!" and the word), the full title, who, the subteam, what a blocked
-task waits on and "1 of 3 steps". Nothing is ever cut: when the rows do not fit the window, the type gets smaller, then
-each list gets two columns, then the lists split into pages by whole project groups ("1 / 3", Left and Right arrow
-keys, two buttons; the Display role turns the page every 20 s, pausing 60 s after a turn by hand). Staff click a row
-to open the task; the Display role's rows are plain text. Below 1024 px the lists stack and the page scrolls.
+task waits on and "1 of 3 steps"; a screen reader hears all of it. Nothing is ever cut: when the rows do not fit the
+window, the type gets smaller, then each list gets two columns, then pages ("1 / 3", Left and Right arrow keys, two
+buttons; the Display role turns the page every 20 s, paused for 60 s by any key press or pointer move). Pages and
+columns are filled by rows: a project that goes on in the next column or on the next page repeats its heading with
+"(continued)"; a project is kept whole in one column when that costs no extra page; the last two pages are balanced
+so none holds a lone row. Both views refit at once when the window changes size. Every control has the gold focus ring,
+and keeps the focus across a redraw. Staff click a row to open the task; the Display role's rows are plain text. Below
+1024 px the lists stack and the page scrolls.
 
 ## Apps, Tools and More (decided 2026-11-13, D139)
 
