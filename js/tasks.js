@@ -284,7 +284,7 @@ function timeline() {
     var m = c.type === "gap" ? null : monday(c.date);
     if (m !== wk) { closeWeek(k); wk = m; wkStart = k; }
     if (c.type === "day") heads += '<div class="tlday' + (c.date === TODAYS ? " istoday" : "") + '" style="grid-row:2;grid-column:' + (k + 2) + '" data-date="' + c.date + '" data-k="' + k + '" data-tip="' + esc(fmt(c.date) + " · " + (c.kind === "build" ? "Build day" : "Practice") + (c.date === TODAYS ? " · today" : "")) + '"><span>' + fmt(c.date, { weekday: "short" }) + "</span><b>" + parse(c.date).getDate() + "</b></div>";
-    else if (c.type === "mark") heads += '<div class="tlmarkh" style="grid-row:2;grid-column:' + (k + 2) + '" data-date="' + c.date + '" data-tip="' + esc(c.items.join("; ") + " · " + fmt(c.date) + ", no practice that day") + '"><span aria-hidden="true">◆</span><b>' + parse(c.date).getDate() + "</b></div>";
+    else if (c.type === "mark") heads += '<div class="tlmarkh" style="grid-row:2;grid-column:' + (k + 2) + '" data-date="' + c.date + '" data-tip="' + esc(c.items.join("; ") + " · " + fmt(c.date) + ", no practice that day") + '"><b>' + parse(c.date).getDate() + "</b></div>";
   });
   closeWeek(n);
   // Body rows: a division heading, then each project with its bar and milestones, then its tasks.
