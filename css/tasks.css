@@ -306,3 +306,6 @@ button.tev:hover { background: var(--surface-3); }
   /* A taller tap area than the drawn bar, so a finger finds it. */
   .tlbar::before, .tlpbar::before { content: ""; position: absolute; inset: -9px 0; }
 }
+/* While a bar is dragged: it sits on top, and a small label names the day it will land on. */
+.tlbar.dragging { z-index: 4; opacity: 1; cursor: grabbing; box-shadow: 0 4px 12px rgba(0,0,0,.25); }
+.tldrag { position: fixed; z-index: 70; padding: 3px 8px; border-radius: 6px; background: var(--rail); color: var(--rail-text); font-size: .8rem; font-weight: 600; pointer-events: none; white-space: nowrap; }
