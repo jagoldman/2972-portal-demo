@@ -402,11 +402,13 @@ document.addEventListener("click", function (e) {
 }, true);
 document.addEventListener("keydown", function (e) {
   var el = document.activeElement; if (!el || !el.classList || !el.classList.contains("tkbar")) return;
-  if (e.key !== "ArrowLeft" && e.key !== "ArrowRight") return;
-  e.preventDefault();
+  // A modifier (Alt or Cmd for Back, Shift, Ctrl) means the key is not for the bar. The browser's own use of the key
+  // (scrolling the chart) is stopped only when the press really moves the bar.
+  if (e.key !== "ArrowLeft" && e.key !== "ArrowRight" || e.altKey || e.metaKey || e.ctrlKey || e.shiftKey) return;
   if (!el.classList.contains("movable")) return;
   var cells = tlDayCells(), len = +el.dataset.len, end = +el.dataset.end + (e.key === "ArrowRight" ? 1 : -1);
   if (end < len - 1 || end > cells.length - 1) return;
+  e.preventDefault();
   var id = el.dataset.v;
   if (tlMove(id, cells[end].date)) { var b = document.querySelector('.tkbar[data-v="' + id + '"]'); if (b) b.focus(); }
 });
