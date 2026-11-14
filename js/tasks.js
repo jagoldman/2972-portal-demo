@@ -267,7 +267,7 @@ function tlBar(M, x, row, canMove) {
   var end = dayFor(M, x.due), len = tlLen(x), start = Math.max(0, end - len + 1);
   var after = x.due > TL_TO, before = M.dayK.length && x.due < M.cols[M.dayK[0]].date;
   var outside = after || before, label = x.title + ", " + tlStateWord(x) + ", due " + fmt(x.due) + (after ? " (after this chart)" : before ? " (before this chart)" : "");
-  var tip = x.title + " · " + (x.who.length ? x.who.join(", ") : "nobody yet") + " · due " + fmt(x.due);
+  var tip = x.title + " · " + tlStateWord(x) + " · " + (x.who.length ? x.who.join(", ") : "nobody yet") + " · due " + fmt(x.due);
   // A task due outside the chart's dates is not moved from the chart (its bar only marks the edge): use the task panel.
   var movable = canMove && x.st !== "done" && !outside;
   if (canMove && outside && x.st !== "done") { label += ". Change its date in the task panel"; tip += " · change the date in the task panel"; }
@@ -324,7 +324,7 @@ function timeline() {
     back += '<div class="tltoday' + (next >= n ? " end" : "") + '" style="grid-row:1 / span ' + (rows + 2) + ";grid-column:" + (Math.min(next, n - 1) + 2) + '" data-tip="Today, ' + esc(fmt(TODAYS)) + '"></div>';
     todayNote = "the red line is today";
   }
-  var help = "Each column is a practice, build or competition day. Bars end on the due date, ◆ is a milestone, " + todayNote + "." + (canMove ? " Drag a bar, or focus it and use the arrow keys, to move its due date." : "");
+  var help = "Each column is a practice, build or competition day. Bars end on the due date; a striped bar is blocked, a ✓ is done; ◆ is a milestone, " + todayNote + "." + (canMove ? " Drag a bar, or focus it and use the arrow keys, to move its due date." : "");
   return '<div class="card"><p class="who tlhelp">' + help + '</p><div class="tablewrap tlwrap" data-keepscroll="tl"><div class="tl" style="grid-template-columns:' + tmpl + '">' + heads + back + body + "</div></div></div>";
 }
 /* ---------- Moving a bar (mentors, admins, and a student in Lead mode) ----------

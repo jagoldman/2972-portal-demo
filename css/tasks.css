@@ -301,7 +301,9 @@ button.tev:hover { background: var(--surface-3); }
 .tkbar { --pc: var(--accent); }
 .tkbar::after { height: 14px; background: var(--pc); border: 1.5px solid color-mix(in srgb, var(--pc) 55%, var(--text)); }
 .tkbar.st-todo::after { background: color-mix(in srgb, var(--pc) 45%, var(--surface)); }
-.tkbar.done::after { background: var(--ok); border-color: color-mix(in srgb, var(--ok) 60%, var(--text)); }
+/* State is never colour alone: blocked has a red edge and a diagonal hatch; done is green with a small tick at its end. */
+.tkbar.st-blocked::after { border-color: var(--bad); border-width: 2px; background-image: repeating-linear-gradient(135deg, transparent 0 3px, color-mix(in srgb, var(--bad) 55%, transparent) 3px 5px); }
+.tkbar.done::after { background: var(--ok); border-color: color-mix(in srgb, var(--ok) 60%, var(--text)); content: "✓"; color: var(--surface); font: 700 10px/11px var(--body); text-align: right; padding-right: 3px; box-sizing: border-box; }
 .tlpbar::after { height: 16px; background: var(--pc, var(--gold)); opacity: .85; }
 .tkbar.movable { cursor: grab; touch-action: pan-x pan-y; }
 .tlpbar:hover::after { opacity: 1; }
