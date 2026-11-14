@@ -461,7 +461,7 @@ function overview() {
     Object.keys(P[st]).forEach(function (k) { if (P[st][k].s === "progress") prog++; });
     return '<tr class="click" data-act="skstudent" data-v="' + esc(st) + '"><td><b>' + esc(st) + "</b>" + (st === "Sam Ortiz" && S.role === "student" ? ' <span class="who">(you)</span>' : "") + "</td>" + cells + '<td class="num">' + d + '</td><td class="num">' + prog + '</td><td class="num">' + D.pct(d, all) + "%</td></tr>";
   }).join("");
-  html += '<div class="card"><div class="row between"><h2>Students</h2><span class="who">Tap a row to open their trees.</span></div><div class="tablewrap" data-keepscroll="skstudents"><table class="sktable"><thead><tr><th>Student</th>' + TREES.map(function (t) { return '<th data-tip="' + esc(t.name) + '">' + t.tag + "</th>"; }).join("") + "<th>Done</th><th>Started</th><th>Overall</th></tr></thead><tbody>" + rows + "</tbody></table></div></div>";
+  html += '<div class="card"><div class="row between"><h2>Students</h2><span class="who">Tap a row to open their trees.</span></div><div class="tablewrap" data-keepscroll="skstudents"><table class="sktable"><thead><tr><th>Student</th>' + TREES.map(function (t) { return "<th" + (t.name !== t.tag ? ' data-tip="' + esc(t.name) + '"' : "") + ">" + t.tag + "</th>"; }).join("") + "<th>Done</th><th>Started</th><th>Overall</th></tr></thead><tbody>" + rows + "</tbody></table></div></div>";
   return html;
 }
 function permitState(p, tool) {
