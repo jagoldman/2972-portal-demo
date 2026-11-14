@@ -283,8 +283,27 @@ function tlBar(M, x, row, canMove) {
   return '<button class="tkbar st-' + x.st + (x.st === "done" ? " done" : "") + (after ? " after" : "") + (before ? " before" : "") + (movable ? " movable" : "") + '" data-act="topen" data-v="' + x.id + '" data-end="' + end + '" data-len="' + (end - start + 1) + '"' +
     ' style="grid-row:' + row + ";grid-column:" + (M.dayK[start] + 2) + " / " + (M.dayK[end] + 3) + ";--pc:" + proj(x.p).color + '" aria-label="' + esc(label) + (movable ? ". Arrow keys move it one practice day" : "") + '" data-tip="' + esc(tip) + '"></button>';
 }
+/* Rows that open and close. A caret before each division and project name; a closed project shows only its own row
+   (bar and milestones), a closed division only its own row. First visit: divisions open, projects closed except those
+   where the person has a task of their own. Kept per person with the other saved choices (Reset clears them). */
+function tlRows() {
+  var saved = D.pref("tlrows", null) || { div: {}, proj: {} }, out = { div: {}, proj: {} }, mine = me();
+  T().divs.forEach(function (d) {
+    out.div[d.id] = Object.prototype.hasOwnProperty.call(saved.div, d.id) ? !!saved.div[d.id] : true;
+    d.projects.forEach(function (p) { out.proj[p.id] = Object.prototype.hasOwnProperty.call(saved.proj, p.id) ? !!saved.proj[p.id] : T().list.some(function (x) { return x.p === p.id && x.who.indexOf(mine) >= 0; }); });
+  });
+  return out;
+}
+function tlShown(M) { return M.divs.map(function (d) { return { d: d, ps: d.projects.filter(function (p) { return T().list.some(function (x) { return x.p === p.id && x.due && !x.parent; }); }) }; }); }
+function tlAnyClosed(M, r) { return tlShown(M).some(function (g) { return !r.div[g.d.id] || g.ps.some(function (p) { return !r.proj[p.id]; }); }); }
+// A link that points the Timeline at a task (T().at.task) opens that task's project and division first.
+function tlReveal(id) { var x = task(id); if (!x) return; var r = tlRows(), dv = divOf(x.p); r.proj[x.p] = true; if (dv) r.div[dv.id] = true; D.setPref("tlrows", r); }
+function tlCaret(kind, id, name, open, count) {
+  return '<button class="tlcaret" data-act="tlrow" data-k="' + kind + '" data-v="' + id + '" aria-expanded="' + open + '" aria-label="' + esc(name) + '" data-tip="' + esc((open ? "Hide " : "Show ") + (kind === "div" ? "its projects" : "its " + count + (count === 1 ? " task" : " tasks"))) + '">' + D.ic("chevron", 14) + "</button>";
+}
 function timeline() {
-  var M = tlModel(), cols = M.cols, canMove = lead(), html = "", row = 3, n = cols.length;
+  if (T().at.task) { tlReveal(T().at.task); T().at.revealed = T().at.task; delete T().at.task; }
+  var M = tlModel(), cols = M.cols, canMove = lead(), html = "", row = 3, n = cols.length, R = tlRows();
   if (!M.dayK.length) return '<div class="card"><p class="mute">No practices are on the Calendar between Oct 26 and Jan 4.</p></div>';
   var tmpl = "var(--tlname) " + cols.map(function (c) { return c.type === "day" ? "minmax(var(--tlday), 1fr)" : c.type === "mark" ? "var(--tlmark)" : "var(--tlgap)"; }).join(" ");
   // Week labels: one per week, spanning that week's columns (a break column has none).
@@ -302,16 +321,20 @@ function timeline() {
   // Body rows: a division heading, then each project with its bar and milestones, then its tasks.
   var body = "";
   M.divs.forEach(function (d) {
-    body += '<h3 class="tlgrp" style="grid-row:' + row++ + '">' + esc(d.name) + "</h3>";
+    var dOpen = R.div[d.id];
+    body += '<div class="tlgrp" style="grid-row:' + row++ + '">' + tlCaret("div", d.id, d.name, dOpen) + "<h3>" + esc(d.name) + "</h3></div>";
+    if (!dOpen) return;
     d.projects.forEach(function (p) {
       var xs = T().list.filter(function (x) { return x.p === p.id && x.due && !x.parent; }); if (!xs.length) return;
       var ends = xs.map(function (x) { return dayFor(M, x.due); }), starts = xs.map(function (x, i) { return Math.max(0, ends[i] - tlLen(x) + 1); });
       var lo = Math.min.apply(null, starts), hi = Math.max.apply(null, ends);
-      body += '<button class="ttitle tlp" data-act="tproj" data-v="' + p.id + '" style="grid-row:' + row + '"><span class="sw2" style="background:' + p.color + '"></span> ' + esc(p.name) + "</button>" +
+      var pOpen = R.proj[p.id];
+      body += '<div class="tlp" style="grid-row:' + row + '">' + tlCaret("proj", p.id, p.name, pOpen, xs.length) + '<button class="ttitle tlpname" data-act="tproj" data-v="' + p.id + '"><span class="sw2" style="background:' + p.color + '"></span> ' + esc(p.name) + "</button></div>" +
         '<button class="tlpbar" data-act="tproj" data-v="' + p.id + '" style="grid-row:' + row + ";grid-column:" + (M.dayK[lo] + 2) + " / " + (M.dayK[hi] + 3) + ";--pc:" + p.color + '" aria-label="' + esc(p.name + ", project, " + short(M.cols[M.dayK[lo]].date) + " to " + short(M.cols[M.dayK[hi]].date)) + '" data-tip="' + esc(p.name + " · " + xs.length + (xs.length === 1 ? " task" : " tasks") + " · open the project") + '"></button>' +
         p.ms.map(function (m) { var k = M.isMeet[m[2]] ? M.dayK[dayFor(M, m[2])] : colOfDate(M, m[2]); if (k < 0 || m[2] < TL_FROM || m[2] > TL_TO) return ""; // A milestone is a button: its own name and tip, and a click opens the project.
           return '<button class="tlms' + (m[3] ? " met" : "") + '" data-act="tproj" data-v="' + p.id + '" style="grid-row:' + row + ";grid-column:" + (k + 2) + '" aria-label="' + esc("Milestone: " + m[1] + ", " + fmt(m[2]) + (m[3] ? ", met" : "")) + '" data-tip="' + esc("Milestone: " + m[1] + " · " + fmt(m[2]) + (m[3] ? " · met" : "") + " · open " + p.name) + '"></button>'; }).join("");
       row++;
+      if (!pOpen) return;
       xs.forEach(function (x) {
         var bb = x.by.map(task).filter(function (b) { return b && b.due > x.due; });
         body += '<button class="ttitle tlt" data-act="topen" data-v="' + x.id + '" style="grid-row:' + row + '">' + esc(x.title) + (bb.length ? ' <span class="pill bad" data-tip="Due before something it waits on">Out of order</span>' : "") + "</button>" + tlBar(M, x, row, canMove);
@@ -333,7 +356,9 @@ function timeline() {
     todayNote = "the red line is today";
   }
   var help = "Each column is a practice, build or competition day. Bars end on the due date; a striped bar is blocked, a ✓ is done; ◆ is a milestone, " + todayNote + "." + (canMove ? " Drag a bar, or focus it and use the arrow keys, to move its due date." : "");
-  return '<div class="card"><p class="who tlhelp">' + help + '</p><div class="tablewrap tlwrap" data-keepscroll="tl"><div class="tl" style="grid-template-columns:' + tmpl + '">' + heads + back + body + "</div></div></div>";
+  var anyClosed = tlAnyClosed(M, R);
+  var all = '<button class="btn ghost sm tlall" data-act="tlall" data-tip="' + (anyClosed ? "Show every division's projects and their tasks" : "Hide every project's tasks") + '">' + (anyClosed ? "Open all" : "Close all") + "</button>";
+  return '<div class="card"><div class="tltop"><p class="who tlhelp">' + help + "</p>" + all + '</div><div class="tablewrap tlwrap" data-keepscroll="tl"><div class="tl" style="grid-template-columns:' + tmpl + '">' + heads + back + body + "</div></div></div>";
 }
 /* ---------- Moving a bar (mentors, admins, and a student in Lead mode) ----------
    Drag a bar sideways with a mouse or pen: it follows the pointer, snaps to practice-day columns and shows the day it
@@ -587,6 +612,10 @@ var A = D.acts;
 function h(x, what, snap) { x.hist.push([D.me().name, what, "Just now", snap || { st: x.st, due: x.due }]); }
 function at(v) { T().at = v; T().mopen = false; D.S.drawer = null; D.render(); }
 A.tgo = function (b) { at({ v: b.dataset.v }); };
+// Open or close a division or project row; focus stays on its caret, and the chart keeps its sideways scroll.
+A.tlrow = function (b) { var r = tlRows(), k = b.dataset.k, v = b.dataset.v; r[k][v] = !r[k][v]; D.setPref("tlrows", r); D.render(); var c = document.querySelector('.tlcaret[data-k="' + k + '"][data-v="' + v + '"]'); if (c) c.focus({ preventScroll: true }); };
+// Open all: every division and project. Close all: every project (the divisions stay open, so the projects show).
+A.tlall = function () { var M = tlModel(), r = tlRows(), open = tlAnyClosed(M, r); Object.keys(r.proj).forEach(function (p) { r.proj[p] = open; }); Object.keys(r.div).forEach(function (d) { r.div[d] = true; }); D.setPref("tlrows", r); D.render(); var c = document.querySelector(".tlall"); if (c) c.focus({ preventScroll: true }); };
 A.tproj = function (b, e) { if (e && e.target.closest("[data-act='texp']")) { A.texp(e.target.closest("[data-act='texp']")); return; } T().expanded[b.dataset.v] = true; at({ v: "project", p: b.dataset.v }); };
 A.texp = function (b) { var ex = T().expanded; ex[b.dataset.v] = !ex[b.dataset.v]; D.render(); };
 A.tlist = function (b) { at({ v: "list", p: b.dataset.p, l: b.dataset.v }); };

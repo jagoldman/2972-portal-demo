@@ -272,9 +272,19 @@ button.tev:hover { background: var(--surface-3); }
 .tlwrap { overflow-x: auto; overscroll-behavior-x: contain; }
 .tl { --tlname: minmax(150px, 220px); --tlday: 40px; --tlmark: 18px; --tlgap: 26px; --tlrow: 32px; display: grid; width: max-content; min-width: 100%; align-items: center; position: relative; grid-auto-rows: var(--tlrow); }
 .tlcorner, .tlgrp, .tlp, .tlt { grid-column: 1; position: sticky; left: 0; z-index: 3; align-self: stretch; background: var(--surface); }
-.tlgrp { display: flex; align-items: flex-end; padding: 0 8px 4px 0; font-size: .9rem; }
-.tlp { display: flex; gap: 6px; align-items: center; padding-right: 8px; font-weight: 600; }
-.tlt { display: block; padding: 0 8px 0 16px; font-weight: 500; line-height: var(--tlrow); }
+.tlgrp { display: flex; align-items: center; gap: 2px; padding-right: 8px; }
+.tlgrp h3 { margin: 0; font-size: .9rem; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.tlp { display: flex; gap: 2px; align-items: center; padding-right: 8px; min-width: 0; }
+.tlpname { display: flex; gap: 6px; align-items: center; min-width: 0; font-weight: 600; }
+.tlt { display: block; padding: 0 8px 0 30px; font-weight: 500; line-height: var(--tlrow); }
+/* Rows that open and close: a caret button before each division and project name; it turns when open. */
+.tlcaret { flex: none; display: inline-grid; place-items: center; width: 24px; height: 24px; padding: 0; border: 0; border-radius: 6px; background: none; color: var(--mute); cursor: pointer; }
+.tlcaret:hover { background: var(--surface-2); color: var(--text); }
+.tlcaret svg { transition: transform .15s ease; }
+.tlcaret[aria-expanded="true"] svg { transform: rotate(90deg); }
+.tlcaret:focus-visible { outline: 2px solid var(--accent); outline-offset: 0; }
+.tltop { display: flex; align-items: flex-start; justify-content: space-between; gap: 12px; }
+.tltop .tlall { flex: none; }
 .tl .pill { margin-left: 6px; font-size: .78rem; }
 /* The header: two short lines, the week, then each column's weekday and date. */
 .tl { grid-template-rows: auto auto; }
@@ -329,6 +339,8 @@ button.tev:hover { background: var(--surface-3); }
 /* A finger needs 44 px: phones and any coarse pointer get taller rows (the drawn bar stays slim). */
 @media (pointer: coarse), (max-width: 640px) {
   .tl { --tlrow: 44px; grid-auto-rows: minmax(var(--tlrow), auto); }
+  .tlcaret { width: 44px; height: 44px; }
+  .tlt { padding-left: 24px; }
   /* A one-column bar is about 34 px wide: an invisible ::before makes its tap area at least 44 px wide. */
   .tkbar::before { content: ""; position: absolute; top: 0; bottom: 0; left: 50%; width: max(100%, 44px); transform: translateX(-50%); }
 }
