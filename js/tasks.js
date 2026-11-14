@@ -236,6 +236,8 @@ function calendar() {
    when there is no estimate). The bar is the task: a click opens it. Leads also move it (see "Moving a bar" below). */
 var TL_FROM = "2026-10-26", TL_TO = "2027-01-04", PRACTICE_H = 2.5;
 function short(s) { return fmt(s, { month: "short", day: "numeric" }); }
+// "Nov 20–30" within one month, "Dec 18–Jan 4" across two.
+function spanText(a, b) { return a.slice(0, 7) === b.slice(0, 7) ? short(a) + "–" + parse(b).getDate() : short(a) + "–" + short(b); }
 function tlLen(x) { return x.est ? Math.max(1, Math.ceil(x.est / PRACTICE_H)) : 2; }
 function tlModel() {
   var api = D.calApi, meet = api && api.meetDays ? api.meetDays(TL_FROM, TL_TO) : [], isMeet = {};
@@ -270,7 +272,7 @@ function tlBar(M, x, row, canMove) {
   var label = x.title + ", " + tlStateWord(x) + ", due " + fmt(x.due) + (after ? " (after this chart)" : "");
   var tip = x.title + " · " + (x.who.length ? x.who.join(", ") : "nobody yet") + " · due " + fmt(x.due);
   var movable = canMove && x.st !== "done";
-  return '<button class="tlbar' + (x.st === "done" ? " done" : "") + (after ? " after" : "") + (before ? " before" : "") + (movable ? " movable" : "") + '" data-act="topen" data-v="' + x.id + '" data-end="' + end + '" data-len="' + (end - start + 1) + '"' +
+  return '<button class="tkbar' + (x.st === "done" ? " done" : "") + (after ? " after" : "") + (before ? " before" : "") + (movable ? " movable" : "") + '" data-act="topen" data-v="' + x.id + '" data-end="' + end + '" data-len="' + (end - start + 1) + '"' +
     ' style="grid-row:' + row + ";grid-column:" + (M.dayK[start] + 2) + " / " + (M.dayK[end] + 3) + '" aria-label="' + esc(label) + (movable ? ". Arrow keys move it one practice day" : "") + '" data-tip="' + esc(tip) + '"></button>';
 }
 function timeline() {
@@ -311,7 +313,7 @@ function timeline() {
   var rows = row - 3, todayK = colOfDate(M, TODAYS), back = "";
   cols.forEach(function (c, k) {
     var cls = c.type === "day" ? "tlcol" + (c.kind === "build" ? " build" : "") + (k === todayK ? " today" : "") : c.type === "mark" ? "tlcol mark" : "tlcol gap";
-    back += '<div class="' + cls + '" style="grid-row:3 / span ' + rows + ";grid-column:" + (k + 2) + '"' + (c.type === "gap" ? ' data-tip="' + esc("No practice from " + fmt(c.from) + " to " + fmt(c.to)) + '"><span>No practice ' + esc(short(c.from) + "–" + short(c.to)) + "</span></div>" : "></div>");
+    back += '<div class="' + cls + '" style="grid-row:3 / span ' + rows + ";grid-column:" + (k + 2) + '"' + (c.type === "gap" ? ' data-tip="' + esc("No practice from " + fmt(c.from) + " to " + fmt(c.to)) + '"><span>No practice ' + esc(spanText(c.from, c.to)) + "</span></div>" : "></div>");
   });
   var todayNote = "the gold column is today";
   if (todayK < 0) {
@@ -328,7 +330,9 @@ function timeline() {
    will land on; dropping it sets the due date to that day and keeps the bar's length. A move under 4 px is a click and
    opens the task. On a touch screen bars never drag (that would fight scrolling the chart); a tap opens the task.
    With a bar focused, Left and Right move it one practice day. A done task's bar does not move. */
-var DRAG_PX = 4, tlDrag = null, eatClickUntil = 0;
+// eatClick: the click that ends a drag must not also open the task. It is set when a drag ends and cleared by the next
+// pointer press, so a later real click always counts; a keyboard click (detail 0) is never eaten.
+var DRAG_PX = 4, tlDrag = null, eatClick = false;
 function tlDayCells() { return Array.from(document.querySelectorAll(".tl .tlday")).map(function (c) { var r = c.getBoundingClientRect(); return { date: c.dataset.date, k: +c.dataset.k, mid: r.left + r.width / 2 }; }); }
 function tlMove(id, toDate) {
   var x = task(id); if (!x || x.st === "done" || x.due === toDate) return false;
@@ -345,7 +349,8 @@ function tlLabel(text, el) {
 }
 function tlEndDrag() { var lab = document.querySelector(".tldrag"); if (lab) lab.remove(); if (tlDrag && tlDrag.el) tlDrag.el.classList.remove("dragging"); tlDrag = null; }
 document.addEventListener("pointerdown", function (e) {
-  var el = e.target.closest && e.target.closest(".tlbar.movable");
+  eatClick = false;
+  var el = e.target.closest && e.target.closest(".tkbar.movable");
   if (!el || e.button !== 0 || e.pointerType === "touch") return;
   var cells = tlDayCells(), end = +el.dataset.end, len = +el.dataset.len;
   tlDrag = { el: el, id: el.dataset.v, x0: e.clientX, cells: cells, end0: end, end: end, len: len, moved: false };
@@ -366,25 +371,25 @@ document.addEventListener("pointermove", function (e) {
 document.addEventListener("pointerup", function () {
   var d = tlDrag; if (!d) return;
   if (d.moved) {
-    eatClickUntil = Date.now() + 600; // the click that ends a drag must not also open the task
+    eatClick = true;
     var to = d.cells[d.end].date; tlEndDrag();
     if (d.end !== d.end0) tlMove(d.id, to); else D.render();
-    var b = document.querySelector('.tlbar[data-v="' + d.id + '"]'); if (b) b.focus({ preventScroll: true });
+    var b = document.querySelector('.tkbar[data-v="' + d.id + '"]'); if (b) b.focus({ preventScroll: true });
   } else tlEndDrag();
 });
 document.addEventListener("pointercancel", function () { if (tlDrag) { var moved = tlDrag.moved; tlEndDrag(); if (moved) D.render(); } });
 document.addEventListener("click", function (e) {
-  if (Date.now() < eatClickUntil && e.target.closest && e.target.closest(".tl")) { e.stopImmediatePropagation(); e.preventDefault(); eatClickUntil = 0; }
+  if (eatClick && e.detail > 0) { eatClick = false; if (e.target.closest && e.target.closest(".tl")) { e.stopImmediatePropagation(); e.preventDefault(); } }
 }, true);
 document.addEventListener("keydown", function (e) {
-  var el = document.activeElement; if (!el || !el.classList || !el.classList.contains("tlbar")) return;
+  var el = document.activeElement; if (!el || !el.classList || !el.classList.contains("tkbar")) return;
   if (e.key !== "ArrowLeft" && e.key !== "ArrowRight") return;
   e.preventDefault();
   if (!el.classList.contains("movable")) return;
   var cells = tlDayCells(), len = +el.dataset.len, end = +el.dataset.end + (e.key === "ArrowRight" ? 1 : -1);
   if (end < len - 1 || end > cells.length - 1) return;
   var id = el.dataset.v;
-  if (tlMove(id, cells[end].date)) { var b = document.querySelector('.tlbar[data-v="' + id + '"]'); if (b) b.focus(); }
+  if (tlMove(id, cells[end].date)) { var b = document.querySelector('.tkbar[data-v="' + id + '"]'); if (b) b.focus(); }
 });
 function filtersBar() {
   var tt = T();
