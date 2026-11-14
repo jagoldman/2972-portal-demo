@@ -335,8 +335,10 @@ var DRAG_PX = 4, tlDrag = null, eatClick = false;
 function tlDayCells() { return Array.from(document.querySelectorAll(".tl .tlday")).map(function (c) { var r = c.getBoundingClientRect(); return { date: c.dataset.date, k: +c.dataset.k, mid: r.left + r.width / 2 }; }); }
 function tlMove(id, toDate) {
   var x = task(id); if (!x || x.st === "done" || x.due === toDate) return false;
-  var from = x.due;
-  D.withUndo("Moved to " + fmt(toDate) + ".", function () { x.due = toDate; h(x, "changed the due date to " + fmt(toDate) + " on the timeline", { st: x.st, due: toDate }); }, function () { x.due = from; x.hist.pop(); });
+  var from = x.due, entry = null;
+  // Undo takes back this move's own history line, whatever was written after it (not just the last line).
+  D.withUndo("Moved to " + fmt(toDate) + ".", function () { x.due = toDate; h(x, "changed the due date to " + fmt(toDate) + " on the timeline", { st: x.st, due: toDate }); entry = x.hist[x.hist.length - 1]; },
+    function () { x.due = from; var i = x.hist.indexOf(entry); if (i >= 0) x.hist.splice(i, 1); });
   return true;
 }
 function tlLabel(text, el) {
