@@ -266,9 +266,11 @@ function tlStateWord(x) { return ST[x.st][0]; }
 function tlBar(M, x, row, canMove) {
   var end = dayFor(M, x.due), len = tlLen(x), start = Math.max(0, end - len + 1);
   var after = x.due > TL_TO, before = M.dayK.length && x.due < M.cols[M.dayK[0]].date;
-  var label = x.title + ", " + tlStateWord(x) + ", due " + fmt(x.due) + (after ? " (after this chart)" : "");
+  var outside = after || before, label = x.title + ", " + tlStateWord(x) + ", due " + fmt(x.due) + (after ? " (after this chart)" : before ? " (before this chart)" : "");
   var tip = x.title + " · " + (x.who.length ? x.who.join(", ") : "nobody yet") + " · due " + fmt(x.due);
-  var movable = canMove && x.st !== "done";
+  // A task due outside the chart's dates is not moved from the chart (its bar only marks the edge): use the task panel.
+  var movable = canMove && x.st !== "done" && !outside;
+  if (canMove && outside && x.st !== "done") { label += ". Change its date in the task panel"; tip += " · change the date in the task panel"; }
   // Drawn in the project's colour: lighter for to do, full for in progress or blocked, green when done. The state is
   // also in the bar's name and tip, never in colour alone.
   return '<button class="tkbar st-' + x.st + (x.st === "done" ? " done" : "") + (after ? " after" : "") + (before ? " before" : "") + (movable ? " movable" : "") + '" data-act="topen" data-v="' + x.id + '" data-end="' + end + '" data-len="' + (end - start + 1) + '"' +
