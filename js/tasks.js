@@ -126,7 +126,7 @@ function sidebar() {
   }).join("");
   var close = '<button class="xbtn tclose" data-act="tside" aria-label="Close menu" data-tip="Close the task menu">×</button>';
   if (D.S.role === "parent") return "";
-  return '<nav class="tside" aria-label="Tasks">' + close + '<button class="btn tnew" data-act="tnew">' + D.ic("plus", 16) + " New task</button>" +
+  return '<nav class="tside" aria-label="Tasks" data-keepscroll="tside">' + close + '<button class="btn tnew" data-act="tnew">' + D.ic("plus", 16) + " New task</button>" +
     nav("my", "My tasks", "user", mine) + nav("week", "This week", "calendar") + (staff ? nav("dash", "Dashboard", "home") : "") + nav("calendar", "Calendar", "calendar") + (staff ? nav("timeline", "Timeline", "schedule") : "") +
     (staff ? '<button class="tnav" data-act="go" data-v="projector" data-tip="Show the build plan on the shop TV">' + D.ic("projector", 17) + '<span class="lbl">Projector</span></button>' : "") +
     '<div class="sect"><span>Divisions</span>' + (D.S.role === "admin" ? '<button class="btn ghost sm" data-act="tnewdiv">+ New</button>' : "") + "</div>" + tree +
