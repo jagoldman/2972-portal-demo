@@ -27,7 +27,7 @@
 .traced path, .traced circle { fill: none; stroke: #2148a8; stroke-width: 2.2; stroke-linejoin: round; }
 .tpt { fill: #e8b931; stroke: #07090f; stroke-width: 1.5; }
 .tptl { font: 600 13px var(--body); fill: #07090f; }
-.tline { stroke: #b42318; stroke-width: 2; stroke-dasharray: 6 4; }
+.trline { stroke: #b42318; stroke-width: 2; stroke-dasharray: 6 4; }
 .tcur { stroke: #b42318; stroke-width: 2; }
 .trdist .inp { width: auto; }
 .trdist input { flex: 1 1 8rem; min-width: 0; max-width: 12rem; }

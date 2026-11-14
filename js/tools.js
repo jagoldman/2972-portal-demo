@@ -132,7 +132,7 @@ D.views["tool-trace"] = function () {
   var shot = "";
   if (sample) {
     var marks = t.pts.map(function (p, i) { return '<circle class="tpt" cx="' + p[0] + '" cy="' + p[1] + '" r="5"/><text class="tptl" x="' + (p[0] + 8) + '" y="' + (p[1] - 8) + '">' + (i + 1) + "</text>"; }).join("") +
-      (t.pts.length === 2 ? '<path class="tline" d="M' + t.pts[0].join(" ") + "L" + t.pts[1].join(" ") + '"/>' : "") +
+      (t.pts.length === 2 ? '<path class="trline" d="M' + t.pts[0].join(" ") + "L" + t.pts[1].join(" ") + '"/>' : "") +
       (t.cur ? '<path class="tcur" d="M' + (t.cur[0] - 10) + " " + t.cur[1] + "H" + (t.cur[0] + 10) + "M" + t.cur[0] + " " + (t.cur[1] - 10) + "V" + (t.cur[1] + 10) + '"/>' : "");
     shot = '<svg class="traceimg" viewBox="0 0 ' + W + " " + H + '" data-act="trtap" tabindex="0" role="group" aria-label="The sample drawing with its traced outline. Tap two points to set the real size. With a keyboard, move with the arrow keys and press Enter.">' +
       sampleDrawing() + '<g class="traced">' + o.polys.map(function (p) { return '<path d="' + polyD(p) + '"/>'; }).join("") + o.circles.map(function (c) { return '<circle cx="' + c[0] + '" cy="' + c[1] + '" r="' + c[2] + '"/>'; }).join("") + "</g>" + marks + "</svg>";

@@ -129,7 +129,7 @@ D.guideCard = function () {
   var n = list.filter(function (s) { return p.done.indexOf(s.id) >= 0; }).length, all = S.guideAll;
   return '<section class="card guidecard" aria-labelledby="guide-h"><div class="ghead"><h2 id="guide-h">Get started</h2><span class="who num">' + (n + 1) + " of " + list.length + '</span><span class="grow"></span>' +
     '<button class="btn ghost sm" data-act="guideall" aria-expanded="' + !!all + '"' + (all ? ' aria-controls="guide-all"' : "") + ">" + (all ? "Show less" : "See all") + '</button><button class="btn ghost sm" data-act="guidehide" data-tip="Remove this card. Account can bring it back.">Hide</button></div>' +
-    '<div class="gbar" aria-hidden="true"><i style="width:' + Math.round(100 * n / list.length) + '%"></i></div>' +
+    '<div class="gprogress" aria-hidden="true"><i style="width:' + Math.round(100 * n / list.length) + '%"></i></div>' +
     (all ? '<ol class="glist" id="guide-all">' + list.map(function (s, i) { var d = p.done.indexOf(s.id) >= 0; return '<li class="' + (d ? "gdone" : "") + '"><button class="gitem" data-act="guideshow" data-v="' + s.id + '"><span class="gtick" aria-hidden="true">' + (d ? D.ic("check", 14) : i + 1) + '</span><span class="grow"><b>' + esc(s.name) + "</b>" + (d ? '<span class="vh"> (done)</span>' : "") + '</span><span class="chev" aria-hidden="true">›</span></button></li>'; }).join("") + "</ol>" :
       '<div class="gnext"><div class="grow"><b>' + esc(nx.name) + '</b><span class="who">' + esc(nx.line) + '</span></div><button class="btn" data-act="guideshow" data-v="' + nx.id + '">Show me</button></div>') + "</section>";
 };
@@ -174,9 +174,9 @@ function ensureLayer() {
 }
 function cardHtml(s, g, missing) {
   var list = stops(), i = list.indexOf(s), nx = list.filter(function (x) { return !isDone(x.id) && x.id !== s.id; })[0];
-  if (g.phase === "done") return '<p class="gcount who num">' + (i + 1) + " of " + list.length + '</p><h2 id="gstop-h">Done.</h2><p id="gstop-t" aria-live="polite">' + (nx ? "Next: " + esc(nx.name) + "." : "That was the last one.") + "</p>" +
+  if (g.phase === "done") return '<p class="gstopcount who num">' + (i + 1) + " of " + list.length + '</p><h2 id="gstop-h">Done.</h2><p id="gstop-t" aria-live="polite">' + (nx ? "Next: " + esc(nx.name) + "." : "That was the last one.") + "</p>" +
     '<div class="row nowrap gacts"><button class="btn" data-act="guidenext">' + (nx ? "Next" : "Finish") + '</button><button class="btn ghost" data-act="guidelater">Later</button></div>';
-  return '<p class="gcount who num">' + (i + 1) + " of " + list.length + '</p><h2 id="gstop-h">' + esc(s.title) + '</h2><p id="gstop-t">' + esc(missing ? s.missing : sentence(s, g)) + "</p>" +
+  return '<p class="gstopcount who num">' + (i + 1) + " of " + list.length + '</p><h2 id="gstop-h">' + esc(s.title) + '</h2><p id="gstop-t">' + esc(missing ? s.missing : sentence(s, g)) + "</p>" +
     '<div class="row nowrap gacts"><button class="btn" data-act="guidegot">Got it</button><button class="btn ghost" data-act="guidelater">Later</button></div>';
 }
 function inView(t) {
