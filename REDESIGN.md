@@ -148,12 +148,16 @@ The Tasks timeline is for everyone but parents. Four rules:
    move it. Lead mode lets a student move bars, like its other edits.
 2. **Only the days the team meets.** One equal column per practice or build day, read from the Calendar app
    (`D.calApi.meetDays`), never a copy of the pattern, so cancelling or adding a practice there changes the timeline.
-   A milestone or competition on another day gets a narrow marker column on its date; a break gets one thin column
-   that says "No practice Nov 20–30". Week labels span each week's columns. A bar due on a day the team does not meet
+   A milestone or competition on another day gets a narrow marker column on its date; each of the Calendar's days off
+   gets one thin column with its own dates ("No practice Nov 23–28"); an ordinary Friday to Monday gets nothing. Week
+   labels span each week's columns; the header is two short lines (the week, then "Tue 17"). A bar due on a day the team does not meet
    ends on the practice day before (the real date stays in its name and tip). Today's column is framed in gold; if
    today is not a practice day, a red line sits between the days around it.
 3. **The bar is the task.** A click or tap on a task's bar opens it, a project's bar opens the project. Bars are
-   buttons with a name (title, state, due date), a focus ring and a tip (title, who, due date).
+   buttons with a name (title, state, due date), a focus ring and a tip (title, who, due date). Every bar is drawn in
+   its project's colour (lighter for to do, green when done) with an edge at 3:1 against the track; the state is also
+   in its name. The chart stays compact: on a laptop rows are 32 px apart and the drawn bar is 14 px, inside a button
+   as tall as its row; only a coarse pointer or a phone gets 44 px rows.
 4. **Leads move tasks by dragging.** Mentors, admins and Lead-mode students drag a bar sideways: it snaps to practice
    days, shows the day it will land on, keeps its length, and the drop sets the due date (toast with Undo, a line in
    the task's history). Under 4 px is a click. Left and Right move a focused bar one practice day. No dragging on touch
