@@ -312,7 +312,11 @@ function extTile(t) {
 }
 
 /* ---------- Render ---------- */
+// While something is being dragged (the Tasks timeline sets D.holdRender), a redraw would pull the element out from
+// under the pointer, so it waits: the drop draws once with everything that changed meanwhile (a toast expiring, say).
 D.render = function () {
+  if (D.holdRender && D.holdRender()) { D.renderHeld = true; return; }
+  D.renderHeld = false;
   var S = D.S, root = document.getElementById("root");
   var active = document.activeElement, activeId = active && active.id, selStart = null;
   try { if (active && active.selectionStart != null) selStart = active.selectionStart; } catch (e) {}

@@ -347,12 +347,22 @@ function tlLabel(text, el) {
   lab.style.top = Math.round(Math.max(8, r.top - lab.offsetHeight - 8)) + "px";
 }
 function tlEndDrag() { var lab = document.querySelector(".tldrag"); if (lab) lab.remove(); if (tlDrag && tlDrag.el) tlDrag.el.classList.remove("dragging"); tlDrag = null; }
+// No redraw while a bar is held (D.render waits; the drop draws). If one happens anyway, the drag carries on with the
+// new bar: lifted, where the pointer has it, with its label and the pointer captured.
+D.holdRender = function () { return !!tlDrag; };
+D.after.push(function () {
+  var d = tlDrag; if (!d) return;
+  var el = document.querySelector('.tkbar[data-v="' + d.id + '"]'); if (!el || el === d.el) return;
+  d.el = el;
+  if (d.moved) { el.classList.add("dragging"); el.style.gridColumn = (d.cells[d.end - d.len + 1].k + 2) + " / " + (d.cells[d.end].k + 3); tlLabel(fmt(d.cells[d.end].date), el); }
+  try { el.setPointerCapture(d.pointerId); } catch (err) {}
+});
 document.addEventListener("pointerdown", function (e) {
   eatClick = false;
   var el = e.target.closest && e.target.closest(".tkbar.movable");
   if (!el || e.button !== 0 || e.pointerType === "touch") return;
   var cells = tlDayCells(), end = +el.dataset.end, len = +el.dataset.len;
-  tlDrag = { el: el, id: el.dataset.v, x0: e.clientX, cells: cells, end0: end, end: end, len: len, moved: false };
+  tlDrag = { el: el, id: el.dataset.v, x0: e.clientX, cells: cells, end0: end, end: end, len: len, moved: false, pointerId: e.pointerId };
   try { el.setPointerCapture(e.pointerId); } catch (err) {}
 });
 document.addEventListener("pointermove", function (e) {
@@ -374,9 +384,9 @@ document.addEventListener("pointerup", function () {
     var to = d.cells[d.end].date; tlEndDrag();
     if (d.end !== d.end0) tlMove(d.id, to); else D.render();
     var b = document.querySelector('.tkbar[data-v="' + d.id + '"]'); if (b) b.focus({ preventScroll: true });
-  } else tlEndDrag();
+  } else { tlEndDrag(); if (D.renderHeld) D.render(); }
 });
-document.addEventListener("pointercancel", function () { if (tlDrag) { var moved = tlDrag.moved; tlEndDrag(); if (moved) D.render(); } });
+document.addEventListener("pointercancel", function () { if (tlDrag) { var moved = tlDrag.moved; tlEndDrag(); if (moved || D.renderHeld) D.render(); } });
 document.addEventListener("click", function (e) {
   if (eatClick && e.detail > 0) { eatClick = false; if (e.target.closest && e.target.closest(".tl")) { e.stopImmediatePropagation(); e.preventDefault(); } }
 }, true);
