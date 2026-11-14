@@ -343,6 +343,8 @@ function tlMove(id, toDate) {
   if (m && m.id === String(id) && m.who === who && now - m.at < TL_MERGE_MS && x.hist.indexOf(m.entry) >= 0) { m.entry[1] = what; m.entry[3] = { st: x.st, due: toDate }; }
   else { h(x, what, { st: x.st, due: toDate }); m = tlLast = { id: String(id), who: who, from: x.due, entry: x.hist[x.hist.length - 1] }; }
   m.at = now; x.due = toDate;
+  // Back where it started: no change to record, so no history line and nothing to undo.
+  if (toDate === m.from) { var j = x.hist.indexOf(m.entry); if (j >= 0) x.hist.splice(j, 1); tlLast = null; D.toast("Moved back to " + fmt(toDate) + "."); D.render(); return true; }
   D.toast("Moved to " + fmt(toDate) + ".", function () { x.due = m.from; var i = x.hist.indexOf(m.entry); if (i >= 0) x.hist.splice(i, 1); if (tlLast === m) tlLast = null; });
   D.render();
   return true;
