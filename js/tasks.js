@@ -357,6 +357,9 @@ function tlLabel(text, el) {
   lab.style.top = Math.round(Math.max(8, r.top - lab.offsetHeight - 8)) + "px";
 }
 function tlEndDrag() { var lab = document.querySelector(".tldrag"); if (lab) lab.remove(); if (tlDrag && tlDrag.el) tlDrag.el.classList.remove("dragging"); tlDrag = null; }
+// Cancel a drag: the bar goes back where it was and nothing changes; the release that ends the gesture opens nothing.
+function tlCancel() { if (!tlDrag) return; tlEndDrag(); eatClick = true; D.render(); }
+document.addEventListener("keydown", function (e) { if (e.key === "Escape" && tlDrag) { e.stopImmediatePropagation(); e.preventDefault(); tlCancel(); } }, true);
 // No redraw while a bar is held (D.render waits; the drop draws). If one happens anyway, the drag carries on with the
 // new bar: lifted, where the pointer has it, with its label and the pointer captured.
 D.holdRender = function () { return !!tlDrag; };
