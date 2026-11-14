@@ -244,10 +244,10 @@ function tlModel() {
   var api = D.calApi, meet = api && api.meetDays ? api.meetDays(TL_FROM, TL_TO) : [], isMeet = {};
   meet.forEach(function (m) { isMeet[m.date] = m.kind; });
   var divs = T().divs.filter(function (d) { return d.id === "eng" || d.id === "out"; });
-  var cols = meet.map(function (m) { return { type: "day", date: m.date, kind: m.kind }; }), marks = {};
+  var cols = meet.map(function (m) { return { type: "day", date: m.date, kind: m.kind, name: m.name }; }), marks = {};
   function mark(date, what) { if (date < TL_FROM || date > TL_TO || isMeet[date]) return; (marks[date] = marks[date] || []).push(what); }
   divs.forEach(function (d) { d.projects.forEach(function (p) { p.ms.forEach(function (m) { mark(m[2], "Milestone: " + p.name + ", " + m[1]); }); }); });
-  if (api && api.eventsIn) api.eventsIn(TL_FROM, TL_TO, ["comp"]).forEach(function (e) { mark(e.date, "Competition: " + e.name); });
+  // Competitions are days the team is together: they come from meetDays as columns of their own (kind "comp").
   Object.keys(marks).forEach(function (d) { cols.push({ type: "mark", date: d, items: marks[d] }); });
   // The Calendar's days off, each labelled with its own first and last day.
   if (api && api.daysOff) api.daysOff(TL_FROM, TL_TO).forEach(function (r) { cols.push({ type: "gap", from: r.from, to: r.to, name: r.name, date: r.from + "~" }); });
@@ -287,7 +287,7 @@ function timeline() {
   cols.forEach(function (c, k) {
     var m = c.type === "gap" ? null : monday(c.date);
     if (m !== wk) { closeWeek(k); wk = m; wkStart = k; }
-    if (c.type === "day") heads += '<div class="tlday' + (c.date === TODAYS ? " istoday" : "") + '" style="grid-row:2;grid-column:' + (k + 2) + '" data-date="' + c.date + '" data-k="' + k + '" data-tip="' + esc(fmt(c.date) + " · " + (c.kind === "build" ? "Build day" : "Practice") + (c.date === TODAYS ? " · today" : "")) + '"><span>' + fmt(c.date, { weekday: "short" }) + "</span><b>" + parse(c.date).getDate() + "</b></div>";
+    if (c.type === "day") heads += '<div class="tlday' + (c.date === TODAYS ? " istoday" : "") + '" style="grid-row:2;grid-column:' + (k + 2) + '" data-date="' + c.date + '" data-k="' + k + '" data-tip="' + esc(fmt(c.date) + " · " + (c.kind === "comp" ? "Competition: " + c.name : c.kind === "build" ? "Build day" : "Practice") + (c.date === TODAYS ? " · today" : "")) + '"' + (c.kind === "comp" ? ' data-kind="comp"' : "") + '><span>' + fmt(c.date, { weekday: "short" }) + "</span><b>" + parse(c.date).getDate() + "</b></div>";
     else if (c.type === "mark") { var says = c.items.join("; ") + " · " + fmt(c.date) + ", no practice that day"; heads += '<div class="tlmarkh" tabindex="0" role="img" aria-label="' + esc(says) + '" style="grid-row:2;grid-column:' + (k + 2) + '" data-date="' + c.date + '" data-tip="' + esc(says) + '"><b aria-hidden="true">' + parse(c.date).getDate() + "</b></div>"; }
   });
   closeWeek(n);
@@ -314,7 +314,7 @@ function timeline() {
   // Column backgrounds behind the bars: practice days, marker columns, breaks with their note, and today.
   var rows = row - 3, todayK = colOfDate(M, TODAYS), back = "";
   cols.forEach(function (c, k) {
-    var cls = c.type === "day" ? "tlcol" + (c.kind === "build" ? " build" : "") + (k === todayK ? " today" : "") : c.type === "mark" ? "tlcol mark" : "tlcol gap";
+    var cls = c.type === "day" ? "tlcol" + (c.kind === "build" ? " build" : c.kind === "comp" ? " comp" : "") + (k === todayK ? " today" : "") : c.type === "mark" ? "tlcol mark" : "tlcol gap";
     back += '<div class="' + cls + '" style="grid-row:3 / span ' + rows + ";grid-column:" + (k + 2) + '"' + (c.type === "gap" ? ' data-tip="' + esc(c.name + ": no practice " + (c.from === c.to ? "on " + fmt(c.from) : "from " + fmt(c.from) + " to " + fmt(c.to))) + '"><span>No practice ' + esc(c.from === c.to ? short(c.from) : spanText(c.from, c.to)) + "</span></div>" : "></div>");
   });
   var todayNote = "the gold column is today";
@@ -324,7 +324,7 @@ function timeline() {
     back += '<div class="tltoday' + (next >= n ? " end" : "") + '" style="grid-row:1 / span ' + (rows + 2) + ";grid-column:" + (Math.min(next, n - 1) + 2) + '" data-tip="Today, ' + esc(fmt(TODAYS)) + '"></div>';
     todayNote = "the red line is today";
   }
-  var help = "Each column is a practice or build day. Bars end on the due date, ◆ is a milestone, " + todayNote + "." + (canMove ? " Drag a bar, or focus it and use the arrow keys, to move its due date." : "");
+  var help = "Each column is a practice, build or competition day. Bars end on the due date, ◆ is a milestone, " + todayNote + "." + (canMove ? " Drag a bar, or focus it and use the arrow keys, to move its due date." : "");
   return '<div class="card"><p class="who tlhelp">' + help + '</p><div class="tablewrap tlwrap" data-keepscroll="tl"><div class="tl" style="grid-template-columns:' + tmpl + '">' + heads + back + body + "</div></div></div>";
 }
 /* ---------- Moving a bar (mentors, admins, and a student in Lead mode) ----------

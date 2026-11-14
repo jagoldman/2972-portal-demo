@@ -85,15 +85,20 @@ function availOf(m, date) { var a = C().avail[m]; if (a.one[date]) return a.one[
 function practiceDays(n) { return upcoming(40, ["practice", "build"]).filter(function (e) { return e.auto || e.kind === "build"; }).filter(function (e, i, arr) { return !arr.slice(0, i).some(function (x) { return x.date === e.date; }); }).slice(0, n); }
 /* The days the team meets between two dates, read from the events list, so they follow the Calendar: the weekly pattern
    (minus days off), plus any practice or build day added there, minus a cancelled practice (cancelling adds an "off"
-   event on that date). Each: { date, kind: "practice" | "build" }. Other apps call this; they never copy the pattern. */
+   event on that date), plus every day of a competition, which replaces a practice on its days.
+   Each: { date, kind: "practice" | "build" | "comp", name }. Other apps call this; they never copy the pattern. */
 function meetDays(from, to) {
-  var off = {}, by = {};
+  var off = {}, by = {}, names = {};
   C().events.forEach(function (e) { if (e.kind === "off" && e.date >= from && e.date <= to) off[e.date] = true; });
   C().events.forEach(function (e) {
     if ((e.kind !== "practice" && e.kind !== "build") || e.date < from || e.date > to || off[e.date]) return;
-    by[e.date] = by[e.date] === "build" || e.kind === "build" ? "build" : "practice";
+    if (by[e.date] !== "build") { by[e.date] = e.kind; names[e.date] = e.name; }
   });
-  return Object.keys(by).sort().map(function (d) { return { date: d, kind: by[d] }; });
+  C().events.forEach(function (e) {
+    if (e.kind !== "comp") return;
+    for (var d = e.date; d <= (e.end2 || e.date); d = iso(new Date(parse(d).getTime() + DAY + 3600000))) { if (d >= from && d <= to) { by[d] = "comp"; names[d] = e.name; } }
+  });
+  return Object.keys(by).sort().map(function (d) { return { date: d, kind: by[d], name: names[d] }; });
 }
 // Events between two dates, optionally of some kinds (for example competitions), as plain copies.
 function eventsIn(from, to, kinds) {
