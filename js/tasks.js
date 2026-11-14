@@ -104,7 +104,7 @@ function labs(x) { return simple() ? "" : x.labels.map(function (l) { return '<s
 // What a row shows as its status: a task that waits on something unfinished reads as Waiting, otherwise its own state.
 function stOf(x) { return x.st !== "done" && x.st !== "blocked" && !simple() && blockedBy(x).length ? '<span class="pill bad" data-tip="Waiting on ' + esc(blockedBy(x).map(function (b) { return b.title; }).join(", ")) + '">Waiting</span>' : stPill(x.st); }
 function names(who) { return who.length ? who.map(esc).join(", ") : "Nobody yet"; }
-function check(x) { return '<button class="tcheck" data-act="tdone" data-v="' + x.id + '" aria-pressed="' + (x.st === "done") + '" aria-label="Done: ' + esc(x.title) + '" data-tip="' + (x.st === "done" ? "Mark this task not done" : "Mark this task done") + '">' + D.ic("check", 14) + "</button>"; }
+function check(x) { return '<button class="tcheck" data-act="tdone" data-v="' + x.id + '" aria-pressed="' + (x.st === "done") + '" aria-label="Done: ' + esc(x.title) + '" data-tip="' + (x.st === "done" ? "Mark this task not done." : "Mark this task done.") + '">' + D.ic("check", 14) + "</button>"; }
 // Row-only versions (My tasks, Dashboard, a subteam's list). A row shows a status word only when the task needs attention:
 // Blocked or Waiting (held up by another task). "In progress" lives in the check button's ring, "Done" in its green
 // tick, and "To do" shows nothing.
@@ -114,7 +114,7 @@ function rowSt(x) {
 }
 function rowCheck(x) {
   var doing = x.st === "doing";
-  return '<button class="tcheck' + (doing ? " doing" : "") + '" data-act="tdone" data-v="' + x.id + '" aria-pressed="' + (x.st === "done") + '" aria-label="' + (doing ? "In progress. Mark done: " : "Done: ") + esc(x.title) + '" data-tip="' + (x.st === "done" ? "Mark this task not done" : doing ? "In progress (the ring). Tap when it is done" : "Mark this task done") + '">' + D.ic("check", 14) + "</button>";
+  return '<button class="tcheck' + (doing ? " doing" : "") + '" data-act="tdone" data-v="' + x.id + '" aria-pressed="' + (x.st === "done") + '" aria-label="' + (doing ? "In progress. Mark done: " : "Done: ") + esc(x.title) + '" data-tip="' + (x.st === "done" ? "Mark this task not done." : doing ? "In progress (the ring); mark this task done when it is finished." : "Mark this task done.") + '">' + D.ic("check", 14) + "</button>";
 }
 function dueTxt(x) { if (!x.due) return '<span class="who due">No date</span>'; var n = days(x.due); return '<span class="who num due' + (n < 0 && x.st !== "done" ? " late" : "") + '">' + (n === 0 ? "Today" : n === 1 ? "Tomorrow" : n < 0 && x.st !== "done" ? Math.abs(n) + "d late" : fmt(x.due, { month: "short", day: "numeric" })) + "</span>"; }
 function blockedBy(x) { return x.by.map(task).filter(function (b) { return b && b.st !== "done"; }); }
@@ -126,23 +126,23 @@ function sidebar() {
   function nav(v, label, icon, n) { var cur = at.v === v; return '<button class="tnav" data-act="tgo" data-v="' + v + '"' + (cur ? ' aria-current="page"' : "") + D.tabTip("tasks", v) + ">" + D.ic(icon, 17) + '<span class="lbl">' + label + "</span>" + (n != null ? '<span class="n">' + n + "</span>" : "") + "</button>"; }
   var tree = tt.divs.map(function (d) {
     var open = d.open;
-    return '<div class="trow"><button class="tnav tdivb" data-act="tdiv" data-v="' + d.id + '" aria-expanded="' + open + '"><span class="car">' + (open ? "▾" : "▸") + '</span><span class="lbl">' + esc(d.name) + "</span></button>" + (staff ? '<button class="more" data-act="tmenu" data-k="div" data-v="' + d.id + '" aria-label="Division actions" data-tip="Add, rename or remove in this division">⋯</button>' : "") + "</div>" +
+    return '<div class="trow"><button class="tnav tdivb" data-act="tdiv" data-v="' + d.id + '" aria-expanded="' + open + '"><span class="car">' + (open ? "▾" : "▸") + '</span><span class="lbl">' + esc(d.name) + "</span></button>" + (staff ? '<button class="more" data-act="tmenu" data-k="div" data-v="' + d.id + '" aria-label="Division actions" data-tip="Add, rename or remove in this division.">⋯</button>' : "") + "</div>" +
       (open ? d.projects.map(function (p) {
         var pe = !!tt.expanded[p.id], n = tt.list.filter(function (x) { return x.p === p.id && x.st !== "done" && !x.parent; }).length;
-        return '<div class="trow l1"><button class="tnav" data-act="tproj" data-v="' + p.id + '"' + (at.v === "project" && at.p === p.id ? ' aria-current="page"' : "") + '><span class="car" data-act="texp" data-v="' + p.id + '">' + (pe ? "▾" : "▸") + '</span><span class="sw2" style="background:' + p.color + '"></span><span class="lbl">' + esc(p.name) + '</span><span class="n">' + n + "</span></button>" + (staff ? '<button class="more" data-act="tmenu" data-k="proj" data-v="' + p.id + '" aria-label="Project actions" data-tip="Add a subteam or milestone, or rename the project">⋯</button>' : "") + "</div>" +
+        return '<div class="trow l1"><button class="tnav" data-act="tproj" data-v="' + p.id + '"' + (at.v === "project" && at.p === p.id ? ' aria-current="page"' : "") + '><span class="car" data-act="texp" data-v="' + p.id + '">' + (pe ? "▾" : "▸") + '</span><span class="sw2" style="background:' + p.color + '"></span><span class="lbl">' + esc(p.name) + '</span><span class="n">' + n + "</span></button>" + (staff ? '<button class="more" data-act="tmenu" data-k="proj" data-v="' + p.id + '" aria-label="Project actions" data-tip="Add a subteam or milestone, or rename the project.">⋯</button>' : "") + "</div>" +
           (pe ? p.subs.map(function (s) { var c = tt.list.filter(function (x) { return x.p === p.id && x.sub === s && x.st !== "done" && !x.parent; }).length; return '<div class="trow l2"><button class="tnav" data-act="tlist" data-p="' + p.id + '" data-v="' + esc(s) + '"' + (at.v === "list" && at.p === p.id && at.l === s ? ' aria-current="page"' : "") + '><span class="lbl">' + esc(s) + '</span><span class="n">' + c + "</span></button></div>"; }).join("") : "");
       }).join("") + (staff ? '<button class="tnav tadd l1" data-act="tnewproj" data-v="' + d.id + '">+ New project</button>' : "") : "");
   }).join("");
-  var close = '<button class="xbtn tclose" data-act="tside" aria-label="Close menu" data-tip="Close the task menu">×</button>';
+  var close = '<button class="xbtn tclose" data-act="tside" aria-label="Close menu" data-tip="Close the task menu.">×</button>';
   if (D.S.role === "parent") return "";
   return '<nav class="tside" aria-label="Tasks" data-keepscroll="tside">' + close + '<button class="btn tnew" data-act="tnew">' + D.ic("plus", 16) + " New task</button>" +
     // Everyone but parents sees the Timeline (students read it; leads also move bars). For students it follows This week.
     nav("my", "My tasks", "user", mine) + nav("week", "This week", "calendar") + (staff ? nav("dash", "Dashboard", "home") : nav("timeline", "Timeline", "schedule")) + nav("calendar", "Calendar", "calendar") + (staff ? nav("timeline", "Timeline", "schedule") : "") +
-    (staff ? '<button class="tnav" data-act="go" data-v="projector" data-tip="Show the practice screen, the meeting lists or the build plan on the shop TV">' + D.ic("projector", 17) + '<span class="lbl">Projector</span></button>' : "") +
+    (staff ? '<button class="tnav" data-act="go" data-v="projector" data-tip="Show the practice screen, the meeting lists or the build plan on the shop TV.">' + D.ic("projector", 17) + '<span class="lbl">Projector</span></button>' : "") +
     '<div class="sect"><span>Divisions</span>' + (D.S.role === "admin" ? '<button class="btn ghost sm" data-act="tnewdiv">+ New</button>' : "") + "</div>" + tree +
     '<div class="sect"><span>Options</span></div>' +
-    (D.S.role === "student" ? '<div class="tnav tsw"><span class="lbl">Lead mode' + (tt.lead ? " · until 6 pm" : "") + '</span><button class="toggle" data-act="tlead" aria-pressed="' + tt.lead + '" aria-label="Lead mode" data-tip="Lets a student lead plan and assign tasks until 6 pm"></button></div>' : "") +
-    '<div class="tnav tsw"><span class="lbl">Simple mode</span><button class="toggle" data-act="tsimple" aria-pressed="' + simple() + '" aria-label="Simple mode" data-tip="Hides labels and waiting links for a calmer list"></button></div>' +
+    (D.S.role === "student" ? '<div class="tnav tsw"><span class="lbl">Lead mode' + (tt.lead ? " · until 6 pm" : "") + '</span><button class="toggle" data-act="tlead" aria-pressed="' + tt.lead + '" aria-label="Lead mode" data-tip="Plan and assign tasks as a student lead until 6 pm."></button></div>' : "") +
+    '<div class="tnav tsw"><span class="lbl">Simple mode</span><button class="toggle" data-act="tsimple" aria-pressed="' + simple() + '" aria-label="Simple mode" data-tip="Hide labels and waiting links for a calmer list."></button></div>' +
     '<button class="tnav" data-act="tchat">' + D.ic("more", 17) + '<span class="lbl">Ask the assistant</span></button>' +
     '<button class="tnav" data-act="thelp">' + D.ic("more", 17) + '<span class="lbl">Help</span></button></nav>';
 }
@@ -151,7 +151,7 @@ function frame(title, crumbs, tools, body) {
   var tt = T(), parent = D.S.role === "parent";
   var head = parent ?
     '<header class="topbar"><div class="tabs" role="group"><button class="tab" data-act="tgo" data-v="week" aria-pressed="' + (tt.at.v === "week") + '"' + D.tabTip("tasks", "week") + '>This week</button><button class="tab" data-act="tgo" data-v="calendar" aria-pressed="' + (tt.at.v === "calendar") + '"' + D.tabTip("tasks", "calendar") + '>Calendar</button></div><div class="right">' + (tt.at.v === "calendar" ? tools : "") + "</div></header>" :
-    '<header class="topbar"><button class="btn sm tmenu" data-act="tside" aria-label="Show or hide the task menu" data-tip="Your views, projects and subteams">' + D.ic("menu", 18) + '</button><div class="ttl">' + (crumbs ? '<p class="who">' + crumbs + "</p>" : "") + "<h1>" + esc(title) + '</h1></div><div class="right">' + (tools || "") + (tt.lead ? '<span class="leadchip">Lead mode</span>' : "") + "</div></header>";
+    '<header class="topbar"><button class="btn sm tmenu" data-act="tside" aria-label="Show or hide the task menu" data-tip="Your views, projects and subteams.">' + D.ic("menu", 18) + '</button><div class="ttl">' + (crumbs ? '<p class="who">' + crumbs + "</p>" : "") + "<h1>" + esc(title) + '</h1></div><div class="right">' + (tools || "") + (tt.lead ? '<span class="leadchip">Lead mode</span>' : "") + "</div></header>";
   return '<div class="tsk' + (parent || !tt.side ? " collapsed" : "") + (tt.mopen ? " mopen" : "") + '">' + sidebar() + (tt.mopen && !parent ? '<button class="drawer-scrim tscrim" data-act="tside" aria-label="Close menu"></button>' : "") +
     '<div class="tmain">' + head + '<div class="content">' + body + "</div></div></div>";
 }
@@ -234,7 +234,7 @@ function calendar() {
       ms.map(function (x) { return '<span class="tev"><i class="dotc" style="background:' + x[0].color + '"></i>◆ ' + esc(x[1][1]) + "</span>"; }).join("") +
       due.slice(0, 3).map(function (x) { var c = T().cal === "project" ? proj(x.p).color : (subColors[x.sub] = subColors[x.sub] || palette[k++ % palette.length]); return '<button class="tev' + (x.st === "done" ? " done" : "") + '" data-act="topen" data-v="' + x.id + '"><i class="dotc" style="background:' + c + '"></i>' + esc(x.title) + "</button>"; }).join("") + (due.length > 3 ? '<span class="who">+' + (due.length - 3) + "</span>" : "") + "</div>";
   }
-  var seg = '<span class="seg" role="group" aria-label="Color by"><button data-act="tcal" data-v="project" aria-pressed="' + (T().cal === "project") + '" data-tip="Colour each task by its project">By project</button><button data-act="tcal" data-v="sub" aria-pressed="' + (T().cal === "sub") + '" data-tip="Colour each task by its subteam">By subteam</button></span>';
+  var seg = '<span class="seg" role="group" aria-label="Color by"><button data-act="tcal" data-v="project" aria-pressed="' + (T().cal === "project") + '" data-tip="Colour each task by its project.">By project</button><button data-act="tcal" data-v="sub" aria-pressed="' + (T().cal === "sub") + '" data-tip="Colour each task by its subteam.">By subteam</button></span>';
   return '<div class="card"><div class="row between"><h2>November 2026</h2>' + seg + '</div><div class="tablewrap" data-keepscroll="tcalendar"><div class="month tmonth">' + ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"].map(function (x) { return '<div class="dh">' + x + "</div>"; }).join("") + cells + '</div></div><p class="who">◆ is a milestone. Practices and events are in the Calendar app.</p></div>';
 }
 /* ---------- Timeline ----------
@@ -308,7 +308,7 @@ function tlAnyClosed(M, r) { return tlShown(M).some(function (g) { return !r.div
 // A link that points the Timeline at a task (T().at.task) opens that task's project and division first.
 function tlReveal(id) { var x = task(id); if (!x) return; var r = tlRows(), dv = divOf(x.p); r.proj[x.p] = true; if (dv) r.div[dv.id] = true; D.setPref("tlrows", r); }
 function tlCaret(kind, id, name, open, count) {
-  return '<button class="tlcaret" data-act="tlrow" data-k="' + kind + '" data-v="' + id + '" aria-expanded="' + open + '" aria-label="' + esc(name) + '" data-tip="' + esc((open ? "Hide " : "Show ") + (kind === "div" ? "its projects" : "its " + count + (count === 1 ? " task" : " tasks"))) + '">' + D.ic("chevron", 14) + "</button>";
+  return '<button class="tlcaret" data-act="tlrow" data-k="' + kind + '" data-v="' + id + '" aria-expanded="' + open + '" aria-label="' + esc(name) + '" data-tip="' + esc((open ? "Hide " : "Show ") + (kind === "div" ? "its projects" : "its " + count + (count === 1 ? " task" : " tasks")) + ".") + '">' + D.ic("chevron", 14) + "</button>";
 }
 function timeline() {
   if (T().at.task) { tlReveal(T().at.task); T().at.revealed = T().at.task; delete T().at.task; }
@@ -349,7 +349,7 @@ function timeline() {
       if (!pOpen) return;
       xs.forEach(function (x) {
         var bb = x.by.map(task).filter(function (b) { return b && b.due > x.due; });
-        body += '<button class="ttitle tlt" data-act="topen" data-v="' + x.id + '" style="grid-row:' + row + '">' + esc(x.title) + (bb.length ? ' <span class="pill bad" data-tip="Due before something it waits on">Out of order</span>' : "") + "</button>" + tlBar(M, x, row, canMove);
+        body += '<button class="ttitle tlt" data-act="topen" data-v="' + x.id + '" style="grid-row:' + row + '">' + esc(x.title) + (bb.length ? ' <span class="pill bad" data-tip="Due before something it waits on.">Out of order</span>' : "") + "</button>" + tlBar(M, x, row, canMove);
         row++;
       });
     });
@@ -369,7 +369,7 @@ function timeline() {
   }
   var help = "Each column is a practice, build or competition day. Bars end on the due date; a striped bar is blocked, a ✓ is done; ◆ is a milestone, " + todayNote + "." + (canMove ? " Drag a bar, or focus it and use the arrow keys, to move its due date." : "");
   var anyClosed = tlAnyClosed(M, R);
-  var all = '<button class="btn ghost sm tlall" data-act="tlall" data-tip="' + (anyClosed ? "Show every division's projects and their tasks" : "Hide every project's tasks") + '">' + (anyClosed ? "Open all" : "Close all") + "</button>";
+  var all = '<button class="btn ghost sm tlall" data-act="tlall" data-tip="' + (anyClosed ? "Show every division's projects and their tasks." : "Hide every project's tasks.") + '">' + (anyClosed ? "Open all" : "Close all") + "</button>";
   return '<div class="card"><div class="tltop"><p class="who tlhelp">' + help + "</p>" + all + '</div><div class="tablewrap tlwrap" data-keepscroll="tl"><div class="tl" style="grid-template-columns:' + tmpl + '">' + heads + back + body + "</div></div></div>";
 }
 /* ---------- Moving a bar (mentors, admins, and a student in Lead mode) ----------
@@ -492,7 +492,7 @@ document.addEventListener("keydown", function (e) {
 });
 function filtersBar() {
   var tt = T();
-  return '<div class="tbar"><input id="t-q" class="inp tq" data-input="tq" placeholder="Filter tasks" value="' + esc(tt.q) + '" aria-label="Filter tasks"><span class="seg" role="group" aria-label="Whose tasks"><button data-act="twho" data-v="all" aria-pressed="' + (tt.who === "all") + '" data-tip="Tasks for the whole subteam">Everyone</button><button data-act="twho" data-v="me" aria-pressed="' + (tt.who === "me") + '" data-tip="Only tasks assigned to you">Mine</button></span>' +
+  return '<div class="tbar"><input id="t-q" class="inp tq" data-input="tq" placeholder="Filter tasks" value="' + esc(tt.q) + '" aria-label="Filter tasks"><span class="seg" role="group" aria-label="Whose tasks"><button data-act="twho" data-v="all" aria-pressed="' + (tt.who === "all") + '" data-tip="Tasks for the whole subteam.">Everyone</button><button data-act="twho" data-v="me" aria-pressed="' + (tt.who === "me") + '" data-tip="Only tasks assigned to you.">Mine</button></span>' +
     (simple() ? "" : '<select class="chipsel" data-change="tlabel" aria-label="Label"><option value="">All labels</option>' + Object.keys(LABELS).map(function (l) { return '<option value="' + l + '"' + (tt.label === l ? " selected" : "") + ">" + LABELS[l][0] + "</option>"; }).join("") + "</select>") + "</div>";
 }
 function pass(x) { var tt = T(); return (!tt.q || x.title.toLowerCase().indexOf(tt.q.toLowerCase()) >= 0) && (tt.who === "all" || x.who.indexOf(me()) >= 0) && (!tt.label || x.labels.indexOf(tt.label) >= 0); }
@@ -531,7 +531,7 @@ function projectPage(pid) {
 }
 function listPage(pid, sub) {
   var p = proj(pid), tt = T(), xs = tt.list.filter(function (x) { return x.p === pid && x.sub === sub && !x.parent && pass(x); });
-  var tools = '<span class="seg" role="group" aria-label="View"><button data-act="tmode" data-v="list" aria-pressed="' + (tt.mode === "list") + '" data-tip="Tasks in rows, grouped">List</button><button data-act="tmode" data-v="board" aria-pressed="' + (tt.mode === "board") + '" data-tip="Tasks as cards in columns by status">Board</button></span>';
+  var tools = '<span class="seg" role="group" aria-label="View"><button data-act="tmode" data-v="list" aria-pressed="' + (tt.mode === "list") + '" data-tip="Tasks in rows, grouped.">List</button><button data-act="tmode" data-v="board" aria-pressed="' + (tt.mode === "board") + '" data-tip="Tasks as cards in columns by status.">Board</button></span>';
   var body = filtersBar();
   if (tt.mode === "board") {
     body += '<div class="board" data-keepscroll="tboard">' + tt.cols.map(function (c) { var cs = xs.filter(function (x) { return x.st === c; }); return '<div class="bcol" data-col="' + c + '"><div class="row between"><span class="pill ' + ST[c][1] + '"><b>' + ST[c][0] + '</b></span><span class="who">' + cs.length + "</span></div>" + cs.map(function (x) { var sc = subsOf(x); return '<div class="bcard" draggable="true" data-task="' + x.id + '"><button class="ttitle" data-act="topen" data-v="' + x.id + '">' + esc(x.title) + "</button>" + (labs(x) ? '<div class="who">' + labs(x) + "</div>" : "") + '<div class="row between">' + avs(x.who) + dueTxt(x) + "</div>" + (sc.length ? '<span class="who">' + sc.filter(function (s) { return s.st === "done"; }).length + " of " + sc.length + " subtasks</span>" : "") + (x.ms ? '<span class="who">◆ ' + esc(msName(x.p, x.ms)) + "</span>" : "") + '<select class="chipsel" data-change="tcol" data-v="' + x.id + '" aria-label="Move ' + esc(x.title) + '"><option value="">Move to…</option>' + tt.cols.map(function (k) { return '<option value="' + k + '">' + ST[k][0] + "</option>"; }).join("") + "</select></div>"; }).join("") + '<button class="btn ghost sm" data-act="tnewin" data-p="' + pid + '" data-s="' + esc(sub) + '" data-st="' + c + '">+ Add a task</button></div>'; }).join("") + "</div>";
@@ -551,7 +551,7 @@ function listRow(x, sc, open, isSub) {
   if (x.est && !simple()) sub.push(x.est + " h");
   var lb = labs(x);
   var st = rowSt(x);
-  return '<div class="trowx' + (isSub ? " sub" : "") + (st ? "" : " nost") + '">' + rowCheck(x) + '<div class="tt"><div class="tline">' + (sc.length ? '<button class="tex" data-act="tsubs" data-v="' + x.id + '" aria-label="' + (open ? "Hide" : "Show") + ' subtasks" aria-expanded="' + !!open + '" data-tip="' + (open ? "Hide" : "Show") + ' the steps inside this task">' + (open ? "▾" : "▸") + "</button>" : "") + '<button class="ttitle' + (x.st === "done" ? " isdone" : "") + '" data-act="topen" data-v="' + x.id + '">' + esc(x.title) + '</button></div><div class="tsub">' + sub.join(" · ") + (lb ? " · " + lb : "") + "</div></div>" +
+  return '<div class="trowx' + (isSub ? " sub" : "") + (st ? "" : " nost") + '">' + rowCheck(x) + '<div class="tt"><div class="tline">' + (sc.length ? '<button class="tex" data-act="tsubs" data-v="' + x.id + '" aria-label="' + (open ? "Hide" : "Show") + ' subtasks" aria-expanded="' + !!open + '" data-tip="' + (open ? "Hide" : "Show") + ' the steps inside this task.">' + (open ? "▾" : "▸") + "</button>" : "") + '<button class="ttitle' + (x.st === "done" ? " isdone" : "") + '" data-act="topen" data-v="' + x.id + '">' + esc(x.title) + '</button></div><div class="tsub">' + sub.join(" · ") + (lb ? " · " + lb : "") + "</div></div>" +
     st + dueTxt(x) + "</div>";
 }
 
@@ -569,7 +569,7 @@ D.drawers.task = function (d) {
     '<div class="field"><label for="td-sub">Subteam</label><select id="td-sub" data-change="tmove" data-v="' + x.id + '">' + p.subs.map(function (s) { return "<option" + (s === x.sub ? " selected" : "") + ">" + esc(s) + "</option>"; }).join("") + "</select></div>" +
     '<div class="field"><label for="td-ms">Milestone</label><select id="td-ms" data-change="tms" data-v="' + x.id + '"><option value="">None</option>' + p.ms.map(function (m) { return '<option value="' + m[0] + '"' + (m[0] === x.ms ? " selected" : "") + ">" + esc(m[1]) + "</option>"; }).join("") + "</select></div>" +
     (simple() ? "" : '<div class="field"><label for="td-est">Estimate (hours)</label><input id="td-est" type="number" min="0" value="' + (x.est || "") + '" data-change="test" data-v="' + x.id + '"></div>') + "</div>" +
-    '<div class="psec"><p class="flabel">Who</p><div class="row">' + x.who.map(function (w) { return '<span class="whochip">' + esc(w) + ' <button data-act="tunassign" data-v="' + x.id + '" data-w="' + esc(w) + '" aria-label="Remove ' + esc(w) + '" data-tip="Take ' + esc(w) + ' off this task">×</button></span>'; }).join("") + (x.who.indexOf(me()) < 0 ? '<button class="btn sm" data-act="ttake" data-v="' + x.id + '">+ Me</button>' : "") + '<select class="chipsel" data-change="tassign" data-v="' + x.id + '" aria-label="Assign someone"><option value="">+ Someone</option>' + ["Leo Brooks", "Priya Shah", "Ava Kim", "Jordan Lee", "Maya Gold", "Omar Haddad", "Nina Park", "Ms. Rivera", "Mr. Chen"].filter(function (n) { return x.who.indexOf(n) < 0; }).map(function (n) { return "<option>" + esc(n) + "</option>"; }).join("") + "</select></div></div>" +
+    '<div class="psec"><p class="flabel">Who</p><div class="row">' + x.who.map(function (w) { return '<span class="whochip">' + esc(w) + ' <button data-act="tunassign" data-v="' + x.id + '" data-w="' + esc(w) + '" aria-label="Remove ' + esc(w) + '" data-tip="Take ' + esc(w) + ' off this task.">×</button></span>'; }).join("") + (x.who.indexOf(me()) < 0 ? '<button class="btn sm" data-act="ttake" data-v="' + x.id + '">+ Me</button>' : "") + '<select class="chipsel" data-change="tassign" data-v="' + x.id + '" aria-label="Assign someone"><option value="">+ Someone</option>' + ["Leo Brooks", "Priya Shah", "Ava Kim", "Jordan Lee", "Maya Gold", "Omar Haddad", "Nina Park", "Ms. Rivera", "Mr. Chen"].filter(function (n) { return x.who.indexOf(n) < 0; }).map(function (n) { return "<option>" + esc(n) + "</option>"; }).join("") + "</select></div></div>" +
     (simple() ? "" : '<div class="psec"><p class="flabel">Labels</p><div class="row">' + Object.keys(LABELS).map(function (l) { var on = x.labels.indexOf(l) >= 0; return '<button class="chip" data-act="tlab" data-v="' + x.id + '" data-l="' + l + '" aria-pressed="' + on + '"><i class="dotc" style="background:' + LABELS[l][1] + '"></i>' + LABELS[l][0] + "</button>"; }).join("") + "</div></div>") +
     (!parent ? '<div class="psec"><p class="flabel">Subtasks</p>' + sc.map(function (s) { return '<div class="trs">' + check(s) + '<button class="ttitle" data-act="topen" data-v="' + s.id + '">' + esc(s.title) + "</button>" + avs(s.who) + "</div>"; }).join("") + '<div class="row nowrap"><input id="td-sub-new" class="inp" placeholder="Add a subtask" aria-label="New subtask"><button class="btn sm" data-act="taddsub" data-v="' + x.id + '">Add</button></div></div>' : "") +
     (simple() ? "" : '<div class="psec"><p class="flabel">Waits on</p><div class="list">' + x.by.map(function (b) { var bt = task(b); return '<div class="li"><span class="grow">' + esc(bt.title) + ' <span class="who">' + esc(bt.sub) + "</span></span>" + stPill(bt.st) + '<button class="btn ghost sm" data-act="tundep" data-v="' + x.id + '" data-b="' + b + '">Remove</button></div>'; }).join("") + '</div><select class="chipsel" data-change="tdep" data-v="' + x.id + '" aria-label="Add something this waits on"><option value="">+ Waits on…</option>' + allOther.filter(function (y) { return x.by.indexOf(y.id) < 0; }).map(function (y) { return '<option value="' + y.id + '">' + esc(y.title) + "</option>"; }).join("") + "</select>" +
@@ -610,7 +610,7 @@ D.modals.tmenu = function (d) {
 /* ---------- Projector ----------
    One screen for the shop TV with a switch between its views (Meeting, Practice, Build plan). The choice is a saved
    choice (D.setPref "projview"), so Reset clears it. Staff and the Display role both get the switch. */
-var PJ_VIEWS = [["meeting", "Meeting", "Last practice's and today's tasks, for a team meeting"], ["practice", "Practice", "The practice screen: the clock, the countdown and who is working on what"], ["plan", "Build plan", "The build plan chart: projects, milestones and today"]];
+var PJ_VIEWS = [["meeting", "Meeting", "Last practice's and today's tasks, for a team meeting."], ["practice", "Practice", "The practice screen: the clock, the countdown and who is working on what."], ["plan", "Build plan", "The build plan chart: projects, milestones and today."]];
 var PJ_DEFAULT = "practice";
 function pjView() { var v = D.pref("projview", PJ_DEFAULT); return PJ_VIEWS.some(function (x) { return x[0] === v; }) ? v : PJ_DEFAULT; }
 // The Projector's own state while it is open: the page, the automatic turns, the rotation's current turn, the note
@@ -636,10 +636,10 @@ function pjSwitch(cur) {
 // Rotate (Practice, Build plan) and Exit on the right.
 function pjHead(title, cur, sub) {
   var disp = D.S.role === "display";
-  var pager = cur === "meeting" || cur === "practice" ? '<div class="mtgpager" hidden><button class="btn mtgpg" data-act="mtgpage" data-v="-1" aria-label="Previous page" data-tip="Show the previous page of tasks (Left arrow)">' + D.ic("chevron", 18) + '</button><span class="mtgpgn num" aria-live="polite">1 / 1</span><button class="btn mtgpg mtgnext" data-act="mtgpage" data-v="1" aria-label="Next page" data-tip="Show the next page of tasks (Right arrow)">' + D.ic("chevron", 18) + "</button></div>" : "";
+  var pager = cur === "meeting" || cur === "practice" ? '<div class="mtgpager" hidden><button class="btn mtgpg" data-act="mtgpage" data-v="-1" aria-label="Previous page" data-tip="Show the previous page of tasks (Left arrow).">' + D.ic("chevron", 18) + '</button><span class="mtgpgn num" aria-live="polite">1 / 1</span><button class="btn mtgpg mtgnext" data-act="mtgpage" data-v="1" aria-label="Next page" data-tip="Show the next page of tasks (Right arrow).">' + D.ic("chevron", 18) + "</button></div>" : "";
   return '<div class="mtghead' + (disp ? " mtgdisp" : "") + '"><div class="mtgttl"><h1' + (cur === "practice" ? ' class="mtgclock num"' : "") + ">" + esc(title) + '</h1><p class="dmute">' + (sub || "Updated " + clock(NOW)) + '</p></div><div class="mtgctl">' + pager + pjSwitch(cur) +
-    (cur === "practice" || cur === "plan" ? '<button class="mtgrot" data-act="pjrotate" aria-pressed="' + rotOn() + '" data-tip="Take turns with the ' + (cur === "plan" ? "practice screen" : "build plan") + ' every 45 seconds"><span class="mtgrotk" aria-hidden="true"></span>Rotate with the build plan</button>' : "") +
-    (disp ? "" : '<button class="btn mtgexit" data-act="go" data-v="tasks" data-tip="Back to Tasks">Exit projector</button>') + "</div></div>";
+    (cur === "practice" || cur === "plan" ? '<button class="mtgrot" data-act="pjrotate" aria-pressed="' + rotOn() + '" data-tip="Take turns with the ' + (cur === "plan" ? "practice screen" : "build plan") + ' every 45 seconds."><span class="mtgrotk" aria-hidden="true"></span>Rotate with the build plan</button>' : "") +
+    (disp ? "" : '<button class="btn mtgexit" data-act="go" data-v="tasks" data-tip="Back to Tasks.">Exit projector</button>') + "</div></div>";
 }
 /* Countdown strip (top of Meeting and Practice): the season and the next four milestones not yet met.
    The kickoff date is the Calendar's kickoff event (D.calApi.kickoff). Days are counted. A milestone's due day is a
@@ -676,7 +676,7 @@ function countdown() {
       '<span class="mtgmsl"><b class="mtgaway' + (late ? " late" : "") + '">' + (w.days ? '<span class="mtgdays">' + w.days + " · </span>" : "") + esc(w.left) + '</b><span class="mtgmssep" aria-hidden="true"> · </span>' +
       '<span class="mtgmsdone">' + (xs.length ? '<span class="mtgmsbar" aria-hidden="true"><i style="width:' + D.pct(dn, xs.length) + '%"></i></span><span class="mtgmst num">' + dn + " of " + xs.length + '<span class="mtgword"> ' + (xs.length === 1 ? "task" : "tasks") + "</span> done</span>" : '<span class="mtgmst">No tasks yet</span>') + "</span></span>" +
       '<span class="mtgmsph">' + dot + "<b>" + esc(m.name) + '</b> <span class="num">' + esc(fmt(m.date)) + " · " + esc(w.left) + "</span></span>";
-    return open ? '<button class="mtgms' + (late ? " late" : "") + '" data-act="mtgproj" data-v="' + m.p.id + '" data-tip="Open the ' + esc(m.p.name) + ' project in Tasks">' + inner + "</button>" : '<div class="mtgms' + (late ? " late" : "") + '">' + inner + "</div>";
+    return open ? '<button class="mtgms' + (late ? " late" : "") + '" data-act="mtgproj" data-v="' + m.p.id + '" data-tip="Open the ' + esc(m.p.name) + ' project in Tasks.">' + inner + "</button>" : '<div class="mtgms' + (late ? " late" : "") + '">' + inner + "</div>";
   }).join("");
   return '<div class="mtgstrip" role="group" aria-label="Countdown">' + head + cards + "</div>";
 }
@@ -743,7 +743,7 @@ function mtgMark(x) {
 }
 function srState(x) { return x.st === "doing" || x.st === "todo" ? '<span class="vh">' + ST[x.st][0] + ", </span>" : ""; }
 function rowWrap(x, inner) {
-  return rowsOpen() ? '<button class="mtgrow" data-act="mtgopen" data-v="' + x.id + '" data-tip="Open this task">' + inner + "</button>" : '<div class="mtgrow" data-v="' + x.id + '">' + inner + "</div>";
+  return rowsOpen() ? '<button class="mtgrow" data-act="mtgopen" data-v="' + x.id + '" data-tip="Open this task.">' + inner + "</button>" : '<div class="mtgrow" data-v="' + x.id + '">' + inner + "</div>";
 }
 function mtgRow(x, side, lp) {
   var bits = [], st = "";
@@ -800,10 +800,10 @@ function noteLine() {
   var note = T().note || "", ed = noteEditor();
   if (ed && PJ.noteEdit) {
     var v = PJ.draft != null ? PJ.draft : note;
-    return '<div class="mtgnote mtgnoteed"><label class="mtggl" for="mtg-note">Note for today</label><input id="mtg-note" class="mtgnotein" data-input="mtgnote" value="' + esc(v) + '" maxlength="' + NOTE_MAX + '" placeholder="One line for the meeting" aria-describedby="mtg-note-help mtg-note-count"><span id="mtg-note-count" class="dmute mtgnotec num">' + v.length + " / " + NOTE_MAX + '</span><span id="mtg-note-help" class="dmute mtgnoteh">Enter saves · Escape cancels</span><button class="btn mtgnotebtn" data-act="mtgnotesave" data-tip="Save the note">Save</button><button class="btn mtgnotebtn" data-act="mtgnotecancel" data-tip="Keep the note as it was">Cancel</button></div>';
+    return '<div class="mtgnote mtgnoteed"><label class="mtggl" for="mtg-note">Note for today</label><input id="mtg-note" class="mtgnotein" data-input="mtgnote" value="' + esc(v) + '" maxlength="' + NOTE_MAX + '" placeholder="One line for the meeting" aria-describedby="mtg-note-help mtg-note-count"><span id="mtg-note-count" class="dmute mtgnotec num">' + v.length + " / " + NOTE_MAX + '</span><span id="mtg-note-help" class="dmute mtgnoteh">Enter saves · Escape cancels</span><button class="btn mtgnotebtn" data-act="mtgnotesave" data-tip="Save the note.">Save</button><button class="btn mtgnotebtn" data-act="mtgnotecancel" data-tip="Keep the note as it was.">Cancel</button></div>';
   }
-  if (!note) return ed ? '<div class="mtgnote"><button class="btn mtgnotebtn" data-act="mtgnoteedit" data-tip="Write one line for today\'s meeting; it shows on the shop screen too">Add a note for today</button></div>' : "";
-  return '<div class="mtgnote"><span class="mtggl">Note</span><span class="mtgnotet">' + esc(note) + "</span>" + (ed ? '<button class="btn mtgnotebtn" data-act="mtgnoteedit" data-tip="Change the note for today\'s meeting">Edit note</button>' : "") + "</div>";
+  if (!note) return ed ? '<div class="mtgnote"><button class="btn mtgnotebtn" data-act="mtgnoteedit" data-tip="Write one line for today\'s meeting; it shows on the shop screen too.">Add a note for today</button></div>' : "";
+  return '<div class="mtgnote"><span class="mtggl">Note</span><span class="mtgnotet">' + esc(note) + "</span>" + (ed ? '<button class="btn mtgnotebtn" data-act="mtgnoteedit" data-tip="Change the note for today\'s meeting.">Edit note</button>' : "") + "</div>";
 }
 function meetingLists() {
   var M = mtgModel(), dn = M.left.filter(function (x) { return x.st === "done"; }).length;

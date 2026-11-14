@@ -143,7 +143,7 @@ D.views.calendar = function () {
   if (!D.calTab(top)) top = D.S.tabs.calapp = "calendar";
   if (top === "here") {
     body = attendance();
-    if (staff) right = '<button class="btn sm" data-act="go" data-v="kiosk" aria-label="Door QR screen" data-tip="Show the sign-in code on the shop door screen">' + D.ic("qr", 16) + '<span class="hide-sm">Door QR screen</span></button>';
+    if (staff) right = '<button class="btn sm" data-act="go" data-v="kiosk" aria-label="Door QR screen" data-tip="Show the sign-in code on the shop door screen.">' + D.ic("qr", 16) + '<span class="hide-sm">Door QR screen</span></button>';
   } else if (top === "snacks") body = snacks();
   else {
     body = calendarTab();
@@ -174,7 +174,7 @@ function month() {
     cells += '<div class="day' + (d.getMonth() !== m ? " other" : "") + (s === TODAYS ? " today" : "") + '"><span class="d">' + d.getDate() + "</span>" + evs.slice(0, 3).map(evBtn).join("") + (evs.length > 3 ? '<span class="who">+' + (evs.length - 3) + " more</span>" : "") + "</div>";
   }
   var title = first.toLocaleDateString("en-US", { month: "long", year: "numeric" });
-  return '<div class="card"><div class="row mnav"><button class="btn sm" data-act="calmonth" data-v="-1" aria-label="Previous month" data-tip="Go back one month">←</button><h2>' + title + '</h2><button class="btn sm" data-act="calmonth" data-v="1" aria-label="Next month" data-tip="Go forward one month">→</button><button class="btn ghost sm" data-act="caltoday">Today</button></div>' +
+  return '<div class="card"><div class="row mnav"><button class="btn sm" data-act="calmonth" data-v="-1" aria-label="Previous month" data-tip="Go back one month.">←</button><h2>' + title + '</h2><button class="btn sm" data-act="calmonth" data-v="1" aria-label="Next month" data-tip="Go forward one month.">→</button><button class="btn ghost sm" data-act="caltoday">Today</button></div>' +
     '<div class="month">' + WD.map(function (x) { return '<div class="dh">' + x + "</div>"; }).join("") + cells + "</div>" +
     '<div class="legend">' + Object.keys(KIND).map(function (k) { return '<span class="' + KIND[k][1] + '"><i class="kd"></i>' + KIND[k][0] + "</span>"; }).join("") + "</div></div>";
 }
@@ -271,7 +271,7 @@ function board() {
   var grid = '<div class="heat" style="grid-template-columns:' + cols + '"><span></span>' + c.days.map(function (d) { return '<span class="hh">' + fmt(d, { month: "numeric", day: "numeric" }) + "</span>"; }).join("") + '<span class="hh">Hours</span><span class="hh">Streak</span>' +
     names.map(function (n) {
       var here = c.here.some(function (h) { return h.name === n; });
-      return '<span class="hn">' + (here ? '<span class="ring" data-tip="In the shop now"></span>' : "") + esc(n) + (n === "Sam Ortiz" && D.S.role === "student" ? ' <span class="who">you</span>' : "") + "</span>" +
+      return '<span class="hn">' + (here ? '<span class="ring" data-tip="In the shop now."></span>' : "") + esc(n) + (n === "Sam Ortiz" && D.S.role === "student" ? ' <span class="who">you</span>' : "") + "</span>" +
         c.days.map(function (d) { var h = d === TODAYS ? (here ? 1.5 : 0) : c.att[n][d]; var cls = h < 0 ? "miss" : h >= 3 ? "h3" : h >= 2.5 ? "h2" : h > 0 ? "h1" : ""; return '<span class="hc ' + cls + '" data-tip="' + esc(n) + ", " + fmt(d) + ": " + (h < 0 ? "missed sign-out" : h + " h") + '"></span>'; }).join("") +
         '<span class="num small hr">' + hoursOf(n).toFixed(1) + '</span><span class="num small hr">' + (streakOf(n) || "—") + "</span>";
     }).join("") + "</div>";
@@ -318,13 +318,13 @@ function mentorsView() {
 function usualWeek(m, days) {
   var dr = draft(m), pw = practiceWeekdays(days), dirty = JSON.stringify(dr) !== JSON.stringify(savedUsual(m));
   return '<div class="card usual"><h2>' + (m === D.me().name ? "My usual week" : esc(m) + "'s usual week") + '</h2><p class="small mute">Pick the days you normally come.</p><div class="row chips">' +
-    WD.map(function (d, w) { var on = !!dr[w], ok = pw.indexOf(w) >= 0; return '<button class="chip" data-act="hereusual" data-v="' + w + '" aria-pressed="' + on + '"' + (!ok && !on ? " disabled" : "") + ' data-tip="' + (ok ? "Come every " + d : "The team doesn't practice on " + d) + '">' + d + "</button>"; }).join("") + "</div>" +
+    WD.map(function (d, w) { var on = !!dr[w], ok = pw.indexOf(w) >= 0; return '<button class="chip" data-act="hereusual" data-v="' + w + '" aria-pressed="' + on + '"' + (!ok && !on ? " disabled" : "") + ' data-tip="' + (ok ? "Come every " + d + "." : "The team doesn't practice on " + d + ".") + '">' + d + "</button>"; }).join("") + "</div>" +
     Object.keys(dr).map(function (w) { return '<div class="row small utrow"><b>' + WD[w] + "</b>" + timeInputs("ut" + w, "hereutime", 'data-w="' + w + '"', dr[w].start, dr[w].end) + "</div>"; }).join("") +
     '<div><button class="btn primary" data-act="heresaveusual"' + (dirty ? "" : " disabled") + ">Save usual week</button></div></div>";
 }
 function whosComing(ed, days) {
   var c = C(), v = c.mview || "list";
-  return '<div class="card"><div class="row between"><h2>Who\'s coming</h2><span class="seg" role="group" aria-label="View">' + [["list", "List", "Mentors and practice days in a table"], ["calendar", "Calendar", "Mentors coming, shown on a month"]].map(function (x) { return '<button data-act="hereview" data-v="' + x[0] + '" aria-pressed="' + (v === x[0]) + '" data-tip="' + x[2] + '">' + x[1] + "</button>"; }).join("") + "</span></div>" +
+  return '<div class="card"><div class="row between"><h2>Who\'s coming</h2><span class="seg" role="group" aria-label="View">' + [["list", "List", "Mentors and practice days in a table."], ["calendar", "Calendar", "Mentors coming, shown on a month."]].map(function (x) { return '<button data-act="hereview" data-v="' + x[0] + '" aria-pressed="' + (v === x[0]) + '" data-tip="' + x[2] + '">' + x[1] + "</button>"; }).join("") + "</span></div>" +
     (v === "calendar" ? mentorMonth(ed, days) : days.length ? teamList(ed, days) : '<p class="small mute">No practice days in the next 8 weeks.</p>') +
     (ed && c.pop ? dayPop(ed, c.pop.d, days) : "") + "</div>";
 }
@@ -338,11 +338,11 @@ function teamList(ed, days) {
   var sub = 'class="who subline"';
   return '<div class="tablewrap" data-keepscroll="mtable"><table class="mtab"><thead><tr><th>Practice</th>' +
     (ed ? '<th class="mine">' + (ed === me ? "You" : esc(ed)) + '<span ' + sub + ">Tap a day to change it</span></th>" : "") +
-    others.map(function (m) { return "<th>" + (admin ? '<button class="linkbtn" data-act="hereeditm" data-v="' + esc(m) + '" data-tip="Edit ' + esc(m) + '\'s days">' + esc(m) + "</button>" : esc(m)) + "</th>"; }).join("") + "</tr></thead><tbody>" +
+    others.map(function (m) { return "<th>" + (admin ? '<button class="linkbtn" data-act="hereeditm" data-v="' + esc(m) + '" data-tip="Edit ' + esc(m) + '\'s days.">' + esc(m) + "</button>" : esc(m)) + "</th>"; }).join("") + "</tr></thead><tbody>" +
     days.map(function (e) {
       var d = e.date, n = comingCount(d), mine = ed && ans(ed, d), open = c.pop && c.pop.d === d;
       return '<tr' + (c.focus === d ? ' class="focusrow"' : "") + '><td><b>' + fmt(d) + '</b><span class="subline ' + (n ? "who" : "nobody") + '">' + (n ? n + " coming" : "Nobody yet") + "</span></td>" +
-        (ed ? '<td class="mine"><button class="dbtn" data-act="herepop" data-d="' + d + '"' + (open ? " data-pop-anchor" : "") + ' aria-expanded="' + !!open + '" data-tip="' + (ed === me ? "Change your answer for this day" : "Change " + esc(ed) + "'s answer for this day") + '">' + (mine ? answerLabel(mine) : '<span class="small" style="color:var(--accent)">Answer…</span>') + "</button></td>" : "") +
+        (ed ? '<td class="mine"><button class="dbtn" data-act="herepop" data-d="' + d + '"' + (open ? " data-pop-anchor" : "") + ' aria-expanded="' + !!open + '" data-tip="' + (ed === me ? "Change your answer for this day." : "Change " + esc(ed) + "'s answer for this day.") + '">' + (mine ? answerLabel(mine) : '<span class="small" style="color:var(--accent)">Answer…</span>') + "</button></td>" : "") +
         others.map(function (m) { var here = d === TODAYS && c.here.some(function (h) { return h.name === m; }); return "<td>" + (here ? '<span class="pill ok">Here</span>' : answerLabel(ans(m, d), student)) + "</td>"; }).join("") + "</tr>";
     }).join("") + "</tbody></table></div>";
 }
@@ -359,19 +359,19 @@ function mentorMonth(ed, days) {
       var n = comingCount(s);
       if (ed) {
         var a = ans(ed, s), r = range(a), said = a && a.st === "coming" ? "coming" + (r ? " " + r : "") : a && a.st === "cant" ? "can't come" : "not answered";
-        beside = '<button class="dchip ' + (a && a.st === "coming" ? "ok" : a && a.st === "cant" ? "cant" : "ask") + '" data-act="herepop" data-d="' + s + '"' + (c.pop && c.pop.d === s ? " data-pop-anchor" : "") + ' data-tip="' + (ed === me ? "You" : esc(ed)) + ": " + said + '. Click to change.">' +
+        beside = '<button class="dchip ' + (a && a.st === "coming" ? "ok" : a && a.st === "cant" ? "cant" : "ask") + '" data-act="herepop" data-d="' + s + '"' + (c.pop && c.pop.d === s ? " data-pop-anchor" : "") + ' data-tip="' + (ed === me ? "Change your answer for this day" : "Change " + esc(ed) + "'s answer for this day") + " (now: " + said + ').">' +
           (a && a.st === "coming" ? D.ic("check", 11) + " " + (r || "Coming") : a && a.st === "cant" ? "✕ Can't" : "Coming?") + "</button>";
       }
       below = n ? (student ? '<span class="who">' + n + " mentor" + (n > 1 ? "s" : "") + "</span>" : "") : '<span class="nobody">⚠ Nobody yet</span>';
     }
     cells += '<div class="day' + (d.getMonth() !== m ? " other" : "") + (s === TODAYS ? " today" : "") + '"><div class="dtop"><span class="d">' + d.getDate() + "</span>" + beside + "</div>" + evs.slice(0, 2).map(evBtn).join("") + (evs.length > 2 ? '<span class="who">+' + (evs.length - 2) + " more</span>" : "") + below + "</div>";
   }
-  return '<div class="row mnav"><button class="btn sm" data-act="heremonth" data-v="-1" aria-label="Previous month" data-tip="Go back one month">←</button><h3 class="mtitle">' + first.toLocaleDateString("en-US", { month: "long", year: "numeric" }) + '</h3><button class="btn sm" data-act="heremonth" data-v="1" aria-label="Next month" data-tip="Go forward one month">→</button><button class="btn ghost sm" data-act="heremonth" data-v="0">Today</button></div>' +
+  return '<div class="row mnav"><button class="btn sm" data-act="heremonth" data-v="-1" aria-label="Previous month" data-tip="Go back one month.">←</button><h3 class="mtitle">' + first.toLocaleDateString("en-US", { month: "long", year: "numeric" }) + '</h3><button class="btn sm" data-act="heremonth" data-v="1" aria-label="Next month" data-tip="Go forward one month.">→</button><button class="btn ghost sm" data-act="heremonth" data-v="0">Today</button></div>' +
     '<div class="tablewrap" data-keepscroll="mmonth"><div class="month wide">' + WD.map(function (x) { return '<div class="dh">' + x + "</div>"; }).join("") + cells + "</div></div>";
 }
 function dayPop(m, d, days) {
   var a = ans(m, d), au = C().avail[m], pe = days.filter(function (e) { return e.date === d; })[0], st = a ? a.st : null;
-  return '<div class="dpop" role="dialog" aria-label="Answer for ' + fmt(d) + '"><div class="row between nowrap"><b>' + (m === D.me().name ? fmt(d) : esc(m) + " · " + fmt(d)) + '</b><button class="xbtn sm" data-act="herepop" aria-label="Close" data-tip="Close without changing this day">×</button></div>' +
+  return '<div class="dpop" role="dialog" aria-label="Answer for ' + fmt(d) + '"><div class="row between nowrap"><b>' + (m === D.me().name ? fmt(d) : esc(m) + " · " + fmt(d)) + '</b><button class="xbtn sm" data-act="herepop" aria-label="Close" data-tip="Close without changing this day.">×</button></div>' +
     '<div class="row chips"><button class="btn sm' + (st === "coming" ? " primary" : "") + '" data-act="hereday" data-d="' + d + '" data-v="coming" aria-pressed="' + (st === "coming") + '">' + D.ic("check", 14) + ' Coming</button><button class="btn sm' + (st === "cant" ? " on" : "") + '" data-act="hereday" data-d="' + d + '" data-v="cant" aria-pressed="' + (st === "cant") + '">✕ Can\'t</button></div>' +
     (st === "coming" ? '<div class="dgrid"><span class="who">Arrive and leave (optional)</span>' + timeInputs("dt", "heredtime", 'data-d="' + d + '"', a.start, a.end) + "</div>" : "") +
     '<div class="row who">' + (!a ? "<span>Not answered</span>" : "") + (pe && pe.start ? "<span>Practice " + shortT(pe.start) + "–" + shortT(pe.end) + "</span>" : "") + (a && a.usual ? "<span>From the usual week</span>" : "") +

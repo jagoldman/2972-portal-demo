@@ -483,7 +483,7 @@ function permitsView() {
       var rec = P[st][tool.skill];
       var label = state === "yes" ? "Yes" : state === "training" ? "Training" : "No";
       var cls = state === "yes" ? "ok" : state === "training" ? "warn" : "";
-      var tip = state === "yes" ? "Signed off by " + rec.by + " · " + rec.at : state === "training" ? "Started. The qualification is not signed off." : "Not started. May not run this tool alone.";
+      var tip = state === "yes" ? "Signed off by " + rec.by + " · " + rec.at : state === "training" ? "Started; the qualification is not signed off." : "Not started; may not run this tool alone.";
       return '<td><button class="pill skperm ' + cls + '" data-act="skpermit" data-st="' + esc(st) + '" data-cat="' + tool.cat + '" data-skill="' + tool.skill + '" data-tip="' + esc(tip) + '">' + label + "</button></td>";
     }).join("");
     return "<tr><td><b>" + esc(st) + "</b>" + you + "</td>" + cells + "</tr>";
@@ -505,7 +505,7 @@ function treesView() {
   var r = treePct(P, t), locked = treeLocked(P, t);
   var node = function (c, style) {
     var stt = catStatus(P, t, c), d = catCounts(P, c);
-    return '<button class="gnode ' + stt + '" ' + style + ' data-act="skcat" data-v="' + c.id + '" data-tip="' + esc(stt === "locked" ? "Open to read. Start after the level before it." : WORD[stt] + ". Open to see its skills.") + '">' + (MARK[stt] ? '<span class="mark">' + MARK[stt] + "</span>" : "") + "<b>" + esc(c.name) + '</b><span class="gline"><span class="gbar"><i style="width:' + D.pct(d, c.skills.length) + '%"></i></span><span class="gcount">' + d + "/" + c.skills.length + "</span></span></button>";
+    return '<button class="gnode ' + stt + '" ' + style + ' data-act="skcat" data-v="' + c.id + '" data-tip="' + esc(stt === "locked" ? "Open to read; start after the level before it." : WORD[stt] + "; open to see its skills.") + '">' + (MARK[stt] ? '<span class="mark">' + MARK[stt] + "</span>" : "") + "<b>" + esc(c.name) + '</b><span class="gline"><span class="gbar"><i style="width:' + D.pct(d, c.skills.length) + '%"></i></span><span class="gcount">' + d + "/" + c.skills.length + "</span></span></button>";
   };
   var row = function (c, dc) {
     var stt = catStatus(P, t, c), d = catCounts(P, c);
@@ -519,7 +519,7 @@ function catGraph(st, P, t, c) {
   var d = catCounts(P, c);
   var node = function (s, style) {
     var stt = skillStatus(st, P, t, c, s);
-    return '<button class="gnode ' + stt + '" ' + style + ' data-act="skskill" data-v="' + s.id + '" data-tip="' + esc(s.sum || "Open to see what it takes and ask for a sign-off.") + '">' + (MARK[stt] ? '<span class="mark">' + MARK[stt] + "</span>" : "") + "<b>" + esc(s.name) + "</b></button>";
+    return '<button class="gnode ' + stt + '" ' + style + ' data-act="skskill" data-v="' + s.id + '" data-tip="' + esc(s.sum ? s.sum.charAt(0).toUpperCase() + s.sum.slice(1) + "." : "Open to see what it takes and ask for a sign-off.") + '">' + (MARK[stt] ? '<span class="mark">' + MARK[stt] + "</span>" : "") + "<b>" + esc(s.name) + "</b></button>";
   };
   var row = function (s, dc) {
     var stt = skillStatus(st, P, t, c, s), after = s.req.filter(function (r) { return BYID[r]; }).map(function (r) { return BYID[r].name; });

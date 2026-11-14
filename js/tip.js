@@ -3,8 +3,10 @@
    - gone on leave, blur, Escape, scroll or click;
    - above the element (below when there is no room), always inside the window, above every other layer;
    - announced with aria-describedby while it shows.
-   A tip is one short sentence (about 80 characters at most) on what the thing is or does, never a repeat of its
-   visible label. Nothing a person must know lives only in a tip: phones have no hover.
+   A tip is one short sentence (about 80 characters at most), a short instruction or a noun phrase on what the thing
+   is or does, ending with a full stop (D152); never "Shows…", "Opens…" or "Click…", never a repeat of its visible
+   label. A tip that is only data (a name and a time, hours in a cell) has no full stop. Nothing a person must know
+   lives only in a tip: phones have no hover.
    Tabs, view switches and status words get their descriptions from the tables below, so every app says them the same way. */
 (function () {
 "use strict";
