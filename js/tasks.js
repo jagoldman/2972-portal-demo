@@ -546,12 +546,30 @@ function filtersBar(onSub) {
 function fGroup(fd, f) {
   return '<fieldset class="tfset"><legend>' + esc(fd[1]) + "</legend>" + fd[2].map(function (o) { var id = "tf-" + fd[0] + "-" + o[0].replace(/[^a-z0-9]/gi, "_"); return '<label class="tfopt" for="' + id + '"><input type="checkbox" id="' + id + '" data-change="tf" data-k="' + fd[0] + '" data-v="' + esc(o[0]) + '"' + (f[fd[0]].indexOf(o[0]) >= 0 ? " checked" : "") + "> " + esc(o[1]) + "</label>"; }).join("") + "</fieldset>";
 }
+// More filters: each field is its own fold, shut by default (a row with the name, "· 2" when some are picked, and a
+// chevron). Long fields (Assignee always; Milestone and Labels past 6 values) get a Sheets-style "filter by values"
+// list: a search box, Select all and Clear, and a short scrolling list with the special entries ("Assigned to me",
+// "Unassigned", "No milestone") pinned on top.
+function fLong(fd) { return fd[0] === "who" || ((fd[0] === "ms" || fd[0] === "lab") && fd[2].length > 6); }
+function fOptHtml(fd, f, o) { var id = "tf-" + fd[0] + "-" + o[0].replace(/[^a-z0-9]/gi, "_"); return '<label class="tfopt' + (o[0].charAt(0) === "@" ? " pin" : "") + '" for="' + id + '"><input type="checkbox" id="' + id + '" data-change="tf" data-k="' + fd[0] + '" data-v="' + esc(o[0]) + '"' + (f[fd[0]].indexOf(o[0]) >= 0 ? " checked" : "") + "> " + esc(o[1]) + "</label>"; }
+function fSec(fd, f) {
+  var tt = T(), k = fd[0], open = !!(tt.fsec || {})[k], n = f[k].length, body = "";
+  if (open && fLong(fd)) {
+    var q = ((tt.fq || {})[k] || "").toLowerCase(), pins = fd[2].filter(function (o) { return o[0].charAt(0) === "@"; }), rest = fd[2].filter(function (o) { return o[0].charAt(0) !== "@"; });
+    var shown = pins.concat(rest).filter(function (o) { return !q || o[1].toLowerCase().indexOf(q) >= 0; });
+    var noun = k === "who" ? "people" : k === "ms" ? "milestones" : "labels";
+    body = '<div class="tfvals"><span class="tfvq">' + D.ic("search", 14) + '<input id="tf-q-' + k + '" class="inp" type="search" data-input="tfq" data-k="' + k + '" placeholder="Search ' + noun + '" value="' + esc((tt.fq || {})[k] || "") + '" aria-label="Search ' + noun + '"></span>' +
+      '<div class="tfvlinks"><button class="linkbtn" data-act="tfall" data-k="' + k + '">Select all</button><button class="linkbtn" data-act="tfnone" data-k="' + k + '">Clear</button>' + (q ? '<span class="who">' + shown.length + " of " + fd[2].length + "</span>" : "") + "</div>" +
+      '<div class="tfvlist" role="group" aria-label="' + esc(fd[1]) + '" data-keepscroll="tfv-' + k + '">' + (shown.length ? shown.map(function (o) { return fOptHtml(fd, f, o); }).join("") : '<p class="small mute tfvnone">No ' + noun + " match.</p>") + "</div></div>";
+  } else if (open) body = '<div class="tfsecbody" role="group" aria-label="' + esc(fd[1]) + '">' + fd[2].map(function (o) { return fOptHtml(fd, f, o); }).join("") + "</div>";
+  return '<div class="tfsec' + (open ? " open" : "") + '"><button class="tfsechd" id="tf-sec-' + k + '" data-act="tfsec" data-k="' + k + '" aria-expanded="' + open + '"><span class="grow">' + esc(fd[1]) + (n ? ' <span class="tfn">· ' + n + "</span>" : "") + '</span><svg class="tfchev" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M6 9l6 6 6-6"/></svg></button>' + body + "</div>";
+}
 function fPop(fields, f) {
   var tt = T(), more = fields.slice(1), nMore = more.reduce(function (n, fd) { return n + f[fd[0]].length; }, 0);
   return '<div class="dpop tfpop" role="dialog" aria-label="Filter tasks" data-keepscroll="tfpop"><div class="row between nowrap"><b>Filter</b><span class="row nowrap">' + (fCount() ? '<button class="linkbtn" data-act="tfclear">Clear all</button>' : "") + '<button class="xbtn sm" data-act="tfopen" aria-label="Close" data-tip="Close the filters.">×</button></span></div>' +
     fGroup(fields[0], f) +
     '<button class="tfmore" data-act="tfmore" aria-expanded="' + !!tt.fmore + '">' + (tt.fmore ? "▾" : "▸") + " More filters" + (nMore ? ' <span class="who">· ' + nMore + "</span>" : "") + "</button>" +
-    (tt.fmore ? '<div class="tfmorebox">' + more.map(function (fd) { return fGroup(fd, f); }).join("") + "</div>" : "") + "</div>";
+    (tt.fmore ? '<div class="tfmorebox">' + more.map(function (fd) { return fSec(fd, f); }).join("") + "</div>" : "") + "</div>";
 }
 // No tasks left after search or filters: say so, with a way back.
 function noMatch() { return '<div class="card tfnone"><p>No tasks match ' + (fCount() ? "these filters" : "this search") + '.</p><button class="btn" data-act="tfclear">Clear</button></div>'; }
@@ -1225,6 +1243,12 @@ D.changes.tpgroup = function (el) { T().pgroup = el.value; D.render(); };
 D.changes.tgroup = function (el) { T().group = el.value; D.render(); };
 D.inputs.tq = function (el) { T().q = el.value; D.render(); };
 A.tfopen = function () { var tt = T(); tt.fopen = !tt.fopen; D.render(); var el = document.getElementById(tt.fopen ? "tf-st-todo" : "t-filter"); if (el) el.focus(); };
+A.tfsec = function (b) { var tt = T(), k = b.dataset.k; tt.fsec = tt.fsec || {}; tt.fsec[k] = !tt.fsec[k]; D.render(); var el = document.getElementById("tf-sec-" + k); if (el) el.focus(); };
+D.inputs.tfq = function (el) { var tt = T(); tt.fq = tt.fq || {}; tt.fq[el.dataset.k] = el.value; D.render(); };
+// Select all and Clear act on the values the search shows, as in Sheets.
+function fShown(k) { var tt = T(), fd = fFields(proj(tt.at.p), false).filter(function (x) { return x[0] === k; })[0], q = ((tt.fq || {})[k] || "").toLowerCase(); return fd ? fd[2].filter(function (o) { return !q || o[1].toLowerCase().indexOf(q) >= 0; }).map(function (o) { return o[0]; }) : []; }
+A.tfall = function (b) { var k = b.dataset.k, a = fstate()[k]; fShown(k).forEach(function (v) { if (a.indexOf(v) < 0) a.push(v); }); D.render(); var el = document.querySelector('[data-act="tfall"][data-k="' + k + '"]'); if (el) el.focus(); };
+A.tfnone = function (b) { var k = b.dataset.k, f = fstate(), sh = fShown(k); f[k] = f[k].filter(function (v) { return sh.indexOf(v) < 0; }); D.render(); var el = document.querySelector('[data-act="tfnone"][data-k="' + k + '"]'); if (el) el.focus(); };
 A.tfmore = function () { var tt = T(); tt.fmore = !tt.fmore; D.render(); var el = document.querySelector(".tfmore"); if (el) el.focus(); };
 D.changes.tf = function (el) { var a = fstate()[el.dataset.k], v = el.dataset.v, i = a.indexOf(v); if (el.checked && i < 0) a.push(v); else if (!el.checked && i >= 0) a.splice(i, 1); D.render(); };
 A.tfdrop = function (b) { var a = fstate()[b.dataset.k], i = a.indexOf(b.dataset.v); if (i >= 0) a.splice(i, 1); D.render(); var el = document.querySelector(".tfchip button") || document.getElementById("t-filter"); if (el) el.focus(); };

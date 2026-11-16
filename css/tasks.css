@@ -160,7 +160,24 @@
 .tfopt:hover { background: var(--surface-2); }
 .tfopt input { width: 16px; height: 16px; margin: 0; accent-color: var(--accent); }
 .tfmore { justify-self: start; border: 0; background: none; padding: 6px 0; color: var(--accent); font-weight: 600; font-size: .9rem; }
-.tfmorebox { display: grid; gap: 12px; padding-top: 4px; border-top: 1px solid var(--line); }
+.tfmorebox { display: grid; border-top: 1px solid var(--line); }
+.tfsec { border-bottom: 1px solid var(--line); }
+.tfsechd { display: flex; align-items: center; gap: 8px; width: 100%; min-height: 40px; padding: 0 4px; border: 0; border-radius: 6px; background: none; color: var(--text); font: inherit; font-size: .9rem; font-weight: 600; text-align: left; cursor: pointer; }
+.tfsechd:hover { background: var(--surface-2); }
+.tfsechd .tfn { color: var(--accent); font-weight: 600; }
+.tfchev { flex: none; color: var(--text-2); transition: transform .15s; }
+.tfsec.open .tfchev { transform: rotate(180deg); }
+.tfsecbody { display: grid; padding: 0 0 8px; }
+.tfvals { display: grid; gap: 6px; padding: 2px 0 10px; }
+.tfvq { position: relative; display: flex; align-items: center; }
+.tfvq svg { position: absolute; left: 8px; color: var(--text-2); pointer-events: none; }
+.tfvq .inp { width: 100%; min-height: 34px; padding: 4px 8px 4px 28px; font-size: .88rem; }
+.tfvlinks { display: flex; align-items: center; gap: 14px; font-size: .85rem; }
+.tfvlinks .who { margin-left: auto; }
+.tfvlist { display: grid; align-content: start; max-height: 226px; overflow-y: auto; border: 1px solid var(--line); border-radius: 8px; padding: 2px; background: var(--surface); overscroll-behavior: contain; }
+.tfopt.pin { font-style: italic; }
+.tfopt.pin + .tfopt:not(.pin) { border-top: 1px solid var(--line); border-radius: 0 0 6px 6px; }
+.tfvnone { margin: 8px; }
 .tfnone { display: flex; align-items: center; justify-content: space-between; gap: 12px; flex-wrap: wrap; }
 .tfnone p { margin: 0; }
 @media (max-width: 640px) {
@@ -170,6 +187,10 @@
   .tfopt input { width: 20px; height: 20px; }
   .tfchip button { width: 36px; height: 36px; }
   .tfpop { width: auto; max-height: 75vh; }
+  .tfsechd { min-height: 48px; }
+  .tfvq .inp { min-height: 44px; font-size: 1rem; }
+  .tfvlinks .linkbtn { min-height: 40px; }
+  .tfvlist { max-height: 300px; }
 }
 /* ---------- Group headings and task rows ---------- */
 .tgrp { font-size: .88rem; font-weight: 600; color: var(--text-2); margin-top: 6px; }
