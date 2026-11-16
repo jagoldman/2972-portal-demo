@@ -13,3 +13,20 @@
 .nsw1 { display: inline-flex; align-items: center; gap: 10px; min-height: 44px; font-weight: 600; font-size: .9rem; }
 .nsw1 .who { font-weight: 400; }
 @media (max-width: 640px) { .nsw { display: grid; gap: 0; } .nsw1 { justify-content: space-between; border-top: 1px solid var(--line); } .nsw1:first-child { border-top: 0; } }
+/* Notifications: one closed section per app; inside, one dropdown per kind of notice. */
+.napps { display: grid; border-top: 1px solid var(--line); }
+.napp { border-bottom: 1px solid var(--line); }
+.napp > summary { list-style: none; display: flex; align-items: center; gap: 12px; min-height: 48px; padding: 6px 4px; cursor: pointer; border-radius: var(--r-ctl); }
+.napp > summary::-webkit-details-marker { display: none; }
+.napp > summary .who { margin-left: auto; text-align: right; }
+.napp > summary:hover { background: var(--surface-2); }
+.napp > summary:focus-visible { outline: 2px solid var(--accent); outline-offset: 0; }
+.nchev { display: inline-flex; color: var(--mute); flex: none; transition: transform .15s ease; }
+.napp[open] > summary .nchev { transform: rotate(90deg); }
+.napp .nlist { padding: 0 4px 8px; }
+.napp .nkind { grid-template-columns: 1fr minmax(200px, 260px); align-items: center; gap: 8px 16px; }
+.napp .nkind label { cursor: pointer; }
+.nsel { border: 1px solid var(--line-2); background: var(--surface); color: var(--text); border-radius: var(--r-ctl); padding: 8px 12px; min-height: 44px; width: 100%; }
+.nsel:focus { outline: 2px solid var(--accent); outline-offset: 0; border-color: var(--accent); }
+@media (max-width: 640px) { .napp > summary { min-height: 44px; } .napp .nkind { grid-template-columns: 1fr; } }
+@media (prefers-reduced-motion: reduce) { .nchev { transition: none; } }
