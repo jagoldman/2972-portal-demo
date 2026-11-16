@@ -516,12 +516,60 @@ document.addEventListener("keydown", function (e) {
   var id = el.dataset.v;
   if (tlMove(id, cells[end].date)) { var b = document.querySelector('.tkbar[data-v="' + id + '"]'); if (b) b.focus(); }
 });
-function filtersBar() {
-  var tt = T();
-  return '<div class="tbar"><input id="t-q" class="inp tq" data-input="tq" placeholder="Filter tasks" value="' + esc(tt.q) + '" aria-label="Filter tasks"><span class="seg" role="group" aria-label="Whose tasks"><button data-act="twho" data-v="all" aria-pressed="' + (tt.who === "all") + '" data-tip="Tasks for the whole subteam.">Everyone</button><button data-act="twho" data-v="me" aria-pressed="' + (tt.who === "me") + '" data-tip="Only tasks assigned to you.">Mine</button></span>' +
-    (simple() ? "" : '<select class="chipsel" data-change="tlabel" aria-label="Label"><option value="">All labels</option>' + Object.keys(LABELS).map(function (l) { return '<option value="' + l + '"' + (tt.label === l ? " selected" : "") + ">" + LABELS[l][0] + "</option>"; }).join("") + "</select>") + "</div>";
+/* ---------- Search and filters ----------
+   The box searches titles and notes. The Filter button opens a popover: Stage on top, then "More filters" with every
+   field a task can be given (assignee, subteam, milestone, labels, due, estimate). Several values in one field match
+   any of them; fields combine (all must match). The filters belong to the project, so Grid, List and Board (and its
+   subteam pages) share them for the visit; active ones show as chips under the bar. */
+var PEOPLE = ["Sam Ortiz", "Leo Brooks", "Priya Shah", "Ava Kim", "Jordan Lee", "Maya Gold", "Omar Haddad", "Nina Park", "Ms. Rivera", "Mr. Chen"];
+function fstate() { var tt = T(), k = tt.at.p || "_"; tt.fp = tt.fp || {}; return tt.fp[k] || (tt.fp[k] = { st: [], who: [], sub: [], ms: [], lab: [], due: [], est: [] }); }
+function isWaiting(x) { return x.st !== "done" && x.st !== "blocked" && blockedBy(x).length > 0; }
+// Each field: key, heading, options [value, label], and the test for one value.
+function fFields(p, onSub) {
+  var f = [["st", "Stage", [["todo", "To do"], ["doing", "In progress"], ["waiting", "Waiting on a task"], ["blocked", "Blocked"], ["done", "Done"]], function (x, v) { return v === "waiting" ? isWaiting(x) : x.st === v; }]];
+  f.push(["who", "Assignee", [["@me", "Assigned to me"], ["@none", "Unassigned"]].concat(PEOPLE.filter(function (n) { return n !== me(); }).map(function (n) { return [n, n]; })), function (x, v) { return v === "@me" ? x.who.indexOf(me()) >= 0 : v === "@none" ? !x.who.length : x.who.indexOf(v) >= 0; }]);
+  if (!onSub) f.push(["sub", "Subteam", p.subs.map(function (s) { return [s, s]; }), function (x, v) { return x.sub === v; }]);
+  f.push(["ms", "Milestone", p.ms.map(function (m) { return [m[0], m[1]]; }).concat([["@none", "No milestone"]]), function (x, v) { return v === "@none" ? !x.ms : x.ms === v; }]);
+  if (!simple()) f.push(["lab", "Labels", Object.keys(LABELS).map(function (l) { return [l, LABELS[l][0]]; }), function (x, v) { return x.labels.indexOf(v) >= 0; }]);
+  f.push(["due", "Due", [["late", "Overdue"], ["today", "Today"], ["week", "This week"], ["later", "Later"], ["none", "No date"]], function (x, v) { var n = x.due ? days(x.due) : null; return v === "none" ? !x.due : n == null ? false : v === "late" ? n < 0 && x.st !== "done" : v === "today" ? n === 0 : v === "week" ? n >= 0 && n <= 6 : n > 6; }]);
+  if (!simple()) f.push(["est", "Estimate", [["small", "Up to 2 hours"], ["big", "Over 2 hours"], ["none", "No estimate"]], function (x, v) { return v === "none" ? !x.est : v === "small" ? x.est && x.est <= 2 : x.est > 2; }]);
+  return f;
 }
-function pass(x) { var tt = T(); return (!tt.q || x.title.toLowerCase().indexOf(tt.q.toLowerCase()) >= 0) && (tt.who === "all" || x.who.indexOf(me()) >= 0) && (!tt.label || x.labels.indexOf(tt.label) >= 0); }
+function fCount() { var f = fstate(); return Object.keys(f).reduce(function (n, k) { return n + f[k].length; }, 0); }
+function filtersBar(onSub) {
+  var tt = T(), p = proj(tt.at.p), f = fstate(), n = fCount(), fields = p ? fFields(p, onSub) : [];
+  var bar = '<div class="tbar"><span class="tsearch">' + D.ic("search", 16) + '<input id="t-q" class="inp tq" type="search" data-input="tq" placeholder="Search tasks" value="' + esc(tt.q) + '" aria-label="Search tasks"></span>' +
+    '<button id="t-filter" class="btn tfbtn' + (n ? " on" : "") + '" data-act="tfopen" aria-haspopup="dialog" aria-expanded="' + !!tt.fopen + '"' + (tt.fopen ? " data-pop-anchor" : "") + ' data-tip="Show only some tasks: by stage, person, subteam, milestone and more.">' + '<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M3 5h18l-7 8v6l-4 2v-8z"/></svg> Filter' + (n ? " · " + n : "") + "</button></div>";
+  var chips = n ? '<div class="tfchips" aria-label="Active filters">' + fFields(p, false).map(function (fd) { return f[fd[0]].map(function (v) { var o = fd[2].filter(function (q) { return q[0] === v; })[0]; return '<span class="tfchip">' + esc(fd[1]) + ": " + esc(o ? o[1] : v) + '<button data-act="tfdrop" data-k="' + fd[0] + '" data-v="' + esc(v) + '" aria-label="Remove ' + esc(fd[1] + " " + (o ? o[1] : v)) + '">×</button></span>'; }).join(""); }).join("") + '<button class="linkbtn" data-act="tfclear">Clear all</button></div>' : "";
+  return bar + chips + (tt.fopen && p ? fPop(fields, f) : "");
+}
+function fGroup(fd, f) {
+  return '<fieldset class="tfset"><legend>' + esc(fd[1]) + "</legend>" + fd[2].map(function (o) { var id = "tf-" + fd[0] + "-" + o[0].replace(/[^a-z0-9]/gi, "_"); return '<label class="tfopt" for="' + id + '"><input type="checkbox" id="' + id + '" data-change="tf" data-k="' + fd[0] + '" data-v="' + esc(o[0]) + '"' + (f[fd[0]].indexOf(o[0]) >= 0 ? " checked" : "") + "> " + esc(o[1]) + "</label>"; }).join("") + "</fieldset>";
+}
+function fPop(fields, f) {
+  var tt = T(), more = fields.slice(1), nMore = more.reduce(function (n, fd) { return n + f[fd[0]].length; }, 0);
+  return '<div class="dpop tfpop" role="dialog" aria-label="Filter tasks" data-keepscroll="tfpop"><div class="row between nowrap"><b>Filter</b><span class="row nowrap">' + (fCount() ? '<button class="linkbtn" data-act="tfclear">Clear all</button>' : "") + '<button class="xbtn sm" data-act="tfopen" aria-label="Close" data-tip="Close the filters.">×</button></span></div>' +
+    fGroup(fields[0], f) +
+    '<button class="tfmore" data-act="tfmore" aria-expanded="' + !!tt.fmore + '">' + (tt.fmore ? "▾" : "▸") + " More filters" + (nMore ? ' <span class="who">· ' + nMore + "</span>" : "") + "</button>" +
+    (tt.fmore ? '<div class="tfmorebox">' + more.map(function (fd) { return fGroup(fd, f); }).join("") + "</div>" : "") + "</div>";
+}
+// No tasks left after search or filters: say so, with a way back.
+function noMatch() { return '<div class="card tfnone"><p>No tasks match ' + (fCount() ? "these filters" : "this search") + '.</p><button class="btn" data-act="tfclear">Clear</button></div>'; }
+// Order: each task has a number `pos` (missing: its id, so the seed keeps its order and a new task goes last). Cells,
+// list groups and board columns sort by it; a drop between two tasks takes the midpoint, as the real app's
+// Task.position does with reorderTask(before, after).
+function posOf(x) { return x.pos != null ? x.pos : x.id; }
+function byPos(a, b) { return posOf(a) - posOf(b); }
+function placePos(n, prevId, nextId) {
+  var a = prevId ? posOf(task(prevId)) : null, b = nextId ? posOf(task(nextId)) : null; if (a == null && b == null) return null;
+  if (a == null) a = b - n - 1; if (b == null) b = a + n + 1;
+  var out = []; for (var k = 1; k <= n; k++) out.push(a + (b - a) * k / (n + 1)); return out;
+}
+function pass(x) {
+  var tt = T(), q = (tt.q || "").toLowerCase(), p = proj(x.p), f = fstate();
+  if (q && (x.title + " " + (x.desc || "")).toLowerCase().indexOf(q) < 0) return false;
+  return fFields(p, false).every(function (fd) { var vs = f[fd[0]]; return !vs.length || vs.some(function (v) { return fd[3](x, v); }); });
+}
 // Who can move tasks between milestones (drag in the grid or the list, the bulk bar, the panel's Milestone menu):
 // everyone who edits tasks in this app, so mentors, admins and students. Parents only read.
 function canMove() { return ["admin", "mentor", "student"].indexOf(D.S.role) >= 0; }
@@ -534,7 +582,7 @@ function gcard(x) {
   return canMove() ? '<div class="gdrag" data-mtask="' + x.id + '"><span class="ghandle" aria-hidden="true" data-tip="Press and drag the card to another milestone or subteam.">⠿</span>' + card + "</div>" : card;
 }
 function projectPage(pid) {
-  var p = proj(pid), d = divOf(pid), tt = T(), xs = tt.list.filter(function (x) { return x.p === pid && !x.parent && pass(x); });
+  var p = proj(pid), d = divOf(pid), tt = T(), xs = tt.list.filter(function (x) { return x.p === pid && !x.parent && pass(x); }).sort(byPos);
   var rows = p.ms.concat([[null, "No milestone", "", false]]), mv = canMove(), shut = tt.msShut || (tt.msShut = {});
   // Drop targets: a cell takes a milestone and a subteam, a row heading only a milestone ("" is No milestone).
   function dz(m, s) { return mv ? ' data-dm="' + (m[0] || "") + '"' + (s != null ? ' data-ds="' + esc(s) + '"' : "") : ""; }
@@ -573,6 +621,7 @@ function projectPage(pid) {
   var pv = pview(), tools = viewSeg(PROJ_VIEWS, pv, "tpview") + (lead() ? '<button class="btn sm" data-act="tmsadd" data-v="' + p.id + '">+ Milestone</button><button class="btn ghost sm" data-act="tsaves">' + D.ic("history", 16) + " Save points</button>" : "");
   var main = pv === "list" ? listBody(p, xs, { group: tt.pgroup || "milestone", act: "tpgroup", opts: [["milestone", "Milestone"], ["sub", "Subteam"], ["status", "Status"]] })
     : pv === "board" ? boardHtml(xs, pid, null, true) : '<div class="card pgcard">' + grid + "</div>";
+  if (!xs.length && (fCount() || tt.q)) main = noMatch();
   return frame(p.name, esc(d.name), tools, filtersBar() + main +
     (cross.length && !simple() ? '<div class="card"><h2>Waiting on other subteams</h2><div class="list">' + cross.map(function (x) { return '<div class="li"><span class="grow"><b>' + esc(x.title) + '</b> <span class="who">(' + esc(x.sub) + ") waits on</span> " + x.by.map(function (b) { var bt = task(b); return "<b>" + esc(bt.title) + '</b> <span class="who">(' + esc(bt.sub) + ", " + ST[bt.st][0] + ")</span>"; }).join(", ") + "</span></div>"; }).join("") + "</div></div>" : ""));
 }
@@ -602,11 +651,11 @@ function listBody(p, xs, o) {
   var add = o.sub ? '<div class="row nowrap taddin"><input id="t-add" class="inp" placeholder="Add a task to ' + esc(o.sub) + '" data-input="taddtxt" aria-label="New task title"><button class="btn" data-act="tquick" data-p="' + p.id + '" data-s="' + esc(o.sub) + '">Add</button></div>' : '<button class="btn sm" data-act="tnewin" data-p="' + p.id + '" data-s="">+ Add a task</button>';
   return '<div class="card' + (selIds(xs).length ? " tselon" : "") + '"><div class="row between taddrow">' + add + '<label class="row small mute">Group by <select class="chipsel" data-change="' + o.act + '" aria-label="Group by">' + o.opts.map(function (g) { return '<option value="' + g[0] + '"' + (key === g[0] ? " selected" : "") + ">" + g[1] + "</option>"; }).join("") + "</select></label></div>" +
     bulk(p, xs) +
-    (xs.length || drop ? groups.map(function (g) { var gs = xs.filter(g[1]); if (!gs.length && !drop) return ""; return '<section class="tgsec"' + (drop ? g[2] : "") + '><h3 class="tgrp">' + esc(g[0]) + ' <span class="who">' + gs.length + "</span></h3><div>" + (gs.length ? gs.map(function (x) { var sc = subsOf(x), open = tt.openSubs[x.id]; return listRow(x, sc, open, false, mv, chip) + (open ? sc.map(function (s) { return listRow(s, [], false, true, mv); }).join("") : ""); }).join("") : '<p class="small mute tgempty">' + empty + "</p>") + "</div></section>"; }).join("") : '<p class="mute">No tasks here yet.</p>') + "</div>";
+    (xs.length || drop ? groups.map(function (g) { var gs = xs.filter(g[1]); if (!gs.length && !drop) return ""; return '<section class="tgsec"' + (drop ? g[2] : mv ? ' data-ord=""' : "") + '><h3 class="tgrp">' + esc(g[0]) + ' <span class="who">' + gs.length + "</span></h3><div>" + (gs.length ? gs.map(function (x) { var sc = subsOf(x), open = tt.openSubs[x.id]; return listRow(x, sc, open, false, mv, chip) + (open ? sc.map(function (s) { return listRow(s, [], false, true, mv); }).join("") : ""); }).join("") : '<p class="small mute tgempty">' + empty + "</p>") + "</div></section>"; }).join("") : '<p class="mute">No tasks here yet.</p>') + "</div>";
 }
 function listPage(pid, sub) {
-  var p = proj(pid), tt = T(), xs = tt.list.filter(function (x) { return x.p === pid && x.sub === sub && !x.parent && pass(x); });
-  var body = filtersBar() + (tt.mode === "board" ? boardHtml(xs, pid, sub, false) : listBody(p, xs, { sub: sub, group: tt.group, act: "tgroup", opts: [["milestone", "Milestone"], ["due", "Due date"], ["none", "Nothing"]] }));
+  var p = proj(pid), tt = T(), xs = tt.list.filter(function (x) { return x.p === pid && x.sub === sub && !x.parent && pass(x); }).sort(byPos);
+  var body = filtersBar(true) + (!xs.length && (fCount() || tt.q) ? noMatch() : tt.mode === "board" ? boardHtml(xs, pid, sub, false) : listBody(p, xs, { sub: sub, group: tt.group, act: "tgroup", opts: [["milestone", "Milestone"], ["due", "Due date"], ["none", "Nothing"]] }));
   return frame(sub, esc(divOf(pid).name) + " › " + esc(p.name), viewSeg(SUB_VIEWS, tt.mode, "tmode"), body);
 }
 // The bulk bar under the add row: shows once a task is picked (its row's checkbox).
@@ -1137,25 +1186,25 @@ var A = D.acts;
 // a task taken out of Done loses it. The Projector's Meeting view reads it.
 function setSt(x, s) { if (s === "done" && x.st !== "done") x.doneOn = TODAYS; else if (s !== "done") x.doneOn = null; x.st = s; }
 function h(x, what, snap) { x.hist.push([D.me().name, what, "Just now", snap || { st: x.st, due: x.due }]); }
-function at(v) { T().at = v; T().mopen = false; T().sel = {}; D.S.drawer = null; D.render(); }
+function at(v) { T().at = v; T().mopen = false; T().sel = {}; T().fopen = false; D.S.drawer = null; D.render(); }
 // Move tasks to a milestone (null: No milestone) and, from a grid cell, to a subteam. Subtasks go with their task.
 // One toast says where they went, with Undo. Returns false when nothing changed (dropped where it already was).
-function moveTasks(ids, ms, sub) {
+function moveTasks(ids, ms, sub, pos) {
   if (!canMove()) return false;
   var keep = ms === undefined; // a subteam group: only the subteam changes
   var xs = ids.map(task).filter(function (x) { return x && !x.parent && ((!keep && (x.ms || null) !== ms) || (sub && x.sub !== sub)); });
   if (!xs.length) return false;
   var name = keep ? "" : ms ? msName(xs[0].p, ms) : "No milestone", subMoved = sub && xs.some(function (x) { return x.sub !== sub; });
-  var before = xs.map(function (x) { return [x, x.ms, x.sub, subsOf(x).map(function (c) { return [c, c.ms, c.sub]; })]; });
+  var before = xs.map(function (x) { return [x, x.ms, x.sub, subsOf(x).map(function (c) { return [c, c.ms, c.sub]; }), x.pos]; });
   var where = keep ? sub : name + (subMoved ? " › " + sub : "");
   D.withUndo((xs.length > 1 ? "Moved " + xs.length + " tasks to " : "Moved to ") + where, function () {
     xs.forEach(function (x) {
-      if (!keep) x.ms = ms; if (sub) x.sub = sub;
+      if (!keep) x.ms = ms; if (sub) x.sub = sub; if (pos) x.pos = pos[ids.indexOf(x.id)];
       subsOf(x).forEach(function (c) { if (!keep) c.ms = ms; if (sub) c.sub = sub; });
       h(x, "moved it to " + where);
     });
   }, function () {
-    before.forEach(function (b) { b[0].ms = b[1]; b[0].sub = b[2]; b[3].forEach(function (c) { c[0].ms = c[1]; c[0].sub = c[2]; }); b[0].hist.pop(); });
+    before.forEach(function (b) { b[0].ms = b[1]; b[0].sub = b[2]; b[0].pos = b[4]; b[3].forEach(function (c) { c[0].ms = c[1]; c[0].sub = c[2]; }); b[0].hist.pop(); });
   });
   return true;
 }
@@ -1175,8 +1224,14 @@ A.tpview = function (b) { var v = b.dataset.v; D.setPref("tpview", v); if (v !==
 D.changes.tpgroup = function (el) { T().pgroup = el.value; D.render(); };
 D.changes.tgroup = function (el) { T().group = el.value; D.render(); };
 D.inputs.tq = function (el) { T().q = el.value; D.render(); };
-A.twho = function (b) { T().who = b.dataset.v; D.render(); };
-D.changes.tlabel = function (el) { T().label = el.value; D.render(); };
+A.tfopen = function () { var tt = T(); tt.fopen = !tt.fopen; D.render(); var el = document.getElementById(tt.fopen ? "tf-st-todo" : "t-filter"); if (el) el.focus(); };
+A.tfmore = function () { var tt = T(); tt.fmore = !tt.fmore; D.render(); var el = document.querySelector(".tfmore"); if (el) el.focus(); };
+D.changes.tf = function (el) { var a = fstate()[el.dataset.k], v = el.dataset.v, i = a.indexOf(v); if (el.checked && i < 0) a.push(v); else if (!el.checked && i >= 0) a.splice(i, 1); D.render(); };
+A.tfdrop = function (b) { var a = fstate()[b.dataset.k], i = a.indexOf(b.dataset.v); if (i >= 0) a.splice(i, 1); D.render(); var el = document.querySelector(".tfchip button") || document.getElementById("t-filter"); if (el) el.focus(); };
+A.tfclear = function () { var f = fstate(); Object.keys(f).forEach(function (k) { f[k] = []; }); T().q = ""; D.render(); var el = document.getElementById("t-filter"); if (el) el.focus(); };
+// Escape, or a click outside, closes the filter popover; Escape gives the focus back to the Filter button.
+document.addEventListener("keydown", function (e) { var tt = D.S && D.S.tasks; if (e.key !== "Escape" || !tt || !tt.fopen || D.S.modal || D.S.drawer) return; e.preventDefault(); e.stopImmediatePropagation(); tt.fopen = false; D.render(); var b = document.getElementById("t-filter"); if (b) b.focus(); }, true);
+document.addEventListener("click", function (e) { var tt = D.S && D.S.tasks; if (!tt || !tt.fopen || e.target.closest(".tfpop, #t-filter")) return; tt.fopen = false; D.render(); });
 A.tcal = function (b) { T().cal = b.dataset.v; D.render(); };
 // Due dates: change month, and the quick add on a day (the + button, or a click on the day's empty space).
 A.tcalmonth = function (b) { var tt = T(), v = +b.dataset.v, cm = tt.cm || [2026, 10]; tt.cq = null; tt.cm = v ? [new Date(cm[0], cm[1] + v, 1).getFullYear(), new Date(cm[0], cm[1] + v, 1).getMonth()] : [2026, 10]; D.render(); };
@@ -1290,8 +1345,8 @@ D.changes.tcol = function (el) { if (!el.value) return; var x = task(el.dataset.
    TouchSensor { delay: 250, tolerance: 8 }; the dwell is a timer started in onDragOver when `over` is a "task"
    droppable (reset when `over` changes or the pointer moves past the tolerance), read in onDragEnd. */
 var MV_PX = 5, MV_HOLD = 260, MV_TOL = 8, NEST_MS = 600, NEST_TOL = 8, mDrag = null, mEat = false;
-function dmOver(el) { document.querySelectorAll("[data-dm].over, [data-col].over, [data-ds].over").forEach(function (o) { if (o !== el) o.classList.remove("over"); }); if (el) el.classList.add("over"); }
-function mTarget(x, y) { var el = document.elementFromPoint(x, y); return el && el.closest ? el.closest("[data-dm], [data-col], [data-ds]") : null; }
+function dmOver(el) { document.querySelectorAll("[data-dm].over, [data-col].over, [data-ds].over, [data-ord].over").forEach(function (o) { if (o !== el) o.classList.remove("over"); }); if (el) el.classList.add("over"); }
+function mTarget(x, y) { var el = document.elementFromPoint(x, y); return el && el.closest ? el.closest("[data-dm], [data-col], [data-ds], [data-ord]") : null; }
 function mTaskAt(d, x, y) { var el = document.elementFromPoint(x, y), t = el && el.closest ? el.closest("[data-mtask]") : null; return t && +t.dataset.mtask !== d.id ? t : null; }
 // What holding over task `id` would do: { to: the new parent } or { no: the hint }.
 function nestRule(d, id) {
@@ -1315,22 +1370,47 @@ function nestShow(d, el, rule) {
   // The words ride on the lifted card (the pointer would cover them on the target), which also gets the outline's colour.
   if (d.ghost) { d.ghost.classList.add(rule.to ? "gnest" : "gnestno"); d.ghost.insertAdjacentHTML("beforeend", '<span class="mnest" role="status">' + (rule.to ? "Make subtask of “" + esc(rule.to.title) + "”" : esc(rule.no)) + "</span>"); }
   d.nest = rule.to ? { to: rule.to.id, el: show } : null; d.nestNo = !rule.to;
-  dmOver(null);
+  d.ins = null; lineShow(null); dmOver(null);
 }
-// Called on every pointer move and auto-scroll step: the drop target, and the dwell over another task.
+// Where in a cell, list group or board column the task would land: before the first card whose middle is below the
+// pointer. Returns { cont, prev, next, y, left, width } for the insertion line, or null (an empty place, or a heading).
+function insPoint(d, cont) {
+  if (!cont || !cont.matches(".gcell, .tgsec, .bcol")) return null;
+  var sel = T().sel || {}, multi = sel[d.id] && Object.keys(sel).length > 1;
+  var items = Array.prototype.filter.call(cont.querySelectorAll("[data-mtask]"), function (el) { var id = +el.dataset.mtask; return id !== d.id && !el.classList.contains("sub") && !(multi && sel[id]); });
+  if (!items.length) return null;
+  var rs = items.map(function (el) { return el.getBoundingClientRect(); }), i = 0;
+  while (i < items.length && rs[i].top + rs[i].height / 2 < d.y) i++;
+  var prev = i > 0 ? i - 1 : -1, next = i < items.length ? i : -1, r = rs[next >= 0 ? next : prev];
+  var y = prev >= 0 && next >= 0 ? (rs[prev].bottom + rs[next].top) / 2 : next >= 0 ? rs[next].top - 3 : rs[prev].bottom + 3;
+  return { cont: cont, prev: prev >= 0 ? +items[prev].dataset.mtask : null, next: next >= 0 ? +items[next].dataset.mtask : null, y: y, left: r.left, width: r.width };
+}
+function lineShow(ins) {
+  var l = document.querySelector(".mline");
+  if (!ins) { if (l) l.remove(); return; }
+  if (!l) { l = document.createElement("div"); l.className = "mline"; l.setAttribute("aria-hidden", "true"); document.body.appendChild(l); }
+  l.style.transform = "translate(" + ins.left + "px," + (ins.y - 1.5) + "px)"; l.style.width = ins.width + "px";
+}
+// Called on every pointer move and auto-scroll step: the drop target with its insertion line, and the dwell over
+// another task. Only a still hold over the middle half of a card arms "make subtask"; its edges are for reordering.
 function mHover(d) {
-  var t = mTaskAt(d, d.x, d.y), key = t ? +t.dataset.mtask : null;
-  if (!key) { nestClear(d); d.hover = null; dmOver(mTarget(d.x, d.y)); return; }
-  var hv = d.hover;
-  if (!hv || hv.id !== key || Math.hypot(d.x - hv.x, d.y - hv.y) > NEST_TOL) {
-    nestClear(d); d.hover = hv = { id: key, x: d.x, y: d.y };
-    d.nestTimer = setTimeout(function () {
-      if (mDrag !== d || !d.hover || d.hover.id !== key) return;
-      var el = mTaskAt(d, d.x, d.y); if (!el || +el.dataset.mtask !== key) return;
-      nestShow(d, el, nestRule(d, key));
-    }, NEST_MS);
+  var t = mTaskAt(d, d.x, d.y), key = t ? +t.dataset.mtask : null, r = t && t.getBoundingClientRect();
+  var mid = t && d.y > r.top + r.height / 4 && d.y < r.bottom - r.height / 4;
+  if (!key || !mid) { nestClear(d); d.hover = null; }
+  else {
+    var hv = d.hover;
+    if (!hv || hv.id !== key || Math.hypot(d.x - hv.x, d.y - hv.y) > NEST_TOL) {
+      nestClear(d); d.hover = hv = { id: key, x: d.x, y: d.y };
+      d.nestTimer = setTimeout(function () {
+        if (mDrag !== d || !d.hover || d.hover.id !== key) return;
+        var el = mTaskAt(d, d.x, d.y); if (!el || +el.dataset.mtask !== key) return;
+        nestShow(d, el, nestRule(d, key));
+      }, NEST_MS);
+    }
   }
-  if (!d.nest && !d.nestNo) dmOver(mTarget(d.x, d.y));
+  if (d.nest || d.nestNo) { d.ins = null; lineShow(null); return; }
+  var c = mTarget(d.x, d.y); d.ins = insPoint(d, c); lineShow(d.ins);
+  dmOver(d.ins ? null : c); // the line says where; the outline only marks a place with no line (empty, a heading)
 }
 // Make task x a subtask of t: it takes t's project, subteam and milestone. One toast, with Undo.
 function makeSub(x, t) {
@@ -1377,7 +1457,7 @@ function mScroll() {
 }
 function mEnd() {
   var d = mDrag; mDrag = null; if (!d) return null;
-  clearTimeout(d.timer); nestClear(d); if (d.ghost) d.ghost.remove(); dmOver(null);
+  clearTimeout(d.timer); nestClear(d); lineShow(null); if (d.ghost) d.ghost.remove(); dmOver(null);
   if (d.el) d.el.classList.remove("dragging"); document.documentElement.classList.remove("mdragging");
   return d;
 }
@@ -1410,11 +1490,16 @@ document.addEventListener("pointerup", function (e) {
   if (nest) { makeSub(x, task(nest.to)); return; }
   if (refused) { D.render(); return; } // let go on a hint: nothing changes
   var sel = T().sel || {}, ids = sel[d.id] && !x.parent ? Object.keys(sel).map(Number) : [d.id];
+  ids.sort(function (a, b) { return byPos(task(a), task(b)); });
   if (t && ids.length > 1) T().sel = {};
-  if (t && t.dataset.col) { var c = t.dataset.col; ids.forEach(function (id) { var y = task(id); if (y && y.st !== c) { h(y, "moved it to " + ST[c][0], { st: c, due: y.due }); setSt(y, c); } }); D.render(); return; }
+  // Where it lands among the others (the insertion line): the midpoint of its new neighbours. A plain reorder says nothing.
+  var ins = t && d.ins && d.ins.cont === t ? d.ins : null, np = ins ? placePos(ids.length, ins.prev, ins.next) : null;
+  function setPos() { if (np) ids.forEach(function (id, k) { task(id).pos = np[k]; }); }
+  if (t && t.dataset.col) { var c = t.dataset.col; setPos(); ids.forEach(function (id) { var y = task(id); if (y && y.st !== c) { h(y, "moved it to " + ST[c][0], { st: c, due: y.due }); setSt(y, c); } }); D.render(); return; }
   var dm = t && t.dataset.dm != null ? t.dataset.dm || null : undefined, ds = t && t.dataset.ds || null;
-  if (t && x.parent) { unSub(x, dm === undefined ? x.ms : dm, ds); return; }
-  if (!t || !moveTasks(ids, dm, ds)) D.render();
+  if (t && x.parent) { setPos(); unSub(x, dm === undefined ? x.ms : dm, ds); return; }
+  if (!t) { D.render(); return; }
+  if (!moveTasks(ids, dm, ds, np)) { setPos(); D.render(); }
 });
 document.addEventListener("pointercancel", function () { var d = mEnd(); if (d && d.on) D.render(); else if (D.renderHeld) D.render(); });
 document.addEventListener("keydown", function (e) { if (e.key === "Escape" && mDrag && mDrag.on) { e.stopImmediatePropagation(); e.preventDefault(); mEnd(); mEat = true; D.render(); } }, true);

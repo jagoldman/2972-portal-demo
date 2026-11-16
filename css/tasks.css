@@ -143,6 +143,34 @@
 .tbar .chipsel { min-height: 40px; }
 @media (max-width: 640px) { .tbar .tq { max-width: none; flex-basis: 100%; } .tbar .chipsel { min-height: 44px; } }
 
+/* Search and the Filter popover: Stage on top, More filters below; active filters as chips under the bar. */
+.tsearch { position: relative; display: flex; flex: 1 1 200px; max-width: 320px; }
+.tsearch svg { position: absolute; left: 10px; top: 50%; transform: translateY(-50%); color: var(--mute); pointer-events: none; }
+.tsearch .tq { flex: 1 1 auto; max-width: none; padding-left: 32px; }
+.tfbtn { gap: 6px; min-height: 40px; }
+.tfbtn.on { border-color: var(--accent); color: var(--accent); background: var(--tint); }
+.tfchips { display: flex; flex-wrap: wrap; align-items: center; gap: 6px 8px; margin: -4px 0 12px; }
+.tfchip { display: inline-flex; align-items: center; gap: 2px; padding: 2px 4px 2px 10px; border-radius: 999px; background: var(--tint-2); color: var(--text); font-size: .82rem; font-weight: 500; }
+.tfchip button { width: 24px; height: 24px; border: 0; border-radius: 999px; background: none; color: var(--text-2); padding: 0; font-size: 1rem; line-height: 1; }
+.tfchip button:hover { background: var(--surface-3); color: var(--text); }
+.tfpop { width: 300px; max-height: min(70vh, 560px); overflow: auto; gap: 8px; }
+.tfset { border: 0; margin: 0; padding: 0; display: grid; gap: 0; }
+.tfset legend { padding: 0; margin-bottom: 4px; font-size: .78rem; font-weight: 700; color: var(--text-2); text-transform: uppercase; letter-spacing: .03em; }
+.tfopt { display: flex; align-items: center; gap: 8px; min-height: 32px; padding: 0 4px; border-radius: 6px; font-size: .9rem; cursor: pointer; }
+.tfopt:hover { background: var(--surface-2); }
+.tfopt input { width: 16px; height: 16px; margin: 0; accent-color: var(--accent); }
+.tfmore { justify-self: start; border: 0; background: none; padding: 6px 0; color: var(--accent); font-weight: 600; font-size: .9rem; }
+.tfmorebox { display: grid; gap: 12px; padding-top: 4px; border-top: 1px solid var(--line); }
+.tfnone { display: flex; align-items: center; justify-content: space-between; gap: 12px; flex-wrap: wrap; }
+.tfnone p { margin: 0; }
+@media (max-width: 640px) {
+  .tsearch { max-width: none; flex-basis: 100%; }
+  .tfbtn { min-height: 44px; }
+  .tfopt { min-height: 44px; }
+  .tfopt input { width: 20px; height: 20px; }
+  .tfchip button { width: 36px; height: 36px; }
+  .tfpop { width: auto; max-height: 75vh; }
+}
 /* ---------- Group headings and task rows ---------- */
 .tgrp { font-size: .88rem; font-weight: 600; color: var(--text-2); margin-top: 6px; }
 .tgrp .who { font-weight: 400; }
@@ -265,6 +293,11 @@ span.msmet:hover { text-decoration: none; }
 .mcount { position: absolute; top: -10px; right: -10px; padding: 2px 8px; border-radius: 999px; background: var(--accent); color: var(--surface); font-size: .75rem; font-weight: 700; white-space: nowrap; }
 html.mdragging, html.mdragging * { cursor: grabbing !important; }
 html.mdragging .tip { display: none; }
+/* Reordering: a line between cards or rows marks where the dragged task will land. */
+.mline { position: fixed; left: 0; top: 0; z-index: 81; height: 3px; border-radius: 2px; background: var(--accent); pointer-events: none; box-shadow: 0 0 0 2px var(--surface); }
+.mline::before, .mline::after { content: ""; position: absolute; top: -3px; width: 9px; height: 9px; border-radius: 50%; background: var(--accent); }
+.mline::before { left: -4px; }
+.mline::after { right: -4px; }
 /* Make a subtask: after a still hover over another task, it gets an accent outline and the lifted card a label on its top edge.
    A hover that can't nest (a task with subtasks, itself, several picked rows) gets a dashed grey outline and the reason. */
 .nesting, .nestno { position: relative; border-radius: var(--r-ctl); }
