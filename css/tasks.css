@@ -179,6 +179,28 @@
   .taddin { flex: 1 1 100%; }
 }
 .taddrow { gap: 8px 16px; }
+/* Picking rows in a subteam's list: a checkbox before the done button (shown on hover or focus, always on touch screens
+   and once anything is picked), the bar that moves the picked rows, and each milestone group as a drop target. */
+.trowx.selable { grid-template-columns: 18px 28px minmax(0, 1fr) auto 76px; grid-template-areas: "k c t s d"; }
+.trowx.selable > .tsel { grid-area: k; }
+.trowx.selable > .tcheck { grid-area: c; }
+.trowx.selable > .tt { grid-area: t; }
+.tsel { width: 18px; height: 18px; margin: 0; accent-color: var(--accent); opacity: 0; cursor: pointer; }
+.trowx:hover > .tsel, .tsel:focus-visible, .tselon .tsel, .tsel:checked { opacity: 1; }
+@media (hover: none), (max-width: 640px) { .tsel { opacity: 1; } }
+.trowx.picked { background: var(--tint-2); }
+.tgsec { border-radius: var(--r-ctl); }
+.tgempty { margin: 0; padding: 10px 6px; border-top: 1px solid var(--line); }
+.tbulk { position: sticky; top: 0; z-index: 3; display: flex; flex-wrap: wrap; align-items: center; gap: 6px 14px; margin: 10px 0 2px; padding: 8px 12px; border-radius: var(--r-ctl); background: var(--rail); color: var(--rail-text); }
+.tbulk label { gap: 8px; color: inherit; }
+.tbulk .chipsel { min-height: 36px; color: var(--text); background: var(--surface); }
+.tbulk .btn.ghost { color: inherit; }
+@media (max-width: 640px) {
+  .trowx.selable { grid-template-columns: 22px 28px minmax(0, 1fr) auto; grid-template-areas: "k c t d" ". . s s"; }
+  .trowx.selable.nost { grid-template-areas: "k c t d"; }
+  .tsel { width: 22px; height: 22px; }
+  .tbulk .chipsel { min-height: 44px; }
+}
 .taddin { flex: 1 1 280px; max-width: 460px; }
 .taddin .btn { flex: none; }
 
@@ -192,6 +214,11 @@
 .pgrid .gh { background: var(--surface-2); font-size: .8rem; font-weight: 600; color: var(--text-2); }
 .pgrid .gh.gm { background: var(--surface); }
 .pgrid .gh .linkbtn { text-decoration: none; color: var(--accent); }
+/* A subteam heading opens that subteam's own list and board; the small "List →" says so. */
+.ghsub .ghopen { margin-left: 4px; font-size: .74rem; font-weight: 500; color: var(--mute); }
+.ghsub:hover .ghopen, .ghsub:focus-visible .ghopen { color: var(--accent); }
+/* The project page's List and Board name each task's subteam. */
+.subchip { display: inline-block; padding: 0 7px; border-radius: 999px; background: var(--surface-3); color: var(--text-2); font-size: .74rem; font-weight: 600; line-height: 1.6; vertical-align: baseline; }
 .pgrid .gh .who { font-weight: 400; }
 .pgrid .btn.ghost { justify-self: start; }
 .gcard { display: grid; gap: 4px; border: 1px solid var(--line); border-radius: var(--r-ctl); padding: 8px 10px; font-size: .85rem; background: var(--surface); color: var(--text); }
@@ -204,6 +231,55 @@
 .pstack-sub .linkbtn { text-decoration: none; color: var(--accent); font-weight: 600; min-height: 36px; justify-self: start; text-align: left; }
 .pstack-ms > .btn { justify-self: start; }
 @media (max-width: 640px) { .pgcard { padding: 0; border: 0; background: none; } .gcard { padding: 10px 12px; font-size: .92rem; } }
+/* A milestone heading: caret and name; the date and Mark met; then its own line with a small bar and "done / total".
+   Every line wraps inside the heading column, so nothing spills into the first subteam. */
+.pgrid .gh.gm { gap: 4px; }
+.pgrid .gh.gm.shut { grid-column: 1 / -1; }
+.msh1 { display: flex; align-items: flex-start; gap: 4px; min-width: 0; }
+.msname { min-width: 0; overflow-wrap: anywhere; color: var(--text); font-weight: 600; }
+.mscaret { flex: none; width: 20px; height: 20px; padding: 0; border: 0; border-radius: 4px; background: none; color: var(--mute); line-height: 1; }
+.mscaret:hover { color: var(--text); }
+.msh2 { display: flex; flex-wrap: wrap; align-items: center; gap: 2px 8px; min-width: 0; padding-left: 24px; }
+.msh3 { display: flex; align-items: center; gap: 8px; min-width: 0; padding-left: 24px; font-size: .76rem; font-weight: 500; color: var(--mute); }
+.msh3 .bar { flex: 1 1 auto; max-width: 96px; min-width: 32px; height: 6px; }
+.msh3 .num { flex: none; font-variant-numeric: tabular-nums; }
+.msmet { padding: 1px 0; border: 0; background: none; color: var(--accent); font-size: .76rem; font-weight: 600; white-space: nowrap; }
+.msmet:hover { text-decoration: underline; }
+.msmet.on { color: var(--ok); }
+span.msmet:hover { text-decoration: none; }
+.pstack-h { display: grid; gap: 4px; }
+.pstack-h .msh2, .pstack-h .msh3 { padding-left: 0; }
+.pstack-h .msh3:empty { display: none; }
+.pstack-h .msh3 .bar { max-width: 140px; }
+/* Moving tasks: the whole card is picked up (press and move, or press and hold on touch); the ⠿ grip on hover or
+   focus is only a cue. The picked-up copy lifts (shadow, slight tilt) and follows the pointer; the card it came from
+   fades; the cell, heading or list group under it is outlined. */
+.gdrag, .trowx.selable { position: relative; -webkit-user-select: none; user-select: none; -webkit-touch-callout: none; }
+.gdrag .gcard { padding-right: 22px; }
+.ghandle { position: absolute; z-index: 1; top: 7px; right: 5px; font-size: .8rem; line-height: 1; color: var(--mute); opacity: 0; transition: opacity .1s; cursor: grab; }
+.gdrag:hover .ghandle, .gdrag:focus-within .ghandle { opacity: 1; }
+.gdrag.dragging, .trowx.dragging { opacity: .35; }
+.mghost, .trowx.mghost, .gdrag.mghost { position: fixed; left: 0; top: 0; z-index: 80; margin: 0; pointer-events: none; border-radius: var(--r-ctl); background: var(--surface); box-shadow: 0 12px 28px rgba(0,0,0,.28), 0 2px 6px rgba(0,0,0,.18); outline: 2px solid var(--accent); outline-offset: -1px; transform-origin: 20% 50%; will-change: transform; }
+.mghost .ghandle { opacity: 1; }
+.mghost .tsel { opacity: 1; }
+.mcount { position: absolute; top: -10px; right: -10px; padding: 2px 8px; border-radius: 999px; background: var(--accent); color: var(--surface); font-size: .75rem; font-weight: 700; white-space: nowrap; }
+html.mdragging, html.mdragging * { cursor: grabbing !important; }
+html.mdragging .tip { display: none; }
+/* Make a subtask: after a still hover over another task, it gets an accent outline and the lifted card a label on its top edge.
+   A hover that can't nest (a task with subtasks, itself, several picked rows) gets a dashed grey outline and the reason. */
+.nesting, .nestno { position: relative; border-radius: var(--r-ctl); }
+.nesting { outline: 2px solid var(--accent); outline-offset: 2px; }
+.nesting.gdrag .gcard, .nesting.trowx, .nesting.bcard { background: var(--tint-2); }
+.nestno { outline: 2px dashed var(--line-2); outline-offset: 2px; }
+.mnest { position: absolute; z-index: 3; max-width: calc(100% - 12px); padding: 2px 8px; border-radius: 999px; background: var(--accent); color: var(--surface); font-size: .74rem; font-weight: 700; line-height: 1.4; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; pointer-events: none; box-shadow: 0 2px 6px rgba(0,0,0,.18); }
+.gnestno .mnest { background: var(--text-2); }
+.mghost .mnest { left: 8px; bottom: auto; top: -13px; max-width: 300px; }
+.mghost.gnestno { outline-color: var(--line-2); outline-style: dashed; }
+.gsubs { font-variant-numeric: tabular-nums; }
+.pgrid > [data-dm].over, .pstack-ms[data-dm].over { box-shadow: inset 0 0 0 2px var(--accent); background: var(--tint-2); }
+.tgsec.over { outline: 2px solid var(--accent); outline-offset: 4px; background: var(--tint-2); }
+@media (hover: none) { .ghandle { display: none; } .gdrag .gcard { padding-right: 10px; } }
+@media (max-width: 640px) { .ghandle { display: none; } .gdrag .gcard { padding-right: 12px; } }
 
 /* ---------- Board ---------- */
 .board { gap: 12px; }
@@ -246,6 +322,31 @@ button.tev:hover { background: var(--surface-3); }
 .tev .dotc { width: 7px; height: 7px; margin-right: 5px; vertical-align: middle; }
 .tev.done { text-decoration: line-through; opacity: .65; }
 @media (max-width: 640px) { .tev { font-size: .66rem; padding: 1px 3px; } .tev .dotc { margin-right: 3px; } }
+/* Days the team doesn't meet (from the Calendar) are grey; other months only fade the date, so the two stay apart.
+   Everyone who can add tasks gets a hover state and a + in the corner; the whole empty cell is a tap target too. */
+.tmonth .day { position: relative; }
+.tmonth .day.other { background: var(--surface); }
+.tmonth .day.other .d { opacity: .45; }
+.tmonth .day.other .tev, .tmonth .day.other .ptime { opacity: .6; }
+.tmonth .day.nomeet { background: repeating-linear-gradient(135deg, transparent 0 7px, var(--line) 7px 8px), var(--surface-2); }
+.tmonth .day.nomeet .d { color: var(--mute); font-weight: 500; }
+.tmonth .day.nomeet .tev { background: var(--surface); }
+.tmonth .day.nomeet button.tev:hover { background: var(--surface-3); }
+.tmonth .day.today .d { opacity: 1; color: var(--on-gold); }
+.tmonth .ptime { font-size: .68rem; color: var(--mute); font-variant-numeric: tabular-nums; }
+.tmonth.canadd .day { cursor: pointer; }
+.tmonth.canadd .day:hover, .tmonth.canadd .day[data-pop-anchor] { background-image: linear-gradient(var(--tint-2), var(--tint-2)); }
+.tmonth.canadd .day.nomeet:hover, .tmonth.canadd .day.nomeet[data-pop-anchor] { background-image: linear-gradient(var(--tint-2), var(--tint-2)), repeating-linear-gradient(135deg, transparent 0 7px, var(--line) 7px 8px); }
+.tmonth .dadd { position: absolute; top: 4px; right: 4px; width: 24px; height: 24px; border: 0; border-radius: 999px; background: var(--surface-3); color: var(--text-2); display: inline-grid; place-items: center; padding: 0; opacity: 0; }
+.tmonth .day:hover .dadd, .tmonth .dadd:focus-visible, .tmonth .dadd[aria-expanded="true"] { opacity: 1; }
+.tmonth .dadd:hover { background: var(--tint-2); color: var(--accent); }
+.tkey { display: inline-block; width: 12px; height: 12px; border-radius: 3px; background: repeating-linear-gradient(135deg, transparent 0 3px, var(--line-2) 3px 4px), var(--surface-2); border: 1px solid var(--line-2); vertical-align: -2px; margin-right: 6px; }
+.tqpop { width: 300px; }
+.tqpop .who { margin: -4px 0 0; }
+.tqpop .tqsel { display: flex; gap: 6px; flex-wrap: wrap; }
+.tqpop .tqsel .chipsel { flex: 1 1 120px; max-width: none; }
+.tqpop .push { margin-left: auto; }
+@media (max-width: 640px) { .tqpop { width: auto; } .tmonth .ptime { display: none; } .tmonth .dtop { width: 100%; justify-content: center; } }
 
 
 /* ---------- Task panel ---------- */

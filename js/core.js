@@ -262,7 +262,7 @@ function waitingRows() {
   }
   if (K && K.requests && K.requests.length && hasTile("skills")) rows.push({ app: "skills", tab: "signoff", title: plural(K.requests.length, "sign-off request", "sign-off requests"), line: K.requests.slice(0, 3).map(function (r) { return r.st; }).join(", "), count: K.requests.length });
   if (c && c.avail && D.calTab("here")) {
-    var silent = Object.keys(c.avail).filter(function (n) { var a = c.avail[n]; return !a.usual.length && !Object.keys(a.one).length; });
+    var silent = (D.calApi && D.calApi.mentors ? D.calApi.mentors() : Object.keys(c.avail)).filter(function (n) { var a = c.avail[n]; return !a.usual.length && !Object.keys(a.one).length; });
     if (S.role === "admin" && silent.length) rows.push({ app: "here", tab: "mentors", title: plural(silent.length, "mentor hasn't", "mentors haven't") + " answered for this week", line: silent.join(", "), count: silent.length });
     else if (S.role === "mentor" && silent.indexOf(D.me().name) >= 0) rows.push({ app: "here", tab: "mentors", title: "Tell us if you're coming this week", count: 1 });
   }

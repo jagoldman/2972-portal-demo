@@ -114,8 +114,8 @@
 .mhead p { margin: 0; }
 .mhead { align-items: center; }
 .chips { gap: 4px; }
-.tpair { gap: 4px; }
-.utrow b { width: 36px; }
+.tpair { display: grid; grid-template-columns: minmax(0,1fr) auto minmax(0,1fr); gap: 4px; align-items: center; max-width: 15rem; }
+.utrow { display: grid; grid-template-columns: 2.25rem minmax(0,1fr); gap: 6px; align-items: center; }
 .mtab { min-width: 36rem; }
 .mtab td, .mtab th { vertical-align: top; }
 .subline { display: block; text-transform: none; letter-spacing: 0; font-weight: 400; }

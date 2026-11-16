@@ -251,7 +251,7 @@ a.li { color: inherit; text-decoration: none; }
 .field input, .field select, .field textarea, .inp { border: 1px solid var(--line-2); background: var(--surface); color: var(--text); border-radius: var(--r-ctl); padding: 8px 12px; width: 100%; min-height: 44px; }
 .field input:focus, .field select:focus, .field textarea:focus, .inp:focus { outline: 2px solid var(--accent); outline-offset: 0; border-color: var(--accent); }
 .field .guess { font-size: .8rem; color: var(--warn); }
-.tinp { width: 7.5rem; min-height: 36px; padding: 3px 8px; border: 1px solid var(--line-2); background: var(--surface); border-radius: var(--r-ctl); }
+.tinp { width: 100%; min-width: 0; min-height: 36px; padding: 3px 4px; border: 1px solid var(--line-2); background: var(--surface); border-radius: var(--r-ctl); }
 @media (max-width: 640px) { input, select, textarea { font-size: 16px; } }
 
 /* Tables */

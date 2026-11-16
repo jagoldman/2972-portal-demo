@@ -87,7 +87,7 @@ var S_PATTERN = { id: "pattern", name: "Set when the team practices", line: "The
   missing: "Calendar has a Practice pattern and sync view for admins.",
   go: function () { D.go("calendar"); }, target: function () { return q('.subnav [data-app="calendar"][data-v="setup"]'); },
   done: function () { return D.S.route === "calendar" && D.S.tabs.calapp === "calendar" && D.S.tabs.calendar === "setup"; } };
-var S_DAYS_ADMIN = Object.assign({}, S_DAYS, { name: "Check the mentor days", line: "Who is coming, and you can edit any mentor.", title: "Check the mentor days", text: "Set your own usual week here, or pick another mentor above to fix theirs." });
+var S_DAYS_ADMIN = Object.assign({}, S_DAYS, { name: "Check the mentor days", line: "Who is coming; you can change any mentor's days.", title: "Check the mentor days", text: "Pick a mentor above to change their usual week or a single day." });
 D.GUIDE = {
   student: [S_DOOR, S_TASK, S_PART, S_SKILL],
   mentor: [S_DAYS, S_WAIT, S_OK, S_SIGN],

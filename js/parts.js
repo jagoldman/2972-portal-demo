@@ -377,7 +377,7 @@ A.psubmit = function () {
   if (!r.cid) p.catalog.push({ id: "n" + r.id, name: r.name, vendor: r.vendor, sku: r.sku, price: r.price, cat: "New", pack: r.pack, unit: r.unit, last: null });
   D.withUndo(r.status === "needsok" ? "Sent. Over $250, so a mentor OKs it first." : "Sent. It's on the To order list.", function () {
     p.requests.push(r); p.draft = null; D.S.tabs.parts = "requests"; p.filter = "open"; p.mine = true;
-    D.log("requested " + r.name, "parts"); D.notify(r.status === "needsok" ? ["admin", "mentor"] : "mentor", "parts", r.by + " requested " + r.name + (r.status === "needsok" ? " (" + money(total(r)) + ", needs an OK)." : "."));
+    D.log("requested " + r.name, "parts"); D.notify("mentor", "parts", r.by + " requested " + r.name + (r.status === "needsok" ? " (" + money(total(r)) + ", needs an OK)." : "."));
   }, function () { p.requests.pop(); D.S.activity.shift(); });
 };
 A.pcopy = function (b) { if (b.dataset.v === "Amazon") { D.toast("Share-A-Cart link opened (one-click Amazon cart)."); D.render(); return; } D.openModal("pcopy", { v: b.dataset.v }); };

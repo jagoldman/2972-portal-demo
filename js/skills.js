@@ -636,7 +636,7 @@ A.skrequest = function (b) {
   var S = D.S, id = b.dataset.v, s = BYID[id], t = tree(s.tree), c = cat(t, s.cat);
   if (skillStatus("Sam Ortiz", S.sk.prog["Sam Ortiz"], t, c, s) === "locked") { D.toast("Finish the level before this one first."); D.render(); return; }
   S.sk.requests.push({ st: "Sam Ortiz", id: id, note: "" }); S.sk.prog["Sam Ortiz"][id] = S.sk.prog["Sam Ortiz"][id] || { s: "progress" };
-  D.notify(["mentor", "admin"], "skills", "Sam Ortiz asked for a sign-off on " + BYID[id].name + "."); D.log("asked for a sign-off on " + BYID[id].name, "skills");
+  D.notify("mentor", "skills", "Sam Ortiz asked for a sign-off on " + BYID[id].name + "."); D.log("asked for a sign-off on " + BYID[id].name, "skills");
   D.toast("Asked. Mentors get a notice."); D.render();
 };
 A.skcancelreq = function (b) { var S = D.S; S.sk.requests = S.sk.requests.filter(function (r) { return !(r.st === "Sam Ortiz" && r.id === b.dataset.v); }); D.render(); };
