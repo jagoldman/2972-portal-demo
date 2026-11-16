@@ -11,6 +11,9 @@ function add(s, n) { var d = parse(s); return iso(new Date(d.getFullYear(), d.ge
 function fmt(s, o) { return s ? parse(s).toLocaleDateString("en-US", o || { weekday: "short", month: "short", day: "numeric" }) : "No date"; }
 function days(s) { return Math.round((parse(s) - parse(TODAYS)) / 86400000); }
 var ST = { todo: ["To do", ""], doing: ["In progress", "info"], blocked: ["Blocked", "bad"], done: ["Done", "ok"] };
+// Priority, most pressing first; a task without one is Medium.
+var PRI = { urgent: "Urgent", high: "High", med: "Medium", low: "Low" };
+function priOf(x) { return x.pri || "med"; }
 var LABELS = { design: ["Design", "#7b61c9"], build: ["Build", "#b8860b"], wiring: ["Wiring", "#c0632b"], code: ["Code", "#2f6fd6"], test: ["Test", "#2e9e6a"], urgent: ["Urgent", "#c0392b"] };
 var ME_STUDENT = "Sam Ortiz";
 
@@ -33,33 +36,33 @@ function seed() {
   ];
   var id = 0, list = [];
   function t(title, p, sub, ms, who, due, st, o) {
-    var x = { id: ++id, title: title, p: p, sub: sub, ms: ms || null, who: who || [], due: due || "", st: st || "todo", doneOn: null, parent: null, labels: [], est: null, by: [], rel: [], links: [], desc: "", check: [], comments: [], hist: [] };
+    var x = { id: ++id, title: title, p: p, sub: sub, ms: ms || null, who: who || [], due: due || "", st: st || "todo", pri: "med", doneOn: null, parent: null, labels: [], est: null, by: [], rel: [], links: [], desc: "", check: [], comments: [], hist: [] };
     Object.keys(o || {}).forEach(function (k) { x[k] = o[k]; });
     x.hist.unshift(["Ms. Rivera", "created it", "Nov 2", { st: "todo", due: x.due }]);
     list.push(x); return x;
   }
-  var a = t("Mount intake roller bearings", "intake", "Mechanical", "m4", [ME_STUDENT], "2026-11-12", "doing", { labels: ["build"], est: 3, desc: "Press four flanged 1/2\" hex bearings into the side plates and check the rollers spin freely.",
+  var a = t("Mount intake roller bearings", "intake", "Mechanical", "m4", [ME_STUDENT], "2026-11-12", "doing", { labels: ["build"], pri: "high", est: 3, desc: "Press four flanged 1/2\" hex bearings into the side plates and check the rollers spin freely.",
     check: [["Ream bearing bores", true], ["Press in 4 flanged bearings", false], ["Check rollers spin freely", false]], links: [{ t: "Intake side plate (Onshape)", onshape: true }],
     comments: [["Leo Brooks", "Bearings are on order (#4471), should land Thursday.", "Mon"]] });
   a.hist.push([ME_STUDENT, "moved it to In progress", "Nov 5", { st: "doing", due: "2026-11-14" }], ["Ms. Rivera", "changed the due date to Thu Nov 12", "Nov 7", { st: "doing", due: "2026-11-12" }]);
   var s1 = t("Cut polycarb side plates", "intake", "Fabrication", "m4", [ME_STUDENT, "Ava Kim"], "2026-11-14", "todo", { labels: ["build"], est: 2, check: [["CAM file from Onshape", true], ["Cut on the router", false]] });
   t("Deburr and test-fit plates", "intake", "Fabrication", "m4", ["Ava Kim"], "2026-11-14", "todo", { parent: s1.id });
-  var shafts = t("Intake roller shafts", "intake", "Mechanical", "m4", ["Leo Brooks"], "2026-11-09", "blocked", { labels: ["build", "urgent"], comments: [["Leo Brooks", "Waiting on MAXSpline shafts (requested in Parts).", "Sat"]] });
+  var shafts = t("Intake roller shafts", "intake", "Mechanical", "m4", ["Leo Brooks"], "2026-11-09", "blocked", { labels: ["build", "urgent"], pri: "urgent", comments: [["Leo Brooks", "Waiting on MAXSpline shafts (requested in Parts).", "Sat"]] });
   a.by = [shafts.id];
-  t("Write the intake command", "intake", "Programming", "m4", ["Priya Shah"], "2026-11-13", "doing", { labels: ["code"], est: 4 });
+  t("Write the intake command", "intake", "Programming", "m4", ["Priya Shah"], "2026-11-13", "doing", { labels: ["code"], pri: "high", est: 4 });
   t("Intake beam-break sensor", "intake", "Programming", "m5", ["Priya Shah"], "2026-11-24", "todo", { labels: ["code", "wiring"] });
   t("Intake CAD for design review", "intake", "CAD", "m3", ["Jordan Lee"], "2026-11-05", "done", { labels: ["design"], doneOn: "2026-11-05" });
-  t("Intake v2: wider mouth", "intake", "CAD", "m5", ["Jordan Lee"], "2026-11-28", "todo", { labels: ["design"] });
+  t("Intake v2: wider mouth", "intake", "CAD", "m5", ["Jordan Lee"], "2026-11-28", "todo", { labels: ["design"], pri: "low" });
   t("Tune swerve PID on carpet", "drive", "Programming", "m2", ["Priya Shah"], "2026-11-12", "doing", { labels: ["code", "test"] });
-  t("Wire swerve CAN loop", "drive", "Electrical", "m2", ["Ava Kim"], "2026-11-10", "doing", { labels: ["wiring"] });
+  t("Wire swerve CAN loop", "drive", "Electrical", "m2", ["Ava Kim"], "2026-11-10", "doing", { labels: ["wiring"], pri: "urgent" });
   t("Build 4 swerve modules", "drive", "Mechanical", "m1", ["Leo Brooks", "Omar Haddad"], "2026-10-30", "done", { labels: ["build"], doneOn: "2026-10-29" });
-  t("Belly pan", "drive", "Mechanical", "m2", ["Omar Haddad"], "2026-11-11", "todo", { labels: ["build"] });
-  var gb = t("Elevator gearbox CAD", "elev", "CAD", "m6", ["Jordan Lee"], "2026-11-18", "todo", { labels: ["design"] });
+  t("Belly pan", "drive", "Mechanical", "m2", ["Omar Haddad"], "2026-11-11", "todo", { labels: ["build"], pri: "low" });
+  var gb = t("Elevator gearbox CAD", "elev", "CAD", "m6", ["Jordan Lee"], "2026-11-18", "todo", { labels: ["design"], pri: "high" });
   var eb = t("Elevator carriage build", "elev", "Mechanical", "m7", ["Leo Brooks"], "2026-12-08", "todo", { labels: ["build"] }); eb.by = [gb.id];
   t("Crimp CAN harness for the elevator", "elev", "Electrical", "m7", [ME_STUDENT], "2026-11-17", "todo", { labels: ["wiring"], est: 2 });
   t("Elevator PID and soft limits", "elev", "Programming", "m7", ["Priya Shah"], "2026-12-09", "todo", { labels: ["code"] });
   t("Flywheel prototype", "shoot", "Mechanical", "m8", ["Maya Gold"], "2026-11-21", "todo", { labels: ["build", "test"] });
-  t("Shooter CAD", "shoot", "CAD", "m8", ["Jordan Lee"], "2026-11-15", "doing", { labels: ["design"] });
+  t("Shooter CAD", "shoot", "CAD", "m8", ["Jordan Lee"], "2026-11-15", "doing", { labels: ["design"], pri: "high" });
   t("Shooter auto path", "shoot", "Programming", null, ["Priya Shah"], "2026-12-01", "todo", { labels: ["code"] });
   t("Bumper frames", "bump", "Fabrication", null, [], "2027-02-10", "todo");
   t("Driver tryouts", "drivers", "Drive team", null, ["Ms. Rivera"], "2027-01-20", "todo");
@@ -67,7 +70,7 @@ function seed() {
   t("Robot demo script", "library", "Outreach", "m9", ["Nina Park"], "2026-11-17", "todo");
   t("Bring the 2026 robot and batteries", "library", "Outreach", "m9", ["Mr. Chen"], "2026-11-19", "todo");
   t("Sponsor thank-you letters", "sponsors", "Business", null, ["Omar Haddad"], "2026-11-30", "todo");
-  t("Restock bolt bins", "shop", "Ops", null, [], "", "todo");
+  t("Restock bolt bins", "shop", "Ops", null, [], "", "todo", { pri: "low" });
   t("Write the season plan", "plan", "Captains", null, ["Priya Shah", "Leo Brooks"], "2026-12-15", "doing");
   // Work that was due at the last practice (Thu Nov 5): the Projector's Meeting view shows how each one ended.
   // Added at the end so the tasks above keep their ids.
@@ -637,7 +640,7 @@ function projectPage(pid) {
   grid = '<div class="hide-sm tablewrap" data-keepscroll="pgrid">' + grid + "</div>" + stack;
   var cross = xs.filter(function (x) { return x.by.some(function (b) { var bt = task(b); return bt && bt.sub !== x.sub; }); });
   var pv = pview(), tools = viewSeg(PROJ_VIEWS, pv, "tpview") + (lead() ? '<button class="btn sm" data-act="tmsadd" data-v="' + p.id + '">+ Milestone</button><button class="btn ghost sm" data-act="tsaves">' + D.ic("history", 16) + " Save points</button>" : "");
-  var main = pv === "list" ? listBody(p, xs, { group: tt.pgroup || "milestone", act: "tpgroup", opts: [["milestone", "Milestone"], ["sub", "Subteam"], ["status", "Status"]] })
+  var main = pv === "list" ? listBody(p, xs, { group: tt.pgroup || "milestone", act: "tpgroup", opts: GROUP_OPTS.concat([["sub", "Subteam"], ["none", "No grouping"]]) })
     : pv === "board" ? boardHtml(xs, pid, null, true) : '<div class="card pgcard">' + grid + "</div>";
   if (!xs.length && (fCount() || tt.q)) main = noMatch();
   return frame(p.name, esc(d.name), tools, filtersBar() + main +
@@ -655,25 +658,28 @@ function boardHtml(xs, pid, sub, chip) {
   var tt = T();
   return '<div class="board" data-keepscroll="tboard">' + tt.cols.map(function (c) { var cs = xs.filter(function (x) { return x.st === c; }); return '<div class="bcol" data-col="' + c + '"><div class="row between"><span class="pill ' + ST[c][1] + '"><b>' + ST[c][0] + '</b></span><span class="who">' + cs.length + "</span></div>" + cs.map(function (x) { var sc = subsOf(x); return '<div class="bcard"' + (canMove() ? ' data-mtask="' + x.id + '"' : "") + '><button class="ttitle" data-act="topen" data-v="' + x.id + '">' + esc(x.title) + "</button>" + (chip ? '<div class="row">' + subChip(x) + "</div>" : "") + (labs(x) ? '<div class="who">' + labs(x) + "</div>" : "") + '<div class="row between">' + avs(x.who) + dueTxt(x) + "</div>" + (sc.length ? '<span class="who">' + sc.filter(function (s) { return s.st === "done"; }).length + " of " + sc.length + " subtasks</span>" : "") + (x.ms ? '<span class="who">◆ ' + esc(msName(x.p, x.ms)) + "</span>" : "") + '<select class="chipsel" data-change="tcol" data-v="' + x.id + '" aria-label="Move ' + esc(x.title) + '"><option value="">Move to…</option>' + tt.cols.map(function (k) { return '<option value="' + k + '">' + ST[k][0] + "</option>"; }).join("") + "</select></div>"; }).join("") + '<button class="btn ghost sm" data-act="tnewin" data-p="' + pid + '" data-s="' + esc(sub || "") + '" data-st="' + c + '">+ Add a task</button></div>'; }).join("") + "</div>";
 }
+var GROUP_OPTS = [["milestone", "Milestone"], ["status", "Status"], ["pri", "Priority"], ["due", "Due date"]];
 // Rows in groups: a subteam's list (o.sub), or a whole project's (rows name their subteam unless grouped by it).
-// For people who can move tasks, each milestone, subteam or status group is a drop target and shows even when empty.
+// For people who can move tasks, each milestone, subteam, status or priority group is a drop target and shows even when
+// empty; a drop there sets that field. Due date groups take no drop (the date is set in the task panel).
 function listBody(p, xs, o) {
   var tt = T(), key = o.group, mv = canMove(), groups;
   if (key === "milestone") groups = p.ms.map(function (m) { return [m[1] + " · " + fmt(m[2]), function (x) { return x.ms === m[0]; }, ' data-dm="' + m[0] + '"']; }).concat([["No milestone", function (x) { return !x.ms; }, ' data-dm=""']]);
   else if (key === "sub") groups = p.subs.map(function (s) { return [s, function (x) { return x.sub === s; }, ' data-ds="' + esc(s) + '"']; });
   else if (key === "status") groups = Object.keys(ST).map(function (k) { return [ST[k][0], function (x) { return x.st === k; }, ' data-col="' + k + '"']; });
+  else if (key === "pri") groups = Object.keys(PRI).map(function (k) { return [PRI[k], function (x) { return priOf(x) === k; }, ' data-pri="' + k + '"']; });
   else if (key === "due") groups = [["Late", function (x) { return x.due && days(x.due) < 0 && x.st !== "done"; }], ["This week", function (x) { return x.due && days(x.due) >= 0 && days(x.due) <= 6; }], ["Later", function (x) { return x.due && days(x.due) > 6; }], ["No date", function (x) { return !x.due; }], ["Done", function (x) { return x.st === "done" && x.due && days(x.due) < 0; }]];
   else groups = [["All tasks", function () { return true; }]];
-  var drop = mv && ["milestone", "sub", "status"].indexOf(key) >= 0, chip = !o.sub && key !== "sub";
+  var drop = mv && ["milestone", "sub", "status", "pri"].indexOf(key) >= 0, chip = !o.sub && key !== "sub";
   var empty = key === "milestone" ? "No tasks. Drag one here, or pick some and use Move to milestone." : "No tasks. Drag one here.";
   var add = o.sub ? '<div class="row nowrap taddin"><input id="t-add" class="inp" placeholder="Add a task to ' + esc(o.sub) + '" data-input="taddtxt" aria-label="New task title"><button class="btn" data-act="tquick" data-p="' + p.id + '" data-s="' + esc(o.sub) + '">Add</button></div>' : '<button class="btn sm" data-act="tnewin" data-p="' + p.id + '" data-s="">+ Add a task</button>';
-  return '<div class="card' + (selIds(xs).length ? " tselon" : "") + '"><div class="row between taddrow">' + add + '<label class="row small mute">Group by <select class="chipsel" data-change="' + o.act + '" aria-label="Group by">' + o.opts.map(function (g) { return '<option value="' + g[0] + '"' + (key === g[0] ? " selected" : "") + ">" + g[1] + "</option>"; }).join("") + "</select></label></div>" +
+  return '<div class="card' + (selIds(xs).length ? " tselon" : "") + '"><div class="row between taddrow">' + add + '<label class="row nowrap small mute tgroupby">Group by <select class="chipsel" data-change="' + o.act + '">' + o.opts.map(function (g) { return '<option value="' + g[0] + '"' + (key === g[0] ? " selected" : "") + ">" + g[1] + "</option>"; }).join("") + "</select></label></div>" +
     bulk(p, xs) +
-    (xs.length || drop ? groups.map(function (g) { var gs = xs.filter(g[1]); if (!gs.length && !drop) return ""; return '<section class="tgsec"' + (drop ? g[2] : mv ? ' data-ord=""' : "") + '><h3 class="tgrp">' + esc(g[0]) + ' <span class="who">' + gs.length + "</span></h3><div>" + (gs.length ? gs.map(function (x) { var sc = subsOf(x), open = tt.openSubs[x.id]; return listRow(x, sc, open, false, mv, chip) + (open ? sc.map(function (s) { return listRow(s, [], false, true, mv); }).join("") : ""); }).join("") : '<p class="small mute tgempty">' + empty + "</p>") + "</div></section>"; }).join("") : '<p class="mute">No tasks here yet.</p>') + "</div>";
+    (xs.length || drop ? groups.map(function (g) { var gs = xs.filter(g[1]); if (!gs.length && !drop) return ""; return '<section class="tgsec"' + (drop ? g[2] : mv && key !== "due" ? ' data-ord=""' : "") + '><h3 class="tgrp">' + esc(g[0]) + ' <span class="who">' + gs.length + "</span></h3><div>" + (gs.length ? gs.map(function (x) { var sc = subsOf(x), open = tt.openSubs[x.id]; return listRow(x, sc, open, false, mv, chip) + (open ? sc.map(function (s) { return listRow(s, [], false, true, mv); }).join("") : ""); }).join("") : '<p class="small mute tgempty">' + empty + "</p>") + "</div></section>"; }).join("") : '<p class="mute">No tasks here yet.</p>') + "</div>";
 }
 function listPage(pid, sub) {
   var p = proj(pid), tt = T(), xs = tt.list.filter(function (x) { return x.p === pid && x.sub === sub && !x.parent && pass(x); }).sort(byPos);
-  var body = filtersBar(true) + (!xs.length && (fCount() || tt.q) ? noMatch() : tt.mode === "board" ? boardHtml(xs, pid, sub, false) : listBody(p, xs, { sub: sub, group: tt.group, act: "tgroup", opts: [["milestone", "Milestone"], ["due", "Due date"], ["none", "Nothing"]] }));
+  var body = filtersBar(true) + (!xs.length && (fCount() || tt.q) ? noMatch() : tt.mode === "board" ? boardHtml(xs, pid, sub, false) : listBody(p, xs, { sub: sub, group: tt.group, act: "tgroup", opts: GROUP_OPTS.concat([["none", "No grouping"]]) }));
   return frame(sub, esc(divOf(pid).name) + " › " + esc(p.name), viewSeg(SUB_VIEWS, tt.mode, "tmode"), body);
 }
 // The bulk bar under the add row: shows once a task is picked (its row's checkbox).
@@ -1369,8 +1375,8 @@ D.changes.tcol = function (el) { if (!el.value) return; var x = task(el.dataset.
    TouchSensor { delay: 250, tolerance: 8 }; the dwell is a timer started in onDragOver when `over` is a "task"
    droppable (reset when `over` changes or the pointer moves past the tolerance), read in onDragEnd. */
 var MV_PX = 5, MV_HOLD = 260, MV_TOL = 8, NEST_MS = 600, NEST_TOL = 8, mDrag = null, mEat = false;
-function dmOver(el) { document.querySelectorAll("[data-dm].over, [data-col].over, [data-ds].over, [data-ord].over").forEach(function (o) { if (o !== el) o.classList.remove("over"); }); if (el) el.classList.add("over"); }
-function mTarget(x, y) { var el = document.elementFromPoint(x, y); return el && el.closest ? el.closest("[data-dm], [data-col], [data-ds], [data-ord]") : null; }
+function dmOver(el) { document.querySelectorAll("[data-dm].over, [data-col].over, [data-pri].over, [data-ds].over, [data-ord].over").forEach(function (o) { if (o !== el) o.classList.remove("over"); }); if (el) el.classList.add("over"); }
+function mTarget(x, y) { var el = document.elementFromPoint(x, y); return el && el.closest ? el.closest("[data-dm], [data-col], [data-pri], [data-ds], [data-ord]") : null; }
 function mTaskAt(d, x, y) { var el = document.elementFromPoint(x, y), t = el && el.closest ? el.closest("[data-mtask]") : null; return t && +t.dataset.mtask !== d.id ? t : null; }
 // What holding over task `id` would do: { to: the new parent } or { no: the hint }.
 function nestRule(d, id) {
@@ -1520,6 +1526,7 @@ document.addEventListener("pointerup", function (e) {
   var ins = t && d.ins && d.ins.cont === t ? d.ins : null, np = ins ? placePos(ids.length, ins.prev, ins.next) : null;
   function setPos() { if (np) ids.forEach(function (id, k) { task(id).pos = np[k]; }); }
   if (t && t.dataset.col) { var c = t.dataset.col; setPos(); ids.forEach(function (id) { var y = task(id); if (y && y.st !== c) { h(y, "moved it to " + ST[c][0], { st: c, due: y.due }); setSt(y, c); } }); D.render(); return; }
+  if (t && t.dataset.pri) { var pr = t.dataset.pri; setPos(); ids.forEach(function (id) { var y = task(id); if (y && priOf(y) !== pr) { h(y, "set priority to " + PRI[pr]); y.pri = pr; } }); D.render(); return; }
   var dm = t && t.dataset.dm != null ? t.dataset.dm || null : undefined, ds = t && t.dataset.ds || null;
   if (t && x.parent) { setPos(); unSub(x, dm === undefined ? x.ms : dm, ds); return; }
   if (!t) { D.render(); return; }
