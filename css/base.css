@@ -316,9 +316,14 @@ th.mine, td.mine { background: var(--tint); }
 .homegroups .grphead { padding-inline: 4px; }
 .homegroups .morelinks { padding: 0 4px; }
 .homegroups .toolrow { padding-inline: 4px; }
-.nli { padding: 8px 8px 8px 20px; position: relative; flex-wrap: nowrap; }
+button.nli, .nli { padding: 8px 8px 8px 20px; position: relative; flex-wrap: nowrap; color: inherit; font: inherit; font-weight: 400; -webkit-touch-callout: none; -webkit-user-select: none; user-select: none; }
 .nli .app { color: var(--mute); }
-.nli.unread { font-weight: 600; }
+button.nli.unread { font-weight: 650; }
+.srt { position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0); white-space: nowrap; }
+.nmenu { position: fixed; z-index: 70; min-width: 168px; padding: 4px; background: var(--surface); color: var(--text); border: 1px solid var(--line-2); border-radius: 10px; box-shadow: 0 10px 30px rgba(0,0,0,.25); }
+.nmenu button { display: block; width: 100%; min-height: 40px; padding: 0 12px; border: 0; border-radius: 7px; background: none; color: inherit; font: inherit; font-weight: 600; font-size: .92rem; text-align: left; cursor: pointer; }
+.nmenu button:hover, .nmenu button:focus-visible { background: var(--surface-2); }
+@media (pointer: coarse) { .nmenu button { min-height: 44px; } }
 .nli.unread::before { content: ""; position: absolute; left: 6px; top: 50%; margin-top: -4px; width: 8px; height: 8px; border-radius: 50%; background: var(--accent); }
 .nli .who { white-space: nowrap; }
 @media (max-width: 640px) { .appsmenu { left: 8px; right: 8px; width: auto; } }

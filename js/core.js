@@ -234,10 +234,17 @@ function appsMenu() {
     '<div class="appgrid">' + tiles.filter(isCore).map(item).join("") + "</div>" +
     '<div class="menugroups">' + toolsGroup("menu") + adminGroup("menu", tiles, function (l) { return '<div class="appgrid">' + l.map(item).join("") + "</div>"; }) + (more.length ? groupRow("more", "More", more.length, "menu", '<div class="appgrid">' + more.map(item).join("") + "</div>") : "") + "</div></div>";
 }
+/* One notice row. Click: mark read, then open its app. Right-click, long-press, Shift+F10 or the context-menu key:
+   a one-item menu to mark it read or unread (D.noticeMenu below). Unread = dot + bold + "Unread:" for screen readers. */
+function noticeRow(n) {
+  var i = D.S.notices.indexOf(n), app = D.APPNAME[n.app] || "";
+  return '<button class="li nli' + (n.read ? "" : " unread") + '" data-act="notice" data-i="' + i + '" data-tip="Open it. Right-click or press and hold to mark it ' + (n.read ? "unread" : "read") + '.">' +
+    (n.read ? "" : '<span class="srt">Unread: </span>') + '<span class="grow"><span class="app">' + esc(app) + "</span> " + esc(n.text) + '</span><span class="who">' + esc(n.when) + "</span></button>";
+}
 function bellPanel() {
   var list = D.myNotices();
   return '<div class="bellpanel" role="dialog" aria-label="Notifications" data-keepscroll="bellpanel"><div class="menuhead"><h3>Notifications</h3><span class="row nowrap"><button class="btn ghost sm" data-act="readall">Mark all read</button><button class="xbtn" data-act="bell" aria-label="Close" data-tip="Close notifications.">×</button></span></div><div class="list">' +
-    (list.length ? list.map(function (n) { return '<div class="li nli' + (n.read ? "" : " unread") + '"><span class="grow"><span class="app">' + esc(D.APPNAME[n.app] || "") + "</span> " + esc(n.text) + '</span><span class="who">' + esc(n.when) + "</span></div>"; }).join("") : '<p class="empty">Nothing yet.</p>') +
+    (list.length ? list.map(noticeRow).join("") : '<p class="empty">Nothing yet.</p>') +
     '</div><button class="btn ghost sm" style="justify-self:start" data-act="go" data-v="account">Notification settings</button></div>';
 }
 function banner() {
@@ -393,6 +400,67 @@ A.accountmenu = function () { D.S.accountOpen = !D.S.accountOpen; D.S.appsOpen =
 A.menutheme = function (b) { D.acts.actheme(b); D.S.accountOpen = false; D.render(); document.querySelector(".acct").focus(); };
 A.accountnotifications = function () { D.go("account"); var heading = Array.from(document.querySelectorAll(".acc h2")).find(function (h) { return h.textContent === "Notifications"; }); if (heading) { heading.parentElement.style.scrollMarginTop = "64px"; heading.parentElement.scrollIntoView(); } };
 A.demosignout = function () { D.S.accountOpen = false; D.toast("Signed out (demo)"); D.render(); };
+// Click a notice: it is read now, then follow its link (its app, when this person can open it).
+A.notice = function (b) {
+  if (D.noticeMenuJustOpened) { D.noticeMenuJustOpened = false; return; }
+  var n = D.S.notices[+b.dataset.i]; if (!n) return; n.read = true;
+  var t = D.tile(n.app);
+  if (t && D.inGroup(t)) D.go(n.app); else { D.render(); focusNotice(b.dataset.i); }
+};
+function focusNotice(i) { var el = document.querySelector('.nli[data-i="' + i + '"]'); if (el) el.focus(); }
+/* The notice menu: built straight into <body> (not part of render) at the pointer, or under the row from the keyboard. */
+D.closeNoticeMenu = function (refocus) {
+  var m = document.querySelector(".nmenu"); if (!m) return; var i = m.dataset.i; m.remove();
+  if (refocus) focusNotice(i);
+};
+D.noticeMenu = function (row, x, y) {
+  D.closeNoticeMenu(false);
+  var i = row.dataset.i, n = D.S.notices[+i]; if (!n) return;
+  if (x == null) { var r = row.getBoundingClientRect(); x = r.left + 20; y = r.bottom - 4; }
+  var m = document.createElement("div");
+  m.className = "nmenu"; m.setAttribute("role", "menu"); m.setAttribute("aria-label", "Notice"); m.dataset.i = i;
+  m.innerHTML = '<button role="menuitem" data-nmenu="flip">' + (n.read ? "Mark as unread" : "Mark as read") + "</button>";
+  document.body.appendChild(m);
+  var w = m.offsetWidth, h = m.offsetHeight;
+  m.style.left = Math.max(8, Math.min(x, innerWidth - w - 8)) + "px";
+  m.style.top = Math.max(8, Math.min(y, innerHeight - h - 8)) + "px";
+  m.querySelector("button").focus();
+};
+document.addEventListener("click", function (e) {
+  var m = document.querySelector(".nmenu"); if (!m) return;
+  var it = e.target.closest("[data-nmenu]");
+  if (!it && D.noticeMenuJustOpened && e.target.closest(".nli")) { e.preventDefault(); e.stopImmediatePropagation(); return; } // the tap that ends a long-press
+  if (it) { var i = m.dataset.i, n = D.S.notices[+i]; if (n) n.read = !n.read; m.remove(); D.render(); focusNotice(i); }
+  else m.remove();
+  e.preventDefault(); e.stopImmediatePropagation();
+}, true);
+document.addEventListener("contextmenu", function (e) {
+  var row = e.target.closest && e.target.closest(".nli[data-i]");
+  if (!row) { D.closeNoticeMenu(false); return; }
+  e.preventDefault();
+  var kb = !e.clientX && !e.clientY; // the context-menu key fires this with no pointer position
+  var open = document.querySelector(".nmenu");
+  if (open && open.dataset.i === row.dataset.i && (kb || D.noticeMenuJustOpened)) return; // already open (long-press, Shift+F10)
+  D.noticeMenu(row, kb ? null : e.clientX, kb ? null : e.clientY);
+});
+document.addEventListener("keydown", function (e) {
+  var m = document.querySelector(".nmenu");
+  if (m && (e.key === "Escape" || e.key === "Tab")) { e.preventDefault(); e.stopImmediatePropagation(); D.closeNoticeMenu(true); return; }
+  if (m && (e.key === "ArrowDown" || e.key === "ArrowUp" || e.key === "Home" || e.key === "End")) { e.preventDefault(); m.querySelector("button").focus(); return; }
+  var row = e.target.closest && e.target.closest(".nli[data-i]");
+  if (row && ((e.shiftKey && e.key === "F10") || e.key === "ContextMenu")) { e.preventDefault(); D.noticeMenu(row); }
+}, true);
+// Long-press (~500 ms) on touch. The click that follows the press is swallowed so the link is not followed.
+var pressTimer = null;
+document.addEventListener("touchstart", function (e) {
+  var row = e.target.closest && e.target.closest(".nli[data-i]"); if (!row || e.touches.length > 1) return;
+  var t = e.touches[0], x = t.clientX, y = t.clientY;
+  clearTimeout(pressTimer);
+  pressTimer = setTimeout(function () { pressTimer = null; D.noticeMenuJustOpened = true; D.noticeMenu(row, x, y); setTimeout(function () { D.noticeMenuJustOpened = false; }, 800); }, 500);
+}, { passive: true });
+["touchend", "touchmove", "touchcancel"].forEach(function (ev) { document.addEventListener(ev, function () { clearTimeout(pressTimer); pressTimer = null; }, { passive: true }); });
+window.addEventListener("resize", function () { D.closeNoticeMenu(false); });
+document.addEventListener("scroll", function () { D.closeNoticeMenu(false); }, true);
 A.readall = function () { D.myNotices().forEach(function (n) { n.read = true; }); D.render(); };
 // Open or close a group (Tools, More) and keep the focus on its row, in the Apps menu or on Home.
 A.grp = function (b) { var id = b.dataset.v, place = b.dataset.place; D.setPref("open-" + id, !D.groupOpen(id)); D.render(); var el = document.getElementById("grp-" + place + "-" + id + "-btn"); if (el) el.focus(); };
