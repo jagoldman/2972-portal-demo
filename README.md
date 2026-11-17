@@ -39,3 +39,22 @@ Open `index.html` in a browser. Nothing to install.
 ## Notes
 - The names, numbers and schedules are made up.
 - Ideas come from [Gearbox](https://frcgearbox.com) by FRC Team 1648, reimplemented from scratch. No Gearbox code or content is copied.
+
+## Design 8.2, a proposal (branch `design-8.2`, 2026-11-16)
+
+A second look for every app, made on the user's request to move away from the generated style: flag black and white,
+arena grey, the blue of the robot's bumpers as the one accent, banner lettering (Big Shoulders) for titles and big
+numbers, Libre Franklin for text, square panels and padded controls. It matches the public-site proposal in
+`../public-redesign-demo/v8.2/` (its README has the reasons).
+
+- **Compare the two:** the demo strip has **Design 8.1 | Design 8.2**. `?design=8.1` or `?design=8.2` in the address
+  does the same. The choice is kept in this browser.
+- **One file:** `css/design82.css`, loaded last. Every rule is under `:root[data-design="8.2"]`; no other stylesheet
+  is changed, and with the switch on 8.1 every screen is as it was. `js/core.js` gained only the switch; `index.html`
+  gained the two fonts and the stylesheet.
+- **Same rules as before, one colour swapped:** bumper blue is used where gold was (the one main button, the active
+  tab, today) and where the link blue was. Layouts, words and behaviour are untouched.
+- **Not approved, not in the real apps, not reviewed by a second model.** Checked by the designer in screenshots:
+  19 screens, light and dark, 1280 px and 390 px, no JavaScript errors and no sideways scroll.
+- **Left for a second pass:** the Projector's own colours for task states, the scouting field drawing, the tool
+  drawings, and each app's finer spacing still use 8.1 values.

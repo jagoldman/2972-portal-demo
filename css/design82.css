@@ -1,0 +1,133 @@
+/* Design 8.2 (proposal, 2026-11-16): the look of the public-site demo in public-redesign-demo/v8.2, brought to the
+   apps. Loaded last. Every rule sits under :root[data-design="8.2"], so the "Design 8.1 / 8.2" switch in the demo
+   strip turns the whole file on and off, and no other stylesheet is changed.
+
+   What it changes, and nothing else:
+   1. Colour. Flag black and white (the team's logo and shirts), arena grey for the page, and one accent: the blue of
+      the robot's bumpers. The accent takes the place gold had (the one main button, the active tab, today) and the
+      place the old link blue had. The app bar is true black.
+   2. Type. Big Shoulders (banner lettering) for page titles, card headings, the app name and big numbers; Libre
+      Franklin for everything else. No monospace face: codes and times use tabular figures.
+   3. Shape. Things you press are padded like a bumper (10 px corners). Things that hold content are square.
+   What it does not change: any layout, any control's place, any word, any behaviour. */
+
+:root[data-design="8.2"] {
+  --bg: #eceef0; --surface: #ffffff; --surface-2: #f3f4f6; --surface-3: #dfe2e6;
+  --line: rgba(0,0,0,.13); --line-2: rgba(0,0,0,.46);
+  --text: #000000; --text-2: #2c3238; --mute: #4a5158;
+  --bumper: #1d43c0; --bumper-2: #15329a;
+  --gold: var(--bumper); --gold-2: var(--bumper-2); --on-gold: #ffffff;
+  --accent: #1d43c0; --tint: rgba(29,67,192,.07); --tint-2: rgba(29,67,192,.14);
+  --info: #1d43c0; --info-bg: rgba(29,67,192,.10);
+  --rail: #000000; --rail-2: #24272b; --rail-text: #ffffff; --rail-mute: #a3a9b1;
+  --heat-0: #dfe2e6; --heat-1: #b9c6f1; --heat-2: #6583de; --heat-3: #1d43c0;
+  --display: "Big Shoulders", "Arial Narrow", "Helvetica Neue", Arial, sans-serif;
+  --body: "Libre Franklin", "Franklin Gothic Medium", "Helvetica Neue", Arial, sans-serif;
+  --mono: var(--body);
+  --r: 0px; --r-ctl: 10px;
+}
+@media (prefers-color-scheme: dark) { :root[data-design="8.2"]:not([data-theme="light"]) {
+  --bg: #000000; --surface: #131517; --surface-2: #1c1f22; --surface-3: #2b2f34;
+  --line: rgba(255,255,255,.14); --line-2: rgba(255,255,255,.4);
+  --text: #f5f6f7; --text-2: #cdd1d6; --mute: #9aa1a9;
+  --bumper: #2c55d6; --bumper-2: #3d66e6;
+  --accent: #9db6ff; --tint: rgba(157,182,255,.12); --tint-2: rgba(157,182,255,.22);
+  --info: #9db6ff; --info-bg: rgba(157,182,255,.14);
+  --rail: #000000; --rail-2: #24272b;
+  --heat-0: #2b2f34; --heat-1: #22347a; --heat-2: #2c55d6; --heat-3: #9db6ff; } }
+:root[data-design="8.2"][data-theme="dark"] {
+  --bg: #000000; --surface: #131517; --surface-2: #1c1f22; --surface-3: #2b2f34;
+  --line: rgba(255,255,255,.14); --line-2: rgba(255,255,255,.4);
+  --text: #f5f6f7; --text-2: #cdd1d6; --mute: #9aa1a9;
+  --bumper: #2c55d6; --bumper-2: #3d66e6;
+  --accent: #9db6ff; --tint: rgba(157,182,255,.12); --tint-2: rgba(157,182,255,.22);
+  --info: #9db6ff; --info-bg: rgba(157,182,255,.14);
+  --rail: #000000; --rail-2: #24272b;
+  --heat-0: #2b2f34; --heat-1: #22347a; --heat-2: #2c55d6; --heat-3: #9db6ff; }
+
+:root[data-design="8.2"] {
+  /* ---------- type ---------- */
+  body { font-kerning: normal; }
+  h1 { font-family: var(--display); font-weight: 900; font-size: 2.25rem; line-height: 1; letter-spacing: .003em; }
+  h2 { font-family: var(--display); font-weight: 800; font-size: 1.5rem; line-height: 1.05; letter-spacing: .005em; }
+  h3 { font-weight: 700; }
+  .topbar h1 { font-size: 1.7rem; }
+  .home h2 { font-size: 1.5rem; }
+  .kpi b, .big, .counter output { font-family: var(--display); font-weight: 900; letter-spacing: .01em; }
+  .kpi b { font-size: 2rem; line-height: 1; }
+  .mono { font-family: var(--body); font-size: .92em; font-variant-numeric: tabular-nums; }
+  .eyebrow { font-weight: 600; }
+
+  /* ---------- app bar: black, with the team number on a small bumper ---------- */
+  .appbar { border-bottom: 1px solid var(--line); }
+  .appbar .appname { font-family: var(--display); font-weight: 800; font-size: 1.5rem; letter-spacing: .01em; line-height: 1; }
+  .appbar .brand { align-items: center; margin-right: 4px; }
+  .badge-2972 { width: auto; min-width: 56px; height: 30px; padding: 0 9px; border-radius: 8px; background: var(--bumper); color: #fff; font-weight: 900; font-size: 1.3rem; line-height: 1; letter-spacing: .04em; box-shadow: inset 0 -3px 0 rgba(0,0,0,.2), inset 0 1px 0 rgba(255,255,255,.14); }
+  @media (max-width: 640px) {
+    .badge-2972 { min-width: 0; height: 28px; padding: 0 6px; font-size: 1.1rem; letter-spacing: .02em; }
+    .appbar .appname { font-size: 1.3rem; }
+    .appbar .brand { margin-right: 0; }
+  }
+  .iconbtn.acct { background: #fff; color: #000; box-shadow: none; font-weight: 800; }
+  .iconbtn.acct:hover, .iconbtn.acct[aria-expanded="true"] { background: #dfe2e6; }
+  .modechip { border-radius: 8px; }
+
+  /* ---------- controls ---------- */
+  .btn { font-weight: 700; }
+  .btn.primary { box-shadow: inset 0 -3px 0 rgba(0,0,0,.18); }
+  .chip { border-radius: var(--r-ctl); }
+  .chip[aria-pressed="true"] { background: var(--text); color: var(--surface); border-color: var(--text); }
+  .chipsel { border-radius: var(--r-ctl); }
+  .seg { border-radius: var(--r-ctl); }
+  .seg button { border-radius: 8px; }
+  .seg button[aria-pressed="true"] { box-shadow: 0 0 0 1px var(--text); }
+  .tcount { border-radius: 6px; font-weight: 700; }
+  .toast { border-radius: var(--r-ctl); }
+  .toast button { color: #fff; text-decoration: underline; text-underline-offset: 3px; }
+  .tip { border-radius: 4px; }
+  :focus-visible { outline-width: 3px; }
+
+  /* ---------- containers are square; headings carry the hierarchy ---------- */
+  .card.hero { border-left-width: 4px; }
+  .modal { border-radius: 0; }
+  .nmenu { border-radius: 0; }
+  .nmenu button { border-radius: 0; }
+  .bcol, .bcard { border-radius: 0; }
+  .month { border-radius: 0; }
+  .ev { border-radius: 3px; }
+  .bar { border-radius: 0; }
+  .choice button { border-radius: var(--r-ctl); }
+  .li.click, button.li, a.li { border-radius: 0; }
+
+  /* ---------- Home and the Apps menu: plain icons, names in banner lettering ---------- */
+  .appitem, .toolrow, .grphead, .accountchoice { border-radius: 0; }
+  .appitem .ic, .apptile .ic { width: 30px; height: 30px; border-radius: 0; background: none; color: var(--text); }
+  .toolrow .ic { border-radius: 0; background: none; color: var(--text); }
+  .toolrow:hover .ic { background: none; }
+  .apptile b { font-family: var(--display); font-weight: 800; font-size: 1.3rem; line-height: 1.05; letter-spacing: .005em; }
+  .appitem b { font-weight: 700; }
+  .appitem[aria-current="page"] { background: none; box-shadow: inset 4px 0 0 var(--bumper); }
+  .homedate { font-weight: 600; }
+  .rowlink .rt { font-weight: 700; }
+
+  /* ---------- shop screens (TV): black, white lettering, no upper-case labels ---------- */
+  .display { background: #000; }
+  .display .dcard, .display .btn { background: #15171a; border-radius: 0; }
+  .display .btn { border-radius: var(--r-ctl); }
+  .kiosk .bar { background: #15171a; }
+  .gtrack { background: #15171a; border-radius: 0; }
+  .gtrack i { background: #fff; border-radius: 0; }
+  .mtgsw, .mtgrot, .mtgseason, .mtgms, .mtgsec { background: #15171a; }
+  .mtgseason, .mtgms, .mtgsec { border-radius: 0; }
+  .mtgkick, .mtggl { color: #fff; text-transform: none; letter-spacing: 0; font-weight: 800; }
+  .mtgseason .mtgmsph b { color: #fff; }
+  .mtgnote { border-left-color: #fff; background: rgba(255,255,255,.07); border-radius: 0; }
+  .mtgfrom { color: #fff; border-color: rgba(255,255,255,.6); border-radius: 6px; }
+  .mtgscreen button:focus-visible, .mtgscreen input:focus-visible, .dispctl button:focus-visible, .mtgscreen button.mtgrow:focus-visible { outline-color: #fff; }
+  .mtgnotein { background: #000; }
+  .mtgnotein:focus { outline-color: #fff; }
+
+  /* ---------- places where dark lettering sat on gold or on a light colour ---------- */
+  .tlbar { color: #000; }
+  .tldrag { border-radius: 4px; }
+}

@@ -179,6 +179,7 @@ function demobar() {
   return '<div class="demobar"><b>Demo</b><span>sample data</span>' +
     '<span class="seg" role="group" aria-label="View as">' + roles + "</span>" +
     '<label><input type="checkbox" id="evday" data-change="eventday"' + (S.eventDay ? " checked" : "") + "> Event day</label>" +
+    '<span class="seg" role="group" aria-label="Design">' + ["8.1", "8.2"].map(function (v) { return '<button data-act="design" data-v="' + v + '" aria-pressed="' + (D.design() === v) + '">Design ' + v + "</button>"; }).join("") + "</span>" +
     '<span class="spacer"></span><button class="linkbtn" data-act="reset">Reset</button></div>';
 }
 /* One navy app bar on every app: Apps button, 2972 badge, the app's name; Competition chip, bell and account at the right.
@@ -390,6 +391,11 @@ A.role = function (b) {
   D.render();
 };
 D.changes.eventday = function (el) { D.S.eventDay = el.checked; D.render(); };
+/* Demo only: switch between the 8.1 look and the 8.2 proposal (css/design82.css). Every 8.2 rule is under
+   :root[data-design="8.2"], so taking the attribute away brings 8.1 back. The choice is kept in this browser. */
+D.design = function () { return document.documentElement.getAttribute("data-design") === "8.2" ? "8.2" : "8.1"; };
+D.setDesign = function (v) { if (v === "8.2") document.documentElement.setAttribute("data-design", "8.2"); else document.documentElement.removeAttribute("data-design"); };
+A.design = function (b) { D.setDesign(b.dataset.v); try { localStorage.setItem("2972-demo-design", b.dataset.v); } catch (e) {} D.render(); };
 A.reset = function () { D.saved = {}; try { localStorage.removeItem(SAVE_KEY); } catch (e) {} D.reset(); D.toast("Demo reset: sample data and saved choices."); D.render(); };
 A.go = function (b) { D.go(b.dataset.v); };
 A.tab = function (b) { D.S.tabs[b.dataset.app] = b.dataset.v; D.S.drawer = null; D.render(); };
@@ -492,5 +498,5 @@ document.addEventListener("focusout", function (e) {
 });
 function routeFromHash() { var h = location.hash.slice(1); return h && (D.views[h] || D.tile(h) || D.ROUTE_TAB[h]) ? h : null; }
 window.addEventListener("hashchange", function () { var h = routeFromHash(), was = D.S.tabs.calapp; if (!h) return; h = D.landing(h); if (h !== D.S.route || was !== D.S.tabs.calapp) { D.S.route = h; D.S.drawer = null; D.S.modal = null; D.render(); } });
-D.boot = function () { D.reset(); var params = new URLSearchParams(location.search); if (Object.prototype.hasOwnProperty.call(D.ROLES, params.get("role"))) D.S.role = params.get("role"); if (params.get("mode") === "competition") D.S.mode = "competition"; var h = routeFromHash(); if (h) { if (params.get("tab")) D.S.tabs[h] = params.get("tab"); D.S.route = D.landing(h); } D.render(); };
+D.boot = function () { D.reset(); var params = new URLSearchParams(location.search); var dz = params.get("design"); if (dz !== "8.1" && dz !== "8.2") { try { dz = localStorage.getItem("2972-demo-design"); } catch (e) { dz = null; } } D.setDesign(dz === "8.1" ? "8.1" : "8.2"); if (Object.prototype.hasOwnProperty.call(D.ROLES, params.get("role"))) D.S.role = params.get("role"); if (params.get("mode") === "competition") D.S.mode = "competition"; var h = routeFromHash(); if (h) { if (params.get("tab")) D.S.tabs[h] = params.get("tab"); D.S.route = D.landing(h); } D.render(); };
 })();
