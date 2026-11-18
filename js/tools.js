@@ -52,7 +52,7 @@ function toolList() {
   if (!tools.length) return '<p class="empty">No tool matches “' + esc(D.S.tools.q) + '”. Try a shorter word.</p>';
   // First, the three a student opens with a part in hand. They are also in their own groups below.
   var quick = q ? [] : ["tool-holes", "tool-units", "tool-spacing"].map(D.tool).filter(function (t) { return t && tools.indexOf(t) >= 0; });
-  return (quick.length ? '<section class="toolgroup" id="tg-quick" tabindex="-1"><h2>Quick answers at the bench</h2><div class="toollist">' + quick.map(D.toolRow).join("") + "</div></section>" : "") + D.TOOL_GROUPS.map(function (g) {
+  return (quick.length ? '<section class="toolgroup" id="tg-quick" tabindex="-1"><h2>Quick answers at the bench</h2><p class="small mute toolnote">Shortcuts to three tools that are also in their groups below.</p><div class="toollist">' + quick.map(D.toolRow).join("") + "</div></section>" : "") + D.TOOL_GROUPS.map(function (g) {
     var rows = tools.filter(function (t) { return t.group === g[0]; }); if (!rows.length) return "";
     return '<section class="toolgroup" id="tg-' + g[0] + '" tabindex="-1"><h2>' + esc(g[1]) + '</h2><div class="toollist">' + rows.map(D.toolRow).join("") + "</div></section>";
   }).join("");

@@ -201,6 +201,8 @@ details.cg:not([open]) { padding-bottom: 12px; }
 .codeout { white-space: pre-wrap; overflow-wrap: break-word; }
 .cnote { stroke-width: 4px; }
 .toolgroup { scroll-margin-top: calc(var(--bar) + 12px); }
+.toolnote { margin: 0 0 4px; padding: 0 8px; }
+.how { scroll-margin-top: calc(var(--bar) + 12px); }
 .toolgroup:focus { outline: none; }
 .tooljump { margin-top: -4px; }
 @media (max-width: 640px) { .tooljump { flex-wrap: nowrap; overflow-x: auto; scrollbar-width: none; margin-inline: calc(-1 * var(--gut)); padding-inline: var(--gut); } .tooljump::-webkit-scrollbar { display: none; } .tooljump .chip { flex: none; } .tooljump { -webkit-mask-image: linear-gradient(to right, #000 calc(100% - 44px), transparent); mask-image: linear-gradient(to right, #000 calc(100% - 44px), transparent); padding-right: 44px; } }

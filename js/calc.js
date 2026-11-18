@@ -260,7 +260,7 @@ K.chart = function (o) {
     s.pts.forEach(function (p) { if (!isFinite(p[1])) { pen = false; return; } d += (pen ? "L" : "M") + X(p[0]).toFixed(1) + " " + Y(F.clamp(p[1], y0 - (y1 - y0), y1 + (y1 - y0))).toFixed(1); pen = true; });
     g += '<path class="cline c' + (s.color || i + 1) + (s.dash ? " dash" : "") + '" d="' + d + '"/>';
   });
-  (o.dots || []).forEach(function (p) { if (p.y < y0 || p.y > y1 || p.x < x0 || p.x > x1) return; g += '<circle class="cdot" cx="' + X(p.x).toFixed(1) + '" cy="' + Y(p.y).toFixed(1) + '" r="4"/>' + (p.label ? '<text class="cnote" x="' + (X(p.x) + 7).toFixed(1) + '" y="' + (Y(p.y) - 6).toFixed(1) + '">' + esc(p.label) + "</text>" : ""); });
+  (o.dots || []).forEach(function (p) { if (p.y < y0 || p.y > y1 || p.x < x0 || p.x > x1) return; g += '<circle class="cdot" cx="' + X(p.x).toFixed(1) + '" cy="' + Y(p.y).toFixed(1) + '" r="4"/>' + (p.label ? '<text class="cnote" x="' + (X(p.x) + (X(p.x) > W - 30 - p.label.length * 5.2 ? -7 : 7)).toFixed(1) + '" y="' + (Y(p.y) - 6).toFixed(1) + '"' + (X(p.x) > W - 30 - p.label.length * 5.2 ? ' text-anchor="end"' : "") + ">" + esc(p.label) + "</text>" : ""); });
   g += '<line class="cnow" id="' + o.id + '-now" x1="0" x2="0" y1="' + pt + '" y2="' + (H - pb) + '" visibility="hidden"/><line class="ccross" x1="0" x2="0" y1="' + pt + '" y2="' + (H - pb) + '" visibility="hidden"/>';
   CHARTS[o.id] = { x0: x0, x1: x1, pl: pl, pr: pr, W: W, series: series, xl: o.x && o.x.unit || "", yl: o.y && o.y.unit || "", xn: o.x && o.x.name || "" };
   var legend = series.length > 1 ? '<div class="clegend">' + series.map(function (s, i) { return '<span><i class="ckey c' + (s.color || i + 1) + (s.dash ? " dash" : "") + '"></i>' + esc(s.name) + "</span>"; }).join("") + "</div>" : "";
