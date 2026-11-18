@@ -69,5 +69,12 @@ ok("knee: falling just above", kd.at(kr * 1.01 * F.RPM, 12, 1).torque < kf - 1e-
 ok("knee: none without a limit", M.kneeRpm("kraken60", 12, 0, 15) === null);
 var srcR = require("fs").readFileSync(require("path").join(__dirname, "../js/tool-ratio.js"), "utf8");
 ok("no file names in the notes", srcR.split("module.exports")[1].indexOf("frc.js") < 0);
+// Round 6: among equally close trains, one with no gear under 14 teeth comes first, and its stages say so.
+var fs = M.find({ target: 15, tol: 0.02, maxStages: 2, kinds: { gear: true }, minT: 8, maxT: 84 });
+ok("find: the first exact train has no small pinion", fs[0].small >= M.SMALL && Math.abs(fs[0].ratio - 15) < 1e-9, M.trainLabel(fs[0].stages));
+ok("find: small reported right", fs.every(function (c) { return c.small === M.smallGear(c.stages); }));
+var f5 = M.find({ target: 5, tol: 0.1, maxStages: 1, kinds: { gear: true }, minT: 8, maxT: 84 });
+ok("find: 14:70 before 8:40 at 5 : 1, both offered", M.trainLabel(f5[0].stages) === "14:70" && f5.some(function (c) { return M.trainLabel(c.stages) === "8:40"; }), f5.map(function (c) { return M.trainLabel(c.stages); }).join(" "));
+ok("find: a closer train still beats one without a small pinion", f5.every(function (c, i) { return !i || Math.abs(c.err) >= Math.abs(f5[i - 1].err) - 1e-9; }));
 console.log(fails ? fails + " of " + n + " checks failed" : "All " + n + " checks passed");
 process.exit(fails ? 1 : 0);

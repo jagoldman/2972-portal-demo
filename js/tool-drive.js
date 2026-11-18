@@ -215,7 +215,7 @@ K.tool({
     return K.verdict(state, text) + K.outs([
       { k: "Time to " + d + " ft", v: two(A.time, B.time, M.margin(A.time, B.time).dp), u: "s", sub: "A / B", tip: "From a standing start, full power all the way." },
       { k: "Speed at the line", v: two(A.vLine / FT, B.vLine / FT, 1), u: "ft/s", sub: two(A.vLine, B.vLine, 2) + " m/s" },
-      { k: "Top speed", v: two(A.top / FT, B.top / FT, 1), u: "ft/s", sub: "free speed " + two(A.free / FT, B.free / FT, 1), tip: "The speed where the motors' push has fallen to the rolling drag, with battery sag. Free speed is the catalogue figure: 12 V and no load." },
+      { k: "Top speed", v: two(A.top / FT, B.top / FT, 1), u: "ft/s", sub: "free speed at 12 V " + two(A.free / FT, B.free / FT, 1), tip: "The speed where the motors' push has fallen to the rolling drag, from the rested battery in Fine tuning less its sag. Free speed is the catalogue figure: 12 V and no load." },
       { k: "Wheels slip until", v: (A.slipEnd < 0 ? "never" : fts(A.slipV)) + " / " + (B.slipEnd < 0 ? "never" : fts(B.slipV)), u: A.slipEnd < 0 && B.slipEnd < 0 ? "" : "ft/s", sub: "launch " + two(A.acc0 / F.G, B.acc0 / F.G, 2) + " g", state: A.slipEnd >= 0 || B.slipEnd >= 0 ? "" : "ok", tip: "While the motors could push harder than the tread grips, the wheels spin on the carpet and grip sets the acceleration." }
     ]);
   },
@@ -236,34 +236,36 @@ K.tool({
       ["Launch acceleration", both(function (L) { return K.fix(L.acc0 / FT, 1) + " ft/s² (" + K.fix(L.acc0 / F.G, 2) + " g)"; })],
       ["Wheels slip", both(slipTxt), "Grip-limited: the motors could push harder than the tread holds."],
       ["Peak current per motor", both(function (L) { return K.n(L.peakA, 0) + " A"; }), "Stator current over the sprint. While the wheels slip this is what the motors would draw if the wheels held; spinning wheels draw a little less."],
-      ["Lowest battery", both(function (L) { return K.fix(L.minV, 1) + " V"; }), "The roboRIO starts cutting motor output at 6.8 V."],
+      ["Lowest battery", both(function (L) { var m = L.minV - 6.8; return K.fix(L.minV, 1) + " V<br><small>" + (m >= 0 ? K.fix(m, 1) + " V above" : K.fix(-m, 1) + " V below") + " the 6.8 V brown-out</small>"; }), "The roboRIO starts cutting motor output at 6.8 V."],
       ["Pushing force at the limit", both(pushTxt), "Pushing against a wall: what the motors give at the current limit. Grip allows " + K.n(r.grip / LBF, 0) + " lbf; whichever is lower gives first."]
     ];
     var table = '<section class="ctab"><h2>A and B side by side</h2><div class="scroll"><table><thead><tr><th></th><th class="r"><span class="t-drive-key a"></span>A</th><th class="r"><span class="t-drive-key b"></span>B</th></tr></thead><tbody>' +
       rows.map(function (q) { return row(q[0], q[1][0], q[1][1], q[2]); }).join("") + "</tbody></table></div>" + sagNote() + "</section>";
     // A low battery figure reads like a bad battery. Say what it is: this sprint's own sag at that current.
     function sagNote() {
-      var L = A.minV <= B.minV ? A : B, k = A.minV <= B.minV ? "A" : "B"; if (!(L.minV < 8.5)) return "";
-      return '<p class="mute small">The lowest battery, ' + K.fix(L.minV, 1) + " V (" + k + "), is the sag during this sprint while the robot draws about " + K.n(M.batteryAmps(s.V0, L.minV, s.Rbat), 0) + " A from the battery in all, through the " + K.fix(s.Rbat, 3) + " Ω of battery and wiring set in Fine tuning. It is not a sign of a worn battery.</p>";
+      var L = A.minV <= B.minV ? A : B, k = A.minV <= B.minV ? "A" : "B", more = " The Battery and breakers tool goes further: every mechanism drawing at once, a worn battery and the breakers.";
+      if (!(L.minV < 8.5)) return '<p class="mute small">The drive alone keeps the battery above ' + K.fix(L.minV, 1) + " V in this sprint." + more + "</p>";
+      return '<p class="mute small">The lowest battery, ' + K.fix(L.minV, 1) + " V (" + k + "), " + K.fix(Math.abs(L.minV - 6.8), 1) + " V " + (L.minV >= 6.8 ? "above" : "below") + " the 6.8 V brown-out, is the sag during this sprint while the drive draws about " + K.n(M.batteryAmps(s.V0, L.minV, s.Rbat), 0) + " A from the battery in all, through the " + K.fix(s.Rbat, 3) + " Ω of battery and wiring set in Fine tuning. It is not a sign of a worn battery." + more + "</p>";
     }
     var dur = r.dur;
     function pts(L, key, k) { var o = [], sim = L.sim; for (var i = 0; i < sim.t.length && sim.t[i] <= dur + 1e-9; i += 5) o.push([sim.t[i], sim[key][i] * k]); return o; }
     var sA = { name: "A " + K.fix(A.ratio, 2), color: 1 }, sB = { name: "B " + K.fix(B.ratio, 2), color: 2 };
     var x = { label: "time (s)", name: "Time", unit: "s", min: 0, max: dur };
     var speed = K.chart({ id: "drv-v", title: "Speed", x: x, y: { label: "ft/s", unit: "ft/s" }, series: [Object.assign({ pts: pts(A, "v", 1 / FT) }, sA), Object.assign({ pts: pts(B, "v", 1 / FT) }, sB)] });
-    var dist = K.chart({ id: "drv-x", title: "Distance", x: x, y: { label: "ft", unit: "ft" }, series: [Object.assign({ pts: pts(A, "x", 1 / FT) }, sA), Object.assign({ pts: pts(B, "x", 1 / FT) }, sB)], hlines: [{ y: sd, label: "finish, " + sd + " ft" }] });
+    var dist = K.chart({ id: "drv-x", title: "Distance", x: x, y: { label: "ft", unit: "ft" }, series: [Object.assign({ pts: pts(A, "x", 1 / FT) }, sA), Object.assign({ pts: pts(B, "x", 1 / FT) }, sB)], hlines: [{ y: sd, label: "finish, " + sd + " ft", side: "left" }] });
     var lead = [], i2; for (i2 = 0; i2 <= 160; i2++) { var tt = dur * i2 / 160; lead.push([tt, M.lead(A.sim, B.sim, tt) / FT]); }
     var cr = r.cross.filter(function (c) { return c.d <= r.dist; });
     var ahead = K.chart({ id: "drv-l", title: "How far B is ahead of A (ft)", x: x, y: { label: "ft, B ahead above 0", unit: "ft" }, series: [{ name: "B ahead of A", pts: lead, color: 2 }],
-      hlines: [{ y: 0, label: "level", side: "left", below: true }], marks: cr.length ? [{ x: M.timeAt(cr[cr.length - 1].ahead === "A" ? A.sim : B.sim, cr[cr.length - 1].d), label: cr[cr.length - 1].ahead + " takes the lead" }] : [] });
+      hlines: [{ y: 0, label: "level", side: "left", below: lead[Math.min(20, lead.length - 1)][1] > 0 }], marks: cr.length ? [{ x: M.timeAt(cr[cr.length - 1].ahead === "A" ? A.sim : B.sim, cr[cr.length - 1].d), label: cr[cr.length - 1].ahead + " takes the lead" }] : [] });
     var amps = K.chart({ id: "drv-a", title: "Current per motor", x: x, y: { label: "A", unit: "A", min: 0 }, series: [Object.assign({ pts: pts(A, "amps", 1) }, sA), Object.assign({ pts: pts(B, "amps", 1) }, sB)], hlines: s.statorA ? [{ y: s.statorA, label: "limit" }] : [] });
     var sw = r.sweep.filter(function (p) { return isFinite(p[1]); });
     var tA = A.reached ? A.time : null, tB = B.reached ? B.time : null, dots = [];
     var ymax = sw.length ? Math.min(Math.max.apply(null, sw.map(function (p) { return p[1]; })), (r.best ? r.best[1] : 3) * 1.6) : 1;
     sw = sw.map(function (p) { return [p[0], p[1] <= ymax + 1e-9 ? p[1] : NaN]; });   // leave out what is above the top
     if (tA != null && tA <= ymax) dots.push({ x: A.ratio, y: tA, label: "A" }); if (tB != null && tB <= ymax) dots.push({ x: B.ratio, y: tB, label: "B" });
-    var sweep = K.chart({ id: "drv-s", title: "Time over " + sd + " ft for other reductions", x: { label: "reduction (: 1)", name: "Reduction", min: r.sweep[0][0], max: r.sweep[r.sweep.length - 1][0] }, y: { label: "s", unit: "s", min: r.best ? Math.floor(r.best[1] * 10 * 0.95) / 10 : 0, max: ymax },
-      series: [{ name: "Time", pts: sw, color: 3 }], dots: dots, marks: r.best ? [{ x: r.best[0], label: "fastest " + K.fix(r.best[0], 2) }] : [] });
+    var swX = { label: "reduction (: 1)", name: "Reduction", min: r.sweep[0][0], max: r.sweep[r.sweep.length - 1][0] }, swY = { label: "s", unit: "s", min: r.best ? Math.floor(r.best[1] * 10 * 0.95) / 10 : 0, max: ymax };
+    var sweep = sweepMarks(K.chart({ id: "drv-s", title: "Time over " + sd + " ft for other reductions", x: swX, y: swY,
+      series: [{ name: "Time", pts: sw, color: 3 }], marks: r.best ? [{ x: r.best[0] }] : [] }), swX, swY, sw, dots, r.best);
     return '<div class="chartrow">' + dist + ahead + '</div><div class="chartrow">' + speed + amps + '</div><div class="chartrow">' + sweep + "<div></div></div>" + table +
       K.notes("<p>Each robot starts at rest and drives at full power through the line. Every 2 ms the calculator works out the motors' torque at the robot's speed, with the current limit and the battery's voltage drop, turns it into a push at the wheels, and moves the robot on.</p>" +
         '<p class="eq">push = motor torque × motors × reduction × efficiency ÷ wheel radius</p>' +
@@ -271,7 +273,8 @@ K.tool({
         '<p class="eq">grip = wheel grip × weight on the driven wheels</p>' +
         '<p class="eq">battery voltage = battery at rest − resistance × current drawn</p>' +
         "<p>Off the line, either the current limit or the tread sets the push. If the motors could push harder than the tread grips, the wheels spin and grip sets the acceleration, so two gearings that both slip start the same. If the current limit is reached first, the bigger reduction pushes harder. As the robot speeds up, back-EMF takes the push away, sooner on the larger reduction (its motors spin faster at the same robot speed, so they make more back-EMF). So a lower-geared robot is quicker off the line and a higher-geared one faster at the top: which wins depends on the distance.</p>" +
-        "<p>Top speed is the speed where the motors' push has fallen to the rolling drag, found directly from the same forces the race uses, so it does not depend on how long a run lasts. Free speed is the motor's free speed through the reduction at 12 V with no load; it is a catalogue figure no robot reaches.</p>" +
+        "<p>Top speed is the speed where the motors' push has fallen to the rolling drag, found directly from the same forces the race uses, so it does not depend on how long a run lasts. Free speed is the motor's free speed through the reduction at 12 V with no load: the catalogue figure, quoted at 12 V so it matches vendor sheets, and one no robot reaches.</p>" +
+        "<p>Which voltage each figure uses: free speed, 12 V. The race, the speed at the line, top speed, launch acceleration and the pushing force all start from the battery at rest in Fine tuning (" + K.fix(s.V0, 1) + " V now) and take off the sag the current causes at each moment. So top speed can be close to, or a little above, the 12 V free speed.</p>" +
         "<p>Left out: turning, the robot's own spinning parts (which add a little to its inertia), carpet that varies, tread that wears, the motor heating up over a match, and supply current limits. The battery voltage is solved in each step from the current it gives; a real battery sags more as it discharges. Wheel grip and rolling drag are rules of thumb: measure your own tread if you can (pull the robot with a spring scale until the wheels skid).</p>" +
         "<p>Motor figures from ReCalc's motor page. Swerve ratios from SDS and REV's published module sheets, as listed in the dropdown; check yours.</p>");
   },
@@ -307,14 +310,8 @@ K.tool({
     g.line(fx, top, fx, bot, { color: c.text, width: 1, cap: "butt" });
     g.text("Finish " + d + " ft", fx, bot + 15, { align: "center", weight: 600, size: 11 });
 
-    // Where the lead changes hands, marked on the carpet (drawn first, so the robots drive over it).
-    r.cross.filter(function (q) { return q.d <= r.dist; }).forEach(function (q) {
-      var xq = V.X(q.d / FT), ccol = q.ahead === "A" ? c.s1 : c.s2, ft0 = Math.round(q.d / FT);
-      g.line(xq, top + 2, xq, bot - 2, { color: ccol, width: 2, dash: [6, 4], cap: "butt" });
-      var lt = phone ? q.ahead + " leads from here, " + ft0 + " ft" : q.ahead + " takes the lead here, " + ft0 + " ft", lw = g.textWidth(lt, { size: 11, weight: 700 });
-      var left = xq + 6 + lw > fx - 10;
-      g.text(lt, left ? xq - 6 : xq + 6, top + 14, { align: left ? "right" : "left", size: 11, weight: 700, color: ccol });
-    });
+    // Everything drawn on the lanes that the lead-change line must not cross: robots, arrows, labels (screen boxes).
+    var avoid = [];
 
     var vmax = Math.max(r.A.top, r.B.top, 0.1), wr = s.wheel / 24;
     var tw = r.win ? (r.win === "A" ? r.A : r.B).time : Infinity;
@@ -331,6 +328,7 @@ K.tool({
       }
       // Bumpers, frame, four modules.
       g.rect(V.X(xf - Lr), V.Y(yc + half), V.L(Lr), V.L(Lr), { fill: ln.col, stroke: null, radius: Math.min(4, V.L(0.25)) });
+      avoid.push([V.X(xf - Lr) - 2, V.Y(yc + half) - 2, V.X(xf) + 2, V.Y(yc - half) + 2]);
       g.rect(V.X(xf - Lr + 0.25), V.Y(yc + half - 0.25), V.L(Lr - 0.5), V.L(Lr - 0.5), { fill: c.part, stroke: c.partLine, width: 1 });
       var ang = x / (s.wheel / 24);   // wheel turns, for the tread marks
       [[xf - Lr + inset + 0.15, yc + half - inset - 0.15], [xf - inset - 0.15, yc + half - inset - 0.15], [xf - Lr + inset + 0.15, yc - half + inset + 0.15], [xf - inset - 0.15, yc - half + inset + 0.15]].forEach(function (p) {
@@ -347,11 +345,14 @@ K.tool({
       // Speed arrow and its number, or the finish time. On a phone the numbers go in the key at the top left.
       var fx2 = V.X(xf) + 3, len2 = done ? 0 : (phone ? 4 + 26 * v / vmax : 6 + 46 * v / vmax), label = done ? ln.k + " " + K.fix(L.time, M.margin(r.A.time, r.B.time).dp) + " s" : fts(v) + " ft/s" + (slipping ? ", wheels slipping" : "");
       keyTxt[ln.k] = done ? "finished in " + K.fix(L.time, M.margin(r.A.time, r.B.time).dp) + " s" : fts(v) + " ft/s" + (slipping ? ", slipping" : "");
-      if (len2 > 8) g.arrow(fx2, cyp, fx2 + len2, cyp, { color: ln.col, width: 2, head: 7 });
+      if (len2 > 8) { g.arrow(fx2, cyp, fx2 + len2, cyp, { color: ln.col, width: 2, head: 7 }); avoid.push([fx2, cyp - 6, fx2 + len2 + 2, cyp + 6]); }
       if (phone) return;
       var tx = fx2 + len2 + 5, tw2 = g.textWidth(label, { weight: 600 });
-      if (tx + tw2 > g.w - 6) g.text(label, V.X(xf - Lr) - 6, cyp, { align: "right", base: "middle", weight: 600, color: c.text });
+      // Never on the chequered finish line: jump past it when there is room, else go behind the robot.
+      if (tx < fx + sq + 3 && tx + tw2 > fx - sq - 3) tx = fx + sq + 6;
+      if (tx + tw2 > g.w - 6) { tx = V.X(xf - Lr) - 6 - tw2; g.text(label, tx + tw2, cyp, { align: "right", base: "middle", weight: 600, color: c.text }); }
       else g.text(label, tx, cyp, { base: "middle", weight: 600, color: c.text });
+      avoid.push([tx - 3, cyp - 10, tx + tw2 + 3, cyp + 10]);
     });
     // The gap between the two front bumpers, as a bracket on the line between the lanes. Once the winner has crossed,
     // the bracket stays at the gap it won by: from the finish back to where the other robot was at that moment.
@@ -369,7 +370,19 @@ K.tool({
       g.line(lo - 3, yb, hi + 3, yb, { color: c.text, width: 3, cap: "butt" });
       var gw = g.textWidth(gt, { size: 13, weight: 700 }), gxx = hi + 8 + gw < (t < tw ? fx - 6 : g.w - 6) ? hi + 8 : lo - 8 - gw;
       g.text(gt, gxx, yb, { size: 13, weight: 700, base: "middle", color: gcol });
+      avoid.push([lo - 4, Math.min(V.Y(fa.yc - Lr / 2), yb - 8), hi + 4, Math.max(V.Y(fb.yc + Lr / 2), yb + 8)], [gxx - 3, yb - 11, gxx + gw + 3, yb + 11]);
     }
+    // Where the lead changes hands, marked on the carpet. The dashed line breaks wherever a robot, an arrow or a label
+    // is, so it never runs through one.
+    r.cross.filter(function (q) { return q.d <= r.dist; }).forEach(function (q) {
+      var xq = V.X(q.d / FT), ccol = q.ahead === "A" ? c.s1 : c.s2, ft0 = Math.round(q.d / FT);
+      var lt = phone ? q.ahead + " leads from here, " + ft0 + " ft" : q.ahead + " takes the lead here, " + ft0 + " ft", lw = g.textWidth(lt, { size: 11, weight: 700 });
+      var left = xq + 6 + lw > fx - 10, lx0 = left ? xq - 6 - lw : xq + 6;
+      g.text(lt, left ? xq - 6 : xq + 6, top + 14, { align: left ? "right" : "left", size: 11, weight: 700, color: ccol });
+      var cuts = avoid.filter(function (b) { return xq >= b[0] && xq <= b[2]; }).map(function (b) { return [b[1], b[3]]; }).sort(function (a, b) { return a[0] - b[0]; });
+      var y0 = top + 2;
+      cuts.concat([[bot - 2, bot - 2]]).forEach(function (cu) { if (cu[0] > y0 + 4) g.line(xq, y0, xq, Math.min(cu[0], bot - 2), { color: ccol, width: 2, dash: [6, 4], cap: "butt" }); y0 = Math.max(y0, cu[1]); });
+    });
     // The clock, and the result: once someone has crossed, and on the still picture before Play.
     var showRes = r.win && (t >= tw || !K.playing(ID)), msg = "";
     if (showRes) {
@@ -390,6 +403,28 @@ K.tool({
     K.chartNow("drv-v", t); K.chartNow("drv-x", t); K.chartNow("drv-a", t); K.chartNow("drv-l", t);
   }
 });
+/* The sweep chart's own marks, drawn into its SVG in the chart's coordinates (the kit's: 480 by 190, 46 px left, 14 px
+   right, 24 px top for the y label, 34 px bottom for the x label). Large A and B rings with their letters under the
+   curve, and "fastest" in the clear part of the top band. */
+function sweepMarks(html, X0, Y0, pts, dots, best) {
+  var W = 480, H = 190, pl = 46, pr = 14, pt = 24, pb = 34, x0 = X0.min, x1 = X0.max, y0 = Y0.min, y1 = Y0.max;
+  if (!(x1 > x0) || !(y1 > y0)) return html;
+  function X(x) { return pl + (x - x0) / (x1 - x0) * (W - pl - pr); } function Y(y) { return H - pb - (y - y0) / (y1 - y0) * (H - pt - pb); }
+  var out = "";
+  dots.forEach(function (d) {
+    out += '<circle class="cdot" cx="' + X(d.x).toFixed(1) + '" cy="' + Y(d.y).toFixed(1) + '" r="6.5" style="stroke-width:2.5"/>';
+    out += '<text class="cnote" x="' + X(d.x).toFixed(1) + '" y="' + (Y(d.y) + 22).toFixed(1) + '" text-anchor="middle" style="font-size:13px">' + d.label + "</text>";
+  });
+  if (best) {
+    var txt = "fastest " + best[0].toFixed(2) + " : 1", w = txt.length * 6.6, bx = X(best[0]), ty = pt + 12;
+    // Right of the line unless the curve climbs into the label there; then left.
+    function hits(a, b) { return pts.some(function (p) { var px = X(p[0]); return isFinite(p[1]) && px >= a && px <= b && Y(p[1]) < ty + 6; }); }
+    var right = bx + 6 + w < W - pr && !hits(bx + 4, bx + 8 + w), lx = right ? bx + 6 : bx - 6;
+    if (!right && hits(bx - 8 - w, bx - 4)) ty = pt + 12;
+    out += '<text class="cnote" x="' + lx.toFixed(1) + '" y="' + ty + '" text-anchor="' + (right ? "start" : "end") + '">' + txt + "</text>";
+  }
+  return html.replace("</svg>", out + "</svg>");
+}
 // The table's colour keys, matching the chart lines.
 if (!document.getElementById("t-drive-css")) {
   var st = document.createElement("style"); st.id = "t-drive-css";

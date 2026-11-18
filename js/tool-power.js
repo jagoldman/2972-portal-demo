@@ -27,7 +27,7 @@ M.power = function (rows, o) {
    are kept for twice the rating and more. */
 M.breakerNote = function (share) {
   return share <= 1 ? "of its rating: it carries this all match" : share <= 1.5 ? "above its rating: check the breaker's trip curve for how long it holds this" :
-    share <= 2 ? "a short peak is normal; held for a long time it can trip" : "a short peak is normal; held for a few seconds it may trip";
+    share < 2 ? "a short peak is normal; held for a long time it can trip" : "a short peak is normal; held for a few seconds it may trip";
 };
 // The same for a branch breaker, as a short tail to its row in the table ("" at or under its rating).
 M.branchNote = function (b) { return b > 2 ? ", can trip in seconds" : b > 1.5 ? ", can trip if held" : b > 1 ? ", above its rating" : ""; };
@@ -96,7 +96,7 @@ K.tool({
         '<label>Amps each<input type="number" inputmode="decimal" class="inp num" min="0" max="400" step="any" value="' + q.a + '" data-input="pownum" data-i="' + i + '" data-k="a" aria-label="' + esc(q.name || "Row " + (i + 1)) + ' amps each"></label><output id="t-power-t' + i + '">= ' + K.n(q.I != null ? q.I : q.n * q.a, 0) + " A</output></div></div>";
     }).join("");
     var add = s.rows.length < MAXROWS ? '<div><button class="btn sm" data-act="powadd">' + D.ic("plus", 16) + " Add a row</button></div>" : "";
-    return K.group(ID, "rows", "Drawing current at the worst moment", '<p class="mute small">Battery side amps, for each motor. Count only what runs at the same time.</p><div>' + rows + "</div>" + add) +
+    return K.group(ID, "rows", "Drawing current at the worst moment", '<p class="mute small">Battery side amps, for each motor. Count only what runs at the same time.</p><p class="cfh">A motor at a 60 A stator limit draws less than 60 A from the battery, except near its top speed. The Motors tool shows how much less.</p><div>' + rows + "</div>" + add) +
       K.group(ID, "bat", "Battery", K.num(ID, "rest", "At rest", { unit: "V", min: 10, max: 13.5, step: 0.1, slider: true, tip: "What the battery reads with nothing running. A charged battery reads 12.6 to 13 V." }) +
         K.num(ID, "rbat", "Inside the battery", { unit: "Ω", min: 0.005, max: 0.05, step: 0.001, slider: true, tip: "The battery's own resistance. A fresh battery is near 0.012 Ω, a worn one 0.025 Ω or more. A battery tester reads it." })) +
       K.group(ID, "adv", "Fine tuning", K.num(ID, "rwire", "Wiring and connections", { unit: "Ω", min: 0, max: 0.03, step: 0.001, tip: "Main wire, Anderson connector, main breaker and distribution. 0.006 Ω is a tidy robot with 6 AWG." }) +
@@ -111,13 +111,13 @@ K.tool({
     else if (r.state === "warn") text = (r.margin < 1 ? "Close: " + vTxt(r.V) + " is only " + K.fix(r.margin, 1) + " V above brown-out." : "Fine on this battery at " + vTxt(r.V) + ", but a worn one drops to " + vTxt(r.tired.V) + " and browns out.") + " " + M.lever(worst, r.I);
     else text = "Holds " + vTxt(r.V) + " with " + K.n(r.I, 0) + " A drawn, " + K.fix(r.margin, 1) + " V above brown-out, and a worn battery still holds " + vTxt(r.tired.V) + ".";
     if (r.V <= 0) text += " No battery can give this: it is more than the battery's short-circuit current, " + K.n(s.rest / r.R, 0) + " A, so the numbers past 0 V are not real.";
-    if (r.share > 2) text += " The main breaker carries " + K.n(r.share * 100, 0) + "% of its rating here; held for more than a few seconds it can trip.";
+    if (r.share >= 2) text += " The main breaker carries " + K.n(r.share * 100, 0) + "% of its rating here; held for more than a few seconds it can trip.";
     var bs = r.state;
     return K.verdict(bs, text) + K.outs([
       { k: "Total current", v: K.n(r.I, 0), u: "A", sub: r.rows.length + (r.rows.length === 1 ? " row" : " rows") },
       { k: "Voltage at the robot", v: K.fix(Math.max(0, r.V), 1), u: "V", state: bs === "ok" ? "" : bs, sub: "worn battery: " + vTxt(r.tired.V) },
       { k: "Margin to brown-out", v: (r.margin < 0 ? "−" : "") + K.fix(Math.abs(Math.max(0, r.V) - s.brown), 1), u: "V", state: r.margin < 0 ? "bad" : r.margin < 1 ? "warn" : "", sub: (r.marginA >= 0 ? K.n(r.marginA, 0) + " A to spare" : K.n(-r.marginA, 0) + " A too many") + " of " + K.n(r.Imax, 0) + " A; tired: " + K.n(r.tired.Imax, 0) + " A", tip: "Most current before brown-out = (rest volts − brown-out volts) ÷ (battery + wiring resistance)." },
-      { k: "Main breaker", v: K.n(r.share * 100, 0), u: "%", state: r.share > 2 ? "bad" : r.share > 1 ? "warn" : "", sub: breakerNote(r.share), tip: "A rough guide, not a trip curve. A thermal breaker's timing varies with how hot it is and what it carried just before; read the maker's trip curve." },
+      { k: "Main breaker", v: K.n(r.share * 100, 0), u: "%", state: r.share >= 2 ? "bad" : r.share > 1 ? "warn" : "", sub: breakerNote(r.share), tip: "A rough guide, not a trip curve. A thermal breaker's timing varies with how hot it is and what it carried just before; read the maker's trip curve." },
       { k: "Lost as heat", v: K.n(r.heat, 0), u: "W", sub: "worn battery: " + K.n(r.tired.heat, 0) + " W", tip: "Current² × resistance: " + K.n(r.heatBat, 0) + " W in the battery and " + K.n(r.heatWire, 0) + " W in the wiring." }
     ]);
   },
@@ -125,7 +125,7 @@ K.tool({
   more: function (s, r) {
     var out = K.chart({ id: "power-v", title: "Voltage at the robot against total current", x: { label: "total current (A)", name: "Current", unit: "A", min: 0, max: r.xmax }, y: { label: "volts at the robot (V)", unit: "V", min: 0, max: Math.ceil(s.rest + 0.5) },
       series: [{ name: "This battery (" + K.fix(s.rbat, 3) + " Ω)", pts: r.line, color: 1 }, { name: "Worn battery (" + M.TIRED + " Ω)", pts: r.lineT, color: 2, dash: true }],
-      hlines: [{ y: s.brown, label: "Brown-out " + K.fix(s.brown, 1) + " V" }], marks: r.I > 0 ? [{ x: Math.min(r.I, r.xmax), label: "Now " + K.n(r.I, 0) + " A" }] : [] });
+      hlines: [{ y: s.brown, label: "Brown-out " + K.fix(s.brown, 1) + " V", side: "left", below: true }], marks: r.I > 0 ? [{ x: Math.min(r.I, r.xmax), label: "Now " + K.n(r.I, 0) + " A" }] : [] });
     if (r.rows.length) out += '<section class="ctab"><h2>Where the current goes</h2><div class="scroll"><table><thead><tr><th>Row</th><th class="r">Motors</th><th class="r">Amps each</th><th class="r">Total</th><th class="r">Share</th><th class="r">Of a 40 A breaker</th></tr></thead><tbody>' +
       r.rows.map(function (q, i) { var b = q.a / M.BRANCH; return "<tr" + (i === r.worst && r.state !== "ok" ? ' class="pick"' : "") + "><td>" + esc(q.name || "Row " + (i + 1)) + '</td><td class="r num">' + q.n + '</td><td class="r num">' + K.n(q.a, 1) + ' A</td><td class="r num">' + K.n(q.I, 0) + ' A</td><td class="r num">' + K.n(q.share * 100, 0) + '%</td><td class="r num">' + K.n(b * 100, 0) + "%" + M.branchNote(b) + "</td></tr>"; }).join("") +
       "</tbody></table></div><p class=\"mute small\">Each motor has its own 40 A branch breaker. As a rough guide, a breaker carries its rating for a long time and can trip within seconds at about twice it, so a short peak over 40 A is normal. These are not trip times: a thermal breaker's timing varies with how hot it already is and what it carried just before, so read the maker's trip curve.</p></section>";
@@ -163,7 +163,7 @@ function drawPower(g, s, r) {
   g.rect(gx0, gy, gx1 - gx0, gh, { stroke: c.line2 || c.line, width: 1 });
   var bx6 = GX(s.brown), bTxt = "brown-out " + K.fix(s.brown, 1) + " V", bw6 = g.textWidth(bTxt, { size: 11, weight: 600 }), bl = F.clamp(bx6 - bw6 / 2, 4, W - bw6 - 4);
   for (var v = 0; v <= vmax; v += 2) { if (Math.abs(GX(v) - bx6) < 3) continue; g.line(GX(v), gy + gh, GX(v), gy + gh + 4, { color: c.mute, width: 1 }); g.text(v + (v === vmax ? " V" : ""), GX(v), gy + gh + 17, { size: 10, color: c.mute, align: "center" }); }
-  g.line(bx6, gy - 3, bx6, gy + gh + 22, { color: c.bad, width: 1.5, dash: [3, 2] });
+  g.line(bx6, r.I > 0 ? gy - 18 : gy - 3, bx6, gy + gh + 22, { color: c.bad, width: 1.5, dash: [3, 2] });
   g.text(bTxt, bl + bw6 / 2, gy + gh + 33, { size: 11, weight: 600, color: c.bad, align: "center" });
   var marks = [
     { v: s.rest, txt: K.fix(s.rest, 1) + " V at rest", color: c.text2, kind: "tick" },
@@ -176,14 +176,25 @@ function drawPower(g, s, r) {
   marks.forEach(function (m) { var k = 0; while (k < ends.length && m.x < ends[k] + 8) k++; m.row = k; ends[k] = m.x + m.w; });
   var markRows = Math.max(1, ends.length);
   marks.forEach(function (m) {
-    var x = GX(m.v), ty = gy - 10 - m.row * 13;
-    if (m.kind === "now") { g.poly([[x, gy - 1], [x - 5, gy - 8], [x + 5, gy - 8]], { fill: col, stroke: null }); if (m.row) g.line(x, gy - 8, x, ty + 3, { color: col, width: 1 }); }
-    else g.line(x, gy - 3 - (m.row ? m.row * 13 : 0), x, gy + gh + 3, { color: m.color, width: 1.5 });
+    var x = GX(m.v), ty = gy - 24 - m.row * 13;
+    if (m.kind === "now") { g.poly([[x, gy - 1], [x - 5, gy - 8], [x + 5, gy - 8]], { fill: col, stroke: null }); g.line(x, gy - 8, x, ty + 3, { color: col, width: 1 }); }
+    else g.line(x, ty + 3, x, gy + gh + 3, { color: m.color, width: 1.5 });
     g.text(m.txt, m.x + m.w / 2, ty, { size: 11, weight: m.bold ? 700 : 600, color: m.color, align: "center" });
   });
 
+  // The margin between now and brown-out, as a bracket just above the bar with its size beside it.
+  if (r.I > 0) {
+    var nx = GX(r.V), my = gy - 14, ml = Math.min(nx, bx6), mr = Math.max(nx, bx6), short = r.V < s.brown;
+    var mTxt = K.fix(Math.abs(r.V - s.brown), 1) + " V " + (short ? "short" : "margin"), mw = g.textWidth(mTxt, { size: 11, weight: 700 }), mcol = short ? c.bad : r.margin < 1 ? c.warn : c.ok;
+    g.line(ml, my, mr, my, { color: mcol, width: 2, cap: "butt" }); g.line(ml, my - 4, ml, my + 4, { color: mcol, width: 2, cap: "butt" }); g.line(mr, my - 4, mr, my + 4, { color: mcol, width: 2, cap: "butt" });
+    // Beside the bracket on the side with room, kept clear of the other marks' ticks.
+    var clear = function (a, b) { return a > 4 && b < W - 4 && marks.every(function (m) { var x = GX(m.v); return m.kind === "now" || x < a - 3 || x > b + 3; }); };
+    var mx = clear(mr + 6, mr + 6 + mw) ? mr + 6 : clear(ml - 6 - mw, ml - 6) ? ml - 6 - mw : mr + 6;
+    g.text(mTxt, mx, my, { size: 11, weight: 700, color: mcol, base: "middle" });
+  }
+
   // The one-line diagram above the gauge.
-  var top = 34, bot = gy - 28 - markRows * 13, mid = (top + bot) / 2;
+  var top = 34, bot = gy - 42 - markRows * 13, mid = (top + bot) / 2;
   if (!n) { g.text("Add a row to see where the current goes.", 16, mid, { color: c.mute }); return; }
   var kA = 22 / Math.max(r.I, 150), thick = function (I) { return F.clamp(I * kA, 1.5, 24); };
   var bw = phone ? 36 : 46, bh = phone ? 52 : 64, bx = 14, by = mid - bh / 2;
@@ -198,7 +209,7 @@ function drawPower(g, s, r) {
   // Main wire, main breaker, distribution.
   var labW = phone ? 104 : 150, busX = phone ? bx + bw + 100 : bx + bw + 128, endX = W - labW - 10, brX = (bx + bw + busX) / 2;
   g.line(bx + bw, mid, busX, mid, { color: c.text2, width: thick(r.I), cap: "butt" });
-  var mc = r.share > 2 ? c.bad : r.share > 1 ? c.warn : c.text2;
+  var mc = r.share >= 2 ? c.bad : r.share > 1 ? c.warn : c.text2;
   g.rect(brX - 11, mid - 11, 22, 22, { fill: c.sheet, stroke: mc, width: 2, radius: 3 });
   g.line(brX - 6, mid + 5, brX + 6, mid - 5, { color: mc, width: 2 });
   g.text("Main " + K.n(s.main, 0) + " A", brX, mid - 18, { size: 11, weight: 700, align: "center" });

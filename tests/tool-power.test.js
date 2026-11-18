@@ -50,5 +50,8 @@ ok("lever sentence", M.lever(dflt.rows[dflt.worst], dflt.I) === "Drive is the la
 var src = require("fs").readFileSync(require("path").join(__dirname, "../js/tool-power.js"), "utf8");
 ok("breaker timing called a rough guide, with the trip curve named", /rough guide/.test(src) && /trip curve/.test(src) && !/carries its rating all day/.test(src));
 
+// Round 6: twice the rating is where the tile turns red, so the words change there too, not just above it.
+ok("200%: the same words as above it", M.breakerNote(2) === M.breakerNote(2.5), M.breakerNote(2));
+ok("199%: the softer words", M.breakerNote(1.99) !== M.breakerNote(2));
 console.log(fails ? fails + " of " + n + " checks failed" : "All " + n + " checks passed");
 process.exit(fails ? 1 : 0);
