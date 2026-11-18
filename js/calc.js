@@ -23,6 +23,7 @@ K.result = function (id) { return CACHE[id]; };
 /* ---------- Registering a calculator ---------- */
 /* def: { id (its route and its row in D.TOOLS), defaults: {key: value}, compute(s) -> r,
      stage: { ratio (width / height, default 16/9), narrow (the same on a phone, default at most 1.5),
+              tall: true (a tall subject: on a phone the drawing may take up to 62% of the screen's height, not 46%),
               label (what the drawing shows, for screen readers) } or null,
      controls(s, r) -> html, outs(s, r) -> html, more(s, r) -> html (optional),
      draw(g, s, r, t) (optional; t = seconds into the animation),
@@ -58,7 +59,7 @@ function page(def) {
   var stage = "";
   if (def.stage) {
     var dur = def.duration && !def.loop ? durOf(def, s, r) : 0, moves = def.duration || def.loop;
-    stage = '<div class="stagewrap" data-area="stage">' + (def.tabs ? '<div class="benchtabs"><span class="seg" role="group" aria-label="View">' + def.tabs.map(function (o) { return '<button data-act="calcseg"' + attr(id, "view") + ' data-v="' + esc(o[0]) + '" aria-pressed="' + (String(s.view) === String(o[0])) + '">' + esc(o[1]) + "</button>"; }).join("") + "</span></div>" : "") + '<div class="stage" style="--ar:' + (def.stage.ratio || 16 / 9) + ";--arn:" + (def.stage.narrow || Math.min(def.stage.ratio || 16 / 9, 1.5)) + '"><canvas id="calc-cv" data-tool="' + id + '" role="img" aria-label="' + esc(def.stage.label || "Drawing") + '"></canvas></div>' +
+    stage = '<div class="stagewrap" data-area="stage">' + (def.tabs ? '<div class="benchtabs"><span class="seg" role="group" aria-label="View">' + def.tabs.map(function (o) { return '<button data-act="calcseg"' + attr(id, "view") + ' data-v="' + esc(o[0]) + '" aria-pressed="' + (String(s.view) === String(o[0])) + '">' + esc(o[1]) + "</button>"; }).join("") + "</span></div>" : "") + '<div class="stage' + (def.stage.tall ? " tall" : "") + '" style="--ar:' + (def.stage.ratio || 16 / 9) + ";--arn:" + (def.stage.narrow || Math.min(def.stage.ratio || 16 / 9, 1.5)) + '"><canvas id="calc-cv" data-tool="' + id + '" role="img" aria-label="' + esc(def.stage.label || "Drawing") + '"></canvas></div>' +
       (moves ? '<div class="transport"><button class="btn sm' + (def.loop ? "" : " primary") + '" id="calc-play" data-act="calcplay" data-tool="' + id + '">' + playLabel(def, R) + "</button>" +
         (def.loop ? "" : '<input type="range" id="calc-scrub" class="scrub" min="0" max="' + dur.toFixed(3) + '" step="0.001" value="' + Math.min(R.t, dur).toFixed(3) + '" data-input="calcscrub" data-tool="' + id + '" aria-label="Move through the animation">' +
         '<output id="calc-time" class="num ttime">' + R.t.toFixed(2) + ' s</output>') +

@@ -26,7 +26,16 @@ var r = M.compute(s);
 near("worst angle is level", r.worstAngle, 0, 1e-12);
 near("holding current at level", r.holdWorst.statorA, 196 * LBIN / (60 * 0.9 * 7.16 / 371.2) + 2.8, 1e-9);
 near("holding current, rounded hand figure", r.holdWorst.statorA, 24.06, 0.01);
-near("kG at level", r.kG, 0.772, 0.001);
+// kG balances gravity alone (fix round 5, item 15): 21.26 A above the free current x 12 / 374 ohm = 0.682 V. The old
+// figure, 0.772 V, was the whole holding current (24.06 A) and so carried the motor's free current (kS = 0.090 V).
+near("kG at level", r.kG, 0.682, 0.001);
+near("kG by hand", r.kG, (r.holdWorst.statorA - 2.8) * 12 / 374, 1e-9);
+near("kS = free current x resistance", r.kS, 2.8 * 12 / 374, 1e-12);
+near("holding volts = kG + kS", r.holdLevel.volts, r.kG + r.kS, 1e-12);
+near("kG doubles with the load", M.compute(Object.assign({}, s, { armLb: 12, loadLb: 8 })).kG / r.kG, 2, 1e-9);
+near("kS does not change with the load", M.compute(Object.assign({}, s, { armLb: 12, loadLb: 8 })).kS, r.kS, 1e-15);
+// Torque margin and the current ratio agree once the free current is taken off both.
+near("margin = (limit - free) / (holding - free)", r.margin, (40 - 2.8) / (r.holdWorst.statorA - 2.8), 1e-9);
 // Torque at the 40 A limit: (40 - 2.8) x 0.019289 x 60 x 0.9 = 38.75 N m = 343 lb in; margin 343 / 196 = 1.75.
 near("available torque", r.avail, 37.2 * 7.16 / 371.2 * 54, 1e-9);
 near("available torque in lb in", r.avail / LBIN, 343, 0.5);
@@ -85,6 +94,20 @@ near("return stall angle by hand", down.stallBack, -Math.acos(down.avail / down.
 var strong = M.compute(Object.assign({}, s, { cb: 2000 }));
 ok("strong counterbalance: the counterbalance resists the return", strong.reached && !strong.backOk && strong.backWhy === "counterbalance", strong.backWhy);
 ok("a stall going out under gravity says gravity", heavy.goWhy === "gravity", heavy.goWhy);
+
+// Item 16: the end's fastest speed going out (here, up through level against gravity) never passes the no-load speed.
+[s, Object.assign({}, s, { ratio: 20 }), Object.assign({}, s, { ratio: 40, loadLb: 0.5, armLb: 1 }), Object.assign({}, s, { start: -90, end: 90, ratio: 30 })].forEach(function (o, i) {
+  var q = M.compute(o), lim = M.driveOf(o).freeSpeed(o.vbat) * q.L;
+  ok("case " + i + ": end speed going out <= no-load speed", q.tipSpeed <= lim + 1e-9, q.tipSpeed + " > " + lim);
+});
+// Item 7: while the motor drives the arm (torque and speed the same way), its torque never passes what the chart's
+// "gearbox gives" line shows. Braking may pass it, because the motor's friction helps then.
+var drv = 0, brk = 0;
+[r, M.compute(Object.assign({}, s, { ratio: 40 })), M.compute(Object.assign({}, s, { start: 80, end: -60 }))].forEach(function (q) {
+  for (var i = 0; i < q.Q.length; i++) { if (q.Q[i] * q.W[i] > 0) drv = Math.max(drv, Math.abs(q.Q[i]) / q.avail); else if (q.Q[i] * q.W[i] < 0) brk = Math.max(brk, Math.abs(q.Q[i]) / q.avail); }
+});
+ok("driving torque never above the gearbox's figure at the limit", drv <= 1 + 1e-9, drv);
+ok("braking torque can pass it (friction helps)", brk > 1, brk);
 
 console.log(fails ? fails + " of " + n + " checks failed" : "all " + n + " checks passed");
 process.exit(fails ? 1 : 0);

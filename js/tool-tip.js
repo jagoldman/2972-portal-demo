@@ -115,7 +115,7 @@ function g2(x) { return K.fix(x, 2); }
 K.tool({
   id: ID,
   defaults: { mlb: 105, mh: 7, wb: 22, mx: 0, klb: 22, kdown: 14, kup: 52, kx: 4, raised: 100, brake: 0.8, grip: 1.1, ramp: 0, v0: 15 },
-  stage: { ratio: 1.9, narrow: 0.82, label: "Side view to scale: the chassis on its wheels, the raised mechanism, the centres of gravity, and the line the robot's weight and braking act along." },
+  stage: { ratio: 1.9, narrow: 0.82, tall: true, label: "Side view to scale: the chassis on its wheels, the raised mechanism, the centres of gravity, and the line the robot's weight and braking act along." },
   autoplay: true,
 
   compute: function (s) {

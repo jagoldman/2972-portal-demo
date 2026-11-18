@@ -90,5 +90,31 @@ Object.keys(ends).forEach(function (k) { ends[k].forEach(function (v) { ["cascad
 }); }); });
 ok("extremes: no NaN, no throw", !bad.length, bad.join("; "));
 
+// Fix round 5, item 15: kG balances gravity alone and kS is the motor's own friction; the holding current is both.
+// Double the carriage and the stages (no spring), double the rope force, double kG; kS stays.
+var kg1 = M.compute(Object.assign({}, base, { stages: 2 })), kg2 = M.compute(Object.assign({}, base, { stages: 2, carLb: 28, stageLb: 10 }));
+near("kG doubles with the load", kg2.kG / kg1.kG, 2, 1e-9);
+near("kS does not change with the load", kg2.kS, kg1.kS, 1e-15);
+var mk = F.motor("kraken60");
+near("kS = free current x resistance", kg1.kS, mk.freeA * mk.R, 1e-12);
+// By hand, cascade with one stage: kG = (13.24 A - 2.8 A) x (12 / 374 ohm) = 10.44 x 0.032086 = 0.3350 V.
+near("kG by hand (one stage, cascade)", rc.kG, (rc.hold.statorA - free) * 12 / 374, 1e-9);
+near("kG, rounded hand figure", rc.kG, 0.335, 0.001);
+near("holding volts = kG + kS", rc.hold.volts, rc.kG + rc.kS, 1e-12);
+// Continuous: each section's kG is in proportion to its rope force (carriage 14, then 19, then 24 lb).
+near("continuous kG per section in proportion to the load", cont.kGs[2] / cont.kGs[0], 24 / 14, 1e-9);
+// Item 16: the speed going up never passes the motors' no-load speed at the battery's resting voltage, whenever the
+// load resists going up. (A spring stronger than the weight it carries pulls the lift up faster than that; case 5.)
+[base, Object.assign({}, base, { stages: 2 }), Object.assign({}, base, { rig: "continuous", stages: 3 }), Object.assign({}, base, { ratio: 3, carLb: 2, travel: 100 }), Object.assign({}, base, { spring: 8, carLb: 10 })].forEach(function (o, i) {
+  var q = M.compute(o), lim = M.driveOf(o).freeSpeed(o.vbat) * q.rS * q.gain;
+  ok("case " + i + ": top speed going up <= no-load speed", q.topV <= lim + 1e-9, q.topV + " > " + lim);
+  near("case " + i + ": freeV is that no-load speed", q.freeV, lim, 1e-12);
+});
+// Item 1: the sweep says when the best reduction is at an end of the range tried.
+var fast = M.compute(Object.assign({}, base, { carLb: 2, stageLb: 1, stages: 1, ratio: 9 }));
+ok("light lift: best at the low end of the sweep", fast.bestEnd === "lo" && Math.abs(fast.best[0] - 3) < 1e-9, fast.best && fast.best[0]);
+var over = M.compute(Object.assign({}, base, { spring: 20, carLb: 10 }));
+ok("case 5: a spring stronger than the weight lifts faster than no-load, and the page knows", over.mod.load(0) < 0 && over.topV > over.freeV, over.topV);
+
 console.log(fails ? fails + " of " + n + " checks failed" : "all " + n + " checks passed");
 process.exit(fails ? 1 : 0);
