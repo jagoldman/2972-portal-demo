@@ -65,8 +65,8 @@ K.tool({
     var word = s.kind === "belt" ? "pulley" : s.kind === "chain" ? "sprocket" : "gear";
     var teeth = K.num(ID, "n1", "Driving " + word, { unit: "teeth", min: 8, max: 120, step: 1, slider: true, tip: "The one the motor turns." }) + K.num(ID, "n2", "Driven " + word, { unit: "teeth", min: 8, max: 120, step: 1, slider: true, tip: "The one that is turned." });
     var space = s.kind === "gear" ?
-      K.num(ID, "gwant", "Distance you already have", { unit: "in", min: 0, max: 12, step: 0.001, hint: "Holes already drilled? Type their spacing to see which gear pairs mesh there, and how much slack each has. Leave 0 otherwise.", tip: "The table under the answers lists pairs of common gears whose centre distance is nearest this." }) +
-      (s.gwant > 0 ? '<p class="cfh" style="font-size:.78rem;color:var(--mute);line-height:1.3;margin:0">Extra spacing is not used while a distance is typed: the slack is whatever your holes leave. Set the distance to 0 to get it back.</p>' : K.num(ID, "gextra", "Extra spacing", { unit: "in", min: 0, max: 0.02, step: 0.001, hint: "Added so the teeth do not bind (backlash).", tip: "Added to the exact distance so the teeth do not bind. 0.003 in is a common choice for 20 DP gears in a plate cut on a router." })) :
+      K.num(ID, "gwant", "Distance you already have", { unit: "in", min: 0, max: 12, step: 0.001, hint: "Holes already drilled? Type their spacing to see which pairs fit. Leave 0 otherwise.", tip: "The table under the answers lists pairs of common gears whose centre distance is nearest this." }) +
+      (s.gwant > 0 ? '<p class="cfh" style="font-size:.78rem;color:var(--mute);line-height:1.3;margin:0">Extra spacing is not used while a distance is typed.</p>' : K.num(ID, "gextra", "Extra spacing", { unit: "in", min: 0, max: 0.02, step: 0.001, hint: "Added so the teeth do not bind (backlash).", tip: "Added to the exact distance so the teeth do not bind. 0.003 in is a common choice for 20 DP gears in a plate cut on a router." })) :
       K.num(ID, "target", "Wanted centre distance", { unit: "in", min: 1, max: 40, step: 0.001, slider: true, tip: "Roughly where you want the two shafts. The calculator finds the real distances a stock belt or a whole number of links gives." }) +
       (s.kind === "belt" ? K.num(ID, "extra", "Extra spacing", { unit: "in", min: -0.02, max: 0.05, step: 0.001, hint: "Added to the exact distance. 0 suits most belts.", tip: "Added to the exact distance. Leave at 0 for a belt on fixed centres unless your pulleys run tight." }) :
         K.num(ID, "cextra", "Extra spacing", { unit: "in", min: 0, max: 0.06, step: 0.001, hint: "Added so the chain goes on.", tip: "Added to the exact distance so the chain goes on. 0.018 in is a common choice for #25 chain." }));
@@ -100,7 +100,7 @@ K.tool({
       { k: "Centre distance", v: K.fix(o.center, 3), u: "in", sub: K.fix(o.center * 25.4, 2) + " mm" },
       { k: s.kind === "belt" ? "Belt" : "Chain", v: String(r.count), u: s.kind === "belt" ? "teeth" : "links", sub: K.fix(o.length, 2) + " in long" },
       { k: "Ratio", v: K.fix(r.ratio, 3), u: ": 1", sub: rtxt, tip: "Driven teeth divided by driving teeth." },
-      { k: "Teeth gripped", v: o.mesh1 + " and " + o.mesh2, sub: "on the " + s.n1 + "T and the " + s.n2 + "T" + (s.kind === "belt" ? "; six or more is the rule of thumb" : ""), state: few ? "warn" : "", tip: "How many teeth the belt or chain wraps on each wheel. Few teeth on a small pulley is where belts skip." },
+      { k: "Teeth gripped", v: o.mesh1 + " and " + o.mesh2, sub: "on the " + s.n1 + "T and the " + s.n2 + "T" + (s.kind === "belt" ? "; 6+ is the rule of thumb" : ""), state: few ? "warn" : "", tip: "How many teeth the belt or chain wraps on each wheel. Few teeth on a small pulley is where belts skip." },
       { k: "Gap between them", v: K.fix(o.gap, 2), u: "in", sub: "roughly, between their outer edges", state: o.gap < 0.05 ? "warn" : "", tip: "Clear space between the two wheels' outer edges." }]);
   },
 
@@ -123,9 +123,9 @@ K.tool({
       function how(sl) { return sl < -0.0005 ? ["bad", "will not go on"] : sl < 0.0015 ? ["warn", "no slack: may bind"] : sl <= 0.008 ? ["ok", "fits"] : sl <= 0.03 ? ["warn", "loose"] : ["bad", "too far apart to mesh"]; }
       var okSum = r.fits.filter(function (f) { return how(slackOf(f))[0] === "ok"; })[0];
       out += '<section class="ctab"><h2>Gear pairs for holes ' + K.fix(s.gwant, 3) + ' in apart</h2>' +
-        (r.fits.length ? '<p class="small mute">Totals that fit your holes come first; within a total, the pairs closest to your ratio. A pair\'s exact meshing distance depends only on its teeth added together. The gap is your hole spacing minus that distance: a 20 DP pair wants about 0.002 to 0.008 in of it as slack. ' + (okSum ? "A total of " + okSum.sum + " teeth fits." : "No total of whole teeth fits these holes well: " + r.fits.map(function (f) { return f.sum + " teeth leaves " + K.fix(slackOf(f), 3) + " in"; }).join(", ") + ". Move a hole, or use slots.") + ' Pairs with a pinion under 14 teeth need the maker\'s own spacing.</p><div class="scroll"><table><thead><tr><th>Pair</th><th class="r">Ratio</th><th class="r">Exact meshing distance</th><th class="r">Gap at your holes</th><th>At your holes</th><th></th></tr></thead><tbody>' +
+        (r.fits.length ? '<p class="small mute">Pairs that fit come first, then the closest ratio. The gap is your hole spacing minus where the pair meshes. ' + (okSum ? "A total of " + okSum.sum + " teeth fits." : "No total of whole teeth fits these holes well: " + r.fits.map(function (f) { return f.sum + " teeth leaves " + K.fix(slackOf(f), 3) + " in"; }).join(", ") + ". Move a hole, or use slots.") + ' Pairs with a pinion under 14 teeth need the maker\'s own spacing.</p><div class="scroll"><table><thead><tr><th>Pair</th><th class="r">Ratio</th><th class="r">Meshes at</th><th class="r">Gap at your holes</th><th>At your holes</th><th></th></tr></thead><tbody>' +
           (r.fits.some(function (f) { return f.sum === s.n1 + s.n2; }) ? "" : (function () { var sl = s.gwant - (s.n1 + s.n2) * per, hw = how(sl); return '<tr class="pick"><td>' + s.n1 + " : " + s.n2 + (Math.min(s.n1, s.n2) < 14 ? " (small pinion)" : "") + '</td><td class="r num">' + K.fix(s.n2 / s.n1, 2) + ' : 1</td><td class="r num">' + K.fix((s.n1 + s.n2) * per, 3) + ' in</td><td class="r num">' + (sl < 0 ? "−" : "") + K.fix(Math.abs(sl), 3) + ' in</td><td><span class="pill ' + hw[0] + '">' + hw[1] + '</span></td><td class="r">In the drawing</td></tr>'; })()) +
-          r.fits.map(function (f) { var sl = slackOf(f), hw = how(sl); return f.pairs.filter(function (p) { return p[0] >= 10; }).sort(function (x, y) { return Math.abs(x[1] / x[0] - r.ratio) - Math.abs(y[1] / y[0] - r.ratio); }).slice(0, 6).map(function (p) { var on = p[0] === s.n1 && p[1] === s.n2, hp = p[0] < 14 && hw[0] === "ok" ? ["warn", "check the maker's spacing"] : hw; return '<tr class="' + (on ? "pick" : "") + '"><td>' + p[0] + " : " + p[1] + (p[0] < 14 ? " (small pinion)" : "") + '</td><td class="r num">' + K.fix(p[1] / p[0], 2) + ' : 1</td><td class="r num">' + K.fix(f.sum * per, 3) + ' in</td><td class="r num">' + (sl < 0 ? "−" : "") + K.fix(Math.abs(sl), 3) + ' in</td><td><span class="pill ' + hp[0] + '">' + hp[1] + '</span></td><td class="r">' + (on ? "In the drawing" : '<button class="btn sm" data-act="spgear" data-a="' + p[0] + '" data-b="' + p[1] + '">Use this one</button>') + "</td></tr>"; }).join(""); }).join("") +
+          r.fits.map(function (f) { var sl = slackOf(f), hw = how(sl); return f.pairs.filter(function (p) { return p[0] >= 10; }).sort(function (x, y) { return Math.abs(x[1] / x[0] - r.ratio) - Math.abs(y[1] / y[0] - r.ratio); }).slice(0, 6).map(function (p) { var on = p[0] === s.n1 && p[1] === s.n2, hp = p[0] < 14 && hw[0] === "ok" ? ["warn", "check the maker's spacing"] : hw; return '<tr class="' + (on ? "pick" : "") + '"><td>' + p[0] + " : " + p[1] + (p[0] < 14 ? " (small pinion)" : "") + '</td><td class="r num">' + K.fix(p[1] / p[0], 2) + ' : 1</td><td class="r num">' + K.fix(f.sum * per, 3) + ' in</td><td class="r num">' + (sl < 0 ? "−" : "") + K.fix(Math.abs(sl), 3) + ' in</td><td><span class="pill ' + hp[0] + '">' + hp[1] + '</span></td><td class="r">' + (on ? "In the drawing" : '<button class="btn sm' + (hw[0] === "bad" ? " ghost" : "") + '" data-act="spgear" data-a="' + p[0] + '" data-b="' + p[1] + '">Use this one</button>') + "</td></tr>"; }).join(""); }).join("") +
           "</tbody></table></div>" : '<p class="warnline">That is too close together for two gears of this tooth size.</p>') + "</section>";
     }
     out += K.notes(s.kind === "gear" ?
@@ -144,15 +144,15 @@ K.tool({
     var c = g.c, C = r.center; if (!(C > 0)) { g.text("Nothing to draw yet.", 16, 28, { color: c.mute }); return; }
     var R1 = r.od1 / 2, R2 = r.od2 / 2, big = Math.max(R1, R2), m = big * 0.12 + 0.15;
     var offWant = s.kind !== "gear" && r.sel && Math.abs(s.target - C) > 0.0005;
-    var V = g.view({ x0: -R1 - m, x1: C + R2 + m, y0: -big - m, y1: big + m }, { l: 14, r: 14, t: (s.kind === "gear" && s.gwant > 0) || offWant ? (g.w > 520 ? 46 : 62) : 28, b: 52 }, "middle");
+    var V = g.view({ x0: -R1 - m, x1: C + R2 + m, y0: -big - m, y1: big + m }, { l: 14, r: 14, t: (s.kind === "gear" && s.gwant > 0) || offWant ? 46 : 28, b: offWant && g.w <= 520 ? 132 : s.kind === "gear" && g.w <= 520 ? 70 : 52 }, "middle");
     g.grid(V, 1, g.w > 520 ? "1 in squares" : "");
     var x1 = V.X(0), x2 = V.X(C), y = V.Y(0), p1 = V.L(r.pd1 / 2), p2 = V.L(r.pd2 / 2);
     var speed = 0.9, a1 = t * speed, a2;               // the driving wheel's angle (radians, clockwise on screen)
     if (s.kind === "gear") {
       a2 = Math.PI - Math.PI / s.n2 - a1 * s.n1 / s.n2;
-      g.gear(x1, y, p1, s.n1, a1, { fill: c.part }); g.gear(x2, y, p2, s.n2, a2, { fill: c.part2 });
+      g.gear(x1, y, p1, s.n1, a1, { fill: c.part }); g.gear(x2, y, p2, s.n2, a2, { fill: c.part2, bore: s.gwant > 0 ? Math.max(3, p2 * 0.1) : 0 });
       g.circle(x1, y, p1, { stroke: c.accent, width: 1, dash: [4, 4] }); g.circle(x2, y, p2, { stroke: c.accent, width: 1, dash: [4, 4] });
-      if (g.w > 520) g.text("dashed: pitch circles, which roll on each other", g.w - 12, g.h - 10, { align: "right", color: c.mute, size: 11 });
+      g.text(g.w > 520 ? "dashed: pitch circles, which roll on each other" : "dashed: pitch circles; 1 in squares", g.w - 12, g.h - 10, { align: "right", color: c.mute, size: g.w > 520 ? 11 : 10.5 });
     } else {
       var al = Math.asin(F.clamp((p1 - p2) / (x2 - x1), -1, 1)), sn = Math.sin(al), cs = Math.cos(al), Tn = (x2 - x1) * cs;
       var arc2 = p2 * (Math.PI - 2 * al), arc1 = p1 * (Math.PI + 2 * al), L = 2 * Tn + arc1 + arc2;
@@ -171,7 +171,7 @@ K.tool({
         g.circle(x1, y, o1, { fill: c.part, stroke: c.partLine, width: 1 }); g.circle(x2, y, o2, { fill: c.part, stroke: c.partLine, width: 1 });
         [[x1, p1, s.n1, a1], [x2, p2, s.n2, a1 * s.n1 / s.n2]].forEach(function (w) {
           // Three lightening holes show the pulley turning; the belt's teeth show the rest.
-          if (w[1] > 16) for (var k = 0; k < 3; k++) { var a = w[3] + k * 2 * Math.PI / 3; g.circle(w[0] + w[1] * 0.55 * Math.cos(a), y + w[1] * 0.55 * Math.sin(a), w[1] * 0.2, { fill: c.sheet, stroke: c.partLine, width: 1 }); }
+          if (w[1] > 26) for (var k = 0; k < 3; k++) { var a = w[3] + k * 2 * Math.PI / 3; g.circle(w[0] + w[1] * 0.55 * Math.cos(a), y + w[1] * 0.55 * Math.sin(a), w[1] * 0.2, { fill: c.sheet, stroke: c.partLine, width: 1 }); }
           hub(g, w[0], y, w[1], w[3]);
         });
         var body;
@@ -187,7 +187,7 @@ K.tool({
       }
     }
     // Dimensions and names, as on a drawing.
-    var by = Math.min(V.Y(-big) + 4, g.h - 48);
+    var by = Math.min(V.Y(-big) + 4, g.h - (s.kind === "gear" && g.w <= 520 ? 66 : 48));
     g.line(x1, y, x1, by + 30, { color: c.mute, width: 1, dash: [6, 3, 1, 3] }); g.line(x2, y, x2, by + 30, { color: c.mute, width: 1, dash: [6, 3, 1, 3] });
     var have = s.kind === "gear" && s.gwant > 0;
     g.dim(x1, by + 30, x2, by + 30, K.fix(C, 3) + " in" + (!have ? " centre to centre" : r.fitsNow ? ", your holes" : ", where this pair meshes"), 0, { side: "below" });
@@ -198,29 +198,28 @@ K.tool({
     function offMark(want, gap, col, l1, l2, nameA, nameB) {
       var hx = V.X(want), far = gap > 0, cross = function (x, yy, k) { g.line(x, yy - k, x, yy + k, { color: col, width: 2 }); g.line(x - k, yy, x + k, yy, { color: col, width: 2 }); };
       cross(hx, y, 10); cross(18, 36, 5);
-      var wideG = g.w > 520, gapPx = Math.abs(hx - x2), Z = Math.max(1, Math.min(12, Math.round(34 / Math.max(gapPx, 1)))), zr = wideG ? 46 : 38, edge = V.X(C) + Math.max(p2, V.L(r.od2 / 2)), mid = s.kind !== "gear" && x2 - x1 - V.L(r.od1 / 2) - V.L(r.od2 / 2) > 2 * zr + 60, zx = mid ? x1 + V.L(r.od1 / 2) + (x2 - x1 - V.L(r.od1 / 2) - V.L(r.od2 / 2)) / 2 : wideG ? Math.min(g.w - zr - 16, edge + zr + 40) : g.w - zr - 14, zy = mid ? y : wideG ? y - zr * 0.2 : 62 + zr + 32, off = Math.min(zr - 12, gapPx * Z) * (far ? 1 : -1);
-      if (mid || (wideG ? zx - zr > edge + 8 : zy + zr + 18 < y - (edge - V.X(C)) - 4 || zx - zr > edge + 6)) {
+      var wideG = g.w > 520, gapPx = Math.abs(hx - x2), Z = Math.max(1, Math.min(12, Math.round(34 / Math.max(gapPx, 1)))), zr = wideG ? 46 : 38, edge = V.X(C) + Math.max(p2, V.L(r.od2 / 2)), under = !wideG && s.kind !== "gear", mid = wideG && s.kind !== "gear" && x2 - x1 - V.L(r.od1 / 2) - V.L(r.od2 / 2) > 2 * zr + 60, zx = mid ? x1 + V.L(r.od1 / 2) + (x2 - x1 - V.L(r.od1 / 2) - V.L(r.od2 / 2)) / 2 : wideG ? Math.min(g.w - zr - 16, edge + zr + 40) : under ? g.w * 0.6 : g.w - zr - 14, zy = mid ? y : wideG ? y - zr * 0.2 : under ? g.h - zr - 10 : 46 + zr + 32, off = Math.min(zr - 12, gapPx * Z) * (far ? 1 : -1);
+      if (mid || under || (wideG ? zx - zr > edge + 8 : zy + zr + 18 < y - (edge - V.X(C)) - 4 || zx - zr > edge + 6)) {
         g.circle(zx, zy, zr, { fill: c.surface, stroke: c.line2, width: 1 });
-        if (mid) g.line(zx + zr, zy, Math.min(hx, x2) - 12, y, { color: c.line2, width: 1, dash: [3, 3] }); else g.line(hx + 11, y, zx - zr, zy, { color: c.line2, width: 1, dash: [3, 3] });
+        if (mid) g.line(zx + zr, zy, Math.min(hx, x2) - 12, y, { color: c.line2, width: 1, dash: [3, 3] }); else if (!under) g.line(hx + 11, y, zx - zr, zy, { color: c.line2, width: 1, dash: [3, 3] });
         var ax = zx - off / 2, bx = zx + off / 2;
         g.circle(ax, zy, 3.5, { fill: c.text, stroke: null }); cross(bx, zy, 7);
         g.line(ax, zy + 16, bx, zy + 16, { color: col, width: 1.5 }); g.line(ax, zy + 11, ax, zy + 21, { color: col, width: 1.5 }); g.line(bx, zy + 11, bx, zy + 21, { color: col, width: 1.5 });
         g.text(K.fix(Math.abs(gap), 3) + " in", zx, zy + 33, { align: "center", color: col, size: 11, weight: 700 });
         // The two names sit above the detail, each with the mark it names, clear of the circle and the wheels.
         var nA = "● " + nameA, nB = "+ " + nameB, nw = Math.max(g.textWidth(nA, { size: 10.5 }), g.textWidth(nB, { size: 10.5, weight: 600 })), nx = F.clamp(zx - nw / 2, 4, g.w - 4 - nw);
-        if (mid) { g.text(nB, zx - zr - 8, zy - 4, { align: "right", color: col, size: 10.5, weight: 600 }); g.text(nA, zx - zr - 8, zy + 10, { align: "right", color: c.text2, size: 10.5 }); }
+        if (mid || under) { g.text(nB, zx - zr - 8, zy - 4, { align: "right", color: col, size: 10.5, weight: 600 }); g.text(nA, zx - zr - 8, zy + 10, { align: "right", color: c.text2, size: 10.5 }); }
         else { g.text(nB, nx, zy - zr - 19, { align: "left", color: col, size: 10.5, weight: 600 }); g.text(nA, nx, zy - zr - 6, { align: "left", color: c.text2, size: 10.5 }); }
-        if (mid) g.text("enlarged " + Z + "×", zx + zr + 8, zy + zr - 2, { align: "left", color: c.mute, size: 10.5 });
-        else g.text("enlarged " + Z + "×", zx, zy + zr + 14, { align: "center", color: c.mute, size: 10.5 });
+        if (mid || under) g.text("enlarged", zx + zr + 8, under ? zy + 4 : zy + zr - 2, { align: "left", color: c.mute, size: 10.5 });
+        else g.text("enlarged", zx, zy + zr + 14, { align: "center", color: c.mute, size: 10.5 });
       }
-      if (g.w > 520) g.text(l1 + " " + l2, 30, 36, { color: col, size: 11, weight: 700 });
-      else { g.text(l1, 30, 36, { color: col, size: 11, weight: 700 }); g.text(l2, 30, 50, { color: col, size: 11, weight: 700 }); }
+      g.text(l1 + (l2 ? " " + l2 : ""), 30, 36, { color: col, size: 11, weight: 700 });
     }
-    if (have && !r.fitsNow) offMark(s.gwant, r.slack, c.bad, "your second hole, " + K.fix(s.gwant, 3) + " in:", K.fix(Math.abs(r.slack), 3) + " in " + (r.slack > 0 ? "further out than this pair reaches" : "closer in than this pair needs"), "gear's centre", "your hole");
-    if (offWant) offMark(s.target, s.target - C, c.warn, "where you wanted it, " + K.fix(s.target, 3) + " in:", K.fix(Math.abs(s.target - C), 3) + " in " + (s.target > C ? "further out than this " + (s.kind === "belt" ? "belt" : "chain") + " reaches" : "closer in than this " + (s.kind === "belt" ? "belt" : "chain") + " sits"), "its centre", "wanted");
+    if (have && !r.fitsNow) offMark(s.gwant, r.slack, c.bad, "your second hole, " + K.fix(s.gwant, 3) + " in", "", "gear's centre", "your hole");
+    if (offWant) offMark(s.target, s.target - C, c.warn, "where you wanted it, " + K.fix(s.target, 3) + " in", "", "its centre", "wanted");
     // Name each wheel and show which way it turns.
     [[x1, "driving", 1, p1], [x2, "driven", s.kind === "gear" ? -1 : 1, p2]].forEach(function (q) {
-      var rr = s.kind === "belt" ? F.clamp(q[3] * 0.35 - 5, 8, 18) : Math.max(9, Math.min(V.L(big) * 0.5, 20)), a0 = -2.5, a1 = -0.9, tip = q[2] > 0 ? a1 : a0, tx = q[0] + rr * Math.cos(tip), ty2 = y + rr * Math.sin(tip), tang = tip + q[2] * Math.PI / 2;
+      var rr = s.kind === "belt" ? F.clamp(q[3] * 0.35 - 5, 8, 18) : F.clamp(q[3] * 0.55, 6, 20), a0 = -2.5, a1 = -0.9, tip = q[2] > 0 ? a1 : a0, tx = q[0] + rr * Math.cos(tip), ty2 = y + rr * Math.sin(tip), tang = tip + q[2] * Math.PI / 2;
       g.arc(q[0], y, rr, a0, a1, { color: c.accent, width: 2 });
       g.poly([[tx + 6 * Math.cos(tang), ty2 + 6 * Math.sin(tang)], [tx + 4 * Math.cos(tang + 2.4), ty2 + 4 * Math.sin(tang + 2.4)], [tx + 4 * Math.cos(tang - 2.4), ty2 + 4 * Math.sin(tang - 2.4)]], { fill: c.accent, stroke: null });
       if (g.h > 150) g.text(q[1], q[0] + 6, by + 10, { align: "left", color: c.text2, size: 11, weight: 600, base: "top" });
