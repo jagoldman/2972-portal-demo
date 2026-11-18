@@ -1,1 +1,116 @@
-/* Tools: the calculators (js/calcs.js). See GROUND_UP.md section 6. */
+/* Tools: the calculators (js/calcs.js). See GROUND_UP.md section 6.
+   The calculators show in Baseline and Ground up (Live does not list them), so these rules are not scoped to a
+   version; every class starts with "calc" so nothing else on the site is touched. Colours are tokens only, so dark
+   mode follows. */
+
+/* ---------- The Tools page: two groups ---------- */
+.calcgrouped .card h2 { margin: 0 0 2px; }
+
+/* ---------- A calculator page ---------- */
+.toolhead.calchead { max-width: calc(1040px + 2 * var(--gut)); }
+.content.calcpage { max-width: calc(1040px + 2 * var(--gut)); }
+.calcpage > * { min-width: 0; }
+
+/* The answer: one plain sentence, read out when it changes. */
+.calcans { margin: 0; padding: 12px 14px; border-left: 3px solid var(--bumper); border-radius: 0 var(--r) var(--r) 0; background: var(--surface-2); color: var(--text); font-weight: 600; line-height: 1.45; }
+.calcans.bad { border-left-color: var(--warn); }
+
+/* Inputs at the left, results and drawing at the right; one column on a phone, inputs first. */
+.calccols { display: grid; grid-template-columns: minmax(0, 1fr); gap: 20px 36px; align-items: start; }
+@media (min-width: 760px) { .calccols:not(.one) { grid-template-columns: minmax(250px, 330px) minmax(0, 1fr); } }
+.calcin { display: grid; gap: 12px; min-width: 0; margin: 0; }
+.calcout { display: grid; gap: 14px; min-width: 0; align-content: start; }
+.calcgrid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 12px; align-items: end; }
+
+/* A field: label, the box, the unit after it. */
+.calcbox { display: flex; align-items: center; gap: 8px; min-width: 0; }
+.field .calcbox input { flex: 1 1 auto; min-width: 0; max-width: 9rem; }
+.calcsearch .calcbox input { max-width: 24rem; }
+.calcunit { flex: none; color: var(--text-2); font-size: .9rem; }
+.calchint { color: var(--mute); font-size: .8rem; line-height: 1.35; }
+.calcseg { justify-self: start; }
+.calcwith { display: grid; gap: 6px; }
+.calcpicks { display: flex; flex-wrap: wrap; align-items: center; gap: 6px; }
+.calcpicks .calchint { margin-right: 2px; }
+
+/* Gear stages */
+.calcstages { display: grid; gap: 10px; }
+.calcstage { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 8px 12px; margin: 0; padding: 6px 12px 12px; border: 1px solid var(--line); border-radius: var(--r); min-width: 0; }
+.calcstage legend { padding: 0 4px; font-size: .85rem; font-weight: 650; color: var(--text); }
+.calcstage .calcx { grid-column: 1 / -1; justify-self: start; }
+.calcadd { justify-self: start; }
+
+/* Results: name at the left, value and unit at the right. */
+.calch { margin: 0; font-size: .95rem; }
+.calcres { display: grid; margin: 0; }
+.calcres > div { display: flex; justify-content: space-between; align-items: baseline; gap: 6px 16px; flex-wrap: wrap; padding: 8px 0; border-bottom: 1px solid var(--line); }
+.calcres > div:first-child { border-top: 1px solid var(--line); }
+.calcres dt { color: var(--text-2); min-width: 0; }
+.calcres dd { margin: 0 0 0 auto; font-weight: 650; text-align: right; }
+.calcres .pill { margin-left: 6px; }
+.calcwarn { margin: 0; color: var(--text-2); font-size: .9rem; }
+.calcwarn .pill { margin-right: 6px; }
+
+/* Belt and chain choices; the nearest is marked with a bar and a word. */
+.calcopts { display: grid; margin: 0; padding: 0; list-style: none; }
+.calcopt { display: flex; justify-content: space-between; align-items: baseline; gap: 12px; padding: 8px 10px; border-bottom: 1px solid var(--line); border-left: 3px solid transparent; }
+.calcopt:first-child { border-top: 1px solid var(--line); }
+.calcopt.best { border-left-color: var(--bumper); background: var(--tint); }
+.calcopt small { display: block; color: var(--mute); font-size: .8rem; font-weight: 400; }
+.calcopt .num { text-align: right; font-weight: 650; }
+.calcoptn b { font-weight: 650; }
+.calcnear { margin-left: 4px; color: var(--accent); font-size: .8rem; font-weight: 650; }
+
+/* Charts and drawings: inline SVG in a 400-unit box; text is 13 units, so at least 11 px on a 390 px phone. */
+.calcchart, .calcdraw { display: block; width: 100%; max-width: 480px; height: auto; font-family: var(--body); overflow: visible; }
+.calcpair { display: grid; gap: 4px; }
+.calcchart text, .calcdraw text { font-size: 13px; fill: var(--mute); }
+.calcchart .ctitle { fill: var(--text-2); font-weight: 600; }
+.calcchart .clabel, .calcdraw .clabel { fill: var(--text); font-weight: 650; }
+.calcchart .cgrid { stroke: var(--line); stroke-width: 1; }
+.calcchart .caxis { fill: none; stroke: var(--line-2); stroke-width: 1; }
+.calcchart .cline { fill: none; stroke: var(--accent); stroke-width: 2.5; stroke-linejoin: round; stroke-linecap: round; }
+.calcchart .cline.two { stroke: var(--text-2); stroke-width: 2; stroke-dasharray: 6 4; }
+.calcdraw .cwheel { fill: var(--surface-2); stroke: var(--text-2); stroke-width: 1.5; }
+.calcdraw .cbelt { fill: none; stroke: var(--accent); stroke-width: 3; stroke-linejoin: round; }
+.calcdraw .cbelt.chain { stroke-width: 4.5; }
+.calcdraw .cext { stroke: var(--line-2); stroke-width: 1; stroke-dasharray: 3 3; }
+.calcdraw .cdim { stroke: var(--text-2); stroke-width: 1.5; }
+.calcdraw .chub { fill: var(--text-2); }
+
+/* Tables: the drill chart and all motors. On a phone each row becomes a small block with its labels. */
+.calcwide { display: grid; gap: 8px; min-width: 0; }
+.calch2 { margin: 0; }
+.calctable th, .calctable td { white-space: normal; vertical-align: top; }
+.calctable tbody th { font-size: inherit; font-weight: 400; color: var(--text); }
+.calctable b { font-weight: 650; }
+.calctable td b { display: block; }
+.calcsz { display: block; color: var(--mute); font-size: .85rem; }
+.calctag { display: block; color: var(--accent); font-size: .8rem; font-weight: 600; }
+.calctable tr.most th, .calctable tr.most td, .calctable tr.pick th, .calctable tr.pick td { background: var(--tint); }
+.calctable.motors td { white-space: nowrap; }
+@media (max-width: 640px) {
+  .calctable, .calctable tbody, .calctable tr, .calctable th, .calctable td { display: block; }
+  .calctable thead { display: none; }
+  .calctable tr { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 8px 12px; padding: 10px 8px; border-bottom: 1px solid var(--line); }
+  .calctable tr.most, .calctable tr.pick { background: var(--tint); }
+  .calctable tr.most th, .calctable tr.most td, .calctable tr.pick th, .calctable tr.pick td { background: none; }
+  .calctable th, .calctable td { padding: 0; border: 0; }
+  .calctable tbody th { grid-column: 1 / -1; }
+  .calctable td::before { content: attr(data-l); display: block; color: var(--mute); font-size: .78rem; font-weight: 600; }
+}
+
+/* How it is worked out, the two buttons and the motor line. */
+.calcfoot { display: grid; gap: 12px; }
+.calchow { border-top: 1px solid var(--line); border-bottom: 1px solid var(--line); }
+.calchow summary { display: flex; align-items: center; gap: 8px; min-height: 44px; cursor: pointer; font-weight: 650; }
+.calchow summary:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+.calchowbody { display: grid; gap: 8px; padding: 0 0 12px; }
+.calchowbody p { margin: 0; max-width: 72ch; color: var(--text-2); line-height: 1.5; }
+.calcnote { margin: 0; color: var(--mute); font-size: .85rem; }
+
+/* A phone: everything tapped is at least 44 px high. */
+@media (max-width: 640px) {
+  .calcpage .calcseg button, .calcpicks .chip, .calcstage .calcx, .calcpage .btn { min-height: 44px; }
+  .field .calcbox input { max-width: none; }
+}

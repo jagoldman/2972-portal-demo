@@ -48,7 +48,13 @@ function n3(x) { return (Math.round(x * 1000) / 1000).toFixed(3); }
 /* ---------- The Tools page ---------- */
 D.views.tools = function () {
   if (!allowed()) return D.denied("Tools");
-  return D.topbar("Tools", "", "", "") + '<div class="content toolspage"><div class="card"><div class="toollist">' + D.visibleTools().map(D.toolRow).join("") + "</div></div></div>";
+  var tools = D.visibleTools(), calcs = tools.filter(function (t) { return t.calc; });
+  // Live has no calculators, so its page stays one plain list.
+  if (!calcs.length) return D.topbar("Tools", "", "", "") + '<div class="content toolspage"><div class="card"><div class="toollist">' + tools.map(D.toolRow).join("") + "</div></div></div>";
+  // With the calculators: two groups, the tools that start from a photo and the calculators.
+  var photo = tools.filter(function (t) { return !t.calc; });
+  function group(title, list) { return '<section class="card"><h2>' + esc(title) + '</h2><div class="toollist">' + list.map(D.toolRow).join("") + "</div></section>"; }
+  return D.topbar("Tools", "", "", "") + '<div class="content toolspage calcgrouped">' + (photo.length ? group("From a photo", photo) : "") + group("Calculators", calcs) + "</div>";
 };
 
 /* ---------- Drawing to vector ---------- */
