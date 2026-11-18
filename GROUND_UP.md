@@ -78,7 +78,8 @@ the way, and what the Ground up version does. "Kept" means the Baseline version 
      matters, and the count in days and practices. It is the one bold element in this version; everything else on
      the page is quiet.
   2. **Now.** One list, most urgent first. Each item carries its own action: Sign in, Done, Approve, Sign off.
-     Approving here does exactly what the button in Parts does.
+     Approving here does exactly what the button in Parts does. A mentor's list also holds every task marked
+     stuck, with who has it and what it waits on, so stuck work does not depend on someone reading a notice.
   3. **Waiting on others.** For a student: each open request of theirs and who has the next move.
   4. **This week.** The next seven days as a strip: practice times, how many mentors are coming, whether snacks are
      covered, what is due. Each day is a door to the Calendar.

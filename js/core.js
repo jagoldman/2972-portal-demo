@@ -370,6 +370,10 @@ function nowRows() {
     if (K && hasTile("skills")) K.requests().forEach(function (q) {
       rows.push({ app: "skills", tab: "signoff", title: q.student + " asks for " + q.skill, line: esc(q.where), btn: '<button class="btn" data-act="homesignoff" data-v="' + esc(q.key) + '">Sign off</button>' });
     });
+    // Stuck work comes to the mentors as a row, not only as a notice: nothing waits silently (GROUND_UP.md §1).
+    if (apiWith(D.tasksApi, ["stuck", "openTask"]) && hasTile("tasks")) D.tasksApi.stuck().forEach(function (x) {
+      rows.push({ act: "hometask", v: x.id, title: x.title + " is stuck", line: esc((x.who.length ? x.who.join(", ") : "Nobody has it") + ", " + x.project + (x.waitsOn.length ? ". Waits on " + x.waitsOn.join(" and ") : "")), mark: '<span class="pill bad">Blocked</span>' });
+    });
     // What cannot be settled in one tap stays a door, as it was.
     waitingRows().forEach(function (r) {
       if (P && r.app === "parts" && /needs? an OK/.test(r.title)) return;
@@ -643,6 +647,7 @@ A.grp = function (b) { var id = b.dataset.v, place = b.dataset.place; D.setPref(
 A.homeapprove = function (b) { if (apiWith(D.partsApi, ["approve"])) D.partsApi.approve(+b.dataset.v); };
 A.homereq = function (b) { if (apiWith(D.partsApi, ["open"])) D.partsApi.open(+b.dataset.v); };
 A.homesignoff = function (b) { if (apiWith(D.skillsApi, ["signOff"])) D.skillsApi.signOff(b.dataset.v); };
+A.hometask = function (b) { if (apiWith(D.tasksApi, ["openTask"])) D.tasksApi.openTask(+b.dataset.v); };
 A.homeproject = function (b) { if (D.tasksApi) D.tasksApi.openProject(b.dataset.v); };
 A.goapp = function (b) { if (b.dataset.tab) D.S.tabs[b.dataset.app] = b.dataset.tab; D.go(b.dataset.app); };
 A.closedrawer = function () { D.S.drawer = null; D.render(); };

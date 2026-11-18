@@ -199,7 +199,10 @@ D.nextUpCard = nextUp;
    Each milestone: { id, name, date, project, pid, color }. */
 D.tasksApi = {
   milestones: function (n) { return nextMilestones(n || 4).map(function (m) { return { id: m.id, name: m.name, date: m.date, project: m.p.name, pid: m.p.id, color: m.p.color }; }); },
-  openProject: function (pid) { T().at = { v: "project", p: pid }; D.go("tasks"); }
+  openProject: function (pid) { T().at = { v: "project", p: pid }; D.go("tasks"); },
+  // Tasks marked blocked (someone pressed "I'm stuck", or a lead set it), with who has them and what they wait on.
+  stuck: function () { return T().list.filter(function (x) { return x.st === "blocked"; }).map(function (x) { return { id: x.id, title: x.title, who: x.who.slice(), project: proj(x.p).name, waitsOn: waitsOn(x) }; }); },
+  openTask: function (id) { D.go("tasks"); D.openDrawer("task", { id: id }); }
 };
 function my() {
   var mine = T().list.filter(function (x) { return x.who.indexOf(me()) >= 0 && x.st !== "done"; }).sort(function (a, b) { return (a.due || "9") < (b.due || "9") ? -1 : 1; });
