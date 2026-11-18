@@ -43,5 +43,11 @@ near("arm degrees per motor rotation", arm.perRotDeg, 3.6);
 near("arm radians per motor rotation", arm.perRot, 2 * Math.PI / 100);
 near("arm max speed: 60 rpm out = 360 deg/s", arm.maxDeg, 360);
 
+// Round 7: the Java names follow the mechanism, and the plain "1 rpm of the motor" line.
+ok("names: wheel", M.prefix("wheel") === "Wheel"); ok("names: spool", M.prefix("spool") === "Spool"); ok("names: arm", M.prefix("arm") === "Arm");
+ok("names: never Elevator or Drive", ["wheel", "spool", "arm"].every(function (k) { return !/Elevator|Drive/.test(M.prefix(k)); }));
+ok("1 rpm of the motor on the default spool = 0.000166 m/s", M.plain3(M.mech({ kind: "spool", ratio: 12, dia: 1.5, rig: 1, rpm: 6000 }).perRpm) === "0.000166", M.plain3(M.mech({ kind: "spool", ratio: 12, dia: 1.5, rig: 1, rpm: 6000 }).perRpm));
+ok("plain3 of nothing", M.plain3(0) === "0");
+
 console.log(fails ? fails + " of " + n + " checks failed" : "all " + n + " checks passed");
 process.exit(fails ? 1 : 0);

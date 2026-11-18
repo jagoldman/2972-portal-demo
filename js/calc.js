@@ -228,6 +228,7 @@ function tickFmt(v, step) { var dp = step >= 1 ? 0 : Math.min(4, Math.ceil(-Math
 /* A line chart. o: { id (unique on the page), title, x: { label, min, max }, y: { label, min, max },
      series: [{ name, pts: [[x, y], ...], color: 1 | 2 | 3 | "mute", dash: true }],
      (the y label is written above the top of the axis, the x label under its right-hand end)
+     note: one quiet line under the title (what a dashed line means, for example), so the title stays short.
      marks: [{ x, label }] (upright reference lines), hlines: [{ y, label, side: "left", below: true }] (level reference
      lines; the label sits at the right end above the line unless side or below say otherwise),
      bands: [{ x0, x1, label }] (a shaded range of x), dots: [{ x, y, label }], h (height, default 190), table: false }
@@ -260,7 +261,7 @@ K.chart = function (o) {
     s.pts.forEach(function (p) { if (!isFinite(p[1])) { pen = false; return; } d += (pen ? "L" : "M") + X(p[0]).toFixed(1) + " " + Y(F.clamp(p[1], y0 - (y1 - y0), y1 + (y1 - y0))).toFixed(1); pen = true; });
     g += '<path class="cline c' + (s.color || i + 1) + (s.dash ? " dash" : "") + '" d="' + d + '"/>';
   });
-  (o.dots || []).forEach(function (p) { if (p.y < y0 || p.y > y1 || p.x < x0 || p.x > x1) return; g += '<circle class="cdot" cx="' + X(p.x).toFixed(1) + '" cy="' + Y(p.y).toFixed(1) + '" r="4"/>' + (p.label ? '<text class="cnote" x="' + (X(p.x) + 7).toFixed(1) + '" y="' + (Y(p.y) - 6).toFixed(1) + '">' + esc(p.label) + "</text>" : ""); });
+  (o.dots || []).forEach(function (p) { if (p.y < y0 || p.y > y1 || p.x < x0 || p.x > x1) return; g += '<circle class="cdot" cx="' + X(p.x).toFixed(1) + '" cy="' + Y(p.y).toFixed(1) + '" r="4"/>' + (p.label ? '<text class="cnote" x="' + (X(p.x) + (X(p.x) > W - 30 - p.label.length * 5.2 ? -7 : 7)).toFixed(1) + '" y="' + (Y(p.y) - 6).toFixed(1) + '"' + (X(p.x) > W - 30 - p.label.length * 5.2 ? ' text-anchor="end"' : "") + ">" + esc(p.label) + "</text>" : ""); });
   g += '<line class="cnow" id="' + o.id + '-now" x1="0" x2="0" y1="' + pt + '" y2="' + (H - pb) + '" visibility="hidden"/><line class="ccross" x1="0" x2="0" y1="' + pt + '" y2="' + (H - pb) + '" visibility="hidden"/>';
   CHARTS[o.id] = { x0: x0, x1: x1, pl: pl, pr: pr, W: W, series: series, xl: o.x && o.x.unit || "", yl: o.y && o.y.unit || "", xn: o.x && o.x.name || "" };
   var legend = series.length > 1 ? '<div class="clegend">' + series.map(function (s, i) { return '<span><i class="ckey c' + (s.color || i + 1) + (s.dash ? " dash" : "") + '"></i>' + esc(s.name) + "</span>"; }).join("") + "</div>" : "";
@@ -270,7 +271,7 @@ K.chart = function (o) {
     for (var k = 0; k <= n; k++) { var xv = x0 + (x1 - x0) * k / n; rows.push("<tr><td>" + K.n(xv) + "</td>" + series.map(function (s) { return "<td>" + K.n(sample(s.pts, xv)) + "</td>"; }).join("") + "</tr>"); }
     table = '<details class="ctable" data-open="t-' + esc(o.id) + '"><summary>Show as a table</summary><table><thead><tr><th>' + esc(o.x && (o.x.name || o.x.label) || "x") + "</th>" + series.map(function (s) { return "<th>" + esc(s.name) + "</th>"; }).join("") + "</tr></thead><tbody>" + rows.join("") + "</tbody></table></details>";
   }
-  return '<figure class="chart"><figcaption>' + esc(o.title || "") + "</figcaption>" + legend + '<svg viewBox="0 0 ' + W + " " + H + '" data-chart="' + esc(o.id) + '" tabindex="0" role="img" aria-label="' + esc((o.title || "Chart") + ". Use the left and right arrow keys to read values.") + '">' + g + "</svg>" + table + "</figure>";
+  return '<figure class="chart"><figcaption>' + esc(o.title || "") + "</figcaption>" + (o.note ? '<p class="chartnote">' + esc(o.note) + "</p>" : "") + legend + '<svg viewBox="0 0 ' + W + " " + H + '" data-chart="' + esc(o.id) + '" tabindex="0" role="img" aria-label="' + esc((o.title || "Chart") + ". Use the left and right arrow keys to read values.") + '">' + g + "</svg>" + table + "</figure>";
 };
 var F = window.FRC;
 function sample(pts, x) { if (!pts.length) return NaN; if (x <= pts[0][0]) return pts[0][1]; for (var i = 1; i < pts.length; i++) if (pts[i][0] >= x) { var a = pts[i - 1], b = pts[i], t = (x - a[0]) / ((b[0] - a[0]) || 1); return a[1] + (b[1] - a[1]) * t; } return pts[pts.length - 1][1]; }

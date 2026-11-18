@@ -109,5 +109,16 @@ var drv = 0, brk = 0;
 ok("driving torque never above the gearbox's figure at the limit", drv <= 1 + 1e-9, drv);
 ok("braking torque can pass it (friction helps)", brk > 1, brk);
 
+// Round 7, item 10: while braking at the current limit, the motor's torque is the gearbox's figure at the limit (the
+// Torque margin card's) plus twice the friction torque: friction takes its share from a driving torque and adds it to a
+// braking one. By hand at 80:1, 40 A: kt x 42.8 A x 72 = 526 lb in against kt x 37.2 x 72 = 457, and 2 x kt x 2.8 x 72 = 69.
+var r80 = M.compute(Object.assign({}, s, { ratio: 80 })), seen = 0, worst = 0;
+for (var i = 0; i < r80.Q.length; i++) if (r80.Q[i] * r80.W[i] < -1e-9 && r80.A[i] >= 40 - 1e-6) { seen++; worst = Math.max(worst, Math.abs(Math.abs(r80.Q[i]) - (r80.avail + 2 * r80.fricT))); }
+ok("brakes at the limit somewhere", seen > 0, seen);
+near("braking torque = limit figure + 2 x friction", worst, 0, 1e-6);
+near("friction torque by hand (N m)", r80.fricT, 7.16 / 371.2 * 2.8 * 80 * 0.9, 1e-9);
+near("braking at the limit by hand, 526 lb in", (r80.avail + 2 * r80.fricT) / LBIN, 526, 0.5);
+near("limit figure by hand, 457 lb in", r80.avail / LBIN, 457, 0.5);
+
 console.log(fails ? fails + " of " + n + " checks failed" : "all " + n + " checks passed");
 process.exit(fails ? 1 : 0);

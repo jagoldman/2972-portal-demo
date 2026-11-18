@@ -91,5 +91,18 @@ ok("the hit loses energy", Ip(Qb) * hb.w1 * hb.w1 <= Ip(Pw) * hb.w0 * hb.w0 + 1e
 var tsim = { t: [0, 0.1, 0.2, 0.3], phi: [0, 0.2, 0.33, 0.1], lifted: true };
 ok("worst tilt frame", M.worstT(tsim) === 0.2, M.worstT(tsim));
 ok("no tilt: no rest frame (the page rests on the end)", M.worstT({ t: [0, 1], phi: [0, 0], lifted: false }) === null);
+// Round 7: the typed figure as an acceleration. With the defaults (chassis 105 lb at 7 in, mechanism 22 lb at 52 in, 4 in
+// forward, 22 in wheelbase) the front lifts from 0.79 g, so 0.80 g tips it backward as well as forward.
+var dflt = { m1: 105, x1: 0, h1: 7, m2: 22, x2: 4, h2: 52, wb: 22, mu: 1.1, ramp: 0 };
+near("defaults: front lifts from 0.79 g", M.limits(dflt).tipAccel, 0.790, 0.001);
+ok("defaults: 0.80 g accelerating tips it backward", M.judgeAccel(dflt, 0.8).tips === true);
+ok("0.70 g accelerating does not", M.judgeAccel(dflt, 0.7).tips === false);
+ok("the tread caps acceleration", M.judgeAccel(dflt, 1.5).acc === M.limits(dflt).gripAccel && M.judgeAccel(dflt, 1.5).capped);
+// The height for accelerating: at that mechanism height the backward threshold is exactly the figure.
+var hb = M.heightForAccel(dflt, 0.8);
+near("height for 0.80 g accelerating gives 0.80 g", M.limits(Object.assign({}, dflt, { h2: hb })).tipAccel, 0.8, 1e-9);
+// Hand check: d_rear = 11 + 0.69 = 11.69 in; combined height for 0.80 g = 11.69 / 0.8 = 14.61 in; mechanism height
+// = (14.61 x 127 - 105 x 7) / 22 = 50.97 in.
+near("height for accelerating, by hand", hb, (11 + 88 / 127) / 0.8 * 127 / 22 - 105 * 7 / 22, 1e-9);
 console.log(fails ? fails + " of " + n + " checks failed" : "all " + n + " checks passed");
 if (fails) process.exit(1);

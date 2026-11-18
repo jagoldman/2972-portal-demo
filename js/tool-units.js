@@ -40,6 +40,11 @@ M.mech = function (o) {
   return r;
 };
 
+// The Java names follow the mechanism chosen: kWheel..., kSpool..., kArm...
+M.prefix = function (kind) { return kind === "wheel" ? "Wheel" : kind === "spool" ? "Spool" : "Arm"; };
+// One rpm of the motor as a plain speed: the figure under "Speed per motor rpm", to three significant figures.
+M.plain3 = function (x) { if (!isFinite(x) || x === 0) return "0"; return String(Number(x.toPrecision(3))); };
+
 if (typeof module !== "undefined" && module.exports) { module.exports = M; return; }
 
 /* ---------- Page ---------- */
@@ -57,7 +62,7 @@ function sig(x) {
 function num(x) { return isFinite(x) ? String(Number(x.toPrecision(10))) : "0"; }
 function java(x) { var s = num(x); return /[.e]/.test(s) ? s : s + ".0"; }
 // The constants' names follow the mechanism: a wheel is a drive, a spool an elevator, an arm an arm.
-function prefix(kind) { return kind === "wheel" ? "Drive" : kind === "spool" ? "Elevator" : "Arm"; }
+function prefix(kind) { return M.prefix(kind); }
 function what(kind) { return kind === "wheel" ? "wheel" : kind === "spool" ? "spool" : "arm"; }
 function unitOf(s) { var k = M.kind(s.kind); return k.units.filter(function (u) { return u[0] === s.unit; })[0] || k.units[0]; }
 
@@ -69,9 +74,9 @@ function mechOf(s, r) {
     o.items = [
       { k: "Per motor rotation", v: sig(m.perRot), u: "m", sub: sig(m.perRot / IN_M) + " in" },
       { k: "Per " + what(s.mk) + " turn", v: sig(m.perOut), u: "m", sub: sig(m.perOut / IN_M) + " in" + (m.rig > 1 ? ", with " + m.rig + "× rigging" : "") },
-      { k: "Speed per motor rpm", v: sig(m.perRpm), u: "(m/s) per rpm", sub: sig(m.perRpm / 0.3048) + " (ft/s) per rpm" },
+      { k: "Speed per motor rpm", v: sig(m.perRpm), u: "(m/s) per rpm", sub: "1 rpm of the motor = " + M.plain3(m.perRpm) + " m/s" },
       { k: "Speed at the motor speed you entered", v: sig(m.max), u: "m/s", sub: sig(m.maxFt) + " ft/s at " + K.n(s.rpm, 0) + " rpm" }];
-    o.work = [[cap(what(s.mk)) + " turn", "π × " + num(s.dia) + " in × 0.0254" + (m.rig > 1 ? " × " + m.rig + " (rigging)" : ""), sig(m.perOut) + " m"],
+    o.work = [[cap(what(s.mk)) + " turn", "π × " + num(s.dia) + " in × 0.0254 m per in" + (s.mk === "spool" ? " × " + m.rig + " (rigging)" : ""), sig(m.perOut) + " m"],
       ["Per motor rotation", sig(m.perOut) + " m ÷ " + num(s.ratio), sig(m.perRot) + " m"],
       ["Per motor rpm", sig(m.perRot) + " m ÷ 60 s", sig(m.perRpm) + " (m/s) per rpm"],
       ["At the motor speed you entered", sig(m.perRpm) + " per rpm × " + num(s.rpm) + " rpm", sig(m.max) + " m/s"]];
@@ -88,7 +93,7 @@ function mechOf(s, r) {
     o.sent = "One motor turn swings the arm " + sig(m.perRotDeg) + "°. At the " + K.n(s.rpm, 0) + " rpm you entered it turns " + sig(m.maxDeg) + "° per second (" + sig(m.outRpm) + " rpm).";
     o.items = [
       { k: "Per motor rotation", v: sig(m.perRotDeg), u: "°", sub: sig(m.perRot) + " rad" },
-      { k: "Speed per motor rpm", v: sig(m.perRpm), u: "(rad/s) per rpm", sub: sig(m.perRpm * 180 / Math.PI) + " (deg/s) per rpm" },
+      { k: "Speed per motor rpm", v: sig(m.perRpm), u: "(rad/s) per rpm", sub: "1 rpm of the motor = " + M.plain3(m.perRpm * 180 / Math.PI) + "°/s" },
       { k: "Speed at the motor speed you entered", v: sig(m.maxDeg), u: "deg/s", sub: sig(m.max) + " rad/s at " + K.n(s.rpm, 0) + " rpm" },
       { k: "Arm turns", v: sig(m.outRpm), u: "rpm", sub: "at that motor speed" }];
     o.work = [["Per motor rotation", "360° ÷ " + num(s.ratio), sig(m.perRotDeg) + "°"],
@@ -116,7 +121,7 @@ function cap(x) { return x.charAt(0).toUpperCase() + x.slice(1); }
 K.tool({
   id: ID,
   defaults: { x: 1, kind: "length", unit: "in", mk: "spool", ratio: 12, dia: 1.5, rig: 1, rpm: 6000, part: "conv" },
-  stage: { ratio: 2.6, narrow: 1.15, label: "The mechanism: the motor and its gearbox, then the wheel, spool or arm to scale, with how far it moves for one turn." },
+  stage: { ratio: 2.3, narrow: 1.15, label: "The mechanism: the motor and its gearbox, then the wheel, spool or arm to scale, with how far it moves for one turn." },
   onPick: function (key, v, s) { if (key === "kind") s.unit = M.kind(v).units[0][0]; },
 
   compute: function (s) {
@@ -134,7 +139,8 @@ K.tool({
       K.num(ID, "x", "Number", { step: "any" }) +
       K.pick(ID, "unit", "In", k.units.map(function (u) { return [u[0], u[1]]; })) +
       '<div class="t-units-conv" aria-live="polite"><h3 id="un-h">' + esc(h["un-h"]) + "</h3><dl>" +
-      k.units.filter(function (u) { return u[0] !== from[0]; }).map(function (u) { return '<div><dd><b class="num" id="un-v-' + u[0] + '">' + esc(h["un-v-" + u[0]]) + "</b> " + esc(u[1]) + "</dd><dt>" + esc(u[3]) + "</dt></div>"; }).join("") + "</dl></div>";
+      k.units.filter(function (u) { return u[0] !== from[0]; }).map(function (u) { return '<div><dd><b class="num" id="un-v-' + u[0] + '">' + esc(h["un-v-" + u[0]]) + "</b> " + esc(u[1]) + "</dd><dt>" + esc(u[3]) + "</dt></div>"; }).join("") + "</dl>" +
+      '<button class="t-units-go" data-act="unitspart" data-v="mech">Code constants has the ' + (s.mk === "arm" ? "arm" : what(s.mk)) + " drawing and the Java</button></div>";
     var kraken = F ? F.motor("kraken60").freeRpm : 6065;
     var mech = K.seg(ID, "mk", "Mechanism", MECH) +
       K.num(ID, "ratio", "Reduction", { unit: ": 1", min: 0.01, max: 2000, step: "any", tip: "Motor turns for one turn of the wheel, spool or arm. 12 means the motor turns twelve times for one output turn." }) +
@@ -165,7 +171,7 @@ K.tool({
         '<p class="eq">speed = travel per motor rotation × motor rpm ÷ 60</p>' +
         '<p class="eq">arm angle per motor rotation = 360° ÷ reduction = 2π ÷ reduction rad</p>' +
         "<p>A wheel's travel assumes it does not slip and its tread is the diameter you typed. An elevator's rigging multiplies how far the carriage moves for each inch of rope, counted as the Elevator tool counts it: in a cascade every stage has its own rope, so with two moving stages the carriage moves 3 times the rope and with one, 2 times; continuous rigging, or a carriage on its own, moves once. The speeds are at the motor speed you entered. A motor that carries a load turns slower than that; use the Elevator, Arm and Drivetrain tools for speed under load.</p>" +
-        "<p>The answers show five significant figures. The Java constants and the vendor settings carry ten, so copy those into code.</p>" +
+        "<p>The answers show five significant figures. The Java constants and the vendor settings carry ten, so copy those into code. The extra digits only keep rounding out of the arithmetic; they do not make a measured diameter any more exact than you measured it.</p>" +
         "<p>The drawing shows the motor and gearbox as a block diagram, then the wheel or spool to scale on its grid with how far it moves for one of its turns. An arm's length does not change these numbers, so it is drawn at no particular scale.</p>");
   },
 
@@ -173,7 +179,7 @@ K.tool({
 });
 /* On a phone the page shows one part at a time: Convert, or Code constants (its inputs, the drawing and the answers).
    The choice is kept in the state (a link can carry it); switching only changes classes, so nothing is redrawn. */
-D.acts.unitspart = function (b) { K.state(ID).part = b.dataset.v === "mech" ? "mech" : "conv"; showPart(); var t = document.querySelector(".t-units-jump"); if (t && t.getBoundingClientRect().top < 0) t.scrollIntoView({ block: "start" }); };
+D.acts.unitspart = function (b) { K.state(ID).part = b.dataset.v === "mech" ? "mech" : "conv"; showPart(); var t = document.querySelector(".t-units-jump"); if (t && t.getBoundingClientRect().top < 80) t.scrollIntoView({ block: "start" }); };
 function showPart() {
   var b = document.querySelector('.bench[data-calc="' + ID + '"]'), part = K.state(ID).part === "mech" ? "mech" : "conv"; if (!b) return;
   b.classList.add("t-units-bench"); b.classList.toggle("t-units-show-conv", part === "conv"); b.classList.toggle("t-units-show-mech", part === "mech");
@@ -187,11 +193,11 @@ D.after.push(function () { if (D.S.route === ID) showPart(); });
     ".t-units-conv { display: grid; gap: 6px; padding-top: 4px; } .t-units-conv h3 { font-size: .9rem; margin: 0; }" +
     ".t-units-conv dl { display: grid; gap: 0; margin: 0; } .t-units-conv dl > div { display: flex; justify-content: space-between; align-items: baseline; gap: 12px; padding: 6px 0; border-bottom: 1px solid var(--line); }" +
     ".t-units-conv dt { color: var(--mute); font-size: .82rem; text-align: right; } .t-units-conv dd { margin: 0; color: var(--text-2); font-size: .9rem; } .t-units-conv dd b { color: var(--text); font-size: 1.3rem; }" +
-    ".t-units-jump { display: none; } .t-units-a { scroll-margin-top: calc(var(--bar) + 8px); }" +
+    ".t-units-go { display: none; padding: 10px 0 2px; min-height: 44px; border: 0; background: none; color: var(--accent); font: inherit; font-weight: 600; text-align: left; text-decoration: underline; text-underline-offset: 3px; cursor: pointer; } .t-units-jump { display: none; } .t-units-a { scroll-margin-top: calc(var(--bar) + 8px); }" +
     ".t-units-v p { font-size: .9rem; color: var(--text-2); margin: 0; max-width: 72ch; } .t-units-v p b { color: var(--text); overflow-wrap: anywhere; } .t-units-v .t-units-m { font-size: .8rem; color: var(--mute); }" +
     "@media (max-width: 900px) { .t-units-bench.content.bench { grid-template-areas: \"side\" \"stage\" \"outs\" \"more\"; }" +
     " .t-units-bench > [data-area=\"stage\"] { position: static; box-shadow: none; }" +
-    " .t-units-jump { display: block; padding: 12px 16px 0; } .t-units-jump .seg { display: flex; } .t-units-jump .seg button { flex: 1; min-height: 44px; }" +
+    " .t-units-go { display: block; } .t-units-jump { display: block; padding: 12px 16px 0; } .t-units-jump .seg { display: flex; } .t-units-jump .seg button { flex: 1; min-height: 44px; }" +
     " .t-units-show-conv #units-mech, .t-units-show-conv > [data-area=\"stage\"], .t-units-show-conv > [data-area=\"outs\"], .t-units-show-conv > [data-area=\"more\"], .t-units-show-mech #units-conv { display: none; } }";
   document.head.appendChild(st);
 })();
@@ -203,22 +209,40 @@ function drawUnits(g, s, r) {
   var c = g.c, W = g.w, H = g.h, narrow = W < 520, m = r.m, G = s.ratio;
   var band = narrow ? { x: 0, y: 0, w: W, h: 114 } : { x: 0, y: 0, w: F_clamp(W * 0.34, 210, 270), h: H };
   var reg = narrow ? { x: 0, y: band.h, w: W, h: H - band.h } : { x: band.w, y: 0, w: W - band.w, h: H };
-  // The block diagram.
-  var word = what(s.mk), yb = narrow ? 72 : H / 2, mx = 14, mw = 52, mh = 34, gx = mx + mw + 16, gw = 70, gh = 52;
+  // The block diagram: across the top on a phone; on a laptop, down the left, as tall as the picture beside it.
+  var word = what(s.mk), turns = sig(G) + " turn" + (G === 1 ? "" : "s");
   g.text("Motor and gearbox", 12, 18, { weight: 600 });
   g.text("block diagram", 12, 33, { color: c.mute, size: 11 });
-  g.line(mx + mw, yb, gx, yb, { color: c.text2, width: 3 });
-  var outEnd = narrow ? Math.min(W - 16, gx + gw + 120) : band.w - 6;
-  g.line(gx + gw, yb, outEnd, yb, { color: c.text2, width: 4 });
-  g.rect(mx, yb - mh / 2, mw, mh, { fill: c.part2, stroke: c.partLine, width: 1.25, radius: 5 });
-  g.text("Motor", mx + mw / 2, yb, { align: "center", base: "middle", weight: 700, size: 12, halo: false });
-  g.rect(gx, yb - gh / 2, gw, gh, { fill: c.part, stroke: c.partLine, width: 1.25, radius: 5 });
-  g.text("Gearbox", gx + gw / 2, yb - 9, { align: "center", base: "middle", size: 11, color: c.text2, halo: false });
-  g.text(sig(G) + " : 1", gx + gw / 2, yb + 9, { align: "center", base: "middle", weight: 700, size: 13, halo: false });
-  g.text(sig(G) + " turn" + (G === 1 ? "" : "s"), mx + mw / 2, yb + mh / 2 + 16, { align: "center", weight: 700, color: c.accent, size: 12 });
-  var oc = narrow ? (gx + gw + outEnd) / 2 : (gx + gw + outEnd) / 2;
-  g.text("1 turn", oc, yb - 10, { align: "center", weight: 700, color: c.accent, size: 12 });
-  g.text("of the " + word, oc, yb + 18, { align: "center", color: c.text2, size: 11 });
+  if (narrow) {
+    var yb = 72, mx = 14, mw = 56, mh = 36, gx = mx + mw + 16, gw = 76, gh = 54, outEnd = Math.min(W - 16, gx + gw + 130), oc = (gx + gw + outEnd) / 2;
+    g.line(mx + mw, yb, gx, yb, { color: c.text2, width: 3 });
+    g.line(gx + gw, yb, outEnd, yb, { color: c.text2, width: 4 });
+    g.rect(mx, yb - mh / 2, mw, mh, { fill: c.part2, stroke: c.partLine, width: 1.25, radius: 5 });
+    g.text("Motor", mx + mw / 2, yb, { align: "center", base: "middle", weight: 700, size: 13, halo: false });
+    g.rect(gx, yb - gh / 2, gw, gh, { fill: c.part, stroke: c.partLine, width: 1.25, radius: 5 });
+    g.text("Gearbox", gx + gw / 2, yb - 10, { align: "center", base: "middle", size: 11, color: c.text2, halo: false });
+    g.text(sig(G) + " : 1", gx + gw / 2, yb + 10, { align: "center", base: "middle", weight: 700, size: 14, halo: false });
+    g.text(turns, mx + mw / 2, yb + mh / 2 + 18, { align: "center", weight: 700, color: c.accent, size: 14 });
+    g.text("1 turn", oc, yb - 11, { align: "center", weight: 700, color: c.accent, size: 14 });
+    g.text("of the " + word, oc, yb + 21, { align: "center", color: c.text2, size: 13 });
+  } else {
+    var bx = 70, top = 52, bot = H - 14, mh2 = 44, gh2 = 70, mw2 = 92, gw2 = 112, span = bot - top;
+    var my = top, gy = top + mh2 + Math.max(26, (span - mh2 - gh2 - 54) / 2), oy = bot - 22;
+    g.line(bx, my + mh2, bx, gy, { color: c.text2, width: 3 });
+    g.line(bx, gy + gh2, bx, oy - 4, { color: c.text2, width: 5 });
+    g.line(bx - 16, oy - 4, bx + 16, oy - 4, { color: c.text2, width: 5 });
+    g.rect(bx - mw2 / 2, my, mw2, mh2, { fill: c.part2, stroke: c.partLine, width: 1.25, radius: 6 });
+    g.text("Motor", bx, my + mh2 / 2, { align: "center", base: "middle", weight: 700, size: 15, halo: false });
+    g.rect(bx - gw2 / 2, gy, gw2, gh2, { fill: c.part, stroke: c.partLine, width: 1.25, radius: 6 });
+    g.text("Gearbox", bx, gy + gh2 / 2 - 13, { align: "center", base: "middle", size: 13, color: c.text2, halo: false });
+    g.text(sig(G) + " : 1", bx, gy + gh2 / 2 + 12, { align: "center", base: "middle", weight: 700, size: 18, halo: false });
+    // Beside the motor's shaft: its turns. Under the output shaft: the one turn they make.
+    var lx = bx + gw2 / 2 + 12;
+    g.text(turns, lx, my + mh2 / 2 - 8, { weight: 700, color: c.accent, size: 16, base: "middle" });
+    g.text("of the motor", lx, my + mh2 / 2 + 11, { color: c.text2, size: 13, base: "middle" });
+    g.text("1 turn", lx, oy - 30, { weight: 700, color: c.accent, size: 16, base: "middle" });
+    g.text("of the " + word, lx, oy - 11, { color: c.text2, size: 13, base: "middle" });
+  }
   if (narrow) g.line(0, band.h, W, band.h, { color: c.line, width: 1 }); else g.line(band.w, 0, band.w, H, { color: c.line, width: 1 });
   if (s.mk === "arm") { drawArm(g, s, r, reg); return; }
   // The wheel or spool, to scale.

@@ -121,16 +121,17 @@ K.tool({
       if (s.kind === "print") items.push({ k: "Model it at", v: (r.hole * 25.4).toFixed(1), u: "mm", sub: in4(r.hole) + ": the hole you want plus 0.2 mm" });
       else if (s.kind === "press") items.push({ k: "Hole", v: r.hole.toFixed(4), u: "in", sub: mm2(r.hole) });
       else {
-        items.push({ k: "Drill", v: r.drill.replace(/ (mm|in)$/, ""), u: / mm$/.test(r.drill) ? "mm" : "", sub: M.isNumLetter(r.drill) ? (/^#/.test(r.drill) ? "number drill" : "letter drill") : / mm$/.test(r.drill) ? "metric drill" : "fractional drill" });
-        items.push({ k: "Size", v: r.hole.toFixed(4), u: "in", sub: mm2(r.hole) });
+        // The drill and its size in one card: the name is what to pick up, the size is what it cuts.
+        var kindD = M.isNumLetter(r.drill) ? (/^#/.test(r.drill) ? "number drill" : "letter drill") : / mm$/.test(r.drill) ? "metric drill" : "fractional drill";
+        items.push({ k: "Drill", v: r.drill.replace(/ (mm|in)$/, ""), u: / mm$/.test(r.drill) ? "mm" : / in$/.test(r.drill) ? "in" : "", sub: r.hole.toFixed(4) + " in" + (/ mm$/.test(r.drill) ? "" : ", " + mm2(r.hole)) + ", " + kindD });
       }
       var nf = r.frac && M.nearVerdict(r.frac.in, r.hole), nm = r.metric && M.nearVerdict(r.metric.in, r.hole);
       if (r.frac) items.push({ k: "Nearest fractional", v: r.frac.name.replace(" in", ""), u: "in", sub: nearText(nf, r.drill), state: nf.ok ? "" : "warn", tip: "The nearest drill in 1/64 in steps, if you do not have the named one. Check that the difference is all right for this hole." });
       if (r.metric) items.push({ k: "Nearest metric", v: r.metric.mm.toFixed(1), u: "mm", sub: nearText(nm, r.drill), state: nm.ok ? "" : "warn", tip: "The nearest drill in 0.1 mm steps. A nearest size is not always a good swap: for a tap, bigger means weaker threads." });
       if (r.other) items.push({ k: r.other.name, v: r.other.drill ? r.other.drill.replace(/ mm$/, "") : r.other.hole.toFixed(3), u: r.other.drill ? (/ mm$/.test(r.other.drill) ? "mm" : "") : "in", sub: in4(r.other.hole) });
       if (s.kind === "print") items.push({ k: "Hole you want", v: (r.want * 25.4).toFixed(1), u: "mm", sub: r.screw + " close fit" });
-      if (r.major && items.length < 5) items.push({ k: s.kind === "press" ? "Part size" : s.kind === "rivet" ? "Rivet" : "Screw", v: r.major.toFixed(3), u: "in", sub: s.kind === "press" ? "outside diameter" : "nominal diameter, " + mm2(r.major) });
-      tip = s.kind === "tap" ? "Rule of thumb: thread at least 1.5 diameters deep in aluminium, about " + (1.5 * r.major).toFixed(2) + " in for this screw. Use cutting fluid and back the tap off every turn or so." :
+      if (r.major && items.length < 5) items.push({ k: s.kind === "press" ? "Part size" : s.kind === "rivet" ? "Rivet" : "Screw", v: r.major.toFixed(3), u: "in", sub: s.kind === "press" ? "outside diameter" : "nominal (major) diameter, " + mm2(r.major) });
+      tip = s.kind === "tap" ? "Rule of thumb: thread at least 1.5 diameters deep in aluminium, about " + (1.5 * r.major).toFixed(2) + " in for this screw. That needs a plate that thick; in a thinner one, put a nut or a threaded insert behind it. Use cutting fluid and back the tap off every turn or so." :
         s.kind === "clear" ? "Rule of thumb: close fit when the holes must line up exactly; free fit when several holes share one part and may be a little off." :
         s.kind === "rivet" ? "Rule of thumb: keep the hole at least two rivet diameters from an edge, and pick a rivet whose grip covers the total thickness (it says on the box)." :
         s.kind === "press" ? "Rule of thumb only: measure your bearing and cut a test hole in scrap first. Machines, tools and bearings differ by more than 0.001 in." :
@@ -263,7 +264,7 @@ function drawHoles(g, s, r) {
   var ml = V.X(xR - Dm / 2), mr = V.X(xR + Dm / 2), yb = V.Y(-T - below);
   if (!insert) {
     if (kind === "press") { g.dim(ml, y0, mr, y0, "", 22); g.text((hex ? "0.500 in shaft" : r.part.replace(" bearing", "") + " bearing"), cx, y0 - 32, { align: "center", weight: 700, size: 12 }); }
-    else { g.dim(ml, yb, mr, yb, "", -18); label((kind === "rivet" ? "Rivet " : kind === "tap" ? "Thread and screw: " : "Screw ") + Dm.toFixed(3) + " in", cx, yb + 34); }
+    else { g.dim(ml, yb, mr, yb, "", -18); label((kind === "rivet" ? "Rivet " : kind === "tap" ? "Nominal (major) diameter " : "Screw ") + Dm.toFixed(3) + " in", cx, yb + 34); }
   }
   caption(g, cx, capY, kind === "tap" ? ["2. Tap, then the screw", narrow ? "thread cut, screw in it" : "the tap cuts the thread; the screw fills it"] : kind === "clear" ? ["With the screw", ((r.hole - Dm) / 2).toFixed(4) + " in gap each side"] : kind === "rivet" ? ["With the rivet", "before it is set"] : kind === "press" ? (hex ? ["With the hex shaft", ""] : s.press === "press" ? ["Pressed in", "0.001 in under the bearing"] : ["Slides in", "hole the bearing's own size"]) : insert ? ["With the insert", "melted in"] : ["With the screw", ""]);
   g.text(r.label, 12, 18, { weight: 600 });
