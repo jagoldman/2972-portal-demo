@@ -671,13 +671,13 @@ function draw(g, s, r, t) {
   if (phone) {
     // Thin meters on a phone: the current and the battery, each a word, a number and a bar 3 px high.
     var mw = (hudW - 14) / 2;
-    meter(g, hx, my, mw, "Current per motor", K.fix(amps, 0) + " of " + s.statorA + " A", amps / s.statorA, amps >= s.statorA - 0.5 ? "warn" : "", 3);
+    meter(g, hx, my, mw, "Current per motor", K.fix(amps, amps < s.statorA - 0.5 ? 1 : 0) + " of " + s.statorA + " A", amps / s.statorA, amps >= s.statorA - 0.5 ? "warn" : "", 3);
     meter(g, hx + mw + 14, my, mw, "Battery", K.fix(Math.max(0, volts), 1) + " V", (volts - 6) / (s.vbat - 6), volts < 7 ? "bad" : volts < 8 ? "warn" : "", 3);
     g.arrow(hx + 4, my + 20, hx + 4, my + 32, { color: c.force, width: 2.5, head: 6 });
     g.text("carriage and load, " + lbs(s.carLb) + " lb", hx + 14, my + 26, { size: 11, weight: 700, color: c.force, base: "middle" });
     ny = my + 46;
   } else {
-    meter(g, hx, my, hudW, "Current per motor", K.fix(amps, 0) + " of " + s.statorA + " A", amps / s.statorA, amps >= s.statorA - 0.5 ? "warn" : "");
+    meter(g, hx, my, hudW, "Current per motor", K.fix(amps, amps < s.statorA - 0.5 ? 1 : 0) + " of " + s.statorA + " A", amps / s.statorA, amps >= s.statorA - 0.5 ? "warn" : "");
     meter(g, hx, my + 32, hudW, "Battery", K.fix(Math.max(0, volts), 1) + " V", (volts - 6) / (s.vbat - 6), volts < 7 ? "bad" : volts < 8 ? "warn" : ""); ny = my + 64;
   }
   // One line of the key: a sample of the rope (or the square) and its words, wrapped to the column.

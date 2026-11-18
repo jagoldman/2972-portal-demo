@@ -462,7 +462,7 @@ function draw(g, s, r, t) {
   }
   var kyEnd = ky + 43;
   if (false) { kyEnd += 15; g.circle(hx2 + 8, kyEnd, 4, { fill: c.sheet, stroke: c.force, width: 2 }); g.text("centre of mass of arm and load, " + K.fix(r.arm.com / F.IN, 1) + " in out", hx2 + 22, kyEnd, { size: 11, color: c.text2, base: "middle" }); }
-  var extra = meter(g, hx2, kyEnd + 22, hudW, "Current per motor", K.fix(amps, 0) + " of " + s.statorA + " A" + (q * w < -1e-9 && amps > 0.5 ? ", braking" : ""), amps / s.statorA, amps >= s.statorA - 0.5 ? "warn" : "");
+  var extra = meter(g, hx2, kyEnd + 22, hudW, "Current per motor", K.fix(amps, amps < s.statorA - 0.5 ? 1 : 0) + " of " + s.statorA + " A" + (q * w < -1e-9 && amps > 0.5 ? ", braking" : ""), amps / s.statorA, amps >= s.statorA - 0.5 ? "warn" : "");
   var ny = kyEnd + 48 + extra;
   if (!r.reached) {
     var msg = stallMsg(s, r);
