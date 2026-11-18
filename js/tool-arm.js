@@ -42,22 +42,39 @@ function swing(arm, dr, s, a0, a1) {
 }
 function thin(T, Y, n) { var out = [], k = Math.max(1, Math.ceil(T.length / n)); for (var i = 0; i < T.length; i += k) out.push([T[i], Y[i]]); var L = T.length - 1; if (L >= 0 && out[out.length - 1][0] !== T[L]) out.push([T[L], Y[L]]); return out; }
 
-/* The current in each motor with its sign: F.move records only its size. The motor drives toward the goal at full
-   voltage, then reverses to stop: the reverse starts where the speed falls for the last time. The current is worked out
-   again from the recorded speed and battery voltage, I = (command x V - back-EMF) / R held to the limit, and checked
-   against the recorded size. up: +1 when the move is to a larger angle. Positive current turns the arm up. */
-M.reverseAt = function (sim) { var v = sim.w.map(Math.abs), i = v.length - 2; while (i > 0 && v[i - 1] > v[i] + 1e-12) i--; return sim.t[Math.max(0, i)]; };
-M.signed = function (sim, dr, up) {
-  var m = dr.motor, Ls = dr.statorA || Infinity, tRev = M.reverseAt(sim), out = [];
-  for (var k = 0; k < sim.t.length; k++) {
-    var e = m.ke * sim.w[k] * up * dr.ratio, V = sim.volts[k], rec = sim.statorA[k];
-    var ip = Math.max(-Ls, Math.min(Ls, (V - e) / m.R)), im = Math.max(-Ls, Math.min(Ls, (-V - e) / m.R)), cmd = sim.t[k] >= tRev - 1e-12 ? -1 : 1;
-    var I = cmd > 0 ? ip : im, other = cmd > 0 ? im : ip;
-    if (Math.abs(Math.abs(I) - rec) > 0.05 && Math.abs(Math.abs(other) - rec) <= 0.05) I = other;
-    out.push(rec === 0 ? 0 : up * I);
+// The current in each motor with its sign (plus pushes the positive way: up, or to a larger angle).
+/* Which way the motor was commanded at each recorded step of a move: +1 toward the goal (full power), -1 reverse (to
+   stop). F.move records only the size of the current, so each step's current is worked out again both ways from the
+   recorded speed toward the goal u (output rad/s) and battery voltage, I = (command x V - back-EMF) / R held to the
+   limit, and compared with the record. A step only one command fits is certain. The switch to reverse comes after the
+   last step that is certainly full power, if a step that is certainly reverse follows; steps where both fit (both at
+   the limit) take the side of the switch they are on. Returns { cmd: [], at: [I toward the goal], k: first reverse
+   index or -1 }. */
+function commands(u, V, rec, dr, ag) {
+  var m = dr.motor, Ls = dr.statorA || Infinity, n = u.length, ip = [], im = [], fOk = [], rOk = [], k, tol = 0.05;
+  for (k = 0; k < n; k++) {
+    var e = m.ke * u[k] * dr.ratio;
+    ip.push(Math.max(-Ls, Math.min(Ls, (V[k] - e) / m.R))); im.push(Math.max(-Ls, Math.min(Ls, (-V[k] - e) / m.R)));
+    fOk.push(Math.abs(Math.abs(ip[k]) - rec[k]) <= tol); rOk.push(Math.abs(Math.abs(im[k]) - rec[k]) <= tol);
   }
-  return out;
+  var lastF = -1, firstR = -1;
+  for (k = 0; k < n; k++) if (fOk[k] && !rOk[k]) lastF = k;
+  for (k = lastF + 1; k < n; k++) if (rOk[k] && !fOk[k] && rec[k] > 0) { firstR = k; break; }
+  /* Where every step between is at the limit both ways (a big reduction can hold the limit the whole move), the switch
+     is the sharp drop in acceleration toward the goal: full power one step, full reverse the next. */
+  var lo = lastF + 1, hi = firstR >= 0 ? firstR : n - 1, best = -1, drop = 0, amax = 0;
+  for (k = 0; k < n; k++) amax = Math.max(amax, Math.abs(ag[k]));
+  for (k = Math.max(1, lo); k <= hi; k++) if (ag[k - 1] - ag[k] > drop) { drop = ag[k - 1] - ag[k]; best = k; }
+  var sw = firstR >= 0 ? (best >= 0 && drop > 0.3 * amax ? best : lastF >= 0 ? lastF + 1 : firstR) : best >= 0 && drop > 0.3 * amax && rec[n - 1] === 0 ? best : -1, cmd = [], at = [];
+  for (k = 0; k < n; k++) { var c = sw >= 0 && k >= sw ? -1 : 1; cmd.push(c); at.push(rec[k] === 0 ? 0 : c > 0 ? ip[k] : im[k]); }
+  return { cmd: cmd, at: at, k: sw };
+}
+M.signed = function (sim, dr, up) {
+  var u = sim.w.map(function (w) { return w * up; }), c = commands(u, sim.volts, sim.statorA, dr, sim.a.map(function (a) { return a * up; }));
+  return c.at.map(function (I) { return up * I; });
 };
+M.reverseAt = function (sim, dr, up) { var u = sim.w.map(function (w) { return w * up; }), c = commands(u, sim.volts, sim.statorA, dr, sim.a.map(function (a) { return a * up; })); return c.k >= 0 ? sim.t[c.k] : sim.t[sim.t.length - 1]; };
+M.commands = commands;
 M.compute = function (s) {
   var arm = setup(s), dr = M.driveOf(s), a0 = s.start * DEG, a1 = s.end * DEG, V0 = s.vbat, L = Math.max(0.5, s.len) * F.IN;
   var r = { arm: arm, L: L, a0: a0, a1: a1, empty: !(arm.J > 0) };   // no weight at all: nothing to simulate
@@ -136,7 +153,9 @@ if (typeof module !== "undefined" && module.exports) { module.exports = M; retur
 
 /* ---------- The page ---------- */
 var K = D.calc, ID = "tool-arm", NM_LBIN = 1 / (F.LBF * F.IN);
-function deg(a) { return K.fix(a / DEG, 0) + "°"; }
+// A true minus sign, no gap, in the page's own words and labels.
+function mn(str) { return String(str).replace(/^-/, "\u2212"); }
+function deg(a) { return mn(K.fix(a / DEG, 0)) + "°"; }
 function secs(x) { return isFinite(x) ? K.fix(x, 2) : "–"; }
 var drag = null, lastView = null, tipPx = null, endPx = null;
 // The end of the arm, and the end of its outline at the end angle: either can be dragged.
@@ -174,8 +193,8 @@ K.tool({
     else if (!r.reached) {
       v = K.verdict("bad", stallWords(s, r) + (r.goWhy === "counterbalance" ? " Use a weaker counterbalance, a bigger reduction or a higher limit." : " Use a bigger reduction, more motors, a higher limit or a counterbalance."));
     } else if (!r.backOk) v = K.verdict("bad", backWords(s, r));
-    else if (hw > 0.6 * lim) v = K.verdict("warn", "Holds with little to spare: at " + deg(r.worstAngle) + " holding takes " + K.fix(hw, 1) + " A of the " + lim + " A limit, so the motor heats up if it waits there. Use a bigger reduction than " + K.fix(s.ratio, 0) + ":1 or add a counterbalance.", "The swing time is ideal: full power, then full reverse, with no controller.");
-    else v = K.verdict("ok", "Swings from " + deg(r.a0) + " to " + deg(r.a1) + " in " + secs(r.timeGo) + " s at best and holds with " + K.fix(hw, 1) + " A of the " + lim + " A limit at its heaviest angle, " + deg(r.worstAngle) + ".", "The swing time is ideal: full power, then full reverse, with no controller. A real motion profile, with limits on speed and acceleration, often takes about twice the ideal time.");
+    else if (hw > 0.6 * lim) v = K.verdict("warn", "Holds with little to spare: at " + deg(r.worstAngle) + " holding takes " + K.fix(hw, 1) + " A of the " + lim + " A limit, so the motor heats up if it waits there. Use a bigger reduction than " + K.fix(s.ratio, 2) + ":1 or add a counterbalance.", "The swing time is ideal: full power, then full reverse, with no controller.");
+    else v = K.verdict("ok", "Swings from " + deg(r.a0) + " to " + deg(r.a1) + " in " + secs(r.timeGo) + " s at best. It needs " + K.fix(hw, 1) + " A of the " + lim + " A limit to hold " + (Math.abs(r.worstAngle) < 1e-9 ? "level, its heaviest angle" : "at " + deg(r.worstAngle) + ", its heaviest angle") + "; at " + deg(r.a1) + " it holds with " + K.fix(r.holdEnd.statorA, 1) + " A.", "The swing time is ideal: full power, then full reverse, with no controller. A real motion profile, with limits on speed and acceleration, often takes about twice the ideal time.");
     var mg = r.margin;
     return v + K.outs([
       { k: "Holding, worst angle", v: K.fix(hw, 1), u: "A", sub: "per motor, at " + deg(r.worstAngle) + ", with " + K.fix(r.freeA, 1) + "\u00a0A of free current", state: hw > 0.6 * lim ? "warn" : "", tip: "The current that holds the arm still where gravity pulls hardest in its range (level, if it passes level), and just starts it moving. " + K.fix(r.freeA, 1) + " A of it is the motor's free current (its own friction); the other " + K.fix(hw - r.freeA, 1) + " A holds the weight." },
@@ -199,7 +218,7 @@ K.tool({
       K.chart({ id: "arm-ang", title: "Angle", x: { label: "time (s)", unit: "s", name: "Time" }, y: { label: "deg", unit: "°" }, series: [{ name: "Angle", pts: r.chAng }] }) +
       K.chart({ id: "arm-a", title: "Current in each motor", note: "Above zero the motor turns the arm up; below zero it turns it down. Dashed: the " + s.statorA + " A limit, either way.", x: { label: "time (s)", unit: "s", name: "Time" }, y: { label: "A", unit: "A", min: -s.statorA * 1.15, max: s.statorA * 1.15, ticks: [-s.statorA, 0, s.statorA] }, series: [{ name: "Current", pts: r.chAS, color: 2 }], hlines: [{ y: s.statorA }, { y: -s.statorA }] }) + "</div>";
     var code = "// Arm feedforward, angle in radians from level\n" +
-      "public static final double kS = " + K.fix(r.kS, 3) + "; // volts: the motor's own friction only; a real mechanism's is larger, measure it\n" +
+      "public static final double kS = " + K.fix(r.kS, 3) + "; // V: the motor's own friction; measure the real one\n" +
       "public static final double kG = " + K.fix(r.kG, 3) + "; // volts at level; use kG * cos(angle)\n" +
       "public static final double kV = " + K.fix(r.kV, 3) + "; // volts per (rad/s)\n" +
       "public static final double kA = " + K.fix(r.kA, 4) + "; // volts per (rad/s^2)\n" +
@@ -256,10 +275,12 @@ function wrap(g, str, maxW, o) { var words = str.split(" "), lines = [], cur = "
 function meter(g, x, y, w, label, value, frac, state) {
   var c = g.c;
   // A narrow drawing gets the short label, so the two never run into each other.
-  if (g.textWidth(label, { size: 11, weight: 600 }) + g.textWidth(value, { size: 11, weight: 700 }) + 10 > w) label = label.split(" ")[0];
-  g.text(label, x, y, { size: 11, color: c.text2, weight: 600 }); g.text(value, x + w, y, { size: 11, color: state === "bad" ? c.bad : state === "warn" ? c.warn : c.text, weight: 700, align: "right" });
-  g.rect(x, y + 5, w, 6, { fill: c.line, stroke: null, radius: 3 });
-  g.rect(x, y + 5, Math.max(0, Math.min(1, frac)) * w, 6, { fill: state === "bad" ? c.bad : state === "warn" ? c.warn : c.s1, stroke: null, radius: 3 });
+  // When the label and value do not fit on one line, the value goes on the next (the label is never cut short).
+  var two = g.textWidth(label, { size: 11, weight: 600 }) + g.textWidth(value, { size: 11, weight: 700 }) + 10 > w, vy = two ? y + 14 : y, by = two ? y + 19 : y + 5;
+  g.text(label, x, y, { size: 11, color: c.text2, weight: 600 }); g.text(value, two ? x : x + w, vy, { size: 11, color: state === "bad" ? c.bad : state === "warn" ? c.warn : c.text, weight: 700, align: two ? "left" : "right" });
+  g.rect(x, by, w, 6, { fill: c.line, stroke: null, radius: 3 });
+  g.rect(x, by, Math.max(0, Math.min(1, frac)) * w, 6, { fill: state === "bad" ? c.bad : state === "warn" ? c.warn : c.s1, stroke: null, radius: 3 });
+  return two ? 14 : 0;
 }
 // The torque chart's top: room above both lines, so the start and end names (which sit at the top) touch neither.
 function tqTop(r) { var hi = r.avail * NM_LBIN; r.chTq.forEach(function (p) { hi = Math.max(hi, p[1]); }); var st = hi > 500 ? 100 : hi > 200 ? 50 : hi > 50 ? 20 : 5; return Math.ceil(hi * 1.3 / st) * st; }
@@ -293,7 +314,7 @@ function stallMsg(s, r) {
   if (r.stallGo == null) return "Stops at " + deg(r.stuckAt) + ".";
   return "Stalls past " + deg(r.stallGo) + ": " + (r.goWhy === "counterbalance" ? "the counterbalance pushes back with" : "gravity needs") + " up to " + K.n(r.peakNeed * NM_LBIN, 0) + " lb in, the gearbox gives " + K.n(r.avail * NM_LBIN, 0) + ".";
 }
-function hudHeight(g, s, r, w) { return 22 + 17 + 34 + 69 + (g.w < 520 ? 16 : 0) + (r.reached ? 14 : 15 * wrap(g, stallMsg(s, r), w, { size: 12, weight: 600 }).length); }
+function hudHeight(g, s, r, w) { return 22 + 17 + 34 + 69 + (g.w < 520 ? 30 : 0) + (r.reached ? 14 : 15 * wrap(g, stallMsg(s, r), w, { size: 12, weight: 600 }).length); }
 function draw(g, s, r, t) {
   var c = g.c, L = Math.max(0.5, s.len), ph, swing = null, wbox = null, level = null;
   // The pivot sits high enough that the arm clears the floor at its lowest angle.
@@ -356,7 +377,7 @@ function draw(g, s, r, t) {
     if (p[1] === "end") endPx = e;
     var lx = X(px + (L + off) * Math.cos(a)), ly = Y(py + (L + off) * Math.sin(a)), cs = Math.cos(a);
     // Kept inside the drawing: a long label near an edge slides back in.
-    var lab = p[1] + " " + K.fix(p[0], 0) + "°", lw = g.textWidth(lab, { size: 11, weight: 600 }), tx = cs >= -0.2 ? lx + 4 : lx - 4 - lw;
+    var lab = p[1] + " " + mn(K.fix(p[0], 0)) + "°", lw = g.textWidth(lab, { size: 11, weight: 600 }), tx = cs >= -0.2 ? lx + 4 : lx - 4 - lw;
     tx = Math.max(4, Math.min(g.w - 4 - lw, tx));
     g.text(lab, tx, ly, { size: 11, color: c.mute, weight: 600, base: "middle" });
   });
@@ -415,12 +436,12 @@ function draw(g, s, r, t) {
   // The motor's ring is thin, so the pivot and the arm's root show through it.
   if (ph !== "end" && Math.abs(smv) >= 0.05) turn(g, PX, PY, tM + 4, aCan - 0.5 * smv, smv, c.s1, wOf(q));
   // On a phone the arcs carry no names: the key at the top left names them, in their colours.
-  if (!phone && Math.abs(sgv) >= 0.05) arcLabel("gravity " + K.n(Math.abs(gq) * NM_LBIN, 0) + " lb in", aCan - 0.5 * sgv, c.force);
-  if (!phone && ph !== "end" && Math.abs(smv) >= 0.05) arcLabel((braking ? "braking " : "motor ") + K.n(Math.abs(q) * NM_LBIN, 0) + " lb in", aCan - 0.5 * smv, c.s1);
+  if (Math.abs(sgv) >= 0.05) arcLabel("gravity " + K.n(Math.abs(gq) * NM_LBIN, 0) + " lb in", aCan - 0.5 * sgv, c.force);
+  if (ph !== "end" && Math.abs(smv) >= 0.05) arcLabel((braking ? "braking " : "motor ") + K.n(Math.abs(q) * NM_LBIN, 0) + " lb in", aCan - 0.5 * smv, c.s1);
   // The read-out at the top left.
-  var hx2 = 14, hy2 = 22, title = { go: "Swinging to " + K.fix(s.end, 0) + "°", hold: "Holding at " + K.fix(s.end, 0) + "°", back: "Swinging back", end: "Back at " + K.fix(s.start, 0) + "°", stall: "Stalled", drag: "Setting the end angle" }[ph];
+  var hx2 = 14, hy2 = 22, title = { go: "Swinging to " + mn(K.fix(s.end, 0)) + "°", hold: "Holding at " + mn(K.fix(s.end, 0)) + "°", back: "Swinging back", end: "Back at " + mn(K.fix(s.start, 0)) + "°", stall: "Stalled", drag: "Setting the end angle" }[ph];
   g.text(title, hx2, hy2, { size: 14, weight: 700, color: stalled ? c.bad : c.text });
-  g.text("At " + K.fix(th / DEG, 0) + "°, the end moving " + K.fix(Math.abs(w) * r.L / F.FT, 1) + " ft/s", hx2, hy2 + 17, { size: 11, color: c.text2 });
+  g.text("At " + mn(K.fix(th / DEG, 0)) + "°" + (Math.abs(w) * r.L > 0.01 ? ", the end moving " + K.fix(Math.abs(w) * r.L / F.FT, 1) + " ft/s" : ""), hx2, hy2 + 17, { size: 11, color: c.text2 });
   var ky = hy2 + 34;
   g.line(hx2, ky, hx2 + 16, ky, { color: c.force, width: 2.5 }); g.text("gravity " + K.n(Math.abs(gq) * NM_LBIN, 0) + " lb in", hx2 + 22, ky, { size: 11, color: c.text2, base: "middle" });
   /* While braking, the torque on the arm is more than the gearbox gives at the limit (the Torque margin card's figure):
@@ -429,18 +450,18 @@ function draw(g, s, r, t) {
      the bars all the time, so nothing below them jumps. */
   var qa = Math.round(Math.abs(q) * NM_LBIN), av = Math.round(r.avail * NM_LBIN), brk = q * w < -1e-9 && qa > av;
   g.line(hx2, ky + 15, hx2 + 16, ky + 15, { color: c.s1, width: 2.5 });
-  g.text(brk ? "braking in all " + qa + " lb in" : "motor " + qa + " lb in", hx2 + 22, ky + 15, { size: 11, color: c.text2, base: "middle" });
+  g.text(brk ? "braking " + qa + " lb in = motor " + av + " + friction " + (qa - av) : "motor " + qa + " lb in", hx2 + 22, ky + 15, { size: 11, color: c.text2, base: "middle" });
   if (brk) {
-    var bx0 = hx2 + 22, bL = Math.min(130, hudW - 30), b1 = bL * av / qa;
+    var bx0 = hx2 + 22, bL = Math.min(100, hudW - 60), b1 = bL * av / qa;
     g.rect(bx0, ky + 27, b1, 5, { fill: c.s1, stroke: null, radius: 2 });
-    g.text("motor " + av, bx0 + bL + 8, ky + 30, { size: 10.5, color: c.s1, weight: 700, base: "middle" });
+    g.text("motor " + av + " lb in", bx0 + bL + 8, ky + 30, { size: 10.5, color: c.s1, weight: 700, base: "middle" });
     g.rect(bx0 + b1, ky + 40, bL - b1, 5, { fill: c.mute, stroke: null, radius: 2 });
-    g.text("friction " + (qa - av), bx0 + bL + 8, ky + 43, { size: 10.5, color: c.text2, weight: 700, base: "middle" });
+    g.text("friction " + (qa - av) + " lb in", bx0 + bL + 8, ky + 43, { size: 10.5, color: c.text2, weight: 700, base: "middle" });
   }
   var kyEnd = ky + 43;
   if (false) { kyEnd += 15; g.circle(hx2 + 8, kyEnd, 4, { fill: c.sheet, stroke: c.force, width: 2 }); g.text("centre of mass of arm and load, " + K.fix(r.arm.com / F.IN, 1) + " in out", hx2 + 22, kyEnd, { size: 11, color: c.text2, base: "middle" }); }
-  meter(g, hx2, kyEnd + 22, hudW, "Current per motor", K.fix(amps, 0) + " of " + s.statorA + " A", amps / s.statorA, amps >= s.statorA - 0.5 ? "warn" : "");
-  var ny = kyEnd + 48;
+  var extra = meter(g, hx2, kyEnd + 22, hudW, "Current per motor", K.fix(amps, 0) + " of " + s.statorA + " A" + (q * w < -1e-9 && amps > 0.5 ? ", braking" : ""), amps / s.statorA, amps >= s.statorA - 0.5 ? "warn" : "");
+  var ny = kyEnd + 48 + extra;
   if (!r.reached) {
     var msg = stallMsg(s, r);
     wrap(g, msg, hudW, { size: 12, weight: 600 }).forEach(function (ln, j) { g.text(ln, hx2, ny + 15 * j, { size: 12, weight: 600, color: c.bad }); });

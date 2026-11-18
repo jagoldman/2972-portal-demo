@@ -126,8 +126,23 @@ var r9 = M.compute(Object.assign({}, s, { ratio: 80 })), w9 = 0;
 for (var j9 = 0; j9 < r9.A.length; j9++) w9 = Math.max(w9, Math.abs(Math.abs(r9.AS[j9]) - r9.A[j9]));
 near("arm: signed size matches the record", w9, 0, 0.06);
 ok("arm: plus at the start of the swing up", r9.AS[1] > 0, r9.AS[1]);
-var kb = r9.T.findIndex(function (t) { return t >= M.reverseAt(r9.go) + 0.002; });
+var kb = r9.T.findIndex(function (t) { return t >= M.reverseAt(r9.go, M.driveOf(Object.assign({}, s, { ratio: 80 })), 1) + 0.002; });
 ok("arm: minus while braking at the end", r9.AS[kb] < 0, r9.AS[kb]);
+
+// Round 10: the arm's current sign must match the sign of the torque the motor gives (friction aside), from the motion:
+// inertia x acceleration + gravity's torque. Every recorded step, out and back, several cases.
+var aBad = [];
+[{}, { ratio: 40 }, { start: 80, end: -60 }, { start: 0, end: 150, ratio: 120 }, { cb: 150 }].forEach(function (ex) {
+  var o = Object.assign({}, s, ex), q = M.compute(o), d = M.driveOf(o);
+  [[q.go, q.a1 >= q.a0 ? 1 : -1], [q.back, q.a1 >= q.a0 ? -1 : 1]].forEach(function (pr) {
+    var sim = pr[0]; if (!sim) return;
+    var sg = M.signed(sim, d, pr[1]), Tq = sim.t.map(function (t, k) { return q.arm.J * sim.a[k] + q.arm.torque(sim.x[k]); }), big = Math.max.apply(null, Tq.map(Math.abs));
+    // The torque the current gives is the current less the motor's own friction (its free current, against the motion).
+    var fa = d.motor.freeA, net = sg.map(function (I, k) { return I - fa * Math.sign(sim.w[k]); });
+    for (var k = 0; k < sim.t.length - 1; k++) if (Math.abs(Tq[k]) > 0.05 * big && Math.sign(net[k]) !== Math.sign(Tq[k])) { aBad.push(JSON.stringify(ex) + " t=" + sim.t[k].toFixed(3)); break; }
+  });
+});
+ok("arm: current sign matches the torque from the motion, every phase", !aBad.length, aBad.join("; "));
 
 console.log(fails ? fails + " of " + n + " checks failed" : "all " + n + " checks passed");
 process.exit(fails ? 1 : 0);
