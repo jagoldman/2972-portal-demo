@@ -81,6 +81,17 @@ M.beam = function (o) {
 };
 
 // A round number at or a little above x, for the top of a chart: 1, 1.2, 1.5, 2, 2.5, 3, 4, 5, 6 or 8 times a power of ten.
+/* Every stock section (not the custom one) under the same load, length, support, material and way up.
+   o: { mat, L, P, hold, way }. Returns { rows: [{ id, name, delta, sf, weight }] lightest first, best: the id of the
+   lightest with a safety factor of 3 or more, or null }. */
+M.compare = function (o) {
+  var rows = M.SECTIONS.filter(function (x) { return x.id !== "custom"; }).map(function (sp) {
+    var sec = M.section(sp, sp.shape === "round" || sp.a === sp.b ? "tall" : o.way), b = M.beam({ sec: sec, mat: o.mat, L: o.L, P: o.P, hold: o.hold });
+    return { id: sp.id, name: sp.name, delta: b.delta, sf: b.sf, weight: b.weight, big: b.big };
+  }).sort(function (a, b) { return a.weight - b.weight; });
+  var ok = rows.filter(function (q) { return q.sf >= 3; });
+  return { rows: rows, best: ok.length ? ok[0].id : null };
+};
 // The grid behind the beam: 1 in squares up to 40 in, 2 in up to 80 in, then 6 in. It depends on the length alone.
 M.gridStep = function (L) { return L <= 40 ? 1 : L <= 80 ? 2 : 6; };
 // When the stress is a sliver against yield, the cross-section's stress drawing is enlarged by this much (1 = true).
@@ -90,7 +101,7 @@ M.niceTop = function (x) { if (!(x > 0)) return 1; var m = Math.pow(10, Math.flo
 if (typeof module !== "undefined" && module.exports) { module.exports = M; return; }
 
 /* ---------- Page ---------- */
-var K = D.calc, ID = "tool-beam", DUR = 2.2;
+var K = D.calc, esc = D.esc, ID = "tool-beam", DUR = 2.2;
 var NICE = [1000, 500, 300, 200, 100, 50, 40, 30, 20, 10, 5, 4, 3, 2, 1, 0.5, 0.2, 0.1, 0.05, 0.02, 0.01];
 function specOf(s) { var sp = M.sectionSpec(s.section); return sp.id === "custom" ? { shape: "rect", a: s.cw, b: s.ch, t: s.ct } : sp; }
 function symmetric(s) { var sp = specOf(s); return sp.shape === "round" || sp.a === sp.b; }
@@ -102,8 +113,10 @@ function psi(x) { return K.n(x, 0) + " psi"; }
 /* The stress chart's level lines: yield, the peak (as a share of yield) and a safety factor of 3. Each label goes where
    it touches neither the curve nor another label: right or left, above or below its line. A line two others crowd out
    is left out (the safety factor first); a line whose label finds no clear spot is drawn bare and named in the caption. */
-function refLines(r, ytop, loaded) {
+function refLines(r, ytop, dot) {
   var L = r.L, pts = r.stressCurve, out = [], bare = [], boxes = [];
+  // The peak's dot label sits to the right of the dot, a little above it: keep the level lines' labels off it.
+  if (dot) boxes.push({ x0: dot.x - 0.02 * L, x1: dot.x + (dot.label.length * 5.4 + 12) / 420 * L, lo: dot.y - 0.02 * ytop, hi: dot.y + 0.14 * ytop });
   function box(y, side, below) { return { x0: side === "left" ? 0 : 0.62 * L, x1: side === "left" ? 0.38 * L : L, lo: below ? y - 0.12 * ytop : y + 0.01 * ytop, hi: below ? y - 0.01 * ytop : y + 0.12 * ytop }; }
   function clear(b) {
     if (b.lo < 0.05 * ytop || b.hi > ytop) return false;
@@ -111,9 +124,8 @@ function refLines(r, ytop, loaded) {
     return !boxes.some(function (o) { return o.x0 < b.x1 && b.x0 < o.x1 && o.lo < b.hi && b.lo < o.hi; });
   }
   var want = [[r.mat.yld, "Yield " + psi(r.mat.yld), "yield, " + psi(r.mat.yld)]];
-  if (loaded && r.stress > 0) want.push([r.stress, "Peak, " + K.n(r.share * 100, 0) + "% of yield", "the peak, " + K.n(r.share * 100, 0) + "% of yield"]);
   want.push([r.mat.yld / 3, "Safety factor 3", "a safety factor of 3, " + psi(r.mat.yld / 3)]);
-  var kept = [];
+  var kept = dot ? [dot.y] : [];
   want.forEach(function (h, i) {
     if (i === want.length - 1 && kept.some(function (k) { return Math.abs(k - h[0]) < 0.1 * ytop; })) return;   // safety factor 3 gives way
     kept.push(h[0]);
@@ -124,10 +136,11 @@ function refLines(r, ytop, loaded) {
   });
   return { lines: out, unlabelled: bare };
 }
+D.acts.beamuse = function (b) { K.state(ID).section = b.dataset.v; D.render(); };
 function ease(u) { u = F.clamp(u, 0, 1); return u * u * (3 - 2 * u); }
 (function () {
   var st = document.createElement("style");
-  st.textContent = ".t-beam-cap { margin: 0; font-size: .8rem; color: var(--mute); }";
+  st.textContent = ".t-beam-cap { margin: 0; font-size: .8rem; color: var(--mute); } .t-beam-cmp .t-beam-cap { margin-bottom: 6px; } .t-beam-cmp td.t-beam-bad { color: var(--bad); font-weight: 700; } .t-beam-cmp td.t-beam-warn { color: var(--warn); font-weight: 700; }";
   document.head.appendChild(st);
 })();
 
@@ -173,7 +186,7 @@ K.tool({
     return K.verdict(s.P > 0 ? st : "info", text, more) + K.outs([
       { k: "Deflection", v: inch(r.delta).replace(" in", ""), u: "in", sub: r.big ? "too far for the formula" : K.fix(r.delta * 25.4, r.delta < 0.004 ? 3 : 2) + " mm " + where(s.hold), state: r.big ? "warn" : "" },
       { k: "Bending stress", v: K.n(r.stress, 0), u: "psi", sub: K.n(r.share * 100, 0) + "% of yield, " + K.n(r.stress * 0.00689476, 1) + " MPa", state: st === "ok" ? "" : st, tip: "The highest stress, on the top and bottom faces where the bending moment is largest." },
-      { k: "Safety factor", v: isFinite(r.sf) ? K.fix(r.sf, 1) : "–", sub: "yields at " + K.n(r.Pyield, 0) + " lbf, as an ideal tube", state: s.P > 0 ? st : "", tip: "How many times this load it takes before it bends for good. 3 or more allows for hits (a rule of thumb)." },
+      { k: "Safety factor", v: isFinite(r.sf) ? K.fix(r.sf, 1) : "–", sub: "against bending yield, ideal tube; yields at " + K.n(r.Pyield, 0) + " lbf", state: s.P > 0 ? st : "", tip: "How many times this load it takes before it bends for good. 3 or more allows for hits (a rule of thumb)." },
       { k: "Stiffness", v: K.n(r.stiff), u: "lbf/in", sub: K.n(r.stiff * 4.448222 / 25.4) + " N/mm at the load", tip: "Load for each inch it bends at the load point." },
       { k: "Weight of the piece", v: K.fix(r.weight, 2), u: "lb", sub: K.fix(r.weight * 0.45359237, 3) + " kg, " + K.fix(s.L, 2) + " in long" }]);
   },
@@ -181,17 +194,25 @@ K.tool({
   more: function (s, r) {
     var defl = K.chart({ id: "beam-defl", title: "Deflection along the beam, true size", x: { label: "along the beam, in", name: "At", unit: "in", min: 0, max: s.L }, y: { label: "deflection, in", unit: "in" },
       series: [{ name: "Deflection", pts: r.curve, color: 1 }], dots: s.P > 0 ? [{ x: r.xmax, y: -r.delta, label: K.fix(r.delta, 3) + " in" }] : [] });
-    // Scaled to the stress itself, so the curve fills the chart; yield and a safety factor of 3 are drawn when they fall
-    // inside that range and named in a line under the title when they are off the top.
     // The axis runs to yield (or past the peak when it yields), so the curve reads against yield; the peak is marked
     // with its share of yield.
-    var ref, peak = r.stress, ytop = M.niceTop(Math.max(r.mat.yld * 1.05, peak * 1.15));
-    var str = K.chart({ id: "beam-stress", title: "Bending stress along the beam", x: { label: "along the beam, in", name: "At", unit: "in", min: 0, max: s.L }, y: { label: "stress, psi", unit: "psi", min: 0, max: ytop },
-      series: [{ name: "Stress", pts: r.stressCurve, color: 2 }], hlines: (ref = refLines(r, ytop, s.P > 0)).lines,
-    });
-    str = str.replace("</figcaption>", '</figcaption><p class="t-beam-cap">' + (s.P > 0 ? "Peak " + psi(peak) + ", " + K.n(r.share * 100, 0) + "% of yield. " : "") + "The scale runs to yield, so the gap above the curve is the strength left." + (ref.unlabelled.length ? " Dashed: " + ref.unlabelled.join("; ") + "." : "") + "</p>");
+    var ref, peak = r.stress, ytop = M.niceTop(Math.max(r.mat.yld * 1.05, peak * 1.15)), at = s.hold === "cant" ? "at the wall" : s.hold === "simple" ? "at the middle" : "at the middle and ends";
+    var dot = s.P > 0 ? { x: s.hold === "cant" ? 0 : s.L / 2, y: peak, label: psi(peak) + " " + at } : null;
+    ref = refLines(r, ytop, dot);
+    var note = (s.P > 0 ? "Peak " + psi(peak) + " " + at + (s.hold === "cant" ? " (0 in along the beam)" : " (" + K.n(s.L / 2, 1) + " in along the beam)") + ", " + K.n(r.share * 100, 0) + "% of yield. " : "") + "The scale runs to yield, so the gap above the curve is the strength left." + (ref.unlabelled.length ? " Dashed: " + ref.unlabelled.join("; ") + "." : "");
+    var str = K.chart({ id: "beam-stress", title: "Bending stress along the beam", note: note, x: { label: "along the beam, in", name: "At", unit: "in", min: 0, max: s.L }, y: { label: "stress, psi", unit: "psi", min: 0, max: ytop },
+      series: [{ name: "Stress", pts: r.stressCurve, color: 2 }], hlines: ref.lines, dots: dot ? [dot] : [] });
     var k = M.COEF[s.hold];
-    return '<div class="chartrow">' + defl + str + "</div>" + K.notes(
+    // Every stock section under this same load, lightest first.
+    var cmp = M.compare({ mat: r.mat, L: s.L, P: s.P, hold: s.hold, way: s.way }), cur = s.section;
+    var tab = '<section class="ctab t-beam-cmp"><h2>Other sections under this load</h2><p class="t-beam-cap">' + esc(r.mat.name) + ", " + K.n(s.L, 2) + " in, " + K.n(s.P, 1) + " lbf, " + holdName(s.hold).toLowerCase() + (symmetric(s) ? "" : ", rectangles the " + (s.way === "flat" ? "flat" : "tall") + " way") + ". Lightest first.</p>" +
+      '<div class="scroll"><table><thead><tr><th>Section</th><th class="r">Bend</th><th class="r">Safety factor</th><th class="r">Weight</th><th></th></tr></thead><tbody>' +
+      cmp.rows.map(function (q) {
+        var on = q.id === cur, best = q.id === cmp.best, sfc = q.sf < 1 ? "bad" : q.sf < 3 ? "warn" : "";
+        return '<tr class="' + (on ? "pick" : "") + '"><td>' + esc(q.name) + (best ? ' <span class="pill ok">Lightest that keeps 3</span>' : "") + '</td><td class="r num">' + (q.big ? "too far" : inch(q.delta)) + '</td><td class="r num' + (sfc ? " t-beam-" + sfc : "") + '">' + (isFinite(q.sf) ? K.fix(q.sf, 1) : "–") + '</td><td class="r num">' + K.fix(q.weight, 2) + ' lb</td><td class="r">' +
+          (on ? '<span class="pill ok">In the drawing</span>' : '<button class="btn sm" data-act="beamuse" data-v="' + q.id + '">Use this one</button>') + "</td></tr>";
+      }).join("") + "</tbody></table></div>" + (cmp.best ? "" : '<p class="t-beam-cap">None of these keeps a safety factor of 3 here. Shorten the span, support both ends, or use steel.</p>') + "</section>";
+    return '<div class="chartrow">' + defl + str + "</div>" + tab + K.notes(
       "<p>The beam is treated as a straight, even beam that bends a little (Euler-Bernoulli beam theory). Three numbers decide it: how stiff the material is (E), how the section's material is spread away from its middle (the second moment of area, I) and the length.</p>" +
       '<p class="eq">I (rectangle tube) = (B × H³ − (B − 2t) × (H − 2t)³) ÷ 12</p>' +
       '<p class="eq">I (round tube) = π × (D⁴ − d⁴) ÷ 64</p>' +
@@ -212,7 +233,7 @@ K.tool({
     var frac = ease(t / DUR), P = s.P * frac, loading = frac < 0.999 && s.P > 0;
     /* Two areas: the beam, and the cross-section (a column at the right on a laptop; a short strip along the bottom
        on a phone, so the beam gets most of the phone's stage). */
-    var panH = narrow ? Math.min(128, Math.round(H * 0.34)) : H;
+    var panH = narrow ? Math.min(150, Math.round(H * 0.4)) : H;
     var pan = narrow ? { x: 0, y: H - panH, w: W, h: panH } : { x: W - F.clamp(W * 0.3, 210, 290), y: 0, w: 0, h: H };
     if (!narrow) pan.w = W - pan.x;
     // Room at the free end for the whole bend label ("really 0.121 in"), so it is never cut off.
@@ -262,7 +283,7 @@ K.tool({
       var dimHere = s.hold !== "cant" && M.deflect(s.hold, P, L, r.EI, xl) * k * f > 10, lw = g.textWidth(ltxt, { weight: 700 });
       var lx0 = s.hold === "cant" ? lx - 8 - lw : lx + (dimHere ? 26 : 8), lyy = ly - arrowLen + 4, hitBeam = false;
       for (var q = 0; q <= 12; q++) { var px = lx0 + lw * q / 12, bx = V.ux(px); if (bx >= 0 && bx <= L) { var bt = yAt(bx) - th / 2, bb = yAt(bx) + th / 2; if (bb > lyy - 10 && bt < lyy + 10) hitBeam = true; } }
-      if (!hitBeam) g.text(ltxt, lx0, lyy, { color: c.force, weight: 700, base: "middle" });
+      if (!hitBeam) { g.rect(lx0 - 4, lyy - 9, lw + 8, 18, { fill: c.sheet, stroke: null, radius: 3 }); g.text(ltxt, lx0, lyy, { color: c.force, weight: 700, base: "middle", halo: false }); }
     }
     // Where it yields first, once it does.
     if (P > r.Pyield) {
@@ -323,9 +344,9 @@ function section(g, s, r, pan, narrow, kBeam, frac) {
   var c = g.c, sec = r.sec;
   g.rect(pan.x, pan.y, pan.w, pan.h, { fill: c.sheet, stroke: null });
   if (narrow) g.line(0, pan.y, g.w, pan.y, { color: c.line, width: 1 }); else g.line(pan.x, 0, pan.x, g.h, { color: c.line, width: 1 });
-  var boxW = narrow ? Math.min(64, pan.w * 0.18) : pan.w * 0.3, boxH = narrow ? pan.h - 74 : Math.min(pan.h * 0.34, 124);
+  var boxW = narrow ? Math.min(80, pan.w * 0.21) : pan.w * 0.3, boxH = narrow ? pan.h - 70 : Math.min(pan.h * 0.34, 124);
   var ks = Math.min(boxW / sec.B, boxH / sec.H), bw = sec.B * ks, bh = sec.H * ks;
-  var cx = narrow ? 44 + bw / 2 : pan.x + 40 + bw / 2, cy = narrow ? pan.y + 42 + boxH / 2 : pan.y + 56 + boxH / 2;
+  var cx = narrow ? 44 + bw / 2 : pan.x + 46 + bw / 2, cy = narrow ? pan.y + 40 + boxH / 2 : pan.y + 56 + boxH / 2;
   g.text(narrow ? "Cross-section" : "Cross-section, enlarged", narrow ? 12 : pan.x + 12, pan.y + 18, { weight: 600, size: 12 });
   if (sec.shape === "round") {
     g.circle(cx, cy, bw / 2, { fill: c.part, stroke: c.partLine, width: 1.25 });
@@ -356,18 +377,26 @@ function section(g, s, r, pan, narrow, kBeam, frac) {
   g.text(tick, sx - lim, sy, Object.assign({ color: tc }, ss)); g.text("0", sx, sy, Object.assign({ color: c.text2 }, ss)); g.text(tick, sx + lim, sy, Object.assign({ color: tc }, ss));
   if (zoom > 1) { var zt = "stress drawn " + zoom + "×", tw0 = g.textWidth(narrow ? "Cross-section" : "Cross-section, enlarged", { weight: 600, size: 12 }); if (narrow) g.text(zt, 12 + tw0 + 10, pan.y + 18, { size: 11, color: c.mute }); else g.text(zt, pan.x + 12, pan.y + 34, { size: 11, color: c.mute }); }
   g.text("squeezed", sx - 4, cy - bh / 2 - 8, { size: 10, color: c.text2, align: "right" }); g.text("stretched", Math.min(sx + 4, pan.x + pan.w - 6 - g.textWidth("stretched", { size: 10 })), cy - bh / 2 - 8, { size: 10, color: c.text2 });
-  var lab = narrow ? Math.max(sx + lim + 14, sx + 14 + g.textWidth("stretched", { size: 10 })) : pan.x + 12, ly = narrow ? pan.y + 34 : sy + 34, maxW = (narrow ? g.w : pan.x + pan.w) - lab - 8;
+  // The neutral axis named on its own line, at its right-hand end; the wall named beside the section.
+  var nax = sx + lim + 7, naw = g.textWidth("neutral axis", { size: 10, weight: 600 });
+  // Where it fits: at the line's right-hand end, else inside the section just above the line, else in the lines below.
+  // At the line's right-hand end where it fits; on a laptop's narrow panel, as a key under the picture: a sample of
+  // the dash-dot line and its name, with the wall thickness beside it.
+  var naxis = nax + naw < pan.x + pan.w - 4;
+  if (naxis) g.text("neutral axis", nax, cy, { size: 10, weight: 600, color: c.accent, base: "middle" });
+  if (!narrow) {
+    var ky = sy + 30, kx = pan.x + 12;
+    if (!naxis) { g.line(kx, ky - 4, kx + 22, ky - 4, { color: c.accent, width: 1.25, dash: [8, 3, 2, 3] }); g.text("neutral axis, no stress", kx + 28, ky, { size: 10, weight: 600, color: c.accent }); naxis = true; ky += 16; }
+    if (!sec.solid) g.text("wall " + frac2(sec.t) + " in", kx, ky, { size: 10, color: c.mute });
+  }
+  var lab = narrow ? Math.max(sx + lim + 14, sx + 14 + g.textWidth("stretched", { size: 10 })) : pan.x + 12, ly = narrow ? pan.y + 30 : sy + 70, maxW = (narrow ? g.w : pan.x + pan.w) - lab - 8;
   // One line each: where, which face is stretched, the stress, and its share of yield.
   var where = s.hold === "cant" ? "At the wall, most stressed" : s.hold === "simple" ? "At the middle, most stressed" : "At the middle and the held ends";
-  var rows = [[where, { color: c.accent, size: 11, weight: 700 }],
-    [fc.swap ? (topSq ? "Middle: top squeezed; ends: top stretched" : "Middle: top stretched; ends: top squeezed") : "Top " + (topSq ? "squeezed" : "stretched") + ", bottom " + (topSq ? "stretched" : "squeezed"), { color: c.text2, size: 11 }],
-    ["Stress " + K.n(r.stress * frac, 0) + " psi", { color: c.text, size: 11, weight: 600 }],
-    [K.n(share * 100, 0) + "% of yield (" + K.n(r.mat.yld, 0) + " psi)", { color: share >= 1 ? c.bad : share > 1 / 3 ? c.text : c.text2, size: 11, weight: 600 }]];
-  if (zoom > 1) rows.push(["Ticks: " + K.n(100 / zoom, 0) + "% of yield", { color: c.mute, size: 11 }]);
-  if (!narrow) rows.push(["Dash-dot: neutral axis, no stress", { color: c.mute, size: 11 }]);
-  if (!narrow && !sec.solid) rows.push(["Wall " + frac2(sec.t) + " in", { color: c.mute, size: 11 }]);
+  var rows = [[where, { color: c.accent, size: 12, weight: 700 }],
+    [fc.swap ? (topSq ? "Middle: top squeezed; ends: top stretched" : "Middle: top stretched; ends: top squeezed") : "Top " + (topSq ? "squeezed" : "stretched") + ", bottom " + (topSq ? "stretched" : "squeezed"), { color: c.text2, size: 12 }],
+    [K.n(r.stress * frac, 0) + " psi, " + K.n(share * 100, 0) + "% of yield", { color: share >= 1 ? c.bad : c.text, size: 12, weight: 600 }]];
   // Each label wrapped to the room beside the section, so nothing runs off a phone's edge.
-  var y = ly, lh = narrow ? 13 : 16;
+  var y = ly, lh = narrow ? 15 : 17;
   rows.forEach(function (row) {
     var words = row[0].split(" "), line = "";
     words.forEach(function (w) { var tryL = line ? line + " " + w : w; if (line && g.textWidth(tryL, row[1]) > maxW) { g.text(line, lab, y, row[1]); y += lh; line = w; } else line = tryL; });

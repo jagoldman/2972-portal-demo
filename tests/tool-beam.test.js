@@ -92,5 +92,18 @@ near("30% or more is drawn true", M.stressZoom(0.3), 1, 0);
 near("no load is drawn true", M.stressZoom(0), 1, 0);
 ok("an enlarged share stays within the scale", [0.001, 0.01, 0.05, 0.1, 0.2, 0.29].every(function (x) { var z = M.stressZoom(x); return x * z <= 0.8 && x * z >= 0.16; }));
 
+// Round 7: other stock sections under the same load. Default (6061, 30 in, 25 lbf, held at one end, tall way):
+// the 2x1 1/16 tube has a safety factor of 8.7; the lightest with 3 or more is the 1x1 1/16 tube (3.2, 0.69 lb).
+var cmp = M.compare({ mat: M.mat("al"), L: 30, P: 25, hold: "cant", way: "tall" });
+ok("compare: every stock section, not the custom one", cmp.rows.length === M.SECTIONS.length - 1 && !cmp.rows.some(function (q) { return q.id === "custom"; }));
+ok("compare: lightest first", cmp.rows.every(function (q, i) { return !i || cmp.rows[i - 1].weight <= q.weight; }));
+var r21 = cmp.rows.filter(function (q) { return q.id === "r2x1_16"; })[0];
+near("compare: 2x1 1/16 matches the page's own answer", r21.sf, M.beam({ sec: M.section(M.sectionSpec("r2x1_16"), "tall"), mat: M.mat("al"), L: 30, P: 25, hold: "cant" }).sf, 1e-12);
+near("compare: 2x1 1/16 safety factor 8.7 by hand", r21.sf, 35000 / (25 * 30 * 1 / ((1 * 8 - 0.875 * Math.pow(1.875, 3)) / 12)), 1e-9);
+ok("compare: the lightest that keeps 3 is the 1x1 1/16 tube", cmp.best === "r1x1_16", cmp.best);
+ok("compare: nothing lighter keeps 3", cmp.rows.filter(function (q) { return q.weight < cmp.rows.filter(function (x) { return x.id === cmp.best; })[0].weight; }).every(function (q) { return q.sf < 3; }));
+ok("compare: an impossible load has no best", M.compare({ mat: M.mat("pc"), L: 96, P: 500, hold: "cant", way: "tall" }).best === null);
+ok("compare: the flat way is weaker for a 2x1", M.compare({ mat: M.mat("al"), L: 30, P: 25, hold: "cant", way: "flat" }).rows.filter(function (q) { return q.id === "r2x1_16"; })[0].sf < r21.sf);
+
 console.log(fails ? fails + " of " + n + " checks failed" : "all " + n + " checks passed");
 process.exit(fails ? 1 : 0);
