@@ -105,19 +105,19 @@ K.tool({
   outs: function (s, r) {
     var vd = r.vd, text, sr = K.fix(r.surfRatio, 2), tg = K.fix(r.target, 1), rg = K.fix(r.ratioGood, 2);
     var plate = s.contact !== "both";
-    if (vd <= 0.05) text = "The robot is standing still, so the piece comes in at " + fts(r.piece) + " ft/s.";
-    else if (r.state === "bad") text = "The robot drives onto the piece faster than the roller pulls it in (" + fts(r.piece) + " against " + fts(vd) + " ft/s), so it shoves the piece along the floor before the roller has it. Change the reduction from " + K.fix(s.ratio, 2) + ":1 to " + rg + ":1 or less, for a surface speed of " + tg + " times the drive speed.";
-    else if (r.state === "ok") text = "The roller's surface runs " + sr + " times the drive speed, so the piece comes in at " + fts(r.piece) + " ft/s, " + K.fix(r.pieceRatio, 2) + " times as fast as the robot drives onto it.";
-    else text = "The piece comes in only a little faster than the robot drives (" + fts(r.piece) + " against " + fts(vd) + " ft/s): the roller's surface runs " + sr + " times the drive speed" + (plate ? ", and against a plate the piece moves at half that." : ".") + " Change the reduction from " + K.fix(s.ratio, 2) + ":1 to " + rg + ":1 or less for " + tg + " times.";
-    var more = "These speeds come from the motor's free speed and the current limit only. Whether the roller really grips depends on how hard it squeezes the piece and on friction, which this page does not know: test it with a real piece.";
-    var pr = isFinite(r.pieceRatio) ? K.fix(r.pieceRatio, 2) + " times the drive speed" : "robot standing still";
+    // The page's rule, in words: the surface at least 2 times the drive speed and the piece at least 10% faster.
+    var rule = "This page's rule: the surface at least " + tg + " times the drive speed" + (plate ? ", so the piece, at half the surface speed, comes in 10% faster than the floor brings it" : " (the rule of thumb of 2, which also brings the piece in 10% faster than the floor)") + ". " + rg + ":1 or lower keeps that margin.";
+    if (vd <= 0.05) text = "The robot is standing still, so the piece comes in at " + fts(r.piece) + " ft/s, worked out at the roller's no-load speed.";
+    else if (r.state === "bad") text = "At no-load speed the roller pulls the piece in more slowly than the robot drives onto it (" + fts(r.piece) + " against " + fts(vd) + " ft/s), so it shoves the piece along the floor before the roller has it. " + rule + " Change the reduction from " + K.fix(s.ratio, 2) + ":1.";
+    else if (r.state === "ok") text = "At no-load speed the roller's surface runs " + sr + " times the drive speed, so the piece comes in at " + fts(r.piece) + " ft/s, " + K.fix(r.pieceRatio, 2) + " times as fast as the robot drives onto it. " + rule;
+    else text = "At no-load speed the piece comes in only a little faster than the robot drives (" + fts(r.piece) + " against " + fts(vd) + " ft/s): the roller's surface runs " + sr + " times the drive speed. " + rule + " Change the reduction from " + K.fix(s.ratio, 2) + ":1.";
+    var more = "The roller slows as soon as it grips the piece, so the real speeds are a little lower than these. Whether it grips at all depends on how hard it squeezes the piece and on friction, which this page does not know: test it with a real piece.";
     return K.verdict(r.state, text, more) + K.outs([
-      { k: "Roller surface speed", v: fts(r.surface), u: "ft/s", sub: K.fix(r.surface, 2) + " m/s, " + K.n(r.rpm, 0) + " rpm, at free speed", tip: "Roller radius times roller speed. The roller turns at about free speed until it grips a piece." },
-      { k: "Piece speed", v: fts(r.piece), u: "ft/s", sub: pr + (plate ? ", half the surface speed" : "") + ". Along its path; at first touch that is along the floor, where it is compared with the drive speed", tip: "The piece's speed along its path. It first touches the roller on the floor, moving straight along it, so there its speed and the robot's are along the same line and are compared as they are. Once it is on the plate it is inside the robot and the floor no longer matters.", state: r.state === "bad" ? "bad" : r.state === "warn" ? "warn" : "" },
+      { k: "Roller surface speed", v: fts(r.surface), u: "ft/s", sub: "at " + K.fix(s.V, 1) + " V, no load: " + K.fix(r.surface, 2) + " m/s, " + K.n(r.rpm, 0) + " rpm", tip: "Roller radius times roller speed, at the battery voltage in Fine tuning with no load. The roller slows as it grips a piece." },
+      { k: "Piece speed", v: fts(r.piece), u: "ft/s", sub: plate ? "half the roller's surface speed against a plate" : "the roller's full surface speed, between two belts", tip: "How fast the piece moves along its path. How this is worked out says which speeds are compared.", state: r.state === "bad" ? "bad" : r.state === "warn" ? "warn" : "" },
       { k: "Surface to drive speed", v: isFinite(r.surfRatio) ? sr : "–", u: "×", sub: "good from " + tg + " (a rule of thumb)", state: r.state, tip: "Roller surface speed divided by the robot's speed toward the piece. Against a plate, 2 only lets the piece match the drive speed, so this page asks for 2.2." },
       { k: "Time to pass through", v: K.fix(r.time, 2), u: "s", sub: "ideal: " + s.travel + " in at the piece speed" },
-      { k: "Most the motor can pull", v: K.n(r.force / F.LBF, 1), u: "lbf", sub: "theoretical: torque at the " + s.statorA + " A limit ÷ roller radius. The piece weighs about " + K.fix(s.pieceLb, 2) + " lb. Grip needs squeeze too", tip: "The most the roller can pull on the piece before the current limit stops it. Whether the piece follows depends on the squeeze and the friction." },
-      { k: "Reduction for a good margin", v: isFinite(r.ratioGood) ? rg : "–", u: ": 1", sub: "or less: surface " + tg + " times the drive speed" }
+      { k: "Pull at the " + s.statorA + " A limit", v: K.n(r.force / F.LBF, 1), u: "lbf", sub: "the most there is, at low speed; it falls to nothing at free speed. The piece weighs about " + K.fix(s.pieceLb, 2) + " lb", tip: "Torque at the current limit divided by the roller's radius: what the roller can pull while it is turning slowly. Faster, the motor has less torque; at free speed it has none. Whether the piece follows also depends on the squeeze and the friction." }
     ]);
   },
 
@@ -138,15 +138,17 @@ K.tool({
         series: [{ name: "Piece", pts: dp, color: 1 }, { name: "Roller surface", pts: ds, color: 2, dash: true }], hlines: hl([0.5, 4], [dp, ds]), dots: s.roller <= 4 ? [{ x: s.roller, y: r.piece / FT, label: "now" }] : [] }) + "</div>";
     return chart + K.notes(
       "<p>The roller turns at about its free speed until it grips a piece, so its surface moves at:</p>" +
+      "<p>The free speed here is at the battery voltage in Fine tuning, 12 V unless you change it, with no load. Other tools on this site use a rested 12.3 V battery; at 12.3 V the roller would run 2.5% faster. The roller slows as soon as it grips a piece, so every speed on this page is the most it could be.</p>" +
       '<p class="eq">surface speed = roller radius × motor free speed × (battery ÷ 12 V) ÷ reduction</p>' +
       "<p>A piece pinched between the roller and a fixed plate rolls along the plate. Its bottom stays still on the plate and its top moves with the roller, so its centre moves at half the surface speed. Between two moving surfaces (two rollers, or a roller and a belt) it moves at the full surface speed.</p>" +
       '<p class="eq">piece speed = surface speed × ½ (against a plate) or × 1 (rollers on both sides)</p>' +
       '<p class="eq">time to pass through = travel ÷ piece speed</p>' +
-      '<p class="eq">most the motor can pull = output torque at the current limit ÷ roller radius</p>' +
+      '<p class="eq">pull at the current limit = output torque at the limit ÷ roller radius</p>' +
+      "<p>That pull is the most there is, while the roller turns slowly. As it speeds up, the motor's torque falls, to nothing at free speed.</p>" +
       "<p>In the robot's frame, the floor brings the piece toward the intake at the driving speed. If the roller takes it in slower than that, the piece cannot get out of the way: the robot shoves it along the floor until it bounces off or wedges.</p>" +
       "<p>Which speeds are compared: the piece's speed is along its own path. Where the roller first touches it (directly under the roller, still on the floor), that path runs straight along the floor, the same line the robot drives on, so the two speeds are compared as they are. That is the moment that matters: once the piece is up on the plate it is inside the robot and the floor no longer pushes it. Up the ramp the piece keeps its speed along the ramp; only part of that is along the floor, and it does not need to be more.</p>" +
       "<p>Many teams aim for a roller surface speed of about twice the drive speed. That is a rule of thumb from experience, not a law, and against a plate it has no margin at all: the piece moves at half the surface speed, so at exactly 2 times it only matches the drive speed. This page calls an intake good when the surface runs at least 2 times the drive speed and the piece itself comes in at least 10% faster than the floor brings it. Against a plate that is a surface speed of 2.2 times the drive speed; between two driven surfaces, 2 times. Under that it says Check, and when the piece is slower than the floor it says Problem.</p>" +
-      "<p>The pull figure is what the motor could give at its current limit. Whether the piece follows depends on the squeeze (how far the gap is smaller than the piece) and on the friction between them, which this page does not know. Test it with a real piece.</p>" +
+      "<p>The pull is what the motor could give at its current limit. Whether the piece follows depends on the squeeze (how far the gap is smaller than the piece) and on the friction between them, which this page does not know. Test it with a real piece.</p>" +
       "<p>Left out: the roller slowing under load, slip between roller and piece, the squeeze, and the piece bouncing. The drawing shows the piece just touching; a real pinch squeezes it a little. Its shape (a curved lip under the roller, a 35° ramp, a belt from the roller to a second pulley) is a sketch of a common over-the-bumper intake; only the sizes and speeds come from your numbers.</p>");
   },
 
@@ -191,8 +193,9 @@ function draw(g, s, r, t) {
   var top = Math.max(G.Cr[1], G.C[1]) + Rr + 1.5;
   // The whole front of the robot fits (its frame ends at x = -12), on a phone too.
   var x0b = Math.min(-12.6, mountX - 1, end[0] - Rb - 1.5);
-  var box = phone ? { x0: x0b, x1: G.E[0] + Rb + 2.5, y0: -1, y1: top + 6.5 } :
-    { x0: x0b, x1: ballX0 + Rb + 2, y0: -1.5, y1: top + 4.5 };
+  // Room under the floor for the first-touch label, and over the top for the clock.
+  var box = phone ? { x0: x0b, x1: G.E[0] + Rb + 2.5, y0: -2.6, y1: top + 4 } :
+    { x0: x0b, x1: ballX0 + Rb + 2, y0: -3.2, y1: top + 3.5 };
   var V = g.view(box, phone ? { l: 6, r: 6, t: 8, b: 6 } : { l: 8, r: 8, t: 30, b: 8 }, "middle");
   var step = V.k >= 9 ? 1 : 6;
   g.grid(V, step, phone ? "" : (step === 1 ? "1 in squares" : "6 in squares"));
@@ -228,6 +231,10 @@ function draw(g, s, r, t) {
   // Where the piece ends up.
   var ep = P(end);
   g.circle(ep[0], ep[1], V.L(Rb) + 3, { stroke: c.mute, width: 1, dash: [4, 4] });
+  // A ghost of the piece where the roller first touches it, on the floor under the roller: where the speeds are compared.
+  var Ep = P(G.E), firstShown = d < 0 || d > Rb * 0.6 || jam;
+  // A plain light disc, not an outline, so the piece's speed can sit over it without crossing a line.
+  if (firstShown) g.circle(Ep[0], Ep[1], V.L(Rb), { fill: c.line, stroke: null });
   // The arm that carries the roller and the pulley: a bar between their axles, above the belt, clear of the piece.
   var Crp = P(G.Cr), bt = Math.max(2, V.L(Math.min(0.14, Rr * 0.25)));
   g.line(Cp[0], Cp[1], Crp[0], Crp[1], { color: c.part2, width: Math.max(4, V.L(Math.min(Rr * 0.9, 0.9))) });
@@ -246,56 +253,57 @@ function draw(g, s, r, t) {
   // Arrow on the roller's rim: which way its surface moves (clockwise here, so its underside moves into the robot).
   var rimR = V.L(Rr) + 6;
   rimArrow(g, Cp[0], Cp[1], rimR, -1.25, -0.1, c.accent);
-  // The robot's speed, top left.
-  var vmax = Math.max(vd, vp, 1), aL = function (v) { return (phone ? 10 : 14) + (phone ? 46 : 66) * v / vmax; };
-  var hx = 10, hy = phone ? 18 : 18;
+  // The clock and what is happening, at the top left. (The speed buttons say when it plays slowed.)
+  var vmax = Math.max(vd, vp, 1), aL = function (v) { return (phone ? 10 : 14) + (phone ? 40 : 60) * v / vmax; };
+  var hx = 10, hy = 18;
   var status = t < r.tc ? "driving onto the piece" : jam ? "the piece is shoved before it is taken in" : inside ? "in, " + K.fix(r.time, 2) + " s after the roller touched it" : "in the pinch: belt on top, " + (both ? "belt" : "plate") + " underneath";
   g.text(K.fix(t, 3) + " s", hx, hy, { weight: 700, size: 13 });
-  // While it plays slowed down, say so beside the clock (the clock is the real time of the pick-up).
-  var slow = K.playing(ID) && K.speed(ID) < 1 ? "slowed " + Math.round(1 / K.speed(ID)) + "×" : "", sw = slow ? g.textWidth(slow, { size: 11, weight: 600 }) + 10 : 0;
-  if (slow) g.text(slow, hx + 62, hy, { size: 11, weight: 600, color: c.mute });
-  g.text(status, hx + 62 + sw, hy, { color: jam && t >= r.tc ? c.bad : inside ? c.ok : c.text2, weight: 600, size: phone ? 11 : 12 });
-  /* The key: each arrow points the way its thing moves. The robot's runs along the floor (it drives to the right here);
-     the piece's runs up the ramp, into the robot. Their lengths are to one scale. */
-  var ry = hy + 20, ks = phone ? 11 : 12, keyEnd = ry;
-  if (vd > 0.5) { g.arrow(hx, ry, hx + aL(vd), ry, { color: c.s1, width: 2 }); g.text("robot, over the floor " + K.fix(vd / 12, 1) + " ft/s", hx + aL(vd) + 6, ry, { base: "middle", weight: 600, color: c.text, size: ks }); }
-  if (!jam && vp > 0) {
-    var pc = r.state === "warn" ? c.warn : c.ok, pl2 = aL(vp), pdx = pl2 * Math.cos(G.TH), pdy = pl2 * Math.sin(G.TH), pyb = ry + 12 + pdy;
-    g.arrow(hx + pdx, pyb, hx, pyb - pdy, { color: pc, width: 2.5 });
-    g.text("piece, into the robot " + K.fix(vp / 12, 1) + " ft/s" + (phone ? "" : both ? ": the roller's full surface speed" : ": half the roller's surface speed"), hx + pdx + 8, pyb - pdy / 2, { base: "middle", weight: 600, color: pc, size: ks });
-    keyEnd = pyb;
+  g.text(status, hx + 62, hy, { color: jam && t >= r.tc ? c.bad : inside ? c.ok : c.text2, weight: 600, size: phone ? 11 : 12 });
+  // The dashed circle's name, in a line under the heading (inside it the piece's arrow would run through the words).
+  var kc = hy + 22;
+  g.circle(hx + 7, kc, 6, { stroke: c.mute, width: 1, dash: [3, 3] });
+  g.text("where the piece ends up", hx + 20, kc, { size: 11, weight: 600, color: c.text2, base: "middle" });
+  var ks = phone ? 11 : 12, used = [];
+  function free(x0, y0, x1, y1) { return !used.some(function (b) { return x0 < b[2] && x1 > b[0] && y0 < b[3] && y1 > b[1]; }); }
+  function put(str, x, y, o) { var w = g.textWidth(str, o), x0 = o.align === "right" ? x - w : x; used.push([x0 - 3, y - 9, x0 + w + 3, y + 9]); g.text(str, x, y, Object.assign({ base: "middle" }, o)); }
+  // The robot's speed, by the robot: an arrow along the floor over the frame, pointing the way it drives.
+  if (vd > 0.5) {
+    var rax = V.X(-12) + 4, ray = V.Y(6) - 12, ral = aL(vd);
+    g.arrow(rax, ray, rax + ral, ray, { color: c.s1, width: 2.5 });
+    put("robot " + K.fix(vd / 12, 1) + " ft/s", rax, ray - 14, { size: ks, weight: 700, color: c.s1 });
   }
-  // The piece's speed: an arrow ahead of it, along its path, and its label.
+  // The piece's speed: an arrow ahead of it, along its path, and its number beside the piece.
   var bx = V.X(bp[0]), by = V.Y(bp[1]), Rpx = V.L(Rb), col = r.state === "bad" ? c.bad : r.state === "warn" ? c.warn : c.ok;
   if (d < 0) {
-    if (vd > 0.05) g.text("piece, still on the floor", bx, by - Rpx - 8, { align: "center", color: c.text2, weight: 600, size: phone ? 11 : 12 });
+    if (vd > 0.05) put("piece, still on the floor", bx, by - Rpx - 10, { align: "center", color: c.text2, weight: 600, size: phone ? 11 : 12 });
   } else if (jam) {
-    var gl0 = aL(vd), sm = "shoved along the floor at " + K.fix(vd / 12, 1) + " ft/s", smw = g.textWidth(sm, { weight: 600 });
+    var gl0 = aL(vd), sm = (phone ? "shoved " : "shoved along the floor at ") + K.fix(vd / 12, 1) + " ft/s", smw = g.textWidth(sm, { weight: 600 });
     g.arrow(bx + Rpx + 3, by, bx + Rpx + 3 + gl0, by, { color: c.bad, width: 2.5 });
-    g.text(sm, Math.min(bx + Rpx + 3, g.w - smw - 6), by + Rpx + 16 > fy - 2 ? fy + 20 : by + Rpx + 16, { color: c.bad, weight: 600 });
+    put(sm, Math.min(bx + Rpx + 3, g.w - smw - 6), Math.min(by + Rpx + 14, fy - 10), { color: c.bad, weight: 600, size: ks });
   } else if (!inside) {
     // Along the path just ahead (the chord to where the piece will be a little later), so the arrow stays in the channel.
     var ahead = G.at(Math.min(s.travel, d + Rb)).p, cl = Math.hypot(ahead[0] - bp[0], ahead[1] - bp[1]);
     var dir = cl > 1e-6 ? [(ahead[0] - bp[0]) / cl, (ahead[1] - bp[1]) / cl] : pos.dir, L1 = aL(vp), sx = bx + dir[0] * (Rpx + 3), sy = by - dir[1] * (Rpx + 3);
     g.arrow(sx, sy, sx + dir[0] * L1, sy - dir[1] * L1, { color: col, width: 2.5 });
+    // Its number to the right of the piece, below its middle (the belt runs above, the roller is higher still); on the
+    // left, under the ramp, if there is no room on the right.
+    var pt = "piece " + K.fix(vp / 12, 1) + " ft/s", po = { size: ks, weight: 700, color: col }, pw = g.textWidth(pt, po), py0 = by + Rpx * 0.55;
+    if (bx + Rpx + 8 + pw < g.w - 4) put(pt, bx + Rpx + 8, py0, po);
+    else put(pt, bx - Rpx * 0.3, Math.min(fy - 10, by + Rpx + 12), Object.assign({ align: "right" }, po));
   }
-  // The dashed circle, named in the key (inside it the piece's arrow would run through the words).
-  var kc = (keyEnd || hy + 40) + 18, rlKey = !(Cp[0] + V.L(Rr) + 16 + g.textWidth("roller surface " + K.fix(r.surface / FT, 1) + " ft/s", { size: 12, weight: 600 }) < g.w - 6);
-  if (rlKey) kc += 18;
-  g.circle(hx + 7, kc, 6, { stroke: c.mute, width: 1, dash: [3, 3] });
-  g.text("where the piece ends up", hx + 20, kc, { size: 11, weight: 600, color: c.text2, base: "middle" });
-  // The roller's surface speed, and what is above and below the piece.
-  // Beside the rim arrow when there is room; else (a phone) as a line of the key at the top left.
-  var rl = "roller surface " + K.fix(r.surface / FT, 1) + " ft/s", rlw = g.textWidth(rl, { size: 12, weight: 600 });
-  if (Cp[0] + rimR + 10 + rlw < g.w - 6) g.text(rl, Cp[0] + rimR + 10, Cp[1] - rimR - 4, { size: 12, weight: 600, color: c.accent });
-  else g.text(rl + ", its arrow on the roller", hx, (keyEnd || hy + 40) + 18, { size: 11, weight: 600, color: c.accent, base: "middle" });
+  // The roller's surface speed, beside its rim arrow (a laptop only: a phone keeps two labels, the piece and the robot).
   if (!phone) {
+    var rl = "roller surface " + K.fix(r.surface / FT, 1) + " ft/s", rlw = g.textWidth(rl, { size: 12, weight: 600 });
+    var rlx = Math.min(Cp[0] + rimR + 10, g.w - rlw - 6), rly = Cp[1] - rimR - 4;
+    if (free(rlx - 3, rly - 9, rlx + rlw + 3, rly + 9)) put(rl, rlx, rly, { size: 12, weight: 600, color: c.accent });
     var mid = [(G.C[0] + G.Cr[0]) / 2 - G.r1[0] * (Rr + 0.6), (G.C[1] + G.Cr[1]) / 2 - G.r1[1] * (Rr + 0.6)], mp = P(mid);
     g.text("belt, same surface speed as the roller", mp[0] + 4, mp[1] - 4, { size: 11, color: c.text2 });
   }
-  // The plate's name sits in front of its lip, on the open floor side.
-  var la = -Math.PI / 2, lp = P([G.C[0] + G.Rp * Math.cos(la), G.C[1] + G.Rp * Math.sin(la)]);
-  // Just under the floor line at the lip's end, where the piece never goes, so it never sits on the piece.
-  g.text(both ? "lower belt, from here" : "plate, from here", lp[0], fy + 20, { size: 11, color: c.text2, weight: 600, align: "center" });
+  // The first touch: under the floor beneath the ghost, the two speeds compared there.
+  if (firstShown && vd > 0.05) {
+    var ft = "first touch", fo = { size: 11, weight: 700, color: c.text2, align: "center" };
+    g.text(ft, Ep[0], fy + 16, fo);
+    if (!phone) g.text("piece " + K.fix(vp / 12, 1) + " ft/s here, floor " + K.fix(vd / 12, 1) + " ft/s", Ep[0], fy + 30, Object.assign({}, fo, { weight: 600 }));
+  }
 }
 })(typeof window !== "undefined" ? window : this);

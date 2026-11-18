@@ -157,13 +157,13 @@ K.tool({
     } else if (!r.backOk) v = K.verdict("bad", backWords(s, r));
     else if (hw > 0.6 * lim) v = K.verdict("warn", "Holds with little to spare: at " + deg(r.worstAngle) + " holding takes " + K.fix(hw, 1) + " A of the " + lim + " A limit, so the motor heats up if it waits there. Use a bigger reduction than " + K.fix(s.ratio, 0) + ":1 or add a counterbalance.", "The swing time is ideal: full power, then full reverse, with no controller.");
     else v = K.verdict("ok", "Swings from " + deg(r.a0) + " to " + deg(r.a1) + " in " + secs(r.timeGo) + " s at best and holds with " + K.fix(hw, 1) + " A of the " + lim + " A limit at its heaviest angle, " + deg(r.worstAngle) + ".", "The swing time is ideal: full power, then full reverse, with no controller. A real controller is gentler; expect a little longer.");
+    var mg = r.margin;
     return v + K.outs([
-      { k: "Start to end", v: secs(r.timeGo), u: "s", sub: "ideal, at best", state: r.reached ? "" : "bad" },
-      { k: "And back", v: secs(r.timeBack), u: "s", sub: "ideal, at best" },
+      { k: "Holding, worst angle", v: K.fix(hw, 1), u: "A", sub: "per motor, at " + deg(r.worstAngle) + ". Includes the motor's free current, " + K.fix(r.freeA, 1) + " A", state: hw > 0.6 * lim ? "warn" : "", tip: "The current that holds the arm still where gravity pulls hardest in its range (level, if it passes level), and just starts it moving. " + K.fix(r.freeA, 1) + " A of it is the motor's free current (its own friction); the other " + K.fix(hw - r.freeA, 1) + " A holds the weight." },
+      { k: "Torque margin", v: isFinite(mg) ? K.fix(mg, 1) : "no load", u: isFinite(mg) ? "×" : "", sub: "2 or more is good (a rule of thumb). Torque at the limit over torque needed: " + K.n(r.avail * NM_LBIN, 0) + " ÷ " + K.n(r.worstTorque * NM_LBIN, 0) + " lb in", state: !isFinite(mg) ? "" : mg < 1 ? "bad" : mg < 2 ? "warn" : "ok", tip: "Torque the gearbox gives at the " + lim + " A limit divided by the most gravity asks for in the range. Below 1 it cannot hold; 2 or more leaves torque to speed it up. It is not the limit over the holding current (" + lim + " ÷ " + K.fix(hw, 1) + " = " + K.fix(lim / hw, 1) + "): both currents carry the motor's free current, " + K.fix(r.freeA, 1) + " A, which only turns the motor itself. Take it off both and the ratio is the torque margin: " + K.fix(lim - r.freeA, 1) + " ÷ " + K.fix(hw - r.freeA, 1) + " = " + K.fix((lim - r.freeA) / (hw - r.freeA), 1) + "." },
+      { k: "Start to end", v: secs(r.timeGo), u: "s", sub: "ideal, at best. And back: " + secs(r.timeBack) + " s", state: r.reached ? "" : "bad" },
       { k: "Fastest the end moves", v: K.fix(r.tipSpeed / F.FT, 1), u: "ft/s", sub: K.fix(r.tipSpeed, 2) + " m/s, going out" + (r.tipSpeedBack > 0 ? ". Coming back: " + K.fix(r.tipSpeedBack / F.FT, 1) + " ft/s" : ""), tip: "The fastest the end of the arm moves on the way out, not its speed on arrival (it stops there). The motor's no-load speed would move it at " + K.fix(r.freeTip / F.FT, 1) + " ft/s; gravity helping can carry it a little past that." },
       { k: "Peak current", v: K.fix(r.peakA, 0), u: "A", sub: "per motor, briefly, while it speeds up" },
-      { k: "Holding, worst angle", v: K.fix(hw, 1), u: "A", sub: "per motor, at " + deg(r.worstAngle) + ". Includes the motor's free current, " + K.fix(r.freeA, 1) + " A", state: hw > 0.6 * lim ? "warn" : "", tip: "The current that holds the arm still where gravity pulls hardest in its range (level, if it passes level), and just starts it moving. " + K.fix(r.freeA, 1) + " A of it is the motor's free current (its own friction); the other " + K.fix(hw - r.freeA, 1) + " A holds the weight." },
-      { k: "Torque margin", v: isFinite(r.margin) ? K.fix(r.margin, 1) : "no load", u: isFinite(r.margin) ? "×" : "", sub: "torque at the limit over torque needed: " + K.n(r.avail * NM_LBIN, 0) + " ÷ " + K.n(r.worstTorque * NM_LBIN, 0) + " lb in", state: r.margin < 1 ? "bad" : r.margin < 1.5 ? "warn" : "", tip: "Torque the gearbox gives at the " + lim + " A limit divided by the most gravity asks for in the range. Below 1 it cannot hold; aim for 2 or more so it can also speed up. It is not the limit over the holding current (" + lim + " ÷ " + K.fix(hw, 1) + " = " + K.fix(lim / hw, 1) + "): both currents carry the motor's free current, " + K.fix(r.freeA, 1) + " A, which only turns the motor itself. Take it off both and the ratio is the torque margin: " + K.fix(lim - r.freeA, 1) + " ÷ " + K.fix(hw - r.freeA, 1) + " = " + K.fix((lim - r.freeA) / (hw - r.freeA), 1) + "." }
     ]) + K.outs([
       { k: "kG at level", v: K.fix(r.kG, 3), u: "V", tip: "Volts that hold the arm level. Use kG × cos(angle) in code." },
       { k: "kS", v: K.fix(r.kS, 3), u: "V", sub: "the motor's own friction only; a real mechanism's is larger, measure it", tip: "The motor's free current times its resistance: the volts it takes to turn the motor itself." },
@@ -178,7 +178,7 @@ K.tool({
       marks: [{ x: s.start, label: "start" }, { x: s.end, label: "end" }] });
     out += '<div class="chartrow">' +
       K.chart({ id: "arm-ang", title: "Angle", x: { label: "time (s)", unit: "s", name: "Time" }, y: { label: "deg", unit: "°" }, series: [{ name: "Angle", pts: r.chAng }] }) +
-      K.chart({ id: "arm-a", title: "Current in each motor", x: { label: "time (s)", unit: "s", name: "Time" }, y: { label: "A", unit: "A", min: 0, max: Math.max(s.statorA * 1.4, r.peakA * 1.25, 10) }, series: [{ name: "Current", pts: r.chA, color: 2 }], hlines: [{ y: s.statorA, label: "limit " + s.statorA + " A", side: "left" }] }) + "</div>";
+      K.chart({ id: "arm-a", title: "Current in each motor", x: { label: "time (s)", unit: "s", name: "Time" }, y: { label: "A", unit: "A", min: 0, max: Math.max(s.statorA * 1.4, r.peakA * 1.25, 10) }, series: [{ name: "Current", pts: r.chA, color: 2 }], hlines: [{ y: s.statorA }], note: "The dashed level line is the " + s.statorA + " A current limit." }) + "</div>";
     var code = "// Arm feedforward, angle in radians from level\n" +
       "public static final double kS = " + K.fix(r.kS, 3) + "; // volts: the motor's own friction only; a real mechanism's is larger, measure it\n" +
       "public static final double kG = " + K.fix(r.kG, 3) + "; // volts at level; use kG * cos(angle)\n" +
@@ -274,7 +274,7 @@ function stallMsg(s, r) {
   if (r.stallGo == null) return "Stops at " + deg(r.stuckAt) + ".";
   return "Stalls past " + deg(r.stallGo) + ": " + (r.goWhy === "counterbalance" ? "the counterbalance pushes back with" : "gravity needs") + " up to " + K.n(r.peakNeed * NM_LBIN, 0) + " lb in, the gearbox gives " + K.n(r.avail * NM_LBIN, 0) + ".";
 }
-function hudHeight(g, s, r, w) { return 22 + 17 + 34 + 56 + (r.reached ? 14 : 15 * wrap(g, stallMsg(s, r), w, { size: 12, weight: 600 }).length); }
+function hudHeight(g, s, r, w) { return 22 + 17 + 34 + 56 + (g.w < 520 ? 44 : 0) + (r.reached ? 14 : 15 * wrap(g, stallMsg(s, r), w, { size: 12, weight: 600 }).length); }
 function draw(g, s, r, t) {
   var c = g.c, L = Math.max(0.5, s.len), ph, swing = null, wbox = null, level = null;
   // The pivot sits high enough that the arm clears the floor at its lowest angle.
@@ -360,9 +360,14 @@ function draw(g, s, r, t) {
     var lev = Math.abs(Math.sin(th)) < 0.26, upR = !lev && Math.cos(th) > 0 && Math.sin(th) < 0;
     var rt = upR || lev || Math.cos(th) * Math.sin(th) >= 0, wx = cmx + (rt ? 8 : -8), wy = upR ? cmy - Lp(1) - 30 : cmy + 4 + wl * 0.35, PYl = Y(py);
     if (wy - 8 < PYl + 5 && wy + 22 > PYl - 5) wy = wy < PYl ? PYl - 28 : PYl + 12;
-    var wo = { color: c.force, weight: 700, base: "middle", align: rt ? "left" : "right" }, l2 = "arm and load together";
-    g.text(K.fix(wt, wt < 10 ? 1 : 0) + " lb", wx, wy, wo); g.text(l2, wx, wy + 14, Object.assign({ size: 11 }, wo));
-    var ww = g.textWidth(l2, { size: 11, weight: 700 }); wbox = { x0: rt ? wx : wx - ww, x1: rt ? wx + ww : wx, y0: wy - 8, y1: wy + 22 };
+    // On a phone only the weight sits by the arrow; what the marker is goes in the key at the top left.
+    var l1 = K.fix(wt, wt < 10 ? 1 : 0) + " lb" + (g.w < 520 ? "" : ", arm and load together"), l2 = g.w < 520 ? "" : "centre of mass, " + K.fix(com, 1) + " in out";
+    var wneed = Math.max(g.textWidth(l1, { weight: 700 }), g.textWidth(l2, { size: 11, weight: 700 }));
+    // Kept inside the drawing: a label that would run off one side goes to the other.
+    if (rt && wx + wneed > g.w - 4) { rt = false; wx = cmx - 8; } else if (!rt && wx - wneed < 4) { rt = true; wx = cmx + 8; }
+    var wo = { color: c.force, weight: 700, base: "middle", align: rt ? "left" : "right" };
+    g.text(l1, wx, wy, wo); g.text(l2, wx, wy + 14, Object.assign({ size: 11 }, wo));
+    var ww = Math.max(g.textWidth(l1, { weight: 700 }), g.textWidth(l2, { size: 11, weight: 700 })); wbox = { x0: rt ? wx : wx - ww, x1: rt ? wx + ww : wx, y0: wy - 8, y1: wy + 22 };
   }
   /* Torques at the pivot, to one scale: gravity (turns it down) and the motor. Drawn round the pivot gear, clearly
      larger than it, each with its name beside its arrowhead. A small torque gets a smallest sweep so it still shows. */
@@ -386,19 +391,28 @@ function draw(g, s, r, t) {
   if (Math.abs(sgv) >= 0.05) turn(g, PX, PY, tR, aCan - 0.5 * sgv, sgv, c.force, 3);
   // The motor's ring is thin, so the pivot and the arm's root show through it.
   if (ph !== "end" && Math.abs(smv) >= 0.05) turn(g, PX, PY, tM, aCan - 0.5 * smv, smv, c.s1, 1.6);
-  if (Math.abs(sgv) >= 0.05) arcLabel(phone ? "gravity" : "gravity " + K.n(Math.abs(gq) * NM_LBIN, 0), aCan - 0.5 * sgv, c.force);
-  if (ph !== "end" && Math.abs(smv) >= 0.05) arcLabel(phone ? (braking ? "motor, braking" : "motor") : (braking ? "motor, braking " : "motor ") + K.n(Math.abs(q) * NM_LBIN, 0), aCan - 0.5 * smv, c.s1);
+  // On a phone the arcs carry no names: the key at the top left names them, in their colours.
+  if (!phone && Math.abs(sgv) >= 0.05) arcLabel("gravity " + K.n(Math.abs(gq) * NM_LBIN, 0), aCan - 0.5 * sgv, c.force);
+  if (!phone && ph !== "end" && Math.abs(smv) >= 0.05) arcLabel((braking ? "motor, braking " : "motor ") + K.n(Math.abs(q) * NM_LBIN, 0), aCan - 0.5 * smv, c.s1);
   // The read-out at the top left.
   var hx2 = 14, hy2 = 22, title = { go: "Swinging to " + K.fix(s.end, 0) + "°", hold: "Holding at " + K.fix(s.end, 0) + "°", back: "Swinging back", end: "Back at " + K.fix(s.start, 0) + "°", stall: "Stalled", drag: "Setting the end angle" }[ph];
   g.text(title, hx2, hy2, { size: 14, weight: 700, color: stalled ? c.bad : c.text });
   g.text("At " + K.fix(th / DEG, 0) + "°, the end moving " + K.fix(Math.abs(w) * r.L / F.FT, 1) + " ft/s", hx2, hy2 + 17, { size: 11, color: c.text2 });
   var ky = hy2 + 34;
   g.line(hx2, ky, hx2 + 16, ky, { color: c.force, width: 2.5 }); g.text("gravity " + K.n(Math.abs(gq) * NM_LBIN, 0) + " lb in", hx2 + 22, ky, { size: 11, color: c.text2, base: "middle" });
-  g.line(hx2, ky + 15, hx2 + 16, ky + 15, { color: c.s1, width: 2.5 }); g.text((q * w < -1e-9 ? "motor, braking " : "motor ") + K.n(Math.abs(q) * NM_LBIN, 0) + " lb in" + (q * w < -1e-9 ? " (friction helps)" : ""), hx2 + 22, ky + 15, { size: 11, color: c.text2, base: "middle" });
-  // While braking, how much of that the motor's own friction adds (room is kept for the line, so nothing jumps).
-  if (q * w < -1e-9) g.text("friction adds " + K.n(r.fricT * NM_LBIN, 0) + " lb in while braking", hx2 + 22, ky + 30, { size: 11, color: c.mute, base: "middle" });
-  meter(g, hx2, ky + 52, hudW, "Current per motor", K.fix(amps, 0) + " of " + s.statorA + " A", amps / s.statorA, amps >= s.statorA - 0.5 ? "warn" : "");
-  var ny = ky + 78;
+  /* While braking, the motor's torque is more than the gearbox gives at the limit (the Torque margin card's figure):
+     the motor's friction, which takes from a driving torque, adds to a braking one. The two parts are written so they
+     add up exactly: the card's figure, and the rest. */
+  var qa = Math.round(Math.abs(q) * NM_LBIN), av = Math.round(r.avail * NM_LBIN), lw = Math.min(g.w - hx2 - 30, hudW + 50);
+  var mtxt = q * w < -1e-9 ? "motor, braking " + qa + "\u00a0lb in (" + av + " from the " + s.statorA + "\u00a0A limit, the rest, " + (qa - av) + ", friction)" : "motor " + qa + " lb in";
+  var ml = wrap(g, mtxt, lw, { size: 11 });
+  g.line(hx2, ky + 15, hx2 + 16, ky + 15, { color: c.s1, width: 2.5 }); ml.forEach(function (t1, j) { g.text(t1, hx2 + 22, ky + 15 + 13 * j, { size: 11, color: c.text2, base: "middle" }); });
+  var kyEnd = ky + 15 + 13 * (ml.length - 1);
+  if (q * w < -1e-9 && ml.length < 2) { g.text("friction takes " + K.n(r.fricT * NM_LBIN, 0) + " from driving and adds " + K.n(r.fricT * NM_LBIN, 0) + " to braking", hx2 + 22, ky + 30, { size: 11, color: c.mute, base: "middle" }); kyEnd = ky + 30; }
+  if (g.w < 520 && s.armLb + s.loadLb > 0) { kyEnd += 15; g.circle(hx2 + 8, kyEnd, 4, { fill: c.sheet, stroke: c.force, width: 2 }); g.text("centre of mass of arm and load, " + K.fix(r.arm.com / F.IN, 1) + " in out", hx2 + 22, kyEnd, { size: 11, color: c.text2, base: "middle" }); }
+  kyEnd = Math.max(kyEnd, ky + 30);
+  meter(g, hx2, kyEnd + 22, hudW, "Current per motor", K.fix(amps, 0) + " of " + s.statorA + " A", amps / s.statorA, amps >= s.statorA - 0.5 ? "warn" : "");
+  var ny = kyEnd + 48;
   if (!r.reached) {
     var msg = stallMsg(s, r);
     wrap(g, msg, hudW, { size: 12, weight: 600 }).forEach(function (ln, j) { g.text(ln, hx2, ny + 15 * j, { size: 12, weight: 600, color: c.bad }); });

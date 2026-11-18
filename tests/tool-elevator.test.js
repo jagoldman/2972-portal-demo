@@ -116,5 +116,26 @@ ok("light lift: best at the low end of the sweep", fast.bestEnd === "lo" && Math
 var over = M.compute(Object.assign({}, base, { spring: 20, carLb: 10 }));
 ok("case 5: a spring stronger than the weight lifts faster than no-load, and the page knows", over.mod.load(0) < 0 && over.topV > over.freeV, over.topV);
 
+// Round 7, item 7: the card that shows the other rigging with the same inputs. By hand, 2 stages, 14 lb carriage, 5 lb
+// stages: cascade rope pull holding at the top 3 x 14 + 1 x 5 + 2 x 5 = 57 lb; continuous 14 + 5 + 5 = 24 lb.
+var cas7 = M.compute(Object.assign({}, base, { stages: 2 })), con7 = M.compute(Object.assign({}, base, { stages: 2, rig: "continuous" }));
+near("cascade rope pull 57 lb", cas7.pullLb, 57, 1e-9);
+near("continuous rope pull 24 lb", con7.pullLb, 24, 1e-9);
+ok("cascade's card is continuous", cas7.other.rig === "continuous");
+near("cascade's card: continuous time", cas7.other.timeUp, con7.timeUp, 1e-12);
+near("cascade's card: continuous holding current", cas7.other.holdA, con7.hold.statorA, 1e-12);
+near("cascade's card: continuous rope pull", cas7.other.pullLb, 24, 1e-9);
+near("continuous's card: cascade time", con7.other.timeUp, cas7.timeUp, 1e-12);
+near("continuous's card: cascade holding current", con7.other.holdA, cas7.hold.statorA, 1e-12);
+near("continuous's card: cascade rope pull", con7.other.pullLb, 57, 1e-9);
+// Item 4: continuous rigging marks when each stage joins: stage 2 when the rope has wound in one third of the travel,
+// stage 1 at two thirds, in that order, both before the top.
+ok("two joins", con7.joins.length === 2, con7.joins.length);
+ok("stage 2 first, then stage 1", con7.joins[0].stage === 2 && con7.joins[1].stage === 1);
+near("stage 2 joins at a third of the rope", F.interp(con7.up.t, con7.up.x, con7.joins[0].t), con7.mod.seg, 0.004);
+near("stage 1 joins at two thirds", F.interp(con7.up.t, con7.up.x, con7.joins[1].t), 2 * con7.mod.seg, 0.004);
+ok("joins before the reverse to stop", con7.joins[1].t < con7.tRev1);
+ok("cascade has no joins", cas7.joins.length === 0);
+
 console.log(fails ? fails + " of " + n + " checks failed" : "all " + n + " checks passed");
 process.exit(fails ? 1 : 0);
