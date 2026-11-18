@@ -85,7 +85,7 @@ D.TILES = [
 ];
 /* Tools: small helpers that open inside the site, in the same tab. They are not apps and not link-outs, so they get
    their own closed group under Apps. Adding a tool adds one row here and one page in js/tools.js, never a new tile. */
-D.TOOL_GROUPS = [["mech", "Mechanisms"], ["drive", "Power transmission"], ["power", "Motors and power"], ["shop", "Structure and shop"], ["code", "Robot code"], ["photo", "From a photo"]];
+D.TOOL_GROUPS = [["mech", "Mechanisms"], ["drive", "Power transmission"], ["power", "Motors and power"], ["shop", "Structure, shop and code"], ["photo", "From a photo"]];
 /* top: true puts the tool in the short list under Apps and on Home; every tool is on the Tools page. */
 D.TOOLS = [
   { id: "tool-shooter", group: "mech", top: true, name: "Shooter", icon: "shooter", line: "Wheel, hood and the shot's flight, played out.", tip: "See what a wheel speed and a hood angle do to a shot, and how fast the wheel recovers." },
@@ -101,7 +101,7 @@ D.TOOLS = [
   { id: "tool-tip", group: "shop", name: "Tip-over", icon: "tip", line: "Centre of gravity and how hard you can brake.", tip: "Find where the robot's weight sits and when it tips." },
   { id: "tool-beam", group: "shop", name: "Tube strength", icon: "beam", line: "How far a tube bends and when it yields.", tip: "Pick a tube size and wall for an arm or a frame member." },
   { id: "tool-holes", group: "shop", name: "Holes and fasteners", icon: "holes", line: "Drill sizes for taps, rivets, bearings and inserts.", tip: "Look up the drill for a thread, a rivet or a press fit." },
-  { id: "tool-units", group: "code", name: "Units and code constants", icon: "units", line: "Convert, and get the numbers robot code needs.", tip: "Turn gearing and wheel size into the conversion factors for code." },
+  { id: "tool-units", group: "shop", name: "Units and code constants", icon: "units", line: "Unit conversions and the numbers robot code needs.", tip: "Turn gearing and wheel size into the conversion factors for code." },
   { id: "tool-trace", group: "photo", top: true, name: "Drawing to vector", icon: "trace", line: "A photo of a drawing becomes a laser or CAD file.", tip: "Make an SVG for the laser and a DXF for Onshape, at true size." },
   { id: "tool-gear", group: "photo", top: true, name: "Gear and sprocket finder", icon: "gear", line: "A photo and one measurement name the part.", tip: "Work out gear pitch, chain size or belt profile, then find it in Parts." }
 ];
