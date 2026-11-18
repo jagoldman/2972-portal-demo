@@ -38,7 +38,21 @@ var ICON = {
   camera: "M3 8h4l2-3h6l2 3h4v11H3zM12 17a4 4 0 1 0 0-8 4 4 0 0 0 0 8z",
   download: "M12 3v12M7 10l5 5 5-5M5 21h14",
   editor: "M4 20h4L19 9l-4-4L4 16zM14 6l4 4",
-  calc: "M6 3h12v18H6zM9 7h6M9 12h.01M12 12h.01M15 12h.01M9 16h.01M12 16h.01M15 16h.01"
+  calc: "M6 3h12v18H6zM9 7h6M9 12h.01M12 12h.01M15 12h.01M9 16h.01M12 16h.01M15 16h.01",
+  shooter: "M3 20c2-9 7-13 13-11M16 9l-4 .2M16 9l-1.6 3.6M20.5 14a1.5 1.5 0 1 0 0 3 1.5 1.5 0 0 0 0-3z",
+  elevator: "M6 3v18M18 3v18M4 21h16M9 13h6v5H9zM12 13V5M10 7l2-2 2 2",
+  arm: "M5 19a2 2 0 1 0 0-4 2 2 0 0 0 0 4zM6.5 15.5L17 6M17 6l3 1M17 6l-1 3M3 21h8",
+  drivetrain: "M6 6h12v12H6zM3 7v4M3 13v4M21 7v4M21 13v4M12 15V9M10 11l2-2 2 2",
+  intake: "M7 5a3 3 0 1 0 0 6 3 3 0 0 0 0-6zM10 8h10M4 19h16M15 13a2.5 2.5 0 1 0 0 5 2.5 2.5 0 0 0 0-5z",
+  belt: "M7 7a5 5 0 1 0 0 10A5 5 0 0 0 7 7zM18 9.5a2.5 2.5 0 1 0 0 5 2.5 2.5 0 0 0 0-5zM7 7l11 2.5M7 17l11-2.5",
+  ratio: "M8 8a5 5 0 1 0 0 10A5 5 0 0 0 8 8zM17.5 4a3 3 0 1 0 0 6 3 3 0 0 0 0-6zM8 13h.01M17.5 7h.01",
+  motor: "M4 8h11v8H4zM15 10h3v4h-3zM18 12h3M7 8V6M12 8V6M7 16v2M12 16v2",
+  battery: "M3 8h16v9H3zM19 11h2v3h-2zM7 12.5h3M8.5 11v3M13 12.5h3",
+  air: "M3 10h11v4H3zM14 12h7M21 9v6M6 10V6h5",
+  tip: "M3 20h18M6 20l4-12 8 3-3 9M12 14h.01",
+  beam: "M4 5v14M4 8h16M4 8c8 0 13 2 16 7M20 8v6M18 12l2 2 2-2",
+  holes: "M12 3v8M9 11h6l-1 4h-4zM12 15v3M5 21h14M8 6h8",
+  units: "M4 8h13M14 5l3 3-3 3M20 16H7M10 13l-3 3 3 3"
 };
 D.ICON = ICON;
 D.ic = function (name, size) { size = size || 20; return '<svg width="' + size + '" height="' + size + '" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="' + (ICON[name] || ICON.more) + '"/></svg>'; };
@@ -72,10 +86,27 @@ D.TILES = [
 ];
 /* Tools: small helpers that open inside the site, in the same tab. They are not apps and not link-outs, so they get
    their own closed group under Apps. Adding a tool adds one row here and one page in js/tools.js, never a new tile. */
+D.TOOL_GROUPS = [["mech", "Mechanisms"], ["drive", "Power transmission"], ["power", "Motors and power"], ["shop", "Structure and shop"], ["photo", "From a photo"]];
+/* top: true puts the tool in the short list under Apps and on Home; every tool is on the Tools page. */
 D.TOOLS = [
-  { id: "tool-trace", name: "Drawing to vector", icon: "trace", line: "A photo of a drawing becomes a laser or CAD file.", tip: "Make an SVG for the laser and a DXF for Onshape, at true size.", modes: ["build", "competition"], groups: BUILDERS },
-  { id: "tool-gear", name: "Gear and sprocket finder", icon: "gear", line: "A photo and one measurement name the part.", tip: "Work out gear pitch, chain size or belt profile, then find it in Parts.", modes: ["build", "competition"], groups: BUILDERS }
+  { id: "tool-shooter", group: "mech", top: true, name: "Shooter", icon: "shooter", line: "Wheel, hood and the shot's flight, played out.", tip: "See what a wheel speed and a hood angle do to a shot, and how fast the wheel recovers." },
+  { id: "tool-elevator", group: "mech", top: true, name: "Elevator", icon: "elevator", line: "Stages, rigging, speed and holding power.", tip: "Size the motor and reduction for a lift, and watch the stages move." },
+  { id: "tool-arm", group: "mech", name: "Arm", icon: "arm", line: "Torque through the swing and time to move.", tip: "Check that an arm can hold and move its load at every angle." },
+  { id: "tool-drive", group: "mech", name: "Drivetrain", icon: "drivetrain", line: "Top speed, sprint times and wheel slip.", tip: "Race two gearings over a distance to see which one gets there first." },
+  { id: "tool-intake", group: "mech", name: "Intake", icon: "intake", line: "Roller speed against driving speed.", tip: "Make sure the rollers pull a game piece in faster than the robot drives onto it." },
+  { id: "tool-spacing", group: "drive", top: true, name: "Belt, chain and gear spacing", icon: "belt", line: "Centre distances for pulleys, sprockets and gears.", tip: "Find the hole spacing that makes a belt, chain or gear pair fit." },
+  { id: "tool-ratio", group: "drive", top: true, name: "Gear ratio", icon: "ratio", line: "Build a reduction stage by stage, or find parts for one.", tip: "See speed and torque through each stage, and which stock gears reach a ratio." },
+  { id: "tool-motors", group: "power", name: "Motors", icon: "motor", line: "Torque, current and power curves, compared.", tip: "Compare motors under the current limit you will really run." },
+  { id: "tool-power", group: "power", name: "Battery and breakers", icon: "battery", line: "What the robot pulls, and when it browns out.", tip: "Add up the current of every mechanism and see the battery voltage sag." },
+  { id: "tool-air", group: "power", name: "Pneumatics", icon: "air", line: "Air used in a match against what the tanks hold.", tip: "Check that the tanks and compressor keep up with the cylinders." },
+  { id: "tool-tip", group: "shop", name: "Tip-over", icon: "tip", line: "Centre of gravity and how hard you can brake.", tip: "Find where the robot's weight sits and when it tips." },
+  { id: "tool-beam", group: "shop", name: "Tube strength", icon: "beam", line: "How far a tube bends and when it yields.", tip: "Pick a tube size and wall for an arm or a frame member." },
+  { id: "tool-holes", group: "shop", name: "Holes and fasteners", icon: "holes", line: "Drill sizes for taps, rivets, bearings and inserts.", tip: "Look up the drill for a thread, a rivet or a press fit." },
+  { id: "tool-units", group: "shop", name: "Units and code constants", icon: "units", line: "Convert, and get the numbers robot code needs.", tip: "Turn gearing and wheel size into the conversion factors for code." },
+  { id: "tool-trace", group: "photo", top: true, name: "Drawing to vector", icon: "trace", line: "A photo of a drawing becomes a laser or CAD file.", tip: "Make an SVG for the laser and a DXF for Onshape, at true size." },
+  { id: "tool-gear", group: "photo", top: true, name: "Gear and sprocket finder", icon: "gear", line: "A photo and one measurement name the part.", tip: "Work out gear pitch, chain size or belt profile, then find it in Parts." }
 ];
+D.TOOLS.forEach(function (t) { t.modes = ["build", "competition"]; t.groups = BUILDERS; t.calc = t.group !== "photo"; });
 /* ---------- Ground up helpers (GROUND_UP.md §5), shared by every app file ---------- */
 // How many practices are left from today up to and including a date ("2026-11-14"). null when it cannot be known
 // (no calendar, or the date is past). Rule 4: count in practices beside the date.
@@ -96,8 +127,8 @@ D.stages = function (steps, cur, label) {
 D.move = function (who, mine) { return '<span class="move' + (mine ? " mine" : "") + '">' + (mine ? "Your move" : "Waiting on " + esc(who)) + "</span>"; };
 D.tool = function (id) { return D.TOOLS.filter(function (t) { return t.id === id; })[0]; };
 D.isToolRoute = function (r) { return r === "tools" || !!D.tool(r); };
-// Calculators (t.calc, js/calcs.js) are new in the 8.3 proposal, so the Live version does not list them.
-D.visibleTools = function () { return D.TOOLS.filter(function (t) { return D.inGroup(t) && t.modes.indexOf(D.S.mode) >= 0 && !(t.calc && D.design() === "live"); }); };
+// The calculators (every tool but the two photo tools) are new in the 8.3 proposal, so the Live version does not list them.
+D.visibleTools = function () { return D.TOOLS.filter(function (t) { return D.views[t.id] && D.inGroup(t) && t.modes.indexOf(D.S.mode) >= 0 && !(t.calc && D.design() === "live"); }); };
 /* The Calendar app has three tabs. Who sees each one is what the Attendance and Snacks tiles used to say. */
 D.CALTABS = [
   { id: "calendar", name: "Calendar", modes: ["build", "competition"], groups: ALL },
@@ -236,10 +267,9 @@ function groupRow(id, label, count, place, body, tip) {
 D.toolRow = function (t) { return '<a class="toolrow" href="#' + t.id + '" data-act="go" data-v="' + t.id + '" data-tip="' + esc(t.tip) + '"><span class="ic">' + D.ic(t.icon, 18) + "</span><span><b>" + esc(t.name) + "</b><small>" + esc(t.line) + "</small></span></a>"; };
 function toolsGroup(place) {
   var tools = D.visibleTools(); if (!tools.length) return "";
-  // Menus are doors: the calculators get one row that opens the Tools page, not a row each.
-  var calcs = tools.filter(function (t) { return t.calc; });
-  var calcRow = calcs.length ? '<a class="toolrow" href="#tools" data-act="go" data-v="tools" data-tip="Gearbox, drivetrain, belt, chain, arm, elevator and more."><span class="ic">' + D.ic("calc", 18) + "</span><span><b>Calculators</b><small>" + calcs.length + " for gears, belts, chain and mechanisms.</small></span></a>" : "";
-  return groupRow("tools", "Tools", tools.length, place, tools.filter(function (t) { return !t.calc; }).map(D.toolRow).join("") + calcRow + '<a class="toolrow all" href="#tools" data-act="go" data-v="tools"><span>All tools</span><span class="chev" aria-hidden="true">›</span></a>');
+  // The group is a short list of doors: the tools people open most, then one link to the page that has them all.
+  var top = tools.filter(function (t) { return t.top; });
+  return groupRow("tools", "Tools", tools.length, place, top.map(D.toolRow).join("") + '<a class="toolrow all" href="#tools" data-act="go" data-v="tools"><span>All ' + tools.length + ' tools</span><span class="chev" aria-hidden="true">›</span></a>');
 }
 /* Admin apps: the link-out apps for the people who run the site (Admin, Website editor). The group shows only when
    this person may open at least one of them, and lists only those. */

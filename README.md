@@ -21,7 +21,7 @@ Everything is sample data. Nothing is saved, and a reload resets it. The only th
 | Calendar | One app, three tabs. **Calendar**: agenda and month views; admins also get "Practice pattern and sync" (mentors cannot edit practice patterns). **Attendance**: door-code sign-in, hours, mentor plans. **Snacks**: snack sign-up. Each practice day on the agenda has two short lines that open Attendance and Snacks for that day. Parents see Calendar and Snacks; students see Calendar and Attendance. |
 | Skills | Overview of what to do next, skill trees, sign-off requests, shop tool permissions. |
 | Schedule, Pit, Scouting | Event roles, pit checklists and monitor, match scouting with stats and a pick list (Competition mode). |
-| Tools | **Drawing to vector**: the sample drawing's traced outline, real size from two taps, SVG and DXF downloads (the demo only traces the sample). **Gear and sprocket finder**: sample gear or sprocket, or your photo with the teeth counted by hand, plus one caliper measurement; the size and pitch diameter are worked out for real, with doors into Parts. |
+| Tools | Sixteen small helpers on one page, found by group or by search (see "FRC calculators" below). **Drawing to vector**: the sample drawing's traced outline, real size from two taps, SVG and DXF downloads (the demo only traces the sample). **Gear and sprocket finder**: sample gear or sprocket, or your photo with the teeth counted by hand, plus one caliper measurement; the size and pitch diameter are worked out for real, with doors into Parts. |
 | Account | Profile, notifications, appearance, mode, the guided tour, sign-in. |
 
 ## Files
@@ -30,7 +30,8 @@ Everything is sample data. Nothing is saved, and a reload resets it. The only th
 - `css/<app>.css`: styles for one app.
 - `js/core.js`: sample people, routes, the shell and shared helpers (`D.*`), the Apps / Tools / Admin apps / More groups and the saved choices. `js/<app>.js`: one app each.
 - `js/tip.js`: the shared hover description (`data-tip`), the tab descriptions and the status-word glossary.
-- `js/tools.js` and `css/tools.css`: the Tools page and the two tools.
+- `js/tools.js` and `css/tools.css`: the Tools page and the two photo tools.
+- `js/frc.js`: the calculators' maths (motors, motion, flywheel, flight, belts). `js/calc.js` and `css/calc.css`: the page every calculator shares. `js/tool-<name>.js`: one calculator each. `tests/`: Node checks for the maths.
 - `js/guide.js` and `css/guide.css`: the Get started card, the stops for each role and the ring.
 
 ## Run it locally
@@ -120,3 +121,32 @@ page). Ground up adds content, so its pages are 8.8% shorter than Live in total.
 - Left as they are in Live: the Projector's task-state colours, the scouting field drawing, the tool drawings.
 - Design 8.2 (Big Shoulders and Libre Franklin) is still on branch `design-8.2`; this branch starts from it and
   replaces its stylesheet.
+
+## FRC calculators (branch `tools-calcs`, 2026-11-18): a proposal, not approved
+
+**On this branch (`tools-calcs-83`)** these fourteen take the place of the nine calculators that design 8.3 added
+(`js/calcs.js`, `css/calcs.css`): those two files are still here but no longer loaded, and the notes about them above
+describe branch `design-8.3`, which is unchanged. The fourteen show in Baseline and Ground up and not in Live, as the
+nine did. Which set to keep is the owner's call.
+
+Fourteen calculators join the two photo tools. The research, the reasons and the open decisions are in
+`../new-apps/TOOLS_CALCULATORS.md`; the contract each calculator follows is `../new-apps/briefs/calcs/KIT.md`.
+
+Every calculator has the same page: a drawing to scale that can play, one sentence that says whether the design works,
+the answers, grouped inputs with sliders, charts with a readout, "How this is worked out", and Copy link. Typing never
+redraws the page, only the answers, charts and drawing.
+
+| Group | Tools |
+|---|---|
+| Mechanisms | Shooter (one shot, rapid fire, every distance, while driving), Elevator, Arm, Drivetrain, Intake |
+| Power transmission | Belt, chain and gear spacing; Gear ratio |
+| Motors and power | Motors; Battery and breakers; Pneumatics |
+| Structure and shop | Tip-over; Tube strength; Holes and fasteners; Units and code constants |
+| From a photo | Drawing to vector; Gear and sprocket finder (unchanged) |
+
+The Tools group under Apps and on Home lists six of them and a link to all sixteen.
+
+Run the maths checks: `for f in tests/*.test.js; do node "$f"; done`.
+
+Nothing here has been checked against a real robot. The models and where they come from are in the header of
+`js/frc.js` and under "How this is worked out" on each page.
