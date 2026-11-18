@@ -21,7 +21,7 @@ Every judge in a tier must score every area at the tier's target. Fixes are made
 | 13 | 3 (9.5) | Opus, GPT-6.1 Sol, Grok 4.7 (second try; its first run could not open the images) | 8.2 to 9.3 | 16 of 16 areas under 9.5; Opus 8.5 to 8.8, Sol 8.2 to 9.3, Grok 4.7 8.5 to 9.3; lowest per area 8.2 to 8.8 |
 | 14 | 3 (9.5) | Opus, GPT-6.1 Sol, Grok 4.7 | 7.9 to 9.2 | 16 of 16 areas under 9.5; Opus 8.4 to 8.8, Sol 7.9 to 9.2, Grok 4.7 8.2 to 9.2; lowest per area 7.9 to 8.8. A dip caused by a fault the lead introduced in round 13 (see below) |
 | 15 | 3 (9.5) | Opus, GPT-6.1 Sol, Grok 4.7 | 8.2 to 9.4 | 16 of 16 areas under 9.5; Opus 8.4 to 8.9, Sol 8.8 to 9.4, Grok 4.7 8.2 to 9.1; lowest per area 8.2 to 8.9. Sol's best round: nothing under 8.8, every finding marked low |
-| 16 | 3 (9.5) | Opus, GPT-6.1 Sol, Grok 4.7 | with the judges | |
+| 16 | 3 (9.5) | Opus, Grok 4.7 (GPT-6.1 Sol stopped near the end: usage limit reached) | 8.1 to 9.4 | 16 of 16 areas under 9.5; Opus 8.4 to 9.1, Grok 4.7 8.1 to 9.4; lowest per area 8.1 to 9.1. Two judges only. Opus's best round: 11 areas at 8.8 or above |
 
 Grok 4.5 was thrown out in rounds 1 and 2: asked to copy exact text from three screenshots, it invented it.
 Grok 4.6 copied the text correctly in round 3 and counts.
@@ -216,3 +216,6 @@ drops (Tools, To order) were faults the lead introduced in round 4 and fixed bef
   as they are and are in the brief.
 - **The calendar notice's wording** has been rewritten in five rounds, each time because the next judge wanted the
   other order. It is fixed in the brief now.
+- **Round 16** had two judges; Sol reached its usage limit near the end of its run. Opus found a real fault on the
+  phone agenda (a long snack line ran under its Sign up button), now fixed, and both judges said the Pit's locked
+  checks did not look locked; the unticked boxes and their words are greyed while the robot is on the field.

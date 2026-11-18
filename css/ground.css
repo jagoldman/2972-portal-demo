@@ -720,3 +720,23 @@
   .pitaway { margin: 12px 0 0; color: var(--text-2); }
 }
 :root[data-design="c"] .tside .trowl2 { padding-left: 58px !important; }
+
+/* ---- Hill climb round 16 ---- */
+:root[data-design="c"] {
+  /* Agenda: a long snack line wraps beside its Sign up button; it never runs under it. */
+  .doorln.doorask { display: flex; align-items: center; gap: 10px; }
+  .doorask .dtxt { flex: 1 1 0; min-width: 0; }
+  .doorask .pill { white-space: normal; text-align: left; align-items: baseline; }
+  .doorask > .btn { flex: none; }
+  /* Pit, robot on the field: an unticked check and its words are plainly greyed. */
+  .robotaway .bigcheck[aria-pressed="false"] { opacity: 1; background: var(--surface-2); border-color: var(--line); }
+  .robotaway .checkrow:has(.bigcheck[aria-pressed="false"]) b { color: var(--mute); font-weight: 500; }
+  .tabs.more-l.snapl { --fl: 40px; }
+  .calcx { color: var(--text); }
+}
+/* Tasks menu, with a mouse: a row's "more" button shows when the row is pointed at or focused, so a count is a plain
+   number and not "4 ...". On a touch screen it stays visible. */
+@media (hover: hover) {
+  :root[data-design="c"] .tside .trow .more { opacity: 0; }
+  :root[data-design="c"] .tside .trow:hover .more, :root[data-design="c"] .tside .trow:focus-within .more, :root[data-design="c"] .tside .trow .more[aria-expanded="true"] { opacity: 1; }
+}

@@ -36,7 +36,7 @@ D.views.account = function () {
     '<div class="li"><span class="grow"><b>Quiet hours</b><br><span class="who">No Discord or email from 9 pm to 7 am.</span></span>' + sw("acquiet", "", "Quiet hours", a.quiet) + "</div></div></section>";
   // Ground up: when every app has the same setting, it is said once under the heading and not on every row.
   var sums = D.ground() ? apps.map(function (id) { return appSummary(a.prefs[id], a.discord); }) : [], same = sums.length && sums.every(function (x) { return x === sums[0]; }) ? sums[0] : "";
-  var notes = '<section class="card"><h2>Notifications</h2><p class="small mute">The bell always shows everything. Choose what also goes to Discord and email.</p>' + (same ? '<p class="nsame"><b>All apps: ' + esc(same.charAt(0).toLowerCase() + same.slice(1).replace(": ", " ")) + '.</b> <span class="mute">Tap an app to change it.</span></p>' : "") + '<div class="napps' + (same ? " allsame" : "") + '">' +
+  var notes = '<section class="card"><h2>Notifications</h2><p class="small mute">The bell always shows everything. Choose what also goes to Discord and email.</p>' + (same ? '<p class="nsame"><b>All apps: ' + esc(same.charAt(0).toLowerCase() + same.slice(1).replace(": ", " ")) + '.</b> <span class="mute">Choose an app to change it.</span></p>' : "") + '<div class="napps' + (same ? " allsame" : "") + '">' +
     apps.map(function (id) {
       var ap = a.prefs[id], name = D.APPNAME[id];
       return '<details class="napp" data-app="' + id + '"' + (a.open[id] ? " open" : "") + '><summary><b>' + esc(name) + '</b><span class="who">' + appSummary(ap, a.discord) + '</span><span class="nchev" aria-hidden="true">' + D.ic("chevron", 16) + "</span></summary><div class=\"nlist\">" +

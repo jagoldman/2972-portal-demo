@@ -204,7 +204,7 @@ function dayDoors(e, brief) {
   if (D.calTab("here")) out += door("here", e.date === TODAYS ? "today" : "mentors", e.date, "user", hereLine(e, brief), "Attendance");
   // Ground up: where a family can settle it in one tap, the row has the same Sign up button Home has (hill climb r2).
   var sn = C().snacks[e.date] || (D.ground() && isPractice(e) ? (C().snacks[e.date] = new Array(C().slots).fill(null)) : null), k = sn ? sn.indexOf(null) : -1;
-  if (D.calTab("snacks") && D.ground() && D.S.role === "parent" && sn && k >= 0 && sn.indexOf(snackName()) < 0) out += '<div class="doorln doorask"><span class="dtxt"><span class="pill warn">' + esc(snackLine(e.date)) + '</span></span><button class="btn sm primary" data-act="snack" data-d="' + e.date + '" data-k="' + k + '">Sign up</button></div>';
+  if (D.calTab("snacks") && D.ground() && D.S.role === "parent" && sn && k >= 0 && sn.indexOf(snackName()) < 0) out += '<div class="doorln doorask"><span class="dtxt"><span class="pill warn">' + esc(snackLine(e.date).replace(" · ", ", ")) + '</span></span><button class="btn sm primary" data-act="snack" data-d="' + e.date + '" data-k="' + k + '">Sign up</button></div>';
   else if (D.calTab("snacks")) out += door("snacks", "", e.date, "snacks", snackLine(e.date), "Snacks");
   return out ? '<div class="agdoors">' + out + "</div>" : "";
 }
