@@ -267,3 +267,16 @@
   /* Inventory: taking one is the usual action; asking for more is the quiet one beside it. */
   .pmoveonly { margin-bottom: 0; }
 }
+
+/* ---- Hill climb round 9 ---- */
+:root[data-design="c"] {
+  .ptable.gt .pbme { font-weight: inherit; color: inherit; }
+  .ptable.gt .pbme .ph { display: none; }
+  @media (max-width: 640px) { .ptable.gt .pfacts .pbme { text-transform: none; } .ptable.gt .pbme .dk { display: none; } .ptable.gt .pbme .ph { display: inline; } }
+  /* Under "Needs OK" and "To order" the heading names the step; the rows do not say it again. */
+  .ptable.gt .ptr.samest .ps .pill { position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0); }
+  /* A step nobody had to do is passed: a small grey dot on the line. */
+  .stages li.done.skip::before { border-color: var(--line-2); background: var(--line-2); transform: scale(.7); }
+  .pwait .pother { margin-left: 6px; font-size: .9rem; color: var(--accent); min-height: 34px; }
+  .pline .pqty { display: inline; font-weight: 650; color: var(--text); }
+}

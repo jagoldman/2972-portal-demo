@@ -291,7 +291,7 @@ def({ id: "calc-gearbox", key: "gearbox", name: "Gearbox", icon: "cgearbox", lin
         chart({ title: "Current per motor against output speed", ylab: "Current per motor, A", xlab: "Output speed, rpm", xmax: g.freeRpm, ymax: imax * 1.05,
           series: [{ pts: [], label: "" }, { pts: c.map(function (p) { return [p[0], p[2]]; }), label: "Current", lab: [mid[0], mid[2], "start"] }] }) + "</div>";
     }
-    return { ans: err || "A " + ratioText(g.ratio) + " to 1 gearbox. The output spins at " + rpm(g.freeRpm) + " rpm with no load and pushes up to " + sig(lim ? g.limited : g.stall) + " N·m" + (lim ? " at the " + lim + " A limit." : "."), bad: !!err, html: html };
+    return { ans: err || "A " + ratioText(g.ratio) + " to 1 gearbox. The output spins at " + rpm(g.freeRpm) + " rpm with no load and makes up to " + sig(lim ? g.limited : g.stall) + " N·m of torque" + (lim ? " at the " + lim + " A limit." : "."), bad: !!err, html: html };
   },
   how: function () { return how(["<b>Ratio.</b> Each stage is driven teeth ÷ driving teeth. Multiply the stages: 60/12 × 50/20 = 12.5 to 1.",
     "<b>Free speed.</b> Output rpm = motor free speed ÷ ratio.",
@@ -535,9 +535,9 @@ def({ id: "calc-drill", key: "drill", name: "Drill and tap chart", icon: "cdrill
         drillCell(r[1], "Tap drill") + drillCell(r[2], "Close clearance") + drillCell(r[3], "Free clearance") + "</tr>";
     }).join("");
     var html = rows.length ? '<p class="small mute calcnote">Close clearance is a snug bolt hole. Free clearance is a looser one.</p><table class="calctable"><caption class="vh">Drills for each thread</caption><thead><tr><th scope="col">Thread</th><th scope="col">Tap drill</th><th scope="col">Close clearance</th><th scope="col">Free clearance</th></tr></thead><tbody>' + body + "</tbody></table>" :
-      '<p class="empty">No thread matches "' + esc(st.q) + '". Try 10-32, 1/4-20 or M5.</p>';
+      '<p class="empty">No thread matches "' + esc(st.q) + '". Try #10-32, 1/4-20 or M5.</p>';
     var ans = !String(st.q).trim() ? "Type a thread, like 10-32 or M5, to see its drills. The two most used on the robot are marked." :
-      !first ? "No thread matches that. Try 10-32, 1/4-20 or M5." :
+      !first ? "No thread matches that. Try #10-32, 1/4-20 or M5." :
       "For a " + first[0] + " tap, drill " + drillName(first[1]) + ". For a " + first[0] + " bolt to pass through, drill " + drillName(first[2]) + " for a close fit or " + drillName(first[3]) + " for a free fit.";
     // With nothing typed the sentence is an instruction, not an answer, so it is not drawn in the answer box.
     return { ans: esc(ans), bad: !!String(st.q).trim() && !first, plain: !String(st.q).trim(), html: html };

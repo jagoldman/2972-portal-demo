@@ -393,7 +393,7 @@ var MARK = { complete: "✓", requested: "…", progress: "●", available: "", 
 var WORD = { complete: "Complete", requested: "Waiting for sign-off", progress: "In progress", available: "Available", locked: "Locked" };
 var DOT = { complete: "ok", requested: "info", progress: "warn", available: "info", locked: "" };
 var LEGEND = '<p class="sklegend"><span><i class="dotc k-locked"></i>Locked</span><span><i class="dotc k-available"></i>Available</span><span><i class="dotc k-progress"></i>In progress</span><span><i class="dotc k-requested"></i>Waiting</span><span><i class="dotc k-complete"></i>Complete</span></p>';
-function tag(t) { return '<span class="sktag" aria-hidden="true">' + t.tag + "</span>"; }
+function tag(t) { return '<span class="sktag" aria-hidden="true">' + (D.ground() ? t.tag.slice(0, 2) : t.tag) + "</span>"; }
 
 /* ---------- Views ---------- */
 D.views.skills = function () {
@@ -538,7 +538,7 @@ function permitsView() {
   var list = key ? STUDENTS.filter(function (st) { return st.toLowerCase().indexOf(key) >= 0; }) : STUDENTS;
   var heads = PERMITS.map(function (tool) {
     var n = STUDENTS.filter(function (st) { return permitState(P[st], tool) === "yes"; }).length;
-    return "<th>" + esc(tool.name) + '<br><span class="who">' + n + " of " + STUDENTS.length + "</span></th>";
+    return "<th>" + esc(tool.name) + '<br><span class="who">' + n + " of " + STUDENTS.length + (D.ground() ? " cleared" : "") + "</span></th>";
   }).join("");
   var tipFor = function (state, rec) {
     if (!g) return state === "yes" ? "Signed off by " + rec.by + " · " + rec.at : state === "training" ? "Started; the qualification is not signed off." : "Not started; may not run this tool alone.";
@@ -573,7 +573,7 @@ function permitsView() {
       return '<button class="li skmach' + (line ? "" : " noline") + '" data-act="skpermit" data-st="' + esc(st) + '" data-cat="' + tool.cat + '" data-skill="' + tool.skill + '"><b class="skmn">' + esc(tool.name) + "</b>" + permitPill(state) + (line ? '<span class="who skml">' + esc(line) + "</span>" : "") + '<span class="chev" aria-hidden="true">›</span></button>';
     }).join("") + "</div></div>";
   } else body = table;
-  return '<div class="card"><div><h2>Who can use which machine</h2><p class="who">Cleared means the written test and the demonstration are signed off. Choose ' + tapWhat + ' to open that skill.</p></div>' + find + body + "</div>";
+  return '<div class="card"><div><h2>Who can use which machine</h2><p class="who">Cleared means the written test and the demonstration are signed off. In training means they have started and may not use it alone yet. Choose ' + tapWhat + ' to open that skill.</p></div>' + find + body + "</div>";
 }
 function studentPicker() {
   var S = D.S;
@@ -688,13 +688,13 @@ function signoffView() {
        rows drop it. */
     if (g && !can && !pickable) return '<div class="skpick nobox"><b>' + esc(st) + '</b><span class="pill ' + (stt === "complete" ? "ok" : "") + '">' + (stt === "complete" ? "Signed off" : "Not open yet, earlier skills first") + "</span></div>";
     var box = g && !can ? '<span class="skpickno" aria-hidden="true"></span>' : '<button class="bigcheck sm" data-act="skbulkpick" data-v="' + esc(st) + '" aria-pressed="' + !!b.picks[st] + '"' + (can ? "" : " disabled") + ' aria-label="Pick ' + esc(st) + '">' + D.ic("check", 22) + "</button>";
-    return '<div class="skpick">' + box + "<b>" + esc(st) + '</b><span class="pill ' + (stt === "complete" ? "ok" : stt === "locked" ? "" : g && stt === "available" ? "info" : "info") + '">' + ({ complete: g ? "Signed off" : "Done", locked: g ? "Not open yet, earlier skills first" : "Locked", requested: "Asked", progress: "In progress", available: g ? "Ready for sign-off" : "Available" })[stt] + "</span></div>";
+    return '<div class="skpick">' + box + "<b>" + esc(st) + '</b><span class="pill ' + (stt === "complete" ? "ok" : stt === "locked" ? "" : g && stt === "available" ? "info" : "info") + '">' + ({ complete: g ? "Signed off" : "Done", locked: g ? "Needs earlier skills" : "Locked", requested: "Asked", progress: "In progress", available: g ? "Ready for sign-off" : "Available" })[stt] + "</span></div>";
   }).join("");
   var nobody = g && !pickable ? '<p class="skpicknone">Nobody can be signed off on this skill: everyone has it or it is not open to them yet.</p>' : "";
   var n = Object.keys(b.picks).filter(function (k) { return b.picks[k]; }).length;
   var queue = S.sk.requests.length ? S.sk.requests.map(function (r, i) {
     var x = BYID[r.id];
-    if (D.ground()) return '<div class="li skq"><span class="grow"><b>' + esc(x.name) + '</b><br><span class="who">' + esc(r.st) + " asks for a sign-off. " + esc(tree(x.tree).name) + " › " + esc(cat(tree(x.tree), x.cat).name) + (r.note ? ". “" + esc(r.note) + "”" : "") + '</span></span><span class="skqa"><button class="btn primary skqok" data-act="skqok" data-i="' + i + '">Sign off</button><button class="btn skqno" data-act="skqno" data-i="' + i + '">Send back</button></span></div>';
+    if (D.ground()) return '<div class="li skq"><span class="grow"><b>' + esc(x.name) + '</b><br><span class="who">' + esc(r.st) + " asks for a sign-off. " + esc(tree(x.tree).name) + " › " + esc(cat(tree(x.tree), x.cat).name) + (r.note ? '<span class="skqnote">“' + esc(r.note) + "”</span>" : "") + '</span></span><span class="skqa"><button class="btn primary skqok" data-act="skqok" data-i="' + i + '">Sign off</button><button class="btn skqno" data-act="skqno" data-i="' + i + '">Send back</button></span></div>';
     return '<div class="li skq"><span class="grow"><b>' + esc(r.st) + "</b> asks for <b>" + esc(x.name) + '</b><br><span class="who">' + esc(tree(x.tree).name) + " › " + esc(cat(tree(x.tree), x.cat).name) + (r.note ? " · “" + esc(r.note) + "”" : "") + '</span></span><span class="skqa"><button class="btn" data-act="skqok" data-i="' + i + '">Sign off</button><button class="btn' + (D.ground() ? "" : " ghost") + '" data-act="skqno" data-i="' + i + '">' + (D.ground() ? "Send back" : "Not yet") + "</button></span></div>";
   }).join("") : '<p class="mute">No one is waiting for a sign-off.</p>';
   var sendBack = g && S.sk.requests.length ? '<p class="who">Send back tells the student what to practice first.</p>' : "";

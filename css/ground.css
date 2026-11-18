@@ -455,3 +455,54 @@
   .anshours { display: block; padding-left: 14px; color: var(--text-2); font-size: .86rem; }
   .ev .et { display: -webkit-box; -webkit-box-orient: vertical; -webkit-line-clamp: 2; overflow: hidden; }
 }
+
+/* ---- Hill climb round 9 ---- */
+:root[data-design="c"] {
+  /* A late order date is red on Home too, as on the request and the To order tab. */
+  .nowrow .nowdue { color: var(--bad); }
+  .nowbtns { display: flex; flex: none; gap: 8px; }
+  .nowbtns .nowdeny { color: var(--bad); }
+  @media (max-width: 640px) { .nowrow.nowtall > .nowbtns { flex: 1 1 100%; } .nowbtns .btn:first-child { flex: 1 1 auto; } }
+  .nowrow .rl2 { display: block; }
+  .homemain > .evline { margin: 12px 0 2px; }
+  /* Tasks: with the left menu showing there is no second menu button. */
+  @media (min-width: 861px) { .topbar .tmenu { display: none; } }
+  /* Skills: every machine cell starts at its top, so a two-line neighbour does not push the others' second line down. */
+  .skmachs { align-items: start; }
+  .skmach { align-content: start; }
+  /* Pit: "Report problem" is a quiet link at every width, so the eye lands on what is still unchecked. */
+  .checkrow > .btn { border-color: transparent; background: none; color: var(--text-2); text-decoration: underline; text-underline-offset: 3px; font-weight: 500; }
+  /* Schedule: the block for now is the stronger fill and the word, without a second outline. */
+  .tlbar.now { box-shadow: none; }
+  .agrow .kind.ksame .kname { position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0); }
+  .acc > .card:first-of-type { border-top: 0; }
+}
+
+:root[data-design="c"] {
+  /* Home rows: a status has its own line above the words that explain it. */
+  .nowrow:not(.nowtall) .rl > .pill:first-child { display: flex; width: fit-content; }
+  .nowrow:not(.nowtall) .rl:has(> .pill) { display: block; -webkit-line-clamp: unset; overflow: visible; }
+  .skq .skqnote { display: block; }
+  .agrow .kind.ksame { display: none; }
+  /* Scouting on a phone: the match and the robot are two short lines, so the form starts higher; the count of
+     pieces comes before the drawing, since it is the tap a scout makes most. */
+  @media (max-width: 640px) {
+    .evline.evslim .evpart { display: flex; flex-wrap: wrap; align-items: baseline; gap: 0 8px; min-height: 0; padding: 6px 16px; }
+    .evline.evslim .evv { font-size: .95rem; }
+    .scauto { display: flex; flex-direction: column; }
+    .scauto > .scpath { order: 2; }
+  }
+}
+/* Tasks dashboard: what needs a mentor (blocked, late) comes before the season counts. */
+:root[data-design="c"] .grid4 > .card.kpi:nth-child(n+3) { order: -1; }
+
+:root[data-design="c"] {
+  .menu-scrim { background: rgba(0,0,0,.6); }
+  .tabs.more-l.snapl { --fl: 12px; }
+  .nextup .nextstep { margin: 0; font-size: .92rem; color: var(--text-2); }
+  .nextup .nextstep b { color: var(--text); font-weight: 650; }
+  /* Who's coming: "Coming" is a status, so the word is in the text colour and only its dot is blue. */
+  .pill.info.anscoming { color: var(--text); }
+  /* Month: one short line per event, a dot and its name; times are in Coming up. */
+  .ev .et { -webkit-line-clamp: 1; display: block; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+}

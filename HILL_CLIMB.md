@@ -14,7 +14,8 @@ Every judge in a tier must score every area at the tier's target. Fixes are made
 | 6 | 3 (9.5) | Opus, GPT-6.1 Sol, Grok 4.7 (all three passed the proof) | 7.6 to 9.0 | 16 of 16 areas under 9.5; lowest per area 7.6 to 8.6 |
 | 7 | 3 (9.5) | Opus, GPT-6.1 Sol, Grok 4.7 | 8.0 to 9.2 | 16 of 16 areas under 9.5; Opus 8.0 to 8.8, Sol 8.0 to 9.1, Grok 4.7 8.1 to 9.2; lowest per area 8.0 to 8.8 |
 | 8 | 3 (9.5) | Opus, GPT-6.1 Sol, Grok 4.7 | 7.6 to 9.2 | 16 of 16 areas under 9.5; Opus 7.6 to 8.6, Sol 7.9 to 9.2, Grok 4.7 7.8 to 8.8; lowest per area 7.6 to 8.6 (a little under round 7) |
-| 9 | 3 (9.5) | Opus, GPT-6.1 Sol, Grok 4.7 | with the judges | |
+| 9 | 3 (9.5) | Opus, GPT-6.1 Sol, Grok 4.7 | 7.8 to 9.2 | 16 of 16 areas under 9.5; Opus 8.2 to 8.8, Sol 7.8 to 9.2, Grok 4.7 8.0 to 9.1; lowest per area 7.8 to 8.8 |
+| 10 | 3 (9.5) | Opus, GPT-6.1 Sol, Grok 4.7 | with the judges | |
 
 Grok 4.5 was thrown out in rounds 1 and 2: asked to copy exact text from three screenshots, it invented it.
 Grok 4.6 copied the text correctly in round 3 and counts.
@@ -158,3 +159,13 @@ drops (Tools, To order) were faults the lead introduced in round 4 and fixed bef
   It stays on its own line, and a person's own request reads "Asked by you".
 - **The season line on a phone.** Round 4 cut it to the next milestone because the week below repeats them; round 8
   noted a milestone past this week was then nowhere. The phone line lists every coming milestone, one line each.
+- **The next-task button (round 9).** With steps left, "Mark task done" let a student close a task after one step.
+  While steps are left the card names the next step and its button ticks that step ("Mark step done"); after the
+  last step it reads "Mark task done". It uses the tick a task's own page already has.
+- **A skipped step in a request.** Round 8 said a green dot read as if someone had approved it; round 9's three
+  judges said the hollow ring read as still to do, and asked for a grey dot, a dash and a green dot. It is a small
+  grey dot named "OK not needed".
+- **"Report problem" in the Pit.** Round 1 asked for a clear button; rounds 8 and 9 said eleven buttons out-shouted
+  the ticks. It is a quiet text link at every width.
+- **Home on an event day.** A student's own job now comes first on every screen, then the match and the robot.
+- **Deny on Home.** A mentor can deny a part request from Home, beside Approve; it opens the same "why" box Parts uses.

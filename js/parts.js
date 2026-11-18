@@ -245,7 +245,7 @@ function reqSteps(r, part) {
   /* A step that is done is named in the past ("Ordered", with who and when). The step being waited for is "now" and
      is named as the thing to come ("Order"), and so are the steps after it. So the mark, the words and the sentence
      above them all say the same thing: what is finished, and what the request waits for (hill climb r5). */
-  var DONE = ["Asked", skip ? "No OK needed" : "Approved", "Ordered", "Arrived", "Put away"], TODO = ["Ask", "Approval", "Order", "Arrival", "Put away"];
+  var DONE = ["Asked", skip ? "OK not needed" : "Approved", "Ordered", "Arrived", "Put away"], TODO = ["Ask", "Approval", "Order", "Arrival", "Put away"];
   var wait = r.status === "putaway" ? 5 : cur + 1, subs = [stepSub(asked), skip ? "" : okSub, ordSub, arrSub, putSub];
   var now = panelMove(r), steps = D.stages(DONE.map(function (n, i) { return [i < wait ? n : TODO[i], subs[i], skip && i === 1 && i < wait ? "skip" : ""]; }), wait, "Where this request is");
   // The arrival date is already under Arrived, so an ordered request has no second line saying it. The order number
@@ -287,7 +287,7 @@ function requests() {
     // One row. Needs OK and To order rows leave whose move it is to their group's heading, which says it once.
     var rowG = function (r) {
       var mv = r.status === "needsok" || r.status === "toorder" ? "" : moveHtml(r);
-      return '<button class="ptr" data-act="preq" data-v="' + r.id + '"><b class="pn">' + esc(r.name) + '</b><span class="pfacts"><span class="pv">' + esc(r.vendor) + '</span><span class="pq num">' + labG("Qty") + esc(qtyText(r)) + '</span><span class="pc num r">' + money(total(r)) + '</span><span class="pb' + (r.by === me ? " pbme" : "") + '">' + (r.by === me ? "You" : esc(r.by)) + '</span><span class="pd num' + (r.need ? "" : " pnd") + '">' + (r.need ? labG("Need by") + needCell(r) : '<span class="vh">No date</span>') + '</span></span><span class="pp">' + priPill(r.pri) + '</span><span class="ps">' + statusPill(r.status) + mv + "</span></button>";
+      return '<button class="ptr' + (mv || (r.status !== "needsok" && r.status !== "toorder") ? "" : " samest") + '" data-act="preq" data-v="' + r.id + '"><b class="pn">' + esc(r.name) + '</b><span class="pfacts"><span class="pv">' + esc(r.vendor) + '</span><span class="pq num">' + labG("Qty") + esc(qtyText(r)) + '</span><span class="pc num r">' + money(total(r)) + '</span><span class="pb' + (r.by === me ? " pbme" : "") + '">' + (r.by === me ? '<span class="dk">You</span><span class="ph">you</span>' : esc(r.by)) + '</span><span class="pd num' + (r.need ? "" : " pnd") + '">' + (r.need ? labG("Need by") + needCell(r) : '<span class="vh">No date</span>') + '</span></span><span class="pp">' + priPill(r.pri) + '</span><span class="ps">' + statusPill(r.status) + mv + "</span></button>";
     };
     /* Hill climb r3: the rows go in the order of the flow, each step under one heading row with its name, its count
        and whose move it is, said once. Inside a step the rows keep the urgency order above. */
@@ -300,9 +300,9 @@ function requests() {
     var grouped = FLOW.map(function (f) {
       var inG = rows.filter(function (r) { return f[2].indexOf(r.status) >= 0; });
       if (!inG.length) return "";
-      return '<h4 class="ptg' + (oneG ? " ptgone" : "") + '"><span class="ptgn">' + (oneG ? "Already requested, " + f[1].charAt(0).toLowerCase() + f[1].slice(1) : f[1]) + (f[3] ? '<span class="' + (staffG ? "ptgm mine" : "ptgm") + '">, ' + f[3] + "</span>" : "") + '</span><span class="tcount">' + inG.length + "</span></h4>" + inG.map(rowG).join("");
+      return '<h4 class="ptg' + (oneG ? " ptgone" : "") + '"><span class="ptgn">' + (oneG ? ({ ordered: "Already on order", done: "Already arrived" })[f[0]] || "Already requested, " + f[1].charAt(0).toLowerCase() + f[1].slice(1) : f[1]) + (f[3] ? '<span class="' + (staffG ? "ptgm mine" : "ptgm") + '">, ' + f[3] + "</span>" : "") + '</span><span class="tcount">' + inG.length + "</span></h4>" + inG.map(rowG).join("");
     }).join("");
-    var table = p.filter === "wish" ? '<div class="list">' + wishList() + "</div>" : none ? "" : rows.length ? '<div class="ptable gt"><div class="pth" aria-hidden="true"><span>Part</span><span>Vendor</span><span>Quantity</span><span class="r">Cost</span><span>Asked by</span><span>Need by</span><span>Priority</span><span>Status</span></div>' + grouped + "</div>" : '<div class="empty">' + (gq ? "No requests like “" + esc(gq) + "” here. Try All open or More." : "Nothing here.") + "</div>";
+    var table = p.filter === "wish" ? '<div class="list">' + wishList() + "</div>" : none ? "" : rows.length ? '<div class="ptable gt">' + (oneG ? grouped.slice(0, grouped.indexOf("</h4>") + 5) : "") + '<div class="pth" aria-hidden="true"><span>Part</span><span>Vendor</span><span>Quantity</span><span class="r">Cost</span><span>Asked by</span><span>Need by</span><span>Priority</span><span>Status</span></div>' + (oneG ? grouped.slice(grouped.indexOf("</h4>") + 5) : grouped) + "</div>" : '<div class="empty">' + (gq ? "No requests like “" + esc(gq) + "” here. Try All open or More." : "Nothing here.") + "</div>";
     // While a search is showing, the list under the shop's answer is what has already been asked for.
     return '<div class="card preqs">' + findBox(gq, anyReq) + (none || oneG ? "" : '<h3 class="preqh">' + (gq ? "Already requested" : "Requests") + "</h3>" + (D.ground() && p.q.trim() && p.filter !== "wish" ? "" : flowRow(groups, gcount))) + table + "</div>";
   }
@@ -336,7 +336,7 @@ D.drawers.preq = function (d) {
   if (D.ground()) {
     var gacts = acts.length || cancelBtn ? '<div class="row pacts">' + acts.join("") + cancelBtn + "</div>" : "";
     // What a mentor needs to decide sits between the steps and the buttons: why, how much, and what it does to the budget.
-    var ctx = staff && r.status === "needsok" && r.why ? '<p class="pctx">' + esc(r.by) + ": “" + esc(r.why) + "”</p>" + (ob && orderByText(ob).indexOf("late") > 0 ? '<p class="pctx"><b class="pbad">' + orderByText(ob) + "</b></p>" : "") : "";
+    var ctx = staff && r.status === "needsok" && r.why ? '<p class="pctx">' + esc(r.by) + ": “" + esc(r.why) + "”</p>" + '<p class="pctx pcost"><b>' + money(total(r)) + "</b>. " + budgetEffect(r) + "</p>" + (ob && orderByText(ob).indexOf("late") > 0 ? '<p class="pctx"><b class="pbad">' + orderByText(ob) + "</b></p>" : "") : "";
     return D.drawerHead("Request #" + r.id, r.name) + (ctx ? reqSteps(r, "move") + ctx + gacts + reqSteps(r, "steps") : top + ctx + gacts) +
       (r.why && !ctx ? '<p class="mute">“' + esc(r.why) + "”</p>" : "") +
       '<dl class="pkv">' + rows.map(function (x) { return "<dt>" + x[0] + "</dt><dd>" + x[1] + "</dd>"; }).join("") + "</dl>" +
@@ -404,7 +404,7 @@ function toOrderView() {
     return '<div class="li pwait"><span class="grow"><b>' + esc(r.name) + (D.ground() && priPill(r.pri) ? " " + priPill(r.pri) : "") + '</b><span class="pmeta">' + [r.vendor, "Qty " + qtyText(r), money(total(r)), r.by].map(esc).join(D.ground() ? ", " : " · ") + "</span>" +
       // Ground up: the budget on one line with a comma, and the order-by date on its own line (hill climb r3).
       (D.ground() ? '<span class="pmeta">' + budgetEffect(r) + "</span>" + (ob ? '<span class="pmeta"><b class="pbad">' + orderByText(ob) + "</b></span>" : "") : '<span class="pmeta">' + budgetEffect(r) + (ob ? ' · <b class="pbad">order by ' + fmt(ob) + "</b>" : "") + "</span>") + (r.why ? '<span class="pmeta">“' + esc(r.why) + "”</span>" : "") + "</span>" + (D.ground() ? "" : priPill(r.pri)) +
-      '<span class="row nowrap"><button class="btn' + (D.ground() ? " primary" : "") + '" data-act="papprove" data-v="' + r.id + '">Approve</button><button class="btn' + (D.ground() ? "" : " ghost") + '" data-act="pdeny" data-v="' + r.id + '">' + (D.ground() ? "Deny" : "Deny…") + "</button></span></div>";
+      '<span class="row nowrap"><button class="btn' + (D.ground() ? " primary" : "") + '" data-act="papprove" data-v="' + r.id + '">Approve</button><button class="btn' + (D.ground() ? "" : " ghost") + '" data-act="pdeny" data-v="' + r.id + '">' + (D.ground() ? "Deny" : "Deny…") + "</button>" + (D.ground() ? '<button class="linkbtn pother" data-act="preplace" data-v="' + r.id + '">Approve a different part</button>' : "") + "</span></div>";
   }).join("") + "</div></div>" : "";
   // Ground up: the vendor whose order is due soonest comes first.
   function soonest(vn) { return byV[vn].map(function (r) { return orderBy(r) || "9999"; }).sort()[0]; }
@@ -427,7 +427,7 @@ function toOrderView() {
     }
     return '<div class="card"><div><div class="row between nowrap pvh"><h2>' + esc(vn) + '</h2><div class="row nowrap">' + (today.length ? '<span class="pill bad">Place today</span>' : "") + '<b class="num">' + money(sub) + '</b></div></div>' + facts + "</div>" +
       (v.free ? (D.ground() ? '<div class="pship">' + bar + nudge + "</div>" : bar + nudge) : "") +
-      '<div class="list">' + lines.map(function (r) { var ob = orderBy(r); return '<div class="li pline"><span class="grow"><b>' + esc(r.name) + '</b><span class="pmeta">' + (D.ground() ? (ob ? '<b class="pob">' + orderByText(ob) + "</b>" : "") + [r.sku, "qty " + qtyText(r), bname(r.bud), "for " + r.sub, r.by].map(esc).join(", ") : [r.sku, "Qty " + qtyText(r), bname(r.bud), "for " + r.sub, r.by].map(esc).join(" · ") + (ob ? " · order by " + fmt(ob) : "")) + '</span></span><span class="pside"><span class="num">' + money(total(r)) + "</span>" + priPill(r.pri) + "</span></div>"; }).join("") + "</div>" +
+      '<div class="list">' + lines.map(function (r) { var ob = orderBy(r); return '<div class="li pline"><span class="grow"><b>' + esc(r.name) + '</b><span class="pmeta">' + (D.ground() ? (ob ? '<b class="pob">' + orderByText(ob) + "</b>" : "") + '<b class="pqty">Qty ' + esc(qtyText(r)) + "</b>, " + [r.sku, bname(r.bud) === r.sub ? "" : bname(r.bud), "for " + r.sub, r.by].filter(Boolean).map(esc).join(", ") : [r.sku, "Qty " + qtyText(r), bname(r.bud), "for " + r.sub, r.by].map(esc).join(" · ") + (ob ? " · order by " + fmt(ob) : "")) + '</span></span><span class="pside"><span class="num">' + money(total(r)) + "</span>" + priPill(r.pri) + "</span></div>"; }).join("") + "</div>" +
       '<div class="row"><button class="btn' + (today.length ? " primary" : "") + '" data-act="pmarkordered" data-v="' + esc(vn) + '">' + (D.ground() ? "Mark ordered" : "Mark ordered…") + '</button><button class="btn' + (D.ground() ? " ghost" : "") + '" data-act="pcopy" data-v="' + esc(vn) + '">' + (vn === "Amazon" ? "Open Share-A-Cart" : "Copy list") + "</button></div></div>";
   }).join("") + (two ? "</div></div>" : "");
 }

@@ -161,7 +161,7 @@ function calendarTab() {
   if (!list.some(function (x) { return x[0] === t; })) t = def;
   return subnav("calendar", list, def) + (t === "agenda" ? agenda() : t === "setup" ? setup() : month());
 }
-function evBtn(e) { return '<button class="ev ' + KIND[e.kind][1] + '" data-act="calev" data-v="' + e.id + '" data-tip="' + esc(e.name + " · " + span(e)) + '" aria-label="' + esc(e.name) + '"><span class="et">' + (e.start ? (D.ground() ? t12(e.start) : t12(e.start).replace(" pm", "p").replace(" am", "a")) + " " : "") + esc(D.ground() ? e.name.split(":")[0] : e.name) + "</span></button>"; }
+function evBtn(e) { return '<button class="ev ' + KIND[e.kind][1] + '" data-act="calev" data-v="' + e.id + '" data-tip="' + esc(e.name + " · " + span(e)) + '" aria-label="' + esc(e.name) + '"><span class="et">' + (e.start && !D.ground() ? t12(e.start).replace(" pm", "p").replace(" am", "a") + " " : "") + esc(D.ground() ? e.name.split(":")[0] : e.name) + "</span></button>"; }
 function month() {
   var c = C(), y = c.month[0], m = c.month[1], first = new Date(y, m, 1), start = new Date(y, m, 1 - first.getDay());
   var cells = "";
@@ -210,7 +210,7 @@ function dayDoors(e, brief) {
 function agenda() {
   var items = upcoming(18);
   return '<div class="card"><h2>Coming up</h2><div class="list">' + items.map(function (e) {
-    return '<div class="agitem"><button class="li agrow" data-act="calev" data-v="' + e.id + '"><b class="num agdate">' + fmt(e.date) + (e.end2 ? "–" + fmt(e.end2, { month: "short", day: "numeric" }) : "") + '</b><span class="grow"><b>' + esc(e.name) + '</b><span class="who agmore">' + span(e) + (e.where ? " · " + esc(e.where) : "") + '</span></span><span class="kind ' + KIND[e.kind][1] + '"><i class="kd"></i>' + KIND[e.kind][0] + "</span></button>" + (isPractice(e) ? dayDoors(e) : "") + "</div>";
+    return '<div class="agitem"><button class="li agrow" data-act="calev" data-v="' + e.id + '"><b class="num agdate">' + fmt(e.date) + (e.end2 ? "–" + fmt(e.end2, { month: "short", day: "numeric" }) : "") + '</b><span class="grow"><b>' + esc(e.name) + '</b><span class="who agmore">' + span(e) + (e.where ? " · " + esc(e.where) : "") + '</span></span><span class="kind ' + KIND[e.kind][1] + (D.ground() && KIND[e.kind][0] === e.name ? " ksame" : "") + '"><i class="kd"></i><span class="kname">' + KIND[e.kind][0] + "</span></span></button>" + (isPractice(e) ? dayDoors(e) : "") + "</div>";
   }).join("") + "</div></div>";
 }
 function setup() {
@@ -265,7 +265,7 @@ function today() {
   return '<div class="card hero statuscard"><div class="grow"><h2>' + (mine ? "Signed in since " + esc(mine.at) : "You are not signed in") + '</h2><p class="small mute">Practice today, ' + span({ start: "15:30", end: "18:00" }) + (D.ground() && !mine ? ". Tap Sign in to scan the code at the door." : "") + "</p></div>" +
     (mine ? '<button class="btn" data-act="hereout">Sign out</button>' : '<button class="btn primary" data-act="herescan">' + D.ic("qr", 16) + (D.ground() ? " Sign in" : " Scan the door code") + "</button>") + "</div>" +
     '<div class="grid2"><div class="card"><div class="row between"><h2>' + (D.ground() ? 'Here now <span class="tcount">' + c.here.length + "</span>" : "Here now · " + c.here.length) + "</h2>" + (staff ? '<button class="btn sm" data-act="hereall">Sign everyone out</button>' : "") + '</div><div class="list">' +
-    (c.here.length ? c.here.map(function (h, i) { return '<div class="li"><span class="ring"></span><b class="grow">' + esc(h.name) + '</b><span class="who">since ' + esc(h.at) + "</span>" + (staff ? '<button class="btn ghost sm" data-act="hereone" data-i="' + i + '">Sign out</button>' : "") + "</div>"; }).join("") : '<div class="empty">Nobody is signed in yet.</div>') + '</div></div>' +
+    (c.here.length ? c.here.map(function (h, i) { return '<div class="li"><span class="ring"></span><b class="grow">' + esc(h.name) + '</b><span class="who">' + (D.ground() ? "Here since " : "since ") + esc(h.at) + "</span>" + (staff ? '<button class="btn ghost sm" data-act="hereone" data-i="' + i + '">Sign out</button>' : "") + "</div>"; }).join("") : '<div class="empty">Nobody is signed in yet.</div>') + '</div></div>' +
     '<div class="card"><h2>Mentors</h2><div class="list">' + ms + "</div></div></div>";
 }
 function hoursOf(n) { var a = C().att[n], s = 0; Object.keys(a).forEach(function (d) { if (a[d] > 0) s += a[d]; }); C().adjust.forEach(function (x) { if (x.who === n) s += x.hours; }); return s + 24 + (n.charCodeAt(0) * 7 + n.length * 3) % 23 * .75; }
@@ -353,7 +353,7 @@ function whosComing(ed, days) {
 }
 function answerLabel(a, student) {
   // Ground up: one style for every answer, a dot and a word.
-  if (D.ground() && a && a.st === "coming") return '<span class="pill info">Coming</span>' + (range(a) ? '<span class="anshours num">' + range(a) + "</span>" : "");
+  if (D.ground() && a && a.st === "coming") return '<span class="pill info anscoming">Coming</span>' + (range(a) ? '<span class="anshours num">' + range(a) + "</span>" : "");
   if (D.ground() && a && a.st === "cant" && !student) return '<span class="pill">Not coming</span>';
   if (a && a.st === "coming") return '<span class="ans-ok">' + D.ic("check", 13) + " " + (range(a) || "Coming") + "</span>";
   if (a && a.st === "cant" && !student) return '<span class="mute">✕ Not coming</span>';
