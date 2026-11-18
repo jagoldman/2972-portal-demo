@@ -79,21 +79,8 @@ M.needText = function (need, have, cfm) {
   return "It would take " + need + " tanks of this size (" + (need - have) + " more)" + (cfm ? "." : ", or a compressor on the robot.");
 };
 
-/* A chart's level scale set to chosen values: the kit picks round ticks, and this chart wants 0, the working pressure
-   and the stored pressure. It takes the kit's SVG, removes the y ticks and their grid lines, and draws the chosen ones.
-   The numbers below are the kit's chart frame (width 480, left 46, right 14, top 24 with a y label, bottom 34 with an
-   x label). lab: { y, label, x, xmax, above } names a level line at a chosen place. */
-M.yTicks = function (html, vals, ymax, H, lab) {
-  var W = 480, pl = 46, pr = 14, pt = 24, pb = 34;
-  function Y(v) { return H - pb - v / ymax * (H - pt - pb); }
-  var add = vals.filter(function (v, i) { return v >= 0 && v <= ymax && vals.indexOf(v) === i; }).map(function (v) {
-    return '<line class="cgrid" x1="' + pl + '" x2="' + (W - pr) + '" y1="' + Y(v).toFixed(1) + '" y2="' + Y(v).toFixed(1) + '"/><text class="ctick" x="' + (pl - 6) + '" y="' + (Y(v) + 4).toFixed(1) + '" text-anchor="end">' + v + "</text>";
-  }).join("");
-  if (lab) { var lx = pl + lab.x / lab.xmax * (W - pl - pr); add += '<text class="cnote" x="' + lx.toFixed(1) + '" y="' + (Y(lab.y) + (lab.above ? -4 : 12)).toFixed(1) + '" text-anchor="middle">' + lab.label + "</text>"; }
-  html = html.replace(/<line class="cgrid"[^>]*\/><text class="ctick" x="40"[^>]*>[^<]*<\/text>/g, "");
-  var at = html.indexOf('<line class="caxis"');
-  return at < 0 ? html : html.slice(0, at) + add + html.slice(at);
-};
+// The tank chart's y ticks: 0, the working pressure and the stored pressure, the two typed in.
+M.tankTicks = function (o) { return [0, o.work, o.stored].filter(function (v, i, a) { return a.indexOf(v) === i; }); };
 
 if (typeof module !== "undefined" && module.exports) { module.exports = M; return; }
 
@@ -150,11 +137,11 @@ K.tool({
     var more = r.cycles ? "This assumes the cycles are spread evenly through the match, no leaks and ideal air use (no air lost in tubing, fittings or cooling). Keep a margin." : "";
     return K.verdict(st, text, more) + K.outs([
       { k: "Air used in a match", v: K.n(L(r.used), 2), u: "L", sub: "free air: its volume let out to room pressure", tip: "Free air: the volume it would fill at atmospheric pressure. Each stroke fills its cylinder at working pressure, then lets it out." },
-      { k: "Stored above working", v: K.n(L(r.stored), 2), u: "L", sub: "free air the tanks give up falling from " + o.stored + " to " + o.work + " psi", tip: "Only the air above working pressure is usable at full force." },
+      { k: "Stored above working", v: K.n(L(r.stored), 2), u: "L", sub: r.cycles && isFinite(share) ? "the match uses " + K.n(share * 100, 0) + "% of it" : "between " + o.stored + " and " + o.work + " psi", state: !r.firstShort && share > 0.8 ? "warn" : "", tip: "Free air the tanks give up falling from " + o.stored + " to " + o.work + " psi. Only the air above working pressure is usable at full force." },
       { k: "Pressure at the end", v: K.n(r.end, 0), u: "psi", state: r.end < o.work - 1e-6 ? "bad" : "", sub: "in the tanks" },
       { k: "Cycles at full force", v: r.firstShort ? r.fullCycles + " of " + r.cycles : r.cycles ? "All " + r.cycles : "None", state: r.firstShort ? "bad" : "",
-        sub: r.firstShort ? "then below " + o.work + " psi" : r.cycles ? "evenly spaced cycles, no leaks or line losses" : "no cycles planned", tip: "Full force is theoretical: pressure times area, before friction and flow losses." },
-      { k: r.firstShort ? "Tanks it would take" : "Share of stored air", v: r.firstShort ? (r.need === Infinity ? "none will do" : r.need ? String(r.need) : "over " + M.MAXT) : K.n(share * 100, 0) + "%", state: r.firstShort ? "bad" : share > 0.8 ? "warn" : "", sub: r.firstShort ? "of " + K.n(o.ml, 0) + " mL" + (o.cfm ? ", with the compressor" : "") : "of what is stored above " + o.work + " psi" }]);
+        sub: r.firstShort ? "then below " + o.work + " psi" : r.cycles ? "all " + r.cycles + " cycles get the full " + o.work + " psi" : "no cycles planned", tip: "Assumes evenly spaced cycles, no leaks and no line losses. Full force is theoretical: pressure times area, before friction and flow losses." },
+      r.firstShort ? { k: "Tanks it would take", v: r.firstShort ? (r.need === Infinity ? "none will do" : r.need ? String(r.need) : "over " + M.MAXT) : K.n(share * 100, 0) + "%", state: r.firstShort ? "bad" : share > 0.8 ? "warn" : "", sub: r.firstShort ? "of " + K.n(o.ml, 0) + " mL" + (o.cfm ? ", with the compressor" : "") : "of what is stored above " + o.work + " psi" } : null]);
   },
 
   more: function (s, r) {
@@ -163,10 +150,9 @@ K.tool({
     // The tank chart's scale marks 0, the working pressure and the stored pressure (the two typed in), and names the
     // start and the working line where neither touches the curve.
     var ch = anyShort ? 190 : 160, ytop = Math.max(o.stored * 1.2, 10);
-    var chart = K.chart({ id: "air-p", h: ch, title: "Tank pressure through the match", x: { label: "match time, s", name: "At", unit: "s", min: 0, max: o.match }, y: { label: "psi", unit: "psi", min: 0, max: ytop },
+    var chart = K.chart({ id: "air-p", h: ch, title: "Tank pressure through the match", note: "Dashed: working pressure, " + o.work + " psi.", x: { label: "match time, s", name: "At", unit: "s", min: 0, max: o.match }, y: { label: "psi", unit: "psi", min: 0, max: ytop, ticks: M.tankTicks(o) },
       series: [{ name: "Tank pressure", pts: r.pts, color: 1 }], hlines: [{ y: o.work }], dots: [{ x: 0, y: o.stored, label: o.stored + " psi stored" }],
       marks: r.firstShort ? [{ x: r.firstShort.t, label: "Below working" }] : [] });
-    chart = M.yTicks(chart, [0, o.work, o.stored], ytop, ch, workLab(r, o));
     var strokes = !anyShort ? "" : K.chart({ id: "air-s", title: "Pressure each stroke gets", x: { label: "match time, s", name: "At", unit: "s", min: 0, max: o.match }, y: { label: "psi", unit: "psi", min: 0, max: Math.max(o.work * 1.2, 5) },
       series: r.cyls.map(function (cy, j) { return { name: cy.name, color: j < 3 ? j + 1 : "mute", dash: j % 2 === 1, pts: r.ev.filter(function (e) { return e.i === j; }).map(function (e) { return [e.t, e.p]; }) }; }), hlines: [workLine(o.work, "Working " + o.work + " psi", r.cyls.map(function (cy, j) { return r.ev.filter(function (e) { return e.i === j; }).map(function (e) { return [e.t, e.p]; }); }), Math.max(o.work * 1.2, 5), o.match, [])] });
     var tab = '<section class="ctab"><h2>Cylinders at ' + o.work + ' psi</h2><div class="scroll"><table><thead><tr><th>Cylinder</th><th class="r">Bore × stroke</th><th class="r">Rod</th><th class="r">Cycles</th><th class="r">Air per cycle</th><th class="r">Push, theoretical</th><th class="r">Pull, theoretical</th><th class="r">Cycles if only this cylinder used the tanks</th></tr></thead><tbody>' +
@@ -226,14 +212,6 @@ function playNote(match) {
 }
 D.after.push(function () { if (D.S.route === ID) { var s = K.state(ID); playNote(s && s.match || 160); } });
 
-/* Where to name the working-pressure line on the tank chart: under it, right of the middle, while the tanks stay above
-   it all match; once they fall below, under it in the part before that (when it is long enough) or above it near the end. */
-function workLab(r, o) {
-  var L = { y: o.work, label: "Working " + o.work + " psi", xmax: o.match, x: 0.72 * o.match, above: false };
-  if (r.firstShort) { if (r.firstShort.t > 0.35 * o.match) L.x = r.firstShort.t / 2; else { L.x = 0.88 * o.match; L.above = true; } }
-  return L;
-}
-
 /* ---------- Rows of cylinders ---------- */
 D.inputs.aircyl = function (el) {
   var s = K.state(ID), i = +el.dataset.i, f = el.dataset.f, c = s.cyls[i]; if (!c) return;
@@ -259,6 +237,7 @@ D.acts.airdel = function (b) { var s = K.state(ID); s.cyls.splice(+b.dataset.i, 
     ".t-air-wide .chart svg { max-width: 600px; } .t-air-under { margin: 0; font-size: .9rem; color: var(--text-2); }" +
     ".t-air-f .inp.t-air-bad { border-color: var(--bad); background: var(--bad-bg); }" +
     "@media (max-width: 640px) { .t-air-v .inp, .t-air-top .inp { min-height: 44px; } }";
+  st.textContent += "@media (max-width: 640px) { .bench[data-calc=\"tool-air\"] .outs > .out:last-child:nth-child(odd) { grid-column: 1 / -1; } }";   // no card alone beside an empty cell
   document.head.appendChild(st);
 })();
 
@@ -276,7 +255,9 @@ function drawAir(g, s, r, t) {
   var kx = 12, ky = H - 9, k0 = narrow ? "Double-acting:" : "Double-acting cylinders, each with a valve:";
   g.text(k0, kx, ky, { color: c.mute, size: 11 }); kx += g.textWidth(k0, { size: 11 }) + 10;
   g.line(kx, ky - 4, kx + 22, ky - 4, { color: c.s1, width: 3 }); kx += 27; g.text("fed", kx, ky, { color: c.text2, size: 11, weight: 600 }); kx += g.textWidth("fed", { size: 11, weight: 600 }) + 14;
-  g.line(kx, ky - 4, kx + 22, ky - 4, { color: c.mute, width: 1.5, dash: [4, 3] }); kx += 27; g.text("venting to the room", kx, ky, { color: c.text2, size: 11, weight: 600 });
+  g.line(kx, ky - 4, kx + 22, ky - 4, { color: c.mute, width: 1.5, dash: [4, 3] }); kx += 27; g.text(narrow ? "venting" : "venting to the room", kx, ky, { color: c.text2, size: 11, weight: 600 }); kx += g.textWidth(narrow ? "venting" : "venting to the room", { size: 11, weight: 600 }) + 14;
+  ctx.globalAlpha = 0.45; g.rect(kx, ky - 10, 18, 9, { fill: c.s1, stroke: null }); ctx.globalAlpha = 1; g.rect(kx, ky - 10, 18, 9, { stroke: c.partLine, width: 1 }); kx += 23;
+  g.text(narrow ? "pressure" : "side under pressure", kx, ky, { color: c.text2, size: 11, weight: 600 });
   /* The supply: tanks, gauge, regulator. A narrow column at the left on a laptop; a short band across the top on a
      phone. The cylinders get the rest, so they are the larger part of the drawing. */
   var leftW = narrow ? W : F.clamp(W * 0.3, 236, 300);
@@ -296,7 +277,7 @@ function drawAir(g, s, r, t) {
     g.line(x + tw / 2, ty0 + th, x + tw / 2, feedY, { color: c.mute, width: 2 });
   }
   // Gauge, to the right of the tanks; its stem drops to the feed line below it, clear of the "psi" in its face.
-  var gr = narrow ? 30 : F.clamp((leftW - (tanksRight - tx0) - 66) / 2, 26, 44), gx = tanksRight + 20 + gr, gy = narrow ? ty0 + th / 2 - 2 : ty0 + gr + 16;
+  var gr = narrow ? 36 : F.clamp((leftW - (tanksRight - tx0) - 66) / 2, 26, 44), gx = tanksRight + 20 + gr, gy = narrow ? ty0 + th / 2 - 2 : ty0 + gr + 16;
   if (gy + gr + 6 > feedY) gy = feedY - gr - 6;
   g.line(gx, gy + gr, gx, feedY, { color: c.mute, width: 2 });
   // The band key: under the gauge, right of its stem, on a laptop; at the top right of the supply band on a phone.
@@ -363,7 +344,8 @@ function drawAir(g, s, r, t) {
     g.dim(rod0 + 2, mid + bh / 2 + 4, rodFull + 2, mid + bh / 2 + 4, fmtIn(cy.stroke) + " in stroke", -1, { side: "below", size: 11 });
     // Body, with the pressurised side tinted.
     var px = bx + cap + st.ext * cy.stroke * k, pw = Math.max(3, 0.3 * k);
-    ctx.globalAlpha = st.moving ? 0.45 : 0.18;
+    // The chamber under pressure, shaded: behind the piston when it extends, in front of it (round the rod) when it retracts.
+    ctx.globalAlpha = st.moving ? 0.6 : 0.32;
     if (st.dir === "out") g.rect(bx + cap * 0.5, mid - bh / 2 + 1, px - bx - cap * 0.5, bh - 2, { fill: short ? c.bad : c.s1, stroke: null });
     else g.rect(px + pw, mid - bh / 2 + 1, bx + body - cap * 0.5 - px - pw, bh - 2, { fill: short ? c.bad : c.s1, stroke: null });
     ctx.globalAlpha = 1;
@@ -379,8 +361,10 @@ function drawAir(g, s, r, t) {
     if (st.moving) {
       var fp = M.forces(cy, st.p), fv = st.dir === "out" ? fp.push : fp.pull, len = 12 + (arrowRoom - 18) * fv / maxF, fx = rodEnd + 8, fcol = short ? c.bad : c.force;
       if (st.dir === "out") g.arrow(fx, mid, fx + len, mid, { color: fcol, width: 2.5 }); else g.arrow(fx + len, mid, fx, mid, { color: fcol, width: 2.5 });
-      var lab = (st.dir === "out" ? "push " : "pull ") + K.n(fv, 1) + " lbf, theoretical", lw = g.textWidth(lab, { size: 11, weight: 700 });
-      g.text(lab, Math.min(fx, W - 8 - lw), mid - Math.max(rh, 6) / 2 - 7, { color: fcol, weight: 700, size: 11 });
+      // Its value above the rod's travel, inside the drawing.
+      var lab = (st.dir === "out" ? "push " : "pull ") + K.n(fv, 1) + " lbf, " + (narrow ? "ideal" : "theoretical"), lw = g.textWidth(lab, { size: 11, weight: 700 });
+      var lx0 = Math.max(bx + body + 12, Math.min((rod0 + rodFull) / 2 - lw / 2, W - 10 - lw));
+      g.text(lab, lx0, mid - Math.max(rh, 6) / 2 - 8, { color: fcol, weight: 700, size: 11 });
     }
   });
 }
@@ -412,7 +396,7 @@ function gauge(g, x, y, R, P, o, full, key) {
   var close = Math.abs(ang(o.stored) - ang(o.work)) < 0.35;
   (close ? [[0, "0"], [o.stored, String(o.stored)]] : [[0, "0"], [o.work, String(o.work)], [o.stored, String(o.stored)]]).forEach(function (m) {
     var a = ang(m[0]), cs = Math.cos(a), sn = Math.sin(a);
-    g.line(x + cs * (R - 12), y + sn * (R - 12), x + cs * (R + 3), y + sn * (R + 3), { color: c.text, width: 2 });
+    g.line(x + cs * (R - 7), y + sn * (R - 7), x + cs * (R + 3), y + sn * (R + 3), { color: c.text, width: 2 });
     g.text(m[1], x + cs * (R + 7), y + sn * (R + 7) + (sn > 0.5 ? 4 : sn < -0.5 ? -1 : 0), { size: 11, color: c.text, weight: 700, align: cs < -0.25 ? "right" : cs > 0.25 ? "left" : "center", base: sn < -0.5 ? "alphabetic" : sn > 0.5 ? "top" : "middle" });
   });
   // A key for the two bands, in their own colours, where the caller has room for it.
@@ -429,7 +413,8 @@ function gauge(g, x, y, R, P, o, full, key) {
   var an = ang(P), low = P < o.work - 1e-6;
   g.line(x, y, x + Math.cos(an) * (R - 9), y + Math.sin(an) * (R - 9), { color: low ? c.bad : c.text, width: 2.5 });
   g.circle(x, y, 3.5, { fill: c.text, stroke: null });
-  g.text(K.n(P, 0), x, y + R * 0.42, { align: "center", base: "middle", weight: 700, size: R < 34 ? 12 : 13, color: low ? c.bad : c.text });
-  g.text("psi", x, y + R * 0.42 + (R < 34 ? 11 : 13), { align: "center", base: "middle", size: 10, color: c.mute });
+  // The reading, in the empty bottom of the dial (the scale's gap), clear of the needle's hub and the ticks.
+  g.text(K.n(P, 0), x, y + R * 0.38, { align: "center", base: "middle", weight: 700, size: 13, color: low ? c.bad : c.text });
+  g.text("psi", x, y + R * 0.38 + 12, { align: "center", base: "middle", size: 10, color: c.mute });
 }
 })(typeof window !== "undefined" ? window : this);

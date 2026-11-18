@@ -104,7 +104,7 @@ var def = {
     // pickers first); on a laptop it stays with the answers.
     if (r && r.head == null) def.outs(s, r);
     if (r && r.head) html += '<p class="t-holes-ans">' + esc(r.head) + "</p>";
-    return K.group(ID, "what", "Hole", html);
+    return K.group(ID, "what", "Hole", html) + K.group(ID, "find", "Find in the table", findBox(s, "holes-find", "t-holes-find t-holes-find-l"));
   },
 
   outs: function (s, r) {
@@ -153,22 +153,27 @@ var def = {
     function use(k) { return '<button class="btn sm" data-act="holesuse" data-v="' + k + '">Draw it</button>'; }
     var list = [];                                  // the same rows as one line each, for a phone: name, drill, size
     function line0(l) { return l ? l.join(" ") : ""; }
-    function tr(k, cells, line) {
+    var grp = null, ncol = 0;
+    // A thin heading row (and a list heading on a phone) where the rows change from inch sizes to metric ones.
+    function head2(metric) { var t = metric ? "Metric" : "Inch"; list.push('<p class="t-holes-grp" data-grp="1">' + t + "</p>"); return '<tr class="t-holes-grp" data-grp="1"><th colspan="' + ncol + '">' + t + "</th></tr>"; }
+    function tr(k, cells, line, metric) {
+      var pre = "";
+      if (metric != null && metric !== grp) { grp = metric; pre = head2(metric); }
       line = line || [cells[0], cells[1], cells[2]];
       var on = k === r.i, raw = findKey(cells.join(" ") + " " + line0(line)), key = esc(raw), hid = FIND && raw.indexOf(findKey(FIND)) < 0 ? " hidden" : "";
       list.push('<button class="t-holes-row' + (on ? " on" : "") + '" data-act="holesuse" data-v="' + k + '" data-find="' + key + '"' + hid + (on ? ' aria-current="true"' : "") + '><b>' + esc(line[0]) + '</b><span>' + esc(line[1]) + '</span><span class="num">' + esc(line[2]) + "</span>" + (on ? '<span class="pill ok">Drawn</span>' : '<span class="t-holes-go" aria-hidden="true">Draw</span>') + "</button>");
-      return '<tr data-find="' + key + '"' + hid + ' class="' + (on ? "pick" : "") + '">' + cells.map(function (c, j) { return "<td" + (j ? ' class="r num"' : "") + ">" + esc(c) + "</td>"; }).join("") + '<td class="r">' + (on ? '<span class="pill ok">Drawn</span>' : use(k)) + "</td></tr>";
+      return pre + '<tr data-find="' + key + '"' + hid + ' class="' + (on ? "pick" : "") + '">' + cells.map(function (c, j) { return "<td" + (j ? ' class="r num"' : "") + ">" + esc(c) + "</td>"; }).join("") + '<td class="r">' + (on ? '<span class="pill ok">Drawn</span>' : use(k)) + "</td></tr>";
     }
     if (s.kind === "tap") {
-      head = ["Thread", "Tap drill", "Inches", "mm"];
-      rows = M.TAPS.map(function (t, k) { var x = M.inch(t[2], t[3]); return tr(k, [t[0], t[1], x.toFixed(4), (x * 25.4).toFixed(2)], [t[0], t[1], x.toFixed(4) + " in"]); });
+      head = ["Thread", "Tap drill", "Inches", "mm"]; ncol = 5;
+      rows = M.TAPS.map(function (t, k) { var x = M.inch(t[2], t[3]); return tr(k, [t[0], t[1], x.toFixed(4), (x * 25.4).toFixed(2)], [t[0], t[1], x.toFixed(4) + " in"], !!t[3]); });
     } else if (s.kind === "clear" || s.kind === "print") {
       if (s.kind === "clear") {
-        head = ["Screw", "Close fit", "Inches", "Free fit", "Inches"];
-        rows = M.CLEAR.map(function (t, k) { var free = s.fit === "free"; return tr(k, [t[0], t[1], M.inch(t[2], t[5]).toFixed(4), t[3], M.inch(t[4], t[5]).toFixed(4)], [t[0] + " screw", (free ? "free " : "close ") + (free ? t[3] : t[1]), M.inch(free ? t[4] : t[2], t[5]).toFixed(4) + " in"]); });
+        head = ["Screw", "Close fit", "Inches", "Free fit", "Inches"]; ncol = 6;
+        rows = M.CLEAR.map(function (t, k) { var free = s.fit === "free"; return tr(k, [t[0], t[1], M.inch(t[2], t[5]).toFixed(4), t[3], M.inch(t[4], t[5]).toFixed(4)], [t[0] + " screw", (free ? "free " : "close ") + (free ? t[3] : t[1]), M.inch(free ? t[4] : t[2], t[5]).toFixed(4) + " in"], !!t[5]); });
       } else {
-        head = ["Screw", "Close-fit hole", "Model it at", "Inches"];
-        rows = M.CLEAR.map(function (t, k) { var w = M.inch(t[2], t[5]) * 25.4; return tr(k, [t[0], w.toFixed(1) + " mm", (w + M.PRINT_ADD_MM).toFixed(1) + " mm", ((w + M.PRINT_ADD_MM) / 25.4).toFixed(4)], [t[0] + " screw", "model " + (w + M.PRINT_ADD_MM).toFixed(1) + " mm", ((w + M.PRINT_ADD_MM) / 25.4).toFixed(4) + " in"]); });
+        head = ["Screw", "Close-fit hole", "Model it at", "Inches"]; ncol = 5;
+        rows = M.CLEAR.map(function (t, k) { var w = M.inch(t[2], t[5]) * 25.4; return tr(k, [t[0], w.toFixed(1) + " mm", (w + M.PRINT_ADD_MM).toFixed(1) + " mm", ((w + M.PRINT_ADD_MM) / 25.4).toFixed(4)], [t[0] + " screw", "model " + (w + M.PRINT_ADD_MM).toFixed(1) + " mm", ((w + M.PRINT_ADD_MM) / 25.4).toFixed(4) + " in"], !!t[5]); });
         rows.push(tr(M.CLEAR.length, ["Heat-set insert", "Maker's size", "Maker's size", ""], ["Heat-set insert", "maker's size", ""]));
       }
     } else if (s.kind === "rivet") {
@@ -179,8 +184,7 @@ var def = {
       rows = M.PRESS.map(function (t, k) { return tr(k, [t[0], t[1] == null ? "Part's own bore" : t[1].toFixed(3) + " in", t[2] == null ? "Part's own bore" : t[2].toFixed(3) + " in"], [t[0], t[1] == null ? "part's own bore" : "slip " + t[1].toFixed(3), t[2] == null ? "" : "press " + t[2].toFixed(3)]); });
     }
     var title = { tap: "Tap drills", clear: "Clearance holes", rivet: "Blind rivets", press: "Press and slip fits (rules of thumb)", print: "3D-printed holes (starting points)" }[s.kind];
-    var findLabel = s.kind === "tap" ? "Find a thread or drill" : s.kind === "press" ? "Find a part" : s.kind === "rivet" ? "Find a rivet or drill" : "Find a screw or drill";
-    out += '<section class="ctab t-holes-tab"><h2>' + title + '</h2><label class="t-holes-find"><span>' + findLabel + '</span><input class="inp" type="search" id="holes-find" autocomplete="off" spellcheck="false" placeholder="' + (s.kind === "tap" ? "1/4-20, M5 or #7" : s.kind === "press" ? "bearing or hex" : "#10, M4 or #30") + '" value="' + esc(FIND) + '" data-input="holesfind"></label>' +
+    out += '<section class="ctab t-holes-tab"><h2>' + title + "</h2>" + findBox(s, "holes-find2", "t-holes-find t-holes-find-p") +
       '<p class="t-holes-none" id="holes-none" hidden></p><p class="t-holes-cue">Tap a row to draw it.</p><div class="t-holes-list" id="holes-list">' + list.join("") + '</div><div class="scroll"><table><thead><tr>' + head.map(function (x, j) { return "<th" + (j ? ' class="r"' : "") + ">" + x + "</th>"; }).join("") + "<th></th></tr></thead><tbody>" + rows.join("") + "</tbody></table></div></section>";
     out += K.notes(
       "<p>A tapped hole is drilled smaller than the screw, so the tap can cut the thread into the wall. The tap drill leaves about three quarters of a full thread, which is nearly as strong as a full one and much easier to tap. A clearance hole is drilled a little larger than the screw so it passes through.</p>" +
@@ -198,10 +202,18 @@ D.acts.holesuse = function (b) { K.state(ID).size = +b.dataset.v; D.render(); };
 /* The find box: hides the rows (in the table and in the phone's list) whose thread, screw or drill does not contain
    what was typed. Only the rows change, so the box keeps its caret. The words are kept while the page is open. */
 var FIND = "";
+function findBox(s, id, cls) {
+  var lab = s.kind === "tap" ? "Find a thread or drill" : s.kind === "press" ? "Find a part" : s.kind === "rivet" ? "Find a rivet or drill" : "Find a screw or drill";
+  return '<label class="' + cls + '"><span>' + lab + '</span><input class="inp" type="search" id="' + id + '" autocomplete="off" spellcheck="false" placeholder="' + (s.kind === "tap" ? "1/4-20, M5 or #7" : s.kind === "press" ? "bearing or hex" : "#10, M4 or #30") + '" value="' + esc(FIND) + '" data-input="holesfind"></label>';
+}
 function findKey(x) { return String(x).toLowerCase().replace(/×/g, "x").replace(/\s+/g, ""); }
 function applyFind() {
   var q = findKey(FIND), shown = 0, none = document.getElementById("holes-none");
   document.querySelectorAll(".t-holes-tab [data-find]").forEach(function (el) { var hit = !q || el.getAttribute("data-find").indexOf(q) >= 0; el.hidden = !hit; if (hit && el.tagName === "TR") shown++; });
+  // A group's heading shows only while a row under it does.
+  document.querySelectorAll(".t-holes-tab [data-grp]").forEach(function (h) { var n = h.nextElementSibling, any = false; while (n && !n.hasAttribute("data-grp")) { if (!n.hidden) any = true; n = n.nextElementSibling; } h.hidden = !any; });
+  // The two find boxes (inputs column, table) say the same.
+  document.querySelectorAll('input[data-input="holesfind"]').forEach(function (i) { if (document.activeElement !== i && i.value !== FIND) i.value = FIND; });
   if (none) { none.hidden = !!shown || !q; none.textContent = shown || !q ? "" : "Nothing in this table matches \u201c" + FIND + "\u201d. Try part of a size, such as 1/4 or M5."; }
 }
 D.inputs.holesfind = function (el) { FIND = el.value.slice(0, 40); applyFind(); };
@@ -219,7 +231,10 @@ function F_clamp(x, a, b) { return x < a ? a : x > b ? b : x; }
     ".t-holes-find { display: grid; gap: 4px; font-size: .85rem; color: var(--text-2); max-width: 340px; } .t-holes-find .inp { min-height: 40px; }" +
     ".t-holes-none { margin: 0; font-size: .9rem; color: var(--text-2); } .t-holes-tab tr[hidden], .t-holes-row[hidden], .t-holes-none[hidden] { display: none; }" +
     ".t-holes-ans { display: none; margin: 4px 0 0; padding: 10px 12px; border-left: 3px solid var(--accent); background: var(--tint); font-weight: 700; font-size: 1rem; line-height: 1.35; }" +
-    "@media (max-width: 900px) { .t-holes-ans { display: block; } }" +
+    "@media (max-width: 900px) { .t-holes-ans { display: block; } .t-holes > .verdict { display: none; } .t-holes > .vmore { margin-top: 0; } }" +
+    ".t-holes-tab tr.t-holes-grp th { padding: 10px 0 4px; font-size: .78rem; font-weight: 700; color: var(--mute); text-align: left; border-bottom: 1px solid var(--line); background: none; }" +
+    ".t-holes-grp[hidden], tr.t-holes-grp[hidden] { display: none; } p.t-holes-grp { margin: 8px 0 0; font-size: .78rem; font-weight: 700; color: var(--mute); }" +
+    ".t-holes-find-p { display: none !important; } @media (max-width: 900px) { .t-holes-find-p { display: grid !important; } .bench[data-calc=\"tool-holes\"] .benchside details.cg[data-open=\"g-find\"], .bench[data-calc=\"tool-holes\"] .benchside section.cg:has(.t-holes-find-l) { display: none; } }" +
     ".t-holes-list, .t-holes-cue { display: none; } .t-holes-cue { margin: 0; font-size: .85rem; color: var(--text-2); }" +
     ".t-holes-go { margin-left: 2px; padding: 3px 10px; border: 1px solid var(--line-2); border-radius: 999px; font-size: .8rem; font-weight: 600; color: var(--accent) !important; }" +
     ".t-holes-row { display: flex; align-items: center; gap: 12px; width: 100%; min-height: 44px; padding: 6px 4px; border: 0; border-bottom: 1px solid var(--line); background: none; color: var(--text); font: inherit; text-align: left; cursor: pointer; }" +
@@ -227,6 +242,7 @@ function F_clamp(x, a, b) { return x < a ? a : x > b ? b : x; }
     ".t-holes-row.on { background: var(--tint); box-shadow: inset 3px 0 0 var(--accent); padding-left: 10px; } .t-holes-row .pill { margin-left: 2px; }" +
     "@media (max-width: 900px) { .t-holes-bench.content.bench { grid-template-areas: \"side\" \"stage\" \"outs\" \"more\"; } }" +
     "@media (max-width: 640px) { .t-holes-list { display: grid; } .t-holes-cue { display: block; } .t-holes-tab .scroll { display: none; } .t-holes-find .inp { min-height: 44px; } .t-holes-find { max-width: none; } }";
+  st.textContent += "@media (max-width: 640px) { .bench[data-calc=\"tool-holes\"] .outs > .out:last-child:nth-child(odd) { grid-column: 1 / -1; } }";   // no card alone beside an empty cell
   document.head.appendChild(st);
 })();
 
@@ -241,7 +257,7 @@ function drawHoles(g, s, r) {
   var half = Math.max(big * 1.7, 0.32);              // half the plate width shown in each view
   var head = kind === "press" ? 0.03 : 0.75 * Dm, below = kind === "tap" || kind === "clear" || kind === "print" ? 0.35 * Dm + 0.05 : kind === "rivet" ? 0.6 * Dm : 0.03;
   var gap = big * 1.2, W = 4 * half + gap, Hh = head + T + below;
-  var V = g.view({ x0: -half, x1: W - half, y0: -T - below, y1: head }, { l: 20, r: 20, t: 112, b: kind === "tap" ? 64 : 56 }, "middle");
+  var V = g.view({ x0: -half, x1: W - half, y0: -T - below, y1: head }, { l: 20, r: kind === "tap" ? (narrow ? 70 : 110) : 20, t: 112, b: kind === "tap" ? 64 : 56 }, "middle");
   var step = [0.05, 0.1, 0.25, 0.5].filter(function (q) { return V.L(q) >= 14; })[0] || 0.5;
   g.grid(V, step, "");
   var xL = 0, xR = 2 * half + gap, y0 = V.Y(0), y1 = V.Y(-T);
@@ -273,6 +289,13 @@ function drawHoles(g, s, r) {
   if (!insert) {
     if (kind === "press") { g.dim(ml, y0, mr, y0, "", 22); g.text((hex ? "0.500 in shaft" : r.part.replace(" bearing", "") + " bearing"), cx, y0 - 32, { align: "center", weight: 700, size: 12 }); }
     else { g.dim(ml, yb, mr, yb, "", -18); label((kind === "rivet" ? "Rivet " : kind === "tap" ? "Nominal (major) diameter " : "Screw ") + Dm.toFixed(3) + " in", cx, yb + 34); }
+  }
+  // The thread depth the rule of thumb asks for (1.5 diameters), dimensioned beside the tapped half.
+  if (kind === "tap") {
+    var dep = 1.5 * Dm, dx = V.X(xR + half) + 12, dTop = V.Y(0), dBot = V.Y(-dep);
+    g.dim(dx, dTop, dx, dBot, "", 0, { color: c.text2 });
+    g.text(narrow ? "depth" : "thread", dx + 8, (dTop + dBot) / 2 - 8, { size: narrow ? 11 : 12, weight: 600, color: c.text2, base: "middle" });
+    g.text((narrow ? "" : "depth ") + dep.toFixed(2) + " in", dx + 8, (dTop + dBot) / 2 + 8, { size: narrow ? 11 : 12, weight: 700, color: c.text, base: "middle" });
   }
   caption(g, cx, capY, kind === "tap" ? ["2. Tap, then the screw", narrow ? "thread cut, screw in it" : "the tap cuts the thread; the screw fills it"] : kind === "clear" ? ["With the screw", ((r.hole - Dm) / 2).toFixed(4) + " in gap each side"] : kind === "rivet" ? ["With the rivet", "before it is set"] : kind === "press" ? (hex ? ["With the hex shaft", ""] : s.press === "press" ? ["Pressed in", "0.001 in under the bearing"] : ["Slides in", "hole the bearing's own size"]) : insert ? ["With the insert", "melted in"] : ["With the screw", ""]);
   g.text(r.label, 12, 18, { weight: 600 });

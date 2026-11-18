@@ -111,6 +111,10 @@ function mechOf(s, r) {
   }
   return o;
 }
+// The unit asked for in "To", or null for the common three (also when it is no longer one of this kind's others).
+// The rigging slider's numbers, 1 to 4, right under its track.
+function rigTicks(html) { return html.replace('<small class="cfh">', '<div class="t-units-ticks" aria-hidden="true"><span>1</span><span>2</span><span>3</span><span>4</span></div><small class="cfh">'); }
+function toOf(s) { var k = M.kind(s.kind); return s.to && s.to !== "all" && s.to !== s.unit && k.units.some(function (u) { return u[0] === s.to; }) ? s.to : null; }
 function hintsOf(s, r) {
   var from = unitOf(s), out = { "un-h": sig(s.x) + " " + from[1] + " equals" };
   if (r && r.conv) r.k.units.forEach(function (u) { out["un-v-" + u[0]] = sig(r.conv[u[0]]); });
@@ -120,9 +124,9 @@ function cap(x) { return x.charAt(0).toUpperCase() + x.slice(1); }
 
 K.tool({
   id: ID,
-  defaults: { x: 1, kind: "length", unit: "in", mk: "spool", ratio: 12, dia: 1.5, rig: 1, rpm: 6000, part: "conv" },
+  defaults: { x: 1, kind: "length", unit: "in", to: "all", mk: "spool", ratio: 12, dia: 1.5, rig: 1, rpm: 6000, part: "conv" },
   stage: { ratio: 2.3, narrow: 1.15, label: "The mechanism: the motor and its gearbox, then the wheel, spool or arm to scale, with how far it moves for one turn." },
-  onPick: function (key, v, s) { if (key === "kind") s.unit = M.kind(v).units[0][0]; },
+  onPick: function (key, v, s) { if (key === "kind") { s.unit = M.kind(v).units[0][0]; s.to = "all"; } if (key === "unit" && s.to === v) s.to = "all"; },
 
   compute: function (s) {
     var k = M.kind(s.kind), conv = M.convert(s.kind, s.x, s.unit);
@@ -135,17 +139,25 @@ K.tool({
     var k = M.kind(s.kind), from = unitOf(s), h = hintsOf(s, r);
     var part = s.part === "mech" ? "mech" : "conv";
     var jump = '<div class="t-units-jump"><span class="seg" role="group" aria-label="Show">' + [["conv", "Convert"], ["mech", "Code constants"]].map(function (o) { return '<button data-act="unitspart" data-v="' + o[0] + '" aria-pressed="' + (part === o[0]) + '">' + o[1] + "</button>"; }).join("") + "</span></div>";
-    var conv = K.pick(ID, "kind", "Kind", M.KINDS.map(function (q) { return [q.id, q.name]; })) +
+    /* Inputs on the left, the answer on the right (stacked on a phone). With a "To" unit chosen, that one answer is
+       large and the other units sit in a short table under it; with "the common three", all of them are large. */
+    var others = k.units.filter(function (u) { return u[0] !== from[0]; }), to = toOf(s), one = to ? others.filter(function (u) { return u[0] === to; })[0] : null;
+    var ins = K.pick(ID, "kind", "Kind", M.KINDS.map(function (q) { return [q.id, q.name]; })) +
       K.num(ID, "x", "Number", { step: "any" }) +
-      K.pick(ID, "unit", "In", k.units.map(function (u) { return [u[0], u[1]]; })) +
-      '<div class="t-units-conv" aria-live="polite"><h3 id="un-h">' + esc(h["un-h"]) + "</h3><dl>" +
-      k.units.filter(function (u) { return u[0] !== from[0]; }).map(function (u) { return '<div><dd><b class="num" id="un-v-' + u[0] + '">' + esc(h["un-v-" + u[0]]) + "</b> " + esc(u[1]) + "</dd><dt>" + esc(u[3]) + "</dt></div>"; }).join("") + "</dl>" +
-      '<button class="t-units-go" data-act="unitspart" data-v="mech">Code constants has the ' + (s.mk === "arm" ? "arm" : what(s.mk)) + " drawing and the Java</button></div>";
+      K.pick(ID, "unit", "From", k.units.map(function (u) { return [u[0], u[1] + " (" + u[3].toLowerCase() + ")"]; })) +
+      K.pick(ID, "to", "To", [["all", others.length === 1 ? "the other unit" : "the common " + (["", "one", "two", "three", "four"][others.length] || others.length)]].concat(others.map(function (u) { return [u[0], u[1] + " (" + u[3].toLowerCase() + ")"]; })));
+    function bigRow(u) { return '<div><dd><b class="num" id="un-v-' + u[0] + '">' + esc(h["un-v-" + u[0]]) + "</b> " + esc(u[1]) + "</dd><dt>" + esc(u[3]) + "</dt></div>"; }
+    var ans = '<div class="t-units-conv" aria-live="polite"><h3 id="un-h">' + esc(h["un-h"]) + "</h3>" +
+      (one ? '<p class="t-units-one"><b class="num" id="un-v-' + one[0] + '">' + esc(h["un-v-" + one[0]]) + "</b> " + esc(one[1]) + '<span>' + esc(one[3]) + "</span></p>" +
+        (others.length > 1 ? '<table class="t-units-rest"><caption>In the other units</caption><tbody>' + others.filter(function (u) { return u !== one; }).map(function (u) { return '<tr><td class="num"><b id="un-v-' + u[0] + '">' + esc(h["un-v-" + u[0]]) + "</b> " + esc(u[1]) + "</td><td>" + esc(u[3]) + "</td></tr>"; }).join("") + "</tbody></table>" : "")
+        : "<dl>" + others.map(bigRow).join("") + "</dl>") + "</div>";
+    var conv = '<div class="t-units-cgrid"><div class="t-units-ins">' + ins + "</div>" + ans + "</div>" +
+      '<p class="t-units-gop">Need code constants? <button class="t-units-go" data-act="unitspart" data-v="mech">Open Code constants</button>.</p>';
     var kraken = F ? F.motor("kraken60").freeRpm : 6065;
     var mech = K.seg(ID, "mk", "Mechanism", MECH) +
       K.num(ID, "ratio", "Reduction", { unit: ": 1", min: 0.01, max: 2000, step: "any", tip: "Motor turns for one turn of the wheel, spool or arm. 12 means the motor turns twelve times for one output turn." }) +
       (s.mk === "arm" ? "" : K.num(ID, "dia", s.mk === "wheel" ? "Wheel diameter" : "Spool or pinion diameter", { unit: "in", min: 0.05, max: 24, step: "any", tip: s.mk === "spool" ? "Where the rope or belt runs, or the pinion's pitch diameter." : "The tread's outside diameter. Worn tread is a little smaller." })) +
-      (s.mk === "spool" ? K.num(ID, "rig", "Rigging", { unit: "×", min: 1, max: 4, step: 1, slider: true, hint: "Carriage travel for each inch of rope: 1 for continuous rigging or a single carriage, 3 for a cascade with two moving stages, 2 with one.", tip: "As the Elevator tool counts it: in a cascade every stage has its own rope, so the carriage moves (moving stages + 1) times the rope. Continuous rigging, or a carriage on its own, moves once." }) : "") +
+      (s.mk === "spool" ? rigTicks(K.num(ID, "rig", "Rigging", { unit: "×", min: 1, max: 4, step: 1, slider: true, hint: "Carriage travel for each inch of rope: 1 for continuous rigging or a single carriage, 3 for a cascade with two moving stages, 2 with one.", tip: "As the Elevator tool counts it: in a cascade every stage has its own rope, so the carriage moves (moving stages + 1) times the rope. Continuous rigging, or a carriage on its own, moves once." }) ): "") +
       K.num(ID, "rpm", "Motor speed", { unit: "rpm", min: 1, max: 30000, step: 1, hint: "The speed answers use this. A Kraken X60's free speed is " + kraken.toLocaleString("en-US") + " rpm; under load it turns slower." });
     return jump + '<div id="units-conv" class="t-units-a">' + K.group(ID, "conv", "Convert", conv) + '</div><div id="units-mech" class="t-units-a">' + K.group(ID, "mech", "Code constants", mech) + "</div>";
   },
@@ -163,11 +175,12 @@ K.tool({
     var m = r.m, lin = s.mk !== "arm", o = mechOf(s, r);
     var table = '<section class="ctab"><h2>Worked out</h2><div class="scroll"><table><thead><tr><th>Step</th><th>Working</th><th class="r">Result</th></tr></thead><tbody>' +
       o.work.map(function (w) { return "<tr><td>" + esc(w[0]) + '</td><td class="num">' + esc(w[1]) + '</td><td class="r num">' + esc(w[2]) + "</td></tr>"; }).join("") + "</tbody></table></div></section>";
+    // One line each: the setting, its value, and what it makes the reading come out in. The caution once, at the end.
     var vendors = '<section class="ctab t-units-v"><h2>Vendor settings</h2>' +
-      "<p><b>CTRE Phoenix 6, SensorToMechanismRatio: " + esc(java(s.ratio)) + ".</b> It wants sensor rotations per mechanism rotation; with the motor's own encoder that is the reduction. Position then reads in " + (lin ? what(s.mk) + " rotations; multiply by " + esc(sig(m.perOut)) + " m for metres." : "arm rotations; multiply by 360 for degrees.") + "</p>" +
-      "<p><b>REV position conversion factor: " + esc(java(m.perRot)) + ".</b> It multiplies the motor's rotations, so this value makes position read in " + (lin ? "metres" : "radians") + ".</p>" +
-      "<p><b>REV velocity conversion factor: " + esc(java(m.perRpm)) + ".</b> It multiplies the motor's rpm, so this value makes velocity read in " + (lin ? "metres per second" : "radians per second") + ".</p>" +
-      '<p class="t-units-m">Check your vendor library\'s documentation for the exact call; the numbers above are what each setting means.</p></section>';
+      "<p><b>CTRE Phoenix 6 SensorToMechanismRatio: " + esc(java(s.ratio)) + "</b>, so position reads in " + (lin ? what(s.mk) + " turns" : "arm turns") + ".</p>" +
+      "<p><b>REV position conversion factor: " + esc(java(m.perRot)) + "</b>, so position reads in " + (lin ? "metres" : "radians") + ".</p>" +
+      "<p><b>REV velocity conversion factor: " + esc(java(m.perRpm)) + "</b>, so velocity reads in " + (lin ? "metres per second" : "radians per second") + ".</p>" +
+      '<p class="t-units-m">These assume the motor\'s own encoder. Check your vendor library\'s documentation for the exact call.</p></section>';
     return table + '<section class="ctab"><h2>Java constants</h2>' + K.code("units-java", o.code, "Copy the constants") + "</section>" + vendors +
       K.notes("<p>Conversions use exact definitions: 1 in = 25.4 mm, 1 lb = 0.45359237 kg, 1 lbf = 4.4482216152605 N (a pound of mass under standard gravity), 1 mile = 1609.344 m. Pressure units are gauge or absolute alike; this page does not add atmospheric pressure.</p>" +
         '<p class="eq">travel per motor rotation = π × diameter × rigging ÷ reduction</p>' +
@@ -193,16 +206,21 @@ D.after.push(function () { if (D.S.route === ID) showPart(); });
 (function () {
   var st = document.createElement("style");
   st.textContent = ".t-units-h { font-size: .95rem; margin: 0; }" +
+    ".t-units-ticks { grid-column: 1 / -1; display: flex; justify-content: space-between; margin: -6px 0 2px; padding: 0 4px; font-size: .78rem; font-weight: 600; color: var(--text-2); }" +
+    ".bench[data-calc=\"tool-units\"] .codeout { white-space: pre; overflow-wrap: normal; overflow-x: auto; }" +
     ".t-units-kc { display: block; margin-top: 4px; font-size: .74rem; color: var(--text-2); overflow-wrap: break-word; }" +
-    ".t-units-conv { display: grid; gap: 6px; padding-top: 4px; } .t-units-conv h3 { font-size: .9rem; margin: 0; }" +
+    ".t-units-conv { display: grid; gap: 6px; padding-top: 4px; align-content: start; } .t-units-conv h3 { font-size: .9rem; margin: 0; }" +
+    ".t-units-cgrid { display: grid; gap: 8px 32px; } .t-units-ins { display: grid; gap: 10px; align-content: start; } @media (min-width: 901px) { .t-units-show-conv .t-units-cgrid { grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); } }" +
+    ".t-units-one { margin: 2px 0 6px; display: flex; flex-wrap: wrap; align-items: baseline; gap: 4px 10px; font-size: 1.1rem; color: var(--text-2); } .t-units-one b { font-size: 2.3rem; color: var(--text); line-height: 1.1; } .t-units-one span { flex-basis: 100%; font-size: .85rem; color: var(--mute); }" +
+    ".t-units-rest { border-collapse: collapse; width: 100%; font-size: .92rem; } .t-units-rest caption { text-align: left; font-size: .8rem; font-weight: 600; color: var(--mute); padding-bottom: 2px; } .t-units-rest td { padding: 5px 0; border-top: 1px solid var(--line); color: var(--text-2); } .t-units-rest td + td { text-align: right; color: var(--mute); font-size: .82rem; } .t-units-rest b { color: var(--text); }" +
     ".t-units-conv dl { display: grid; gap: 0; margin: 0; } .t-units-conv dl > div { display: flex; justify-content: space-between; align-items: baseline; gap: 12px; padding: 6px 0; border-bottom: 1px solid var(--line); }" +
     ".t-units-conv dt { color: var(--mute); font-size: .82rem; text-align: right; } .t-units-conv dd { margin: 0; color: var(--text-2); font-size: .9rem; } .t-units-conv dd b { color: var(--text); font-size: 1.3rem; }" +
-    ".t-units-go { display: block; padding: 10px 0 2px; min-height: 44px; border: 0; background: none; color: var(--accent); font: inherit; font-weight: 600; text-align: left; text-decoration: underline; text-underline-offset: 3px; cursor: pointer; } .t-units-jump { display: block; padding: 12px 16px 0; } .t-units-jump .seg { display: flex; } .t-units-jump .seg button { flex: 1; min-height: 40px; } .t-units-a { scroll-margin-top: calc(var(--bar) + 8px); }" +
+    ".t-units-gop { margin: 6px 0 0; color: var(--text-2); } .t-units-go { display: inline; padding: 12px 0; border: 0; background: none; color: var(--accent); font: inherit; font-weight: 600; text-align: left; text-decoration: underline; text-underline-offset: 3px; cursor: pointer; } .t-units-jump { display: block; padding: 12px 16px 0; } .t-units-jump .seg { display: flex; } .t-units-jump .seg button { flex: 1; min-height: 40px; } .t-units-a { scroll-margin-top: calc(var(--bar) + 8px); }" +
     ".t-units-v p { font-size: .9rem; color: var(--text-2); margin: 0; max-width: 72ch; } .t-units-v p b { color: var(--text); overflow-wrap: anywhere; } .t-units-v .t-units-m { font-size: .8rem; color: var(--mute); }" +
     // One part at a time on every screen. Convert: its inputs and answers alone, in the main column. Code constants:
     // the drawing, answers, working and code, with its inputs in the side column (under them on a phone).
     " .t-units-show-conv #units-mech, .t-units-show-conv > [data-area=\"stage\"], .t-units-show-conv > [data-area=\"outs\"], .t-units-show-conv > [data-area=\"more\"], .t-units-show-mech #units-conv { display: none; }" +
-    " .t-units-show-conv.content.bench { grid-template-columns: minmax(0, 560px); grid-template-areas: \"side\"; }" +
+    " .t-units-show-conv.content.bench { grid-template-columns: minmax(0, 940px); grid-template-areas: \"side\"; }" +
     " .t-units-show-conv > .benchside { position: static; max-height: none; overflow: visible; } .t-units-show-conv > .benchside.more-b::after { content: none; display: none; }" +
     "@media (max-width: 900px) { .t-units-bench.content.bench { grid-template-areas: \"side\" \"stage\" \"outs\" \"more\"; } .t-units-show-conv.content.bench { grid-template-columns: minmax(0, 1fr); grid-template-areas: \"side\"; }" +
     " .t-units-bench > [data-area=\"stage\"] { position: static; box-shadow: none; } .t-units-jump .seg button { min-height: 44px; } }";
