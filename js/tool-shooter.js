@@ -613,14 +613,17 @@ function drawMove(g, s, r, t) {
   g.text(tl >= L.time ? "in" : "", V.X(0), V.Y(tw / 2) - 8, { align: "center", color: c.ok, weight: 700 });
   // Inset: the same shot from the side, so it is plain that it still goes in.
   if (mv.side) {
-    var iw = g.w > 520 ? Math.min(250, g.w * 0.3) : Math.min(170, g.w * 0.46), ih = iw * 0.56, ix = 10, iy = g.h - ih - 10, sd = mv.side, tgs = sd.target;
+    var big = g.w > 520, iw = big ? F.clamp(g.w * 0.3, 220, 250) : Math.min(170, g.w * 0.46), ih = iw * (big ? 0.62 : 0.56), top2 = big ? 46 : 34, ix = 10, iy = g.h - ih - 10, sd = mv.side, tgs = sd.target;
     g.rect(ix, iy, iw, ih, { fill: c.surface, stroke: c.line2, width: 1 });
-    var k2 = Math.min((iw - 20) / (tgs.d + tgs.w * 0.7 + 0.6), (ih - 34) / (Math.max(sd.apex[1], tgs.h) + 0.2)), X2 = function (x) { return ix + 12 + (x + 0.3) * k2; }, Y2 = function (y) { return iy + ih - 8 - y * k2; };
+    var k2 = Math.min((iw - 20) / (tgs.d + tgs.w * 0.7 + 0.6), (ih - top2) / (Math.max(sd.apex[1], tgs.h) + 0.2)), X2 = function (x) { return ix + 12 + (x + 0.3) * k2; }, Y2 = function (y) { return iy + ih - 8 - y * k2; };
     g.line(ix + 4, Y2(0), ix + iw - 4, Y2(0), { color: c.text2, width: 1 });
     var o2 = tgs.w * 0.565; g.poly([[X2(tgs.d - o2), Y2(0)], [X2(tgs.d - o2), Y2(tgs.h)], [X2(tgs.d - tgs.w / 2), Y2(tgs.h)], [X2(tgs.d - tgs.w * 0.3), Y2(tgs.h * 0.72)], [X2(tgs.d + tgs.w * 0.3), Y2(tgs.h * 0.72)], [X2(tgs.d + tgs.w / 2), Y2(tgs.h)], [X2(tgs.d + o2), Y2(tgs.h)], [X2(tgs.d + o2), Y2(0)]], { fill: c.part, stroke: c.partLine, width: 1 });
     g.path(sd.pts.map(function (p) { return [X2(p[1]), Y2(p[2])]; }), { color: sd.meet && sd.meet.hit ? c.ok : c.warn, width: 2 });
     var fr = F.clamp(tl / L.time, 0, 1), pi2 = Math.min(sd.pts.length - 1, Math.round(fr * (sd.pts.length - 1))); if (fr < 1) g.ball(X2(sd.pts[pi2][1]), Y2(sd.pts[pi2][2]), Math.max(3, tgs.r * k2), 0, {});
-    g.text((g.w > 520 ? "From the side, at " + rpmTxt(mv.rpm) + " rpm: " : "Side: ") + (sd.meet && sd.meet.hit ? "in, " + inch(sd.meet.room) + (g.w > 520 ? " to spare" : " spare") : "misses"), ix + 8, iy + 15, { size: 11, weight: 700, color: sd.meet && sd.meet.hit ? c.ok : c.warn, halo: false });
+    // Two short lines on a laptop (one long line ran out of the box); one on a phone.
+    var res2 = sd.meet && sd.meet.hit ? "in, " + inch(sd.meet.room) + (big ? " to spare" : " spare") : "misses", col2 = sd.meet && sd.meet.hit ? c.ok : c.warn;
+    if (big) { g.text("The same shot from the side", ix + 8, iy + 15, { size: 11, weight: 700, color: c.text, halo: false }); g.text(rpmTxt(mv.rpm) + " rpm: " + res2, ix + 8, iy + 30, { size: 11, weight: 700, color: col2, halo: false }); }
+    else g.text("Side: " + res2, ix + 8, iy + 15, { size: 11, weight: 700, color: col2, halo: false });
   }
 }
 function robotTop(g, V, x, y, ang, c, ghost) {
