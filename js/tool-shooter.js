@@ -435,7 +435,7 @@ function closeUp(g, s, r, phase, rpmNow, tShow) {
   if (phase <= 1) g.ball(ball[0], ball[1], U.rb * k, -kk * r.shot.spin * tShow * p2, {});
   else g.circle(E[0], E[1], U.rb * k, { stroke: c.pieceLine, width: 1.25, dash: [4, 4], fill: null });
   if (!La.strip && size > 150) {
-    if (!U.dual) g.text("hood, does not move", x0 + 5, y0 + size - 7, { size: 10.5, color: c.mute, halo: false });
+    if (!U.dual) g.text("fixed hood", x0 + 5, y0 + size - 7, { size: 10.5, color: c.mute, halo: false });
     g.text(phase <= 1 ? "ball" : "ball left here", x0 + 5, y0 + 13, { size: 10.5, color: c.mute, halo: false });
     g.text(U.dual ? "wheels" : "wheel", W[0], W[1] + U.rw * k + 12 < y0 + size - 16 ? W[1] + U.rw * k + 12 : W[1] - U.rw * k - 5, { size: 10.5, color: c.mute, align: "center", halo: false });
   }
