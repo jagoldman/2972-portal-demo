@@ -177,6 +177,11 @@ Rules kept from the owner: menus are short lists of doors; no tall lettering.
 
 ## 6. Tools: interactive calculators
 
+> **2026-11-18:** the owner chose the fourteen calculators of the separate calculators plan over the nine listed
+> here. The rules below still hold; the table is the first plan, kept for the record. The fourteen are listed in
+> `README.md` under "FRC calculators". The Tools group in the Apps menu and on Home now lists the six tools people
+> open most and one link to all sixteen.
+
 **Why the team needs its own, when good public ones exist** (my reading): the answer can end in a door. A belt
 length can be looked up in the team's own stock. A motor list can be the motors the team owns. And a setup can be
 passed to a teammate as a link.

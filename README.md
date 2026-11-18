@@ -31,7 +31,7 @@ Everything is sample data. Nothing is saved, and a reload resets it. The only th
 - `js/core.js`: sample people, routes, the shell and shared helpers (`D.*`), the Apps / Tools / Admin apps / More groups and the saved choices. `js/<app>.js`: one app each.
 - `js/tip.js`: the shared hover description (`data-tip`), the tab descriptions and the status-word glossary.
 - `js/tools.js` and `css/tools.css`: the Tools page and the two photo tools.
-- `js/frc.js`: the calculators' maths (motors, motion, flywheel, flight, belts). `js/calc.js` and `css/calc.css`: the page every calculator shares. `js/tool-<name>.js`: one calculator each. `tests/`: Node checks for the maths.
+- `js/frc.js`: the calculators' maths (motors, motion, flywheel, flight, belts). `js/calc.js` and `css/calc.css`: the page every calculator shares (`css/ground-tools.css`: its Ground up look). `js/tool-<name>.js`: one calculator each. `tests/`: Node checks for the maths.
 - `js/guide.js` and `css/guide.css`: the Get started card, the stops for each role and the ring.
 
 ## Run it locally
@@ -69,7 +69,7 @@ the same, and the choice is kept in this browser. `?event=1` ticks Event day. No
 | Parts | The flow (Needs OK, To order, Ordered, Arrived) is the filter; every request says whose move it is | Whose move |
 | Skills | A student's Overview opens with the machines they may use; "Finish what you started" comes first | The moment first |
 | Schedule, Pit, Scouting | One line across all three: you now, next match, robot | Doors between apps |
-| Tools | Nine calculators (also in Baseline): gearbox, drivetrain, belt, chain, arm, elevator, flywheel, drill and tap chart, motors | See GROUND_UP.md §6 |
+| Tools | Fourteen calculators (also in Baseline), each with a drawing to scale; in Ground up they wear its look (`css/ground-tools.css`) | See "FRC calculators" below |
 
 ### The look (Baseline and Ground up)
 - **Colour** is kept from design 8.2: flag black and white, arena grey, and the blue of the robot's bumpers as the one
@@ -99,38 +99,37 @@ page). Ground up adds content, so its pages are 8.8% shorter than Live in total.
 950 px, the student's Skills overview from 1,763 px to 1,142 px.
 
 ### Checked, and not checked (2026-11-18)
-- **Every screen draws.** 240 screens (every app, every tab, every calculator, five roles, event day; 1280, 820 and
+- **Every screen draws.** 255 screens (every app, every tab, every calculator, five roles, event day; 1280, 820 and
   390 px) in each of Live, Baseline and Ground up: no JavaScript errors and no sideways scroll. Ground up in dark
-  mode at 1280 px: 80 screens, none.
+  mode at 1280 px: 85 screens, none. (Run again on 2026-11-18 after the fourteen calculators replaced the nine.)
 - **Live is unchanged.** The 61 desktop screens measured before the Ground up work are the same height after it.
   The coders for Skills, Competition and Parts also compared the page HTML of Live and Baseline before and after
   their changes: identical (Parts: 106 states).
 - **Baseline changed in one place:** the Tools page lists the calculators.
-- **The calculator maths.** The coder's test checks eleven results against hand-worked values (belt and chain centre
-  distances, gear ratio, free speeds, holding torques, peak power): all pass. The lead recomputed five more by hand
-  (the 110-tooth belt length, the gearbox torque at the current limit, the arm's reserve, the elevator's stall load,
-  the drivetrain's sprint time): all agree.
+- **The calculator maths.** `tests/` holds Node checks for the fourteen calculators and the shared maths (14 files):
+  all pass. Nothing has been checked against a real robot.
 - **One review per change set, by a different model than the coder.** The four coders were Opus 5.5; the lead
   (Fable 5.2) read each diff and looked at each screen. Home and the Tasks change were written by the lead and have
   had no second review.
 - **Judged by other models.** Ground up went through 16 rounds of blind scoring by other models (`HILL_CLIMB.md`);
-  the top tier's target of 9.5 in every area was not reached (latest: 8.2 to 8.9 with all three judges). After the
-  last round the 240-screen check, the dark-mode check and the maths test were run again: all clean.
+  the top tier's target of 9.5 in every area was not reached (latest: 8.2 to 8.9 with all three judges). Those
+  rounds saw the nine calculators this branch had then. The fourteen were judged on their own branch, in the
+  Baseline look, over 12 rounds; **in the Ground up look they have not been judged.**
 - **Not checked:** a screen reader; a real phone; the guide's ring on every stop (the first stop for a mentor and a
   student was checked against the tabs in the bar).
-- **Known simplifications:** the drivetrain model has no rolling loss, so the robot reaches its free speed (the page
-  says a real mechanism loses more). Parts adds a vendor's shipping days as calendar days. The sample inventory has
-  no belts, so "Find it in Parts" from the Belt calculator finds nothing.
+- **Known simplifications:** Parts adds a vendor's shipping days as calendar days. Each calculator says what its
+  model leaves out under "How this is worked out".
 - Left as they are in Live: the Projector's task-state colours, the scouting field drawing, the tool drawings.
 - Design 8.2 (Big Shoulders and Libre Franklin) is still on branch `design-8.2`; this branch starts from it and
   replaces its stylesheet.
 
-## FRC calculators (branch `tools-calcs`, 2026-11-18): a proposal, not approved
+## FRC calculators (2026-11-18): in the demo, not built in the real Tools service
 
-**On this branch (`tools-calcs-83`)** these fourteen take the place of the nine calculators that design 8.3 added
-(`js/calcs.js`, `css/calcs.css`): those two files are still here but no longer loaded, and the notes about them above
-describe branch `design-8.3`, which is unchanged. The fourteen show in Baseline and Ground up and not in Live, as the
-nine did. Which set to keep is the owner's call.
+The owner chose these fourteen (built on branch `tools-calcs`) over the nine simpler calculators that design 8.3 had
+(2026-11-18). The nine's files are removed; some of their style rules (`.calc…` in `css/ground.css`) remain and are
+unused. The fourteen show in Baseline and Ground up and not in Live. In Ground up, `css/ground-tools.css` gives the
+Tools page and every calculator that look: rules in place of boxes, the answer in a bar, bumper blue as the first
+chart colour, neutral paper in the drawings. It changes no number, word or control.
 
 Fourteen calculators join the two photo tools. The research, the reasons and the open decisions are in
 `../new-apps/TOOLS_CALCULATORS.md`; the contract each calculator follows is `../new-apps/briefs/calcs/KIT.md`.

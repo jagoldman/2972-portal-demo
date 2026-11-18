@@ -242,3 +242,8 @@ were the lead's own, made while fixing (rounds 9 and 13), and were caught by the
 
 To resume: when Sol's allowance is back, shoot a fresh pack (`shots.js`), send it to the three judges with the
 brief, and tally. The round 17 pack was shot from commit `68df5c3`.
+
+**2026-11-18, after the climb stopped:** the owner chose the fourteen calculators of the calculators plan over the
+nine the judges saw in rounds 1 to 16, and they now wear the Ground up look (`css/ground-tools.css`). No judge has
+seen the Tools pages in that state. A resumed climb needs a fresh pack, new Tools shots in `shots.js`, and the
+settled items about the nine calculators taken out of the brief.

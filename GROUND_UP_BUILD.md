@@ -5,7 +5,7 @@ Four coders work in this folder at the same time, each in their own files. The l
 
 ## Common rules (every coder)
 
-**Where.** Work only in `/Users/jacobgoldman/Documents/Robotics/2972robotics/.worktrees/demo-design83`. Do not touch
+**Where.** Work only in the `design-8.3` worktree of this repo (`.worktrees/demo-design83` beside the repo folders). Do not touch
 any other folder, repo or worktree. Do not run `git commit`, `git stash`, `git checkout`, `git reset` or `git push`;
 the lead commits. Do not install anything. Do not start a server; the demo opens from `index.html` as a file.
 
@@ -50,7 +50,7 @@ say why, in full sentences, like the ones already there.
 2. The sweep script draws screens and prints a line for every script error (`PAGEERROR`, `CONSOLE`) and every
    sideways scroll (`HSCROLL`). There must be none. Use your own output folder.
    ```
-   SP=/private/tmp/claude-501/-Users-jacobgoldman-Documents-Robotics-2972robotics/1b2bbcc5-8309-4e3e-9f4f-67d68457004a/scratchpad
+   SP=<the lead session's scratch folder, given in the task message>
    ROUTES='<regex on role/route>' node $SP/sweep.js "$PWD" $SP/coder-<letter>/c c     # all three widths, Ground up
    ROUTES='<regex>' NOSHOT=1 node $SP/sweep.js "$PWD" $SP/coder-<letter>/x b          # Baseline: no errors
    ROUTES='<regex>' NOSHOT=1 node $SP/sweep.js "$PWD" $SP/coder-<letter>/x live       # Live: no errors
@@ -58,7 +58,7 @@ say why, in full sentences, like the ones already there.
    ```
    The script clicks every tab of each route. Screens it does not reach (a drawer, a search with text in it, a
    calculator with other inputs) need your own short Playwright script, kept in your `$SP/coder-<letter>/` folder,
-   never in the repo. Playwright is at `/Users/jacobgoldman/Documents/Robotics/2972robotics/tools/node_modules/playwright`.
+   never in the repo. Playwright is at `../tools/node_modules/playwright` (the `tools` repo beside this one).
    The demo takes `?design=c&role=student|mentor|admin|parent&mode=competition#<route>`.
 3. **Look at your screenshots** with the Read tool, at 1280, 820 and 390 px, and fix what looks wrong: text cut off,
    things misaligned, two things that say the same, a row taller than its neighbours.
@@ -71,6 +71,9 @@ check you ran and its result; anything you were unsure about. Do not say a check
 ---
 
 ## T. Tools: the calculators
+
+> **2026-11-18:** this brief built the nine calculators (`js/calcs.js`, `css/calcs.css`). The owner then chose the
+> fourteen of the calculators plan in their place, and those two files were removed. Kept for the record.
 
 **Files:** `js/calcs.js`, `css/calcs.css`, and in `js/tools.js` only `D.views.tools` (the Tools page). Do not change
 the two existing tools.
