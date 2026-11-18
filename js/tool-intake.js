@@ -279,7 +279,9 @@ function draw(g, s, r, t) {
   if (vd > 0.5) {
     var rax = V.X(-12) + 4, ray = V.Y(6) - 12, ral = aL(vd);
     g.arrow(rax, ray, rax + ral, ray, { color: c.s1, width: 2.5 });
+    // In the robot's own frame it is the floor that moves, so the arrow is named as the robot's speed over the floor.
     put("robot " + K.fix(vd / 12, 1) + " ft/s", rax, ray - 14, { size: ks, weight: 700, color: c.s1 });
+    put("over the floor", rax, ray + 13, { size: ks - 1, weight: 600, color: c.s1 });
   }
   // The piece's speed: an arrow ahead of it, along its path, and its number beside the piece.
   var bx = V.X(bp[0]), by = V.Y(bp[1]), Rpx = V.L(Rb), col = r.state === "bad" ? c.bad : r.state === "warn" ? c.warn : c.ok;

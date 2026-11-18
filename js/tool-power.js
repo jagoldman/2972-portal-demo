@@ -113,10 +113,10 @@ K.tool({
     var add = s.rows.length < MAXROWS ? '<div><button class="btn sm" data-act="powadd">' + D.ic("plus", 16) + " Add a row</button></div>" : "";
     // Fill a row from another calculator's present numbers (its motor count and current limit).
     // At the top of the column, where it is seen: fill a row from another calculator's present numbers.
-    var fill = '<p class="cfh">Each button copies that calculator\'s motor count and current limit into the row of the same name, or adds a row. A limit is the most a motor can draw, not what it draws all the time.</p><div class="t-power-fill">' +
+    var fill = '<p class="cfh">Each button copies that calculator\'s motor count and current limit into the row of the same name, or adds a row. A current limit is on the current in the motor. From the battery a motor takes that much only near the speed where the limit lets go, and less when slower, so a filled row is the most it could be, not what it usually is. Lower the amps if you know the real draw.</p><div class="t-power-fill">' +
       FILL.map(function (f) { return '<button class="btn sm" data-act="powfill" data-v="' + f[0] + '">' + (f[0] === "tool-drive" ? "Fill from " : "") + esc(f[1]) + "</button>"; }).join("") + "</div>" +
       (s.filled ? '<p class="cfh t-power-done">' + esc(s.filled) + "</p>" : "");
-    return K.group(ID, "fill", "Fill from another calculator", fill) + K.group(ID, "rows", "Drawing current at the worst moment", '<p class="mute small">Battery side amps, for each motor. Count only what runs at the same time.</p><p class="cfh">A motor at a 60 A stator limit draws less than 60 A from the battery, except near its top speed. The Motors tool shows how much less.</p><div>' + rows + "</div>" + add) +
+    return K.group(ID, "fill", "Fill from another calculator", fill) + K.group(ID, "rows", "Drawing current at the same moment", '<p class="mute small">Battery side amps, for each motor. Count only what runs at the same time.</p><p class="cfh">A motor at a 60 A stator limit draws less than 60 A from the battery, except near its top speed. The Motors tool shows how much less.</p><div>' + rows + "</div>" + add) +
       K.group(ID, "bat", "Battery", K.num(ID, "rest", "At rest", { unit: "V", min: 10, max: 13.5, step: 0.1, slider: true, hint: "Starts at 12.3 V, as in the other calculators.", tip: "What the battery reads with nothing running. A charged battery reads 12.6 to 13 V; 12.3 V allows for one that has run a little." }) +
         K.num(ID, "rbat", "Inside the battery", { unit: "Ω", min: 0.005, max: 0.05, step: 0.001, slider: true, tip: "The battery's own resistance. A fresh battery is near 0.012 Ω, a worn one 0.025 Ω or more. A battery tester reads it." })) +
       K.group(ID, "adv", "Fine tuning", K.num(ID, "rwire", "Wiring and connections", { unit: "Ω", min: 0, max: 0.03, step: 0.001, tip: "Main wire, Anderson connector, main breaker and distribution. 0.006 Ω is a tidy robot with 6 AWG." }) +
@@ -169,7 +169,7 @@ function drawPower(g, s, r) {
   var c = g.c, W = g.w, H = g.h, phone = W < 560, rows = r.rows, n = rows.length;
   var col = { ok: c.ok, warn: c.warn, bad: c.bad }[r.state] || c.text;
   // Title.
-  var head = K.n(r.I, 0) + " A at the worst moment", hw = g.textWidth(head, { weight: 700 });
+  var head = K.n(r.I, 0) + " A with all of these running", hw = g.textWidth(head, { weight: 700 });
   g.text(head, 12, 18, { weight: 700 });
   g.text(", " + vTxt(r.V) + " at the robot", 12 + hw, 18, { color: col, weight: 600 });
 
@@ -301,7 +301,7 @@ D.acts.powfill = function (b) {
   var i = -1; s.rows.forEach(function (r, k) { if (i < 0 && (r.name || "").toLowerCase().indexOf(f[2].toLowerCase()) === 0) i = k; });
   if (i < 0 && s.rows.length >= MAXROWS) { s.filled = "There is no room for another row: remove one first."; D.render(); return; }
   if (i < 0) { s.rows.push(q); i = s.rows.length - 1; } else { s.rows[i].n = q.n; s.rows[i].a = q.a; q.name = s.rows[i].name; }
-  s.filled = "Copied from " + f[1] + ": " + q.n + (q.n === 1 ? " motor" : " motors") + " at its " + q.a + " A current limit, into the row " + q.name + ". That is the most each can draw; from the battery it is less while the motor is slow.";
+  s.filled = "Copied from " + f[1] + ": " + q.n + (q.n === 1 ? " motor" : " motors") + " at its " + q.a + " A current limit, into the row " + q.name + ". That is an upper bound: from the battery each takes less while it is slow.";
   D.render();
 };
 D.acts.powdel = function (b) { var s = S(); s.rows.splice(+b.dataset.v, 1); D.render(); };

@@ -343,13 +343,15 @@ K.tool({
     if (brk > 0.01) {
       // Not a push from outside: it is how braking feels to the robot, its inertia carrying it on.
       if (wide) { g.text("what braking feels like to the robot", C[0] + bS[0] + 8, C[1] + bS[1] - 9, { base: "middle", color: c.text2, size: 11, weight: 700 }); g.text("(its inertia), " + g2(brk) + " × weight", C[0] + bS[0] + 8, C[1] + bS[1] + 6, { base: "middle", color: c.text2, size: 11, weight: 700 }); }
-      else g.text("inertia, " + g2(brk) + " × weight", C[0] + bS[0] + 8, C[1] + bS[1] - 2, { base: "middle", color: c.text2, size: 11, weight: 700 });
+      else { var inT = "inertia, " + g2(brk) + " × weight", inR = C[0] + bS[0] + 8 + g.textWidth(inT, { size: 11, weight: 700 }) < g.w - 4; g.text(inR ? inT : "inertia, " + g2(brk) + " g", inR ? C[0] + bS[0] + 8 : C[0] + bS[0], C[1] + bS[1] + (inR ? -2 : -12), { base: "middle", align: inR ? "left" : "right", color: c.text2, size: 11, weight: 700 }); }
       g.text(wide ? "their sum" : "sum", C[0] + rS[0] * 0.5 + 10, C[1] + rS[1] * 0.5, { base: "middle", color: c.force, size: 11, weight: 700 });
     }
     var state = r.kind === "back" ? "tips backward standing still" : r.kind === "front" ? "tips forward standing still" : sim.piv[fi] >= 3 ? "fallen over" : sim.piv[fi] === 2 ? "now pivoting on the front bumper's edge, " + K.fix(phi / D2R, 0) + "°" : sim.piv[fi] === 3 ? "now pivoting on the top of the bumper, " + K.fix(phi / D2R, 0) + "°" : phi > 0.004 ? "pivoting on the front wheels, rear up " + K.fix(phi / D2R, 0) + "°" : braking ? "braking " + g2(r.brake) + " g" : sim.stopT > 0 && t >= sim.stopT ? "the robot has stopped" : "standing";
     g.text(K.fix(t, 2) + " s", 10, 19, { weight: 700, size: 13 });
     g.text(state, 60, 19, { weight: 600, color: phi > 0.004 || r.still ? c.bad : c.text2 });
+    var after = still && !braking && sim.stopT > 0 && t >= sim.stopT && wide;
     g.text("A stop from " + s.v0 + " ft/s. Model: rigid robot, no bounce.", 10, 37, { size: 11, color: c.mute });
+    if (after) g.text("Braking ended at " + K.fix(sim.stopT, 2) + " s; its swing carries the robot on. The arrows are the forces during the stop.", 10, 52, { size: 11, color: c.mute });
     K.chartNow("tip-a", t);
   }
 });
