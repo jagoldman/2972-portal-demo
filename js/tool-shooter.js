@@ -576,7 +576,8 @@ function drawMap(g, s, r, t) {
 function drawMove(g, s, r, t) {
   var c = g.c, mv = r.move, d = r.target.d, tw = r.target.w;
   var half = Math.max(d * 0.55, 2.2), box = hold && hold.box ? hold.box : { x0: -half, x1: half, y0: -d - 1.1, y1: tw / 2 + 0.7 };
-  var V = g.view(box, { l: 12, r: 12, t: 22, b: 12 }); last.V = V; last.box = box;
+  var phoneM = g.w < 520, insH = phoneM ? Math.min(170, g.w * 0.46) * 0.56 + 20 : 0;       // on a phone the side view sits under the scene
+  var V = g.view(box, { l: 12, r: 12, t: phoneM ? 64 : 22, b: 12 + insH }); last.V = V; last.box = box;
   var step = V.k * FT >= 13 ? FT : 5 * FT; g.grid(V, step, g.w > 520 ? (step === FT ? "1 ft squares, seen from above" : "5 ft squares, seen from above") : "");
   // The target: a hexagon, as the 2026 hub's opening is.
   var hex = []; for (var k = 0; k < 6; k++) hex.push([V.X(tw / 2 * Math.cos(k * Math.PI / 3)), V.Y(tw / 2 * Math.sin(k * Math.PI / 3))]);
