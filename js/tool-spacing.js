@@ -37,7 +37,13 @@ K.tool({
     if (s.kind === "gear") {
       var gp = F.gearPair(s.n1, s.n2, gearOf(s)[2], s.gextra);
       r.pd1 = gp.pd1; r.pd2 = gp.pd2; r.od1 = gp.od1; r.od2 = gp.od2; r.center = gp.center; r.size = gearOf(s)[1];
-      if (s.gwant > 0) r.fits = fitGears(gearOf(s)[2], s.gwant, s.gextra);
+      if (s.gwant > 0) {
+        r.fits = fitGears(gearOf(s)[2], s.gwant, s.gextra);
+        // With holes already drilled the allowance does not apply: the pair is drawn on the holes when it fits them,
+        // and at its own exact meshing distance (with the hole marked) when it does not.
+        r.exact = gp.center - s.gextra; r.slack = s.gwant - r.exact; r.fitsNow = r.slack >= 0.0015 && r.slack <= 0.008;
+        r.center = r.fitsNow ? s.gwant : r.exact;
+      }
       return r;
     }
     var res, b;
@@ -60,7 +66,7 @@ K.tool({
     var teeth = K.num(ID, "n1", "Driving " + word, { unit: "teeth", min: 8, max: 120, step: 1, slider: true, tip: "The one the motor turns." }) + K.num(ID, "n2", "Driven " + word, { unit: "teeth", min: 8, max: 120, step: 1, slider: true });
     var space = s.kind === "gear" ?
       K.num(ID, "gwant", "Distance you already have", { unit: "in", min: 0, max: 12, step: 0.001, hint: "Holes already drilled? Type their spacing to see which gear pairs mesh there, and how much slack each has. Leave 0 otherwise.", tip: "The table under the answers lists pairs of common gears whose centre distance is nearest this." }) +
-      K.num(ID, "gextra", "Extra spacing", { unit: "in", min: 0, max: 0.02, step: 0.001, hint: "Added so the teeth do not bind (backlash).", tip: "Added to the exact distance so the teeth do not bind. 0.003 in is a common choice for 20 DP gears in a plate cut on a router." }) :
+      K.num(ID, "gextra", "Extra spacing", { unit: "in", min: 0, max: 0.02, step: 0.001, hint: "Added so the teeth do not bind (backlash). Not used when you give a distance above: the slack is then whatever your holes leave.", tip: "Added to the exact distance so the teeth do not bind. 0.003 in is a common choice for 20 DP gears in a plate cut on a router." }) :
       K.num(ID, "target", "Wanted centre distance", { unit: "in", min: 1, max: 40, step: 0.001, slider: true, tip: "Roughly where you want the two shafts. The calculator finds the real distances a stock belt or a whole number of links gives." }) +
       (s.kind === "belt" ? K.num(ID, "extra", "Extra spacing", { unit: "in", min: -0.02, max: 0.05, step: 0.001, hint: "Added to the exact distance. 0 suits most belts.", tip: "Added to the exact distance. Leave at 0 for a belt on fixed centres unless your pulleys run tight." }) :
         K.num(ID, "cextra", "Extra spacing", { unit: "in", min: 0, max: 0.06, step: 0.001, hint: "Added so the chain goes on.", tip: "Added to the exact distance so the chain goes on. 0.018 in is a common choice for #25 chain." }));
@@ -134,7 +140,7 @@ K.tool({
   draw: function (g, s, r, t) {
     var c = g.c, C = r.center; if (!(C > 0)) { g.text("Nothing to draw yet.", 16, 28, { color: c.mute }); return; }
     var R1 = r.od1 / 2, R2 = r.od2 / 2, big = Math.max(R1, R2), m = big * 0.12 + 0.15;
-    var V = g.view({ x0: -R1 - m, x1: C + R2 + m, y0: -big - m, y1: big + m }, { l: 14, r: 14, t: 28, b: 52 }, "middle");
+    var V = g.view({ x0: -R1 - m, x1: C + R2 + m, y0: -big - m, y1: big + m }, { l: 14, r: 14, t: s.kind === "gear" && s.gwant > 0 ? (g.w > 520 ? 46 : 62) : 28, b: 52 }, "middle");
     g.grid(V, 1, g.w > 520 ? "1 in squares" : "");
     var x1 = V.X(0), x2 = V.X(C), y = V.Y(0), p1 = V.L(r.pd1 / 2), p2 = V.L(r.pd2 / 2);
     var speed = 0.9, a1 = t * speed, a2;               // the driving wheel's angle (radians, clockwise on screen)
@@ -179,8 +185,17 @@ K.tool({
     // Dimensions and names, as on a drawing.
     var by = Math.min(V.Y(-big) + 4, g.h - 48);
     g.line(x1, y, x1, by + 30, { color: c.mute, width: 1, dash: [6, 3, 1, 3] }); g.line(x2, y, x2, by + 30, { color: c.mute, width: 1, dash: [6, 3, 1, 3] });
-    g.dim(x1, by + 30, x2, by + 30, K.fix(C, 3) + " in" + (s.kind === "gear" && s.gwant > 0 ? ", this pair's spacing" : ""), 0, { side: "below" });
-    if (s.kind === "gear" && s.gwant > 0) { var hx = V.X(s.gwant); g.line(hx, y - 10, hx, y + 10, { color: c.bad, width: 2 }); g.line(hx - 10, y, hx + 10, y, { color: c.bad, width: 2 }); g.text("your second hole, " + K.fix(s.gwant, 3) + " in", hx + 12, y - 12, { color: c.bad, size: 11, weight: 700 }); }
+    var have = s.kind === "gear" && s.gwant > 0;
+    g.dim(x1, by + 30, x2, by + 30, K.fix(C, 3) + " in" + (!have ? "" : r.fitsNow ? ", your holes" : ", where this pair meshes"), 0, { side: "below" });
+    // The note about the holes is a key line under the heading, clear of the gears; the cross marks the hole itself.
+    if (have && r.fitsNow) g.text("On your holes, with " + K.fix(r.slack, 3) + " in of slack", 12, 36, { color: c.ok, size: 11, weight: 700 });
+    if (have && !r.fitsNow) {
+      var hx = V.X(s.gwant), far = r.slack > 0, cross = function (x, yy, k) { g.line(x, yy - k, x, yy + k, { color: c.bad, width: 2 }); g.line(x - k, yy, x + k, yy, { color: c.bad, width: 2 }); };
+      cross(hx, y, 10); cross(18, 36, 5);
+      var l1 = "your second hole, " + K.fix(s.gwant, 3) + " in:", l2 = K.fix(Math.abs(r.slack), 3) + " in " + (far ? "further out than this pair reaches" : "closer in than this pair needs");
+      if (g.w > 520) g.text(l1 + " " + l2, 30, 36, { color: c.bad, size: 11, weight: 700 });
+      else { g.text(l1, 30, 36, { color: c.bad, size: 11, weight: 700 }); g.text(l2, 30, 50, { color: c.bad, size: 11, weight: 700 }); }
+    }
     // Name each wheel and show which way it turns.
     [[x1, "driving", 1], [x2, "driven", s.kind === "gear" ? -1 : 1]].forEach(function (q) {
       var rr = Math.max(9, Math.min(V.L(big) * 0.5, 20)), a0 = -2.5, a1 = -0.9, tip = q[2] > 0 ? a1 : a0, tx = q[0] + rr * Math.cos(tip), ty2 = y + rr * Math.sin(tip), tang = tip + q[2] * Math.PI / 2;
