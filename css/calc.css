@@ -1,0 +1,253 @@
+/* The calculator bench (js/calc.js): a to-scale drawing, the answers, the inputs, then charts and notes.
+   Every colour is a token, so the bench follows the theme and any look that redefines the base tokens. */
+:root {
+  /* The drawing: paper, parts cut from plate, the game piece, forces. */
+  --sheet: #f3f5f8; --sheet-line: rgba(11,18,36,.055);
+  --part: #d3d9e2; --part-2: #aab4c3; --part-line: #46516a;
+  --piece: #f0c419; --piece-line: #6f5600;
+  --force: #cf4a0c; --ghost: rgba(11,18,36,.3);
+  /* Chart series, in this order, never by rank (validated light and dark). */
+  --s1: #2a78d6; --s2: #eb6834; --s3: #1baf7a;
+}
+@media (prefers-color-scheme: dark) { :root:not([data-theme="light"]) {
+  --sheet: #0c111d; --sheet-line: rgba(255,255,255,.055);
+  --part: #36425b; --part-2: #55637f; --part-line: #b3bed4;
+  --piece: #f2c94f; --piece-line: #5d4800;
+  --force: #ff8f5e; --ghost: rgba(255,255,255,.32);
+  --s1: #3987e5; --s2: #d95926; --s3: #199e70; } }
+:root[data-theme="dark"] {
+  --sheet: #0c111d; --sheet-line: rgba(255,255,255,.055);
+  --part: #36425b; --part-2: #55637f; --part-line: #b3bed4;
+  --piece: #f2c94f; --piece-line: #5d4800;
+  --force: #ff8f5e; --ghost: rgba(255,255,255,.32);
+  --s1: #3987e5; --s2: #d95926; --s3: #199e70; }
+
+/* ---------- The bench ---------- */
+.benchhead { max-width: var(--maxw); display: grid; gap: 2px; justify-content: stretch; }
+.benchhead .row.between { gap: 8px 16px; }
+.content.bench { display: grid; grid-template-columns: minmax(0, 1fr) 328px; grid-template-areas: "stage side" "outs side" "more side"; gap: 16px 20px; align-items: start; grid-template-rows: auto auto 1fr; }
+.content.bench.nostage { grid-template-areas: "outs side" "more side"; grid-template-rows: auto 1fr; }
+.bench > [data-area="stage"] { grid-area: stage; } .bench > [data-area="outs"] { grid-area: outs; }
+.bench > [data-area="side"] { grid-area: side; } .bench > [data-area="more"] { grid-area: more; }
+.bench > * { min-width: 0; }
+.benchside { position: sticky; top: calc(var(--bar) + 12px); max-height: calc(100vh - var(--bar) - 24px); overflow: auto; overscroll-behavior: contain; background: var(--surface); border: 1px solid var(--line); border-radius: var(--r); scrollbar-width: thin; }
+.benchmore { display: grid; gap: 16px; align-content: start; }
+.benchmore:empty { display: none; }
+@media (max-width: 900px) {
+  .content.bench, .content.bench.nostage { grid-template-columns: minmax(0, 1fr); grid-template-areas: "stage" "outs" "side" "more"; grid-template-rows: none; }
+  .content.bench.nostage { grid-template-areas: "outs" "side" "more"; }
+  .benchside { position: static; max-height: none; overflow: visible; }
+  /* On a phone the drawing stays in view while the numbers under it change. */
+  .bench > [data-area="stage"] { position: sticky; top: var(--bar); z-index: 5; margin-inline: calc(-1 * var(--gut)); background: var(--bg); padding: 0 0 6px; box-shadow: 0 6px 10px -8px rgba(0,0,0,.35); }
+  .bench > [data-area="stage"] .stage { border-radius: 0; border-inline: 0; max-height: 46vh; }
+  .bench > [data-area="stage"] .transport { padding-inline: var(--gut); }
+}
+
+/* ---------- The drawing ---------- */
+.stage { aspect-ratio: var(--ar, 1.78); position: relative; width: 100%; background: var(--sheet); border: 1px solid var(--line); border-radius: var(--r); overflow: hidden; }
+.stage canvas { display: block; position: absolute; inset: 0; touch-action: pan-y; }
+@media (max-width: 900px) { .stage { aspect-ratio: var(--arn, var(--ar, 1.5)); } }
+.transport { display: flex; flex-wrap: wrap; align-items: center; gap: 8px 10px; padding-top: 8px; }
+.transport .btn { min-width: 76px; }
+.transport .scrub { flex: 1 1 140px; min-width: 100px; accent-color: var(--accent); height: 28px; }
+.transport .ttime { min-width: 3.6em; text-align: right; font-size: .85rem; color: var(--text-2); }
+.transport .seg button { padding: 3px 9px; min-height: 28px; font-size: .82rem; }
+
+/* ---------- The answers ---------- */
+.benchouts { display: grid; gap: 10px; }
+.verdict { font-weight: 500; line-height: 1.4; max-width: 70ch; }
+.verdict .pill { font-weight: 700; margin-right: 4px; }
+.outs { display: grid; grid-template-columns: repeat(auto-fit, minmax(128px, 1fr)); gap: 0; margin: 0; background: var(--surface); border: 1px solid var(--line); border-radius: var(--r); overflow: hidden; }
+.out { display: grid; gap: 1px; align-content: start; padding: 10px 14px 11px; min-width: 0; box-shadow: 1px 0 0 var(--line), 0 1px 0 var(--line); }
+.out dt { font-size: .78rem; font-weight: 600; color: var(--mute); justify-self: start; }
+.out dd { margin: 0; line-height: 1.25; }
+.out dd b { font-size: 1.3rem; font-weight: 700; letter-spacing: -.01em; }
+.out dd span { font-size: .82rem; color: var(--text-2); font-weight: 500; }
+.out dd span.tight { font-size: 1.05rem; font-weight: 700; color: var(--text); }
+/* On a phone the cards sit two to a row: a last card that would sit beside an empty cell takes the whole row. */
+@media (max-width: 640px) { .outs > .out:last-child:nth-child(odd) { grid-column: 1 / -1; } }
+.out dd small { display: block; font-size: .78rem; color: var(--mute); }
+.out.warn dd b { color: var(--warn); } .out.bad dd b { color: var(--bad); } .out.ok dd b { color: var(--ok); }
+.outs + .outs { margin-top: -2px; }
+
+/* ---------- The inputs ---------- */
+.cg { display: grid; gap: 8px; padding: 14px 14px 16px; border-top: 1px solid var(--line); }
+.cg:first-child { border-top: 0; }
+.cg h2 { font-size: .9rem; font-weight: 700; }
+details.cg > summary { cursor: pointer; list-style: none; display: flex; align-items: center; justify-content: space-between; min-height: 28px; }
+details.cg > summary::-webkit-details-marker { display: none; }
+details.cg > summary::after { content: "›"; color: var(--mute); font-size: 1.1rem; transition: transform .15s ease; }
+details.cg[open] > summary::after { transform: rotate(90deg); }
+details.cg:not([open]) { padding-bottom: 12px; }
+.cf { display: grid; grid-template-columns: minmax(0, 1fr) auto; align-items: center; gap: 2px 10px; min-width: 0; }
+.cf > label, .cf > .cfl { font-size: .85rem; font-weight: 500; color: var(--text-2); line-height: 1.25; justify-self: start; }
+.cfv { display: inline-flex; align-items: center; gap: 6px; }
+.cfv .inp { width: 86px; min-height: 36px; padding: 4px 8px; text-align: right; }
+.cfv.wide .inp { width: 172px; text-align: left; }
+.cfu { min-width: 2.4em; font-size: .8rem; color: var(--mute); white-space: nowrap; }
+.cf .cfs { grid-column: 1 / -1; width: 100%; accent-color: var(--accent); height: 18px; margin: 0 0 4px; }
+.cf .cfh { grid-column: 1 / -1; font-size: .78rem; color: var(--mute); line-height: 1.3; }
+.cf .cfh:empty { display: none; }
+.cf.bad .inp { border-color: var(--bad); background: var(--bad-bg); }
+.cf.stack { grid-template-columns: minmax(0, 1fr); gap: 5px; }
+.cf.stack .seg { justify-self: start; }
+.cf.check { grid-template-columns: auto minmax(0, 1fr); gap: 8px; min-height: 32px; font-size: .88rem; font-weight: 500; color: var(--text-2); cursor: pointer; }
+.cf.check input { width: 18px; height: 18px; accent-color: var(--accent); margin: 0; }
+@media (max-width: 640px) { .cfv .inp { min-height: 44px; width: 96px; } .cfv.wide .inp { width: 190px; } .cf.check { min-height: 44px; } }
+
+/* ---------- Charts ---------- */
+.chart { margin: 0; display: grid; gap: 4px; background: var(--surface); border: 1px solid var(--line); border-radius: var(--r); padding: 12px 14px 10px; min-width: 0; }
+.chart figcaption { font-weight: 600; font-size: .92rem; }
+.chart .chartnote { margin: 0; font-size: .8rem; color: var(--text-2); line-height: 1.35; }
+.chart svg { display: block; width: 100%; max-width: 560px; height: auto; overflow: visible; cursor: crosshair; border-radius: 4px; }
+.chart svg:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+.chartrow { display: grid; grid-template-columns: repeat(auto-fit, minmax(260px, 1fr)); gap: 16px; }
+/* A chart that takes a whole row (Motors) puts its words beside the plot on a wide screen, so the row is not half empty. */
+@media (min-width: 900px) {
+  .t-motors-row3 > figure.chart:first-child { grid-template-columns: minmax(0, 3fr) minmax(0, 2fr); column-gap: 24px; align-items: start; }
+  .t-motors-row3 > figure.chart:first-child > svg { grid-column: 1; grid-row: 1 / span 4; }
+  .t-motors-row3 > figure.chart:first-child > :not(svg) { grid-column: 2; }
+}
+.cgrid { stroke: var(--line); stroke-width: 1; }
+.caxis { stroke: var(--line-2); stroke-width: 1; }
+.ctick { font-size: 11px; fill: var(--mute); font-variant-numeric: tabular-nums; }
+.clabel { font-size: 11px; fill: var(--mute); font-weight: 500; }
+.cnote { font-size: 11px; fill: var(--text-2); font-weight: 600; paint-order: stroke; stroke: var(--surface); stroke-width: 3px; }
+.cline { fill: none; stroke-width: 2; stroke-linejoin: round; stroke-linecap: round; }
+.cline.dash { stroke-dasharray: 5 4; }
+.cline.c1 { stroke: var(--s1); } .cline.c2 { stroke: var(--s2); } .cline.c3 { stroke: var(--s3); } .cline.cmute { stroke: var(--mute); stroke-width: 1.5; }
+.cmark { stroke: var(--text-2); stroke-width: 1; stroke-dasharray: 3 3; }
+.cband { fill: var(--ok-bg); }
+.cdot { fill: var(--surface); stroke: var(--text); stroke-width: 2; }
+.cnow { stroke: var(--text); stroke-width: 1.5; }
+.ccross { stroke: var(--mute); stroke-width: 1; pointer-events: none; }
+.clegend { display: flex; flex-wrap: wrap; gap: 4px 14px; font-size: .8rem; color: var(--text-2); }
+.clegend span { display: inline-flex; align-items: center; gap: 6px; }
+.ckey { display: inline-block; width: 16px; height: 0; border-top: 2px solid var(--mute); flex: none; }
+.ckey.c1 { border-color: var(--s1); } .ckey.c2 { border-color: var(--s2); } .ckey.c3 { border-color: var(--s3); } .ckey.dash { border-top-style: dashed; }
+.ctip { position: fixed; z-index: 1000; display: none; pointer-events: none; min-width: 120px; padding: 7px 10px; border-radius: 6px; background: var(--surface); color: var(--text); border: 1px solid var(--line-2); box-shadow: 0 6px 18px rgba(0,0,0,.16); font-size: .8rem; line-height: 1.4; }
+.ctip .ctiph { color: var(--mute); font-weight: 600; margin-bottom: 2px; }
+.ctip > div:not(.ctiph) { display: flex; align-items: center; gap: 7px; }
+.ctip b { font-variant-numeric: tabular-nums; }
+.ctip span { color: var(--mute); }
+.ctable { font-size: .82rem; }
+.ctable summary { cursor: pointer; color: var(--accent); font-weight: 600; width: fit-content; min-height: 28px; display: flex; align-items: center; }
+.ctable table { margin-top: 4px; }
+.ctable th, .ctable td { text-align: right; padding: 3px 8px; border-bottom: 1px solid var(--line); }
+.ctable th { color: var(--mute); font-weight: 600; }
+
+/* ---------- Notes and tables inside a calculator ---------- */
+.how { background: var(--surface); border: 1px solid var(--line); border-radius: var(--r); padding: 0 14px; }
+.how > summary { cursor: pointer; font-weight: 600; min-height: 44px; display: flex; align-items: center; list-style: none; gap: 8px; }
+.how > summary::-webkit-details-marker { display: none; }
+.how > summary::before { content: "›"; color: var(--mute); font-size: 1.1rem; transition: transform .15s ease; }
+.how[open] > summary::before { transform: rotate(90deg); }
+.howbody { display: grid; gap: 10px; padding: 0 0 14px; max-width: 72ch; font-size: .92rem; color: var(--text-2); }
+.howbody ul { margin: 0; padding-left: 18px; display: grid; gap: 4px; }
+.howbody .eq { font-family: var(--mono); font-size: .85rem; background: var(--surface-2); border-radius: 6px; padding: 8px 10px; white-space: normal; overflow-wrap: break-word; color: var(--text); }
+.ctab { background: var(--surface); border: 1px solid var(--line); border-radius: var(--r); padding: 12px 14px; display: grid; gap: 8px; min-width: 0; }
+.ctab h2 { font-size: .92rem; }
+.ctab .scroll { overflow-x: auto; }
+.ctab table { font-size: .88rem; min-width: 100%; }
+.ctab th { text-align: left; font-size: .78rem; color: var(--mute); font-weight: 600; padding: 4px 10px 4px 0; border-bottom: 1px solid var(--line-2); white-space: nowrap; }
+.ctab td { padding: 7px 10px 7px 0; border-bottom: 1px solid var(--line); white-space: nowrap; }
+.ctab tr:last-child td { border-bottom: 0; }
+.ctab tr.pick td { background: var(--tint); font-weight: 600; }
+.ctab tr.pick td:first-child { box-shadow: inset 3px 0 0 var(--accent); padding-left: 8px; }
+.ctab td.r, .ctab th.r { text-align: right; }
+.codeout { font-family: var(--mono); font-size: .8rem; line-height: 1.5; background: var(--surface-2); border-radius: 6px; padding: 10px 12px; overflow-x: auto; white-space: pre; margin: 0; color: var(--text); }
+
+/* ---------- The Tools page, now that there are many ---------- */
+.toolspage .toolsearch { margin-bottom: -4px; }
+.toolsearch { display: flex; }
+.toolsearch .inp { max-width: 360px; }
+.toolgroup { display: grid; gap: 2px; }
+.toolgroup > h2 { font-size: .85rem; color: var(--mute); font-weight: 600; padding: 0 8px 2px; }
+/* One grid for every group: three cards to a row, so a second row sits under the first. A group of two or four
+   sits two to a row. On a phone, one to a row. */
+.toolgroup .toollist { display: grid; grid-template-columns: repeat(6, minmax(0, 1fr)); gap: 0 12px; background: var(--surface); border: 1px solid var(--line); border-radius: var(--r); padding: 6px; }
+.toolgroup .toollist .toolrow { grid-column: span 2; }
+.toolgroup .toollist:has(> .toolrow:nth-child(2):last-child) .toolrow, .toolgroup .toollist:has(> .toolrow:nth-child(4):last-child) .toolrow { grid-column: span 3; }
+@media (max-width: 760px) { .toolgroup .toollist .toolrow, .toolgroup .toollist:has(> .toolrow:nth-child(2):last-child) .toolrow, .toolgroup .toollist:has(> .toolrow:nth-child(4):last-child) .toolrow { grid-column: 1 / -1; } }
+.toolnote { margin: 0 0 4px; padding: 0 8px; }
+.toolgroup .toollist .toolrow + .toolrow { border-top: 0; border-radius: 10px; }
+.codebox { display: grid; gap: 6px; justify-items: start; }
+.codebox .codeout { justify-self: stretch; }
+.benchtabs { display: flex; margin-bottom: 8px; overflow-x: auto; scrollbar-width: none; }
+.benchtabs .seg { flex-wrap: nowrap; }
+.benchtabs .seg button { white-space: nowrap; }
+@media (max-width: 900px) { .benchtabs { padding: 6px var(--gut) 0; margin-bottom: 6px; } }
+
+/* ---------- Round 1 of the judges' review: phones ---------- */
+/* A dropdown with long names takes the whole row, so the chosen name is never cut off. */
+.cf.stack.long .cfv.wide { display: flex; }
+.cf.stack.long .cfv.wide .inp { width: 100%; }
+/* Sideways-scrolling tables and code say so. */
+.scroll.canscroll, .codeout.canscroll { --fl: 0px; --fr: 0px; -webkit-mask-image: linear-gradient(to right, transparent, #000 var(--fl), #000 calc(100% - var(--fr)), transparent); mask-image: linear-gradient(to right, transparent, #000 var(--fl), #000 calc(100% - var(--fr)), transparent); }
+.scroll.more-r, .codeout.more-r { --fr: 36px; } .scroll.more-l, .codeout.more-l { --fl: 24px; }
+.scroll.canscroll + .swipe, .ctab:has(.scroll.canscroll)::after, .codebox:has(.codeout.canscroll)::after { content: "Swipe sideways to see the rest."; display: block; font-size: .78rem; color: var(--mute); }
+@media (max-width: 640px) {
+  /* The view tabs fit in two rows instead of running off the edge. */
+  .benchtabs { overflow: visible; }
+  .benchtabs .seg { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); width: 100%; }
+  .benchtabs .seg button { white-space: normal; min-height: 36px; }
+  /* Tables get tighter so more of them fit without scrolling. */
+  .ctab { padding: 12px; }
+  .ctab table { font-size: .82rem; }
+  .ctab th, .ctab td { padding-right: 8px; }
+  .codeout { font-size: .74rem; }
+  /* A table is a list on a phone: one block per row, each value with its column's name. Nothing is cut off. */
+  .bench table.stk { min-width: 0; }
+  .bench table.stk thead { display: none; }
+  .bench table.stk, .bench table.stk tbody { display: block; }
+  .bench table.stk tr { display: grid; gap: 3px; padding: 10px 0; border-bottom: 1px solid var(--line); }
+  .bench table.stk tr:last-child { border-bottom: 0; }
+  .bench table.stk td { display: flex; justify-content: space-between; align-items: baseline; gap: 14px; padding: 0; border: 0; white-space: normal; text-align: right; background: none; box-shadow: none; }
+  .bench table.stk td::before { content: attr(data-l); flex: none; color: var(--mute); font-weight: 500; text-align: left; }
+  .bench table.stk td:not([data-l])::before { content: none; }
+  .bench table.stk td:first-child { font-weight: 700; text-align: left; font-size: .92rem; }
+  .bench table.stk td:first-child::before { content: none; }
+  .bench table.stk td:not([data-l]):not(:first-child) { justify-content: flex-start; }
+  .bench table.stk td .btn { width: 100%; min-height: 44px; }
+  .bench table.stk tr.pick { box-shadow: inset 3px 0 0 var(--accent); padding-left: 10px; background: var(--tint); }
+  .bench table.stk tr.pick td, .bench table.stk tr.pick td:first-child { background: none; box-shadow: none; padding-left: 0; }
+  .ctab .scroll { overflow-x: visible; }
+}
+/* Code wraps at every width: a line of constants cut off at the edge is no use. */
+.codeout { white-space: pre-wrap; overflow-wrap: break-word; }
+.cnote { stroke-width: 4px; }
+.toolgroup { scroll-margin-top: calc(var(--bar) + 12px); }
+.toolquick { display: flex; flex-wrap: wrap; align-items: center; gap: 8px; }
+.toolquick .tql { font-size: .85rem; color: var(--mute); font-weight: 600; padding: 0 4px 0 8px; }
+.toolquick .tqa { display: inline-flex; align-items: center; gap: 8px; min-height: 40px; padding: 4px 14px 4px 10px; border: 1px solid var(--line); border-radius: 10px; background: var(--surface); color: var(--text); text-decoration: none; font-weight: 600; font-size: .9rem; }
+.toolquick .tqa:hover { background: var(--surface-2); }
+.toolquick .tqa svg { color: var(--text-2); flex: none; }
+.toolquick .tqa b { display: block; font-weight: 600; line-height: 1.2; } .toolquick .tqa small { display: block; font-weight: 500; font-size: .74rem; color: var(--mute); line-height: 1.2; }
+.toolquick .tqa { min-height: 46px; }
+/* On a phone the three sit in one row, each as tall as a thumb, so the first tools stay on the first screen. */
+@media (max-width: 640px) { .toolquick { display: grid; grid-template-columns: minmax(0, 1fr); gap: 6px; } .toolquick .tql { padding-left: 4px; } .toolquick .tqa { min-height: 48px; padding: 6px 12px 6px 10px; } .toolquick .tqa b { font-size: .92rem; } .toolquick .tqa small { font-size: .76rem; } }
+.tooltag { display: inline-block; margin-left: 6px; padding: 0 7px; border-radius: 999px; background: var(--surface-2); color: var(--text-2); font-size: .72rem; font-weight: 600; vertical-align: 1px; }
+.how { scroll-margin-top: calc(var(--bar) + 12px); }
+.toolgroup:focus { outline: none; }
+.tooljump { margin-top: -4px; }
+@media (max-width: 640px) { .tooljump { flex-wrap: nowrap; overflow-x: auto; scrollbar-width: none; margin-inline: calc(-1 * var(--gut)); padding-inline: var(--gut); } .tooljump::-webkit-scrollbar { display: none; } .tooljump .chip { flex: none; } .tooljump { -webkit-mask-image: linear-gradient(to right, #000 calc(100% - 44px), transparent); mask-image: linear-gradient(to right, #000 calc(100% - 44px), transparent); padding-right: 44px; } }
+.ctab th { white-space: normal; vertical-align: bottom; line-height: 1.2; }
+.vmore { font-size: .88rem; color: var(--mute); max-width: 70ch; margin-top: -6px; }
+
+/* ---------- Round 5 ---------- */
+/* The inputs column: a line at its foot while more inputs wait below. */
+.benchside.more-b::after { content: "More inputs below. Scroll this column."; position: sticky; bottom: 0; display: block; padding: 7px 14px; font-size: .78rem; font-weight: 600; color: var(--text-2); background: var(--surface-2); border-top: 1px solid var(--line-2); text-align: center; }
+@media (max-width: 900px) { .benchside.more-b::after { content: none; } }
+/* Chart lettering a size up. */
+/* --cs is set per chart by the kit: under 1 when a chart is drawn wider than the usual half column, so its words
+   stay the size of its neighbours' instead of growing with it. */
+.ctick, .clabel { font-size: calc(12.5px * var(--cs, 1)); } .cnote { font-size: calc(12px * var(--cs, 1)); }
+/* Tools page: every row's name starts on the same line, whatever the length of its description. */
+.toolgroup .toolrow { align-items: flex-start; padding-block: 10px; }
+.toolgroup .toolrow .ic { margin-top: 1px; }
+@media (max-width: 640px) { .tooljump { flex-wrap: wrap; overflow: visible; margin-inline: 0; padding-inline: 0; -webkit-mask-image: none; mask-image: none; gap: 6px; } .tooljump .chip { min-height: 30px; padding: 2px 10px; font-size: .8rem; } }
+@media (max-width: 900px) { .bench > [data-area="stage"] .stage.tall { max-height: 62vh; } }
+/* Jump links are for the long phone page; on a laptop every group is already in view. */
+.tooljump { display: none; }
+.tooljump .tjl { font-size: .8rem; color: var(--mute); font-weight: 600; align-self: center; }
+@media (max-width: 640px) { .tooljump { display: flex; } }

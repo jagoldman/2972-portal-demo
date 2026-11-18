@@ -46,16 +46,30 @@ function download(name, type, text) {
 function n3(x) { return (Math.round(x * 1000) / 1000).toFixed(3); }
 
 /* ---------- The Tools page ---------- */
+// Tools by kind, with a search box. Typing redraws only the list, so the box keeps its caret.
+function toolList() {
+  var q = (D.S.tools.q || "").trim().toLowerCase(), tools = D.visibleTools().filter(function (t) { return !q || (t.name + " " + t.line + " " + t.tip).toLowerCase().indexOf(q) >= 0; });
+  if (!tools.length) return '<p class="empty">No tool matches “' + esc(D.S.tools.q) + '”. Try a shorter word.</p>';
+  // First, the three a student opens with a part in hand. They are also in their own groups below.
+  var quick = q ? [] : ["tool-holes", "tool-units", "tool-spacing"].map(D.tool).filter(function (t) { return t && tools.indexOf(t) >= 0; });
+  // They are short links worded as the question, not a second set of cards: every tool has one card, in its group.
+  var ask = { "tool-holes": "Drill and tap sizes", "tool-units": "Convert a unit", "tool-spacing": "Belt, chain and gear centres" };
+  return (quick.length ? '<nav class="toolquick" id="tg-quick" aria-label="Quick answers at the bench"><span class="tql">Quick answers at the bench</span>' + quick.map(function (t) { return '<a class="tqa" href="#' + t.id + '" data-act="go" data-v="' + t.id + '">' + D.ic(t.icon, 16) + "<span><b>" + ask[t.id] + "</b><small>" + esc(t.name) + "</small></span></a>"; }).join("") + "</nav>" : "") +
+    // On a phone, links that jump to each group. They come after the quick answers, which a student wants first.
+    (q ? "" : '<nav class="tooljump chips" aria-label="Jump to a group"><span class="tjl">Jump to</span>' + D.TOOL_GROUPS.filter(function (g) { return tools.some(function (t) { return t.group === g[0]; }); }).map(function (g) { return '<button class="chip" data-act="tooljump" data-v="' + g[0] + '">' + esc(g[1]) + "</button>"; }).join("") + "</nav>") +
+    D.TOOL_GROUPS.map(function (g) {
+    var rows = tools.filter(function (t) { return t.group === g[0]; }); if (!rows.length) return "";
+    return '<section class="toolgroup" id="tg-' + g[0] + '" tabindex="-1"><h2>' + esc(g[1]) + "</h2>" + (g[0] === "photo" ? '<p class="small mute toolnote">These two start from a photo you take, not from numbers you type.</p>' : "") + '<div class="toollist">' + rows.map(D.toolRow).join("") + "</div></section>";
+  }).join("");
+}
 D.views.tools = function () {
   if (!allowed()) return D.denied("Tools");
-  var tools = D.visibleTools(), calcs = tools.filter(function (t) { return t.calc; });
-  // Live has no calculators, so its page stays one plain list.
-  if (!calcs.length) return D.topbar("Tools", "", "", "") + '<div class="content toolspage"><div class="card"><div class="toollist">' + tools.map(D.toolRow).join("") + "</div></div></div>";
-  // With the calculators: two groups, the tools that start from a photo and the calculators.
-  var photo = tools.filter(function (t) { return !t.calc; });
-  function group(title, list) { return '<section class="card"><h2>' + esc(title) + '</h2><div class="toollist">' + list.map(D.toolRow).join("") + "</div></section>"; }
-  return D.topbar("Tools", "", "", "") + '<div class="content toolspage calcgrouped">' + (photo.length ? group("From a photo", photo) : "") + group("Calculators", calcs) + "</div>";
+  return D.topbar("Tools", "", "", "") + '<div class="content toolspage"><div class="toolsearch"><input class="inp" type="search" id="toolq" data-input="toolq" value="' + esc(D.S.tools.q || "") + '" placeholder="Find a tool" aria-label="Find a tool"></div>' +
+    '<div id="toollist" class="stack" style="display:grid;gap:16px">' + toolList() + "</div></div>";
 };
+// A jump link moves the page to its group; a search that hid the group is cleared first.
+D.acts.tooljump = function (b) { if (D.S.tools.q) { D.S.tools.q = ""; D.render(); } var el = document.getElementById("tg-" + b.dataset.v); if (el) { el.scrollIntoView({ block: "start" }); el.focus({ preventScroll: true }); } };
+D.inputs.toolq = function (el) { D.S.tools.q = el.value; var box = document.getElementById("toollist"); if (box) box.innerHTML = toolList(); };
 
 /* ---------- Drawing to vector ---------- */
 var W = 400, H = 260;
