@@ -104,5 +104,10 @@ near("height for 0.80 g accelerating gives 0.80 g", M.limits(Object.assign({}, d
 // Hand check: d_rear = 11 + 0.69 = 11.69 in; combined height for 0.80 g = 11.69 / 0.8 = 14.61 in; mechanism height
 // = (14.61 x 127 - 105 x 7) / 22 = 50.97 in.
 near("height for accelerating, by hand", hb, (11 + 88 / 127) / 0.8 * 127 / 22 - 105 * 7 / 22, 1e-9);
+// Round 8: the line under the cards says the static tip angle's tangent is the g figure beside it. On flat ground
+// both are the distance to the wheel over the height, so they agree (defaults: tan 35.0 deg = 0.70 g).
+var Lf = M.limits(dflt);
+near("tan(static forward angle) = braking that tips it", Math.tan(Lf.staticF * Math.PI / 180), Lf.tipBrake, 1e-9);
+near("tan(static backward angle) = acceleration that tips it", Math.tan(Lf.staticR * Math.PI / 180), Lf.tipAccel, 1e-9);
 console.log(fails ? fails + " of " + n + " checks failed" : "all " + n + " checks passed");
 if (fails) process.exit(1);
