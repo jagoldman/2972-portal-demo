@@ -102,6 +102,14 @@ function evPart(p) {
   })(p);
 }
 D.eventLine = function (here) { return eventLine(here || ""); };
+// Our next matches, for Home on an event day: { q, time, colour, withTeams, against, now }.
+D.eventNext = function (n) {
+  var c = C();
+  return c.matches.filter(function (m) { return m.q >= c.current && (m.red.indexOf(2972) >= 0 || m.blue.indexOf(2972) >= 0); }).slice(0, n || 2).map(function (m) {
+    var red = m.red.indexOf(2972) >= 0, ours = red ? m.red : m.blue, theirs = red ? m.blue : m.red;
+    return { q: m.q, time: m.time, colour: red ? "Red" : "Blue", withTeams: ours.filter(function (t) { return t !== 2972; }), against: theirs, now: m.q === c.current };
+  });
+};
 // What the event needs from the people in the pit right now, for Home's "Now" on an event day: the checks still open
 // before our next match, and the open issues. Each is a door to the Pit.
 D.eventRows = function () {
@@ -149,7 +157,7 @@ D.views.schedule = function () {
   var ev = D.calApi && D.calApi.currentEvent();
   var dayTabs = '<span class="seg">' + c.days.map(function (d, i) { return '<button data-act="sday" data-v="' + i + '" aria-pressed="' + (c.day === i) + '">' + d + "</button>"; }).join("") + "</span>";
   if (t === "all") body = everyone(dayTabs); else if (t === "roles" && staff) body = rolesView(); else if (t === "settings" && staff) body = settingsView(); else body = mySchedule(dayTabs);
-  var meta = '<div class="row evmeta"><span class="mute">' + esc(ev ? ev.name : "Colorado Regional") + '</span><span class="pill ' + (c.published ? "ok" : "warn") + '">' + (c.published ? "Published" : "Draft") + "</span></div>";
+  var meta = '<div class="row evmeta"><span class="mute">' + esc(ev ? ev.name : "Colorado Regional") + '</span>' + (D.ground() && !D.isStaff() && c.published ? "" : '<span class="pill ' + (c.published ? "ok" : "warn") + '">' + (c.published ? "Published" : "Draft") + "</span>") + "</div>";
   return D.topbar("Schedule", "", D.tabsFor("schedule", list, "mine"), "") + '<div class="content cmp">' + groundLine("schedule") + meta + body + "</div>";
 };
 function runsOf(row) { var runs = []; row.forEach(function (r, i) { if (!runs.length || runs[runs.length - 1].r !== r) runs.push({ r: r, from: i, to: i }); else runs[runs.length - 1].to = i; }); return runs; }
@@ -214,7 +222,7 @@ function checklists() {
   var c = C(), total = 0, ticked = 0, m = nextOurs(), red = m.red.indexOf(2972) >= 0;
   c.lists.forEach(function (l) { l.items.forEach(function (i) { total++; if (i.c) ticked++; }); });
   return '<div class="card hero"><div class="row between"><div><p class="eyebrow">' + (D.ground() ? (m.q === c.current ? "Our match is on the field now" : "Next match, " + (m.q - c.current) + " matches away, scheduled " + m.time) : "Next match · " + (m.q === c.current ? "on the field now" : (m.q - c.current) + " matches away") + " · scheduled " + m.time) + '</p><h2 class="herotitle">Qual ' + m.q + " · " + (red ? "Red" : "Blue") + '</h2><p class="mute">With ' + (red ? m.red : m.blue).filter(function (t) { return t !== 2972; }).join(" and ") + " · against " + (red ? m.blue : m.red).join(", ") + '</p></div><span class="pill ' + (ticked === total ? "ok" : "warn") + '">' + ticked + " of " + total + " checked</span></div>" + '<div class="bar"><i class="ok" style="width:' + D.pct(ticked, total) + '%"></i></div>' +
-    '<div class="row pitmaint"><button class="btn" data-act="pitarchive">Archive as Qual ' + c.last + '</button><button class="btn" data-act="pitreset">' + (D.ground() ? "Reset checklist" : "Reset") + "</button></div></div>" +
+    '<div class="row pitmaint"><button class="btn" data-act="pitarchive">' + (D.ground() ? "Save Qual " + c.last + " and clear the ticks" : "Archive as Qual " + c.last) + "</button>" + '<button class="btn" data-act="pitreset">' + (D.ground() ? "Reset checklist" : "Reset") + "</button></div></div>" +
     '<div class="grid2">' + c.lists.map(function (l, li) {
       return '<div class="card"><h2>' + esc(l.name) + "</h2><div>" + l.items.map(function (it, ii) { return '<div class="checkrow"><button class="bigcheck" data-act="pittick" data-l="' + li + '" data-i="' + ii + '" aria-pressed="' + it.c + '" aria-label="' + esc(it.n) + '">' + D.ic("check", 28) + "</button><div><b>" + esc(it.n) + "</b>" + (it.c ? '<div class="who">' + esc(it.by) + " · " + esc(it.at) + "</div>" : "") + '</div><button class="btn sm" data-act="pitissue" data-l="' + li + '" data-i="' + ii + '">Problem</button></div>'; }).join("") + "</div></div>";
     }).join("") + "</div>" + issuesCard();

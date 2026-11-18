@@ -186,6 +186,8 @@ function panelMove(r) {
   if (r.status === "toorder") return '<span class="move' + (staff ? " mine" : "") + '">' + (staff ? "Your move: order it from the To order tab" : "Waiting on a mentor to order it") + "</span>";
   return moveHtml(r);
 }
+// "Order by Thu, Nov 12", or once that day has passed "Order by Sun, Nov 8, 2 days late".
+function orderByText(ob) { var late = Math.round((TODAY - parse(ob)) / 86400000); return "Order by " + fmt(ob) + (late > 0 ? ", " + late + (late === 1 ? " day" : " days") + " late" : ""); }
 function isOpen(r) { return r.status === "needsok" || r.status === "toorder" || r.status === "ordered" || r.status === "arrived"; }
 // "Thu, Nov 12, 1 practice left": the practice count is only worth saying while the request is still on its way.
 function needText(r) { var pr = isOpen(r) ? D.practicesText(r.need) : ""; return fmt(r.need) + (pr ? ", " + pr : ""); }
@@ -204,7 +206,7 @@ function findBox(q, reqHits) {
     html += '<section class="pshop" aria-label="In the shop"><h3>In the shop <span class="tcount">' + shop.length + '</span></h3><div class="list">' + shop.slice(0, 5).map(function (i) {
       var home = i.stock.filter(function (s) { return s.place.indexOf("bot") < 0; }), k = homeK(i);
       return '<div class="li pshopi"><span class="grow"><b>' + esc(i.name) + '</b><span class="pmeta">' + (home.map(function (s) { return esc(s.place); }).join(", ") || "Only on robots") + "</span></span>" +
-        '<span class="pinst num">' + inStore(i) + (i.unit === "each" ? "" : " " + esc(i.unit)) + " in store" + (isLow(i) ? ' <span class="pill warn">Low</span>' : "") + "</span>" +
+        '<span class="pinst num">' + inStore(i) + (i.unit === "each" ? "" : " " + esc(i.unit)) + " on the shelf" + (isLow(i) ? ' <span class="pill warn">Low</span>' : "") + "</span>" +
         (k >= 0 ? '<button class="btn sm' + (takers === 1 ? " primary pmain" : "") + '" data-act="ptake" data-v="' + i.id + '" data-k="' + k + '" aria-label="Take ' + esc(i.name) + '">Take</button>' : '<span class="pnotake" aria-hidden="true"></span>') + "</div>";
     }).join("") + '</div><div class="row pshopact"><button class="btn" data-act="pinvopen">Open Inventory</button><button class="btn" data-act="pask" data-v="more">Request more</button></div></section>';
   } else if (reqHits) {
@@ -322,7 +324,7 @@ D.drawers.preq = function (d) {
   if (staff && r.status === "needsok") acts.push('<button class="btn primary" data-act="papprove" data-v="' + r.id + '">Approve</button>', '<button class="btn" data-act="pdeny" data-v="' + r.id + '">' + (D.ground() ? "Deny" : "Deny…") + "</button>", '<button class="btn" data-act="preplace" data-v="' + r.id + '">' + (D.ground() ? "Replace item" : "Replace item…") + "</button>");
   if (r.status === "ordered") acts.push('<button class="btn" data-act="tab" data-app="parts" data-v="arriving">' + (D.ground() ? "Check it in" : "Check it in on Arriving") + "</button>");
   var cancelBtn = mine && !staff && (r.status === "needsok" || r.status === "toorder") ? '<button class="btn ghost danger" data-act="pcancel" data-v="' + r.id + '">Withdraw my request</button>' : "", cancel = cancelBtn ? "<div>" + cancelBtn + "</div>" : "";
-  var rows = [["Vendor", esc(r.vendor)], ["SKU", '<span class="mono">' + esc(r.sku) + "</span>"], ["Quantity", qtyText(r)], ["Price", money(r.price) + " each · " + money(total(r)) + " total"], ["Budget", r.status === "needsok" ? budgetEffect(r, true) : esc(bname(r.bud))], ["Priority", PRI[r.pri][0]], ["Need by", (D.ground() && r.need ? esc(needText(r)) : fmt(r.need)) + (ob && !(D.ground() && r.status !== "needsok" && r.status !== "toorder") ? '<br><b class="pbad">Order by ' + fmt(ob) + "</b>" : "")], ["For", esc(r.sub) + (r.task ? " · task “" + esc(r.task) + "”" : "")], ["Asked by", esc(r.by)]];
+  var rows = [["Vendor", esc(r.vendor)], ["SKU", '<span class="mono">' + esc(r.sku) + "</span>"], ["Quantity", qtyText(r)], ["Price", money(r.price) + " each · " + money(total(r)) + " total"], ["Budget", r.status === "needsok" ? budgetEffect(r, true) : esc(bname(r.bud))], ["Priority", PRI[r.pri][0]], ["Need by", (D.ground() && r.need ? esc(needText(r)) : fmt(r.need)) + (ob && !(D.ground() && r.status !== "needsok" && r.status !== "toorder") ? '<br><b class="' + (D.ground() && !staff ? "pquiet" : "pbad") + '">' + (D.ground() ? orderByText(ob) : "Order by " + fmt(ob)) + "</b>" : "")], ["For", esc(r.sub) + (r.task ? " · task “" + esc(r.task) + "”" : "")], ["Asked by", esc(r.by)]];
   // Ground up: the panel opens with the steps of the flow and whose move it is, in place of the status word.
   var top = D.ground() ? reqSteps(r) : '<div class="row">' + statusPill(r.status) + (r.order ? '<span class="who">Order #' + r.order + "</span>" : "") + "</div>";
   /* Ground up: the choices come straight after the steps and whose move it is, before the quote and the facts, so a
@@ -330,7 +332,7 @@ D.drawers.preq = function (d) {
   if (D.ground()) {
     var gacts = acts.length || cancelBtn ? '<div class="row pacts">' + acts.join("") + cancelBtn + "</div>" : "";
     // What a mentor needs to decide sits between the steps and the buttons: why, how much, and what it does to the budget.
-    var ctx = staff && r.status === "needsok" ? '<p class="pctx">' + (r.why ? "“" + esc(r.why) + "” " : "") + "<b>" + money(total(r)) + "</b>" + (budgetEffect(r) ? ", " + budgetEffect(r) : "") + "</p>" : "";
+    var ctx = staff && r.status === "needsok" ? '<p class="pctx">' + (r.why ? "“" + esc(r.why) + "” " : "") + "<b>" + money(total(r)) + "</b></p>" : "";
     return D.drawerHead("Request #" + r.id, r.name) + top + ctx + gacts +
       (r.why && !ctx ? '<p class="mute">“' + esc(r.why) + "”</p>" : "") +
       '<dl class="pkv">' + rows.map(function (x) { return "<dt>" + x[0] + "</dt><dd>" + x[1] + "</dd>"; }).join("") + "</dl>" +
@@ -395,12 +397,14 @@ function toOrderView() {
   p.requests.filter(function (r) { return r.status === "toorder"; }).forEach(function (r) { (byV[r.vendor] = byV[r.vendor] || []).push(r); });
   var html = waiting.length ? '<div class="card hero"><h2>Needs your OK</h2><div class="list">' + waiting.map(function (r) {
     var ob = orderBy(r);
-    return '<div class="li pwait"><span class="grow"><b>' + esc(r.name) + '</b><span class="pmeta">' + [r.vendor, "Qty " + qtyText(r), money(total(r)), r.by].map(esc).join(" · ") + "</span>" +
+    return '<div class="li pwait"><span class="grow"><b>' + esc(r.name) + (D.ground() && priPill(r.pri) ? " " + priPill(r.pri) : "") + '</b><span class="pmeta">' + [r.vendor, "Qty " + qtyText(r), money(total(r)), r.by].map(esc).join(D.ground() ? ", " : " · ") + "</span>" +
       // Ground up: the budget on one line with a comma, and the order-by date on its own line (hill climb r3).
-      (D.ground() ? '<span class="pmeta">' + budgetEffect(r) + "</span>" + (ob ? '<span class="pmeta"><b class="pbad">Order by ' + fmt(ob) + "</b></span>" : "") : '<span class="pmeta">' + budgetEffect(r) + (ob ? ' · <b class="pbad">order by ' + fmt(ob) + "</b>" : "") + "</span>") + (r.why ? '<span class="pmeta">“' + esc(r.why) + "”</span>" : "") + "</span>" + priPill(r.pri) +
+      (D.ground() ? '<span class="pmeta">' + budgetEffect(r) + "</span>" + (ob ? '<span class="pmeta"><b class="pbad">' + orderByText(ob) + "</b></span>" : "") : '<span class="pmeta">' + budgetEffect(r) + (ob ? ' · <b class="pbad">order by ' + fmt(ob) + "</b>" : "") + "</span>") + (r.why ? '<span class="pmeta">“' + esc(r.why) + "”</span>" : "") + "</span>" + (D.ground() ? "" : priPill(r.pri)) +
       '<span class="row nowrap"><button class="btn' + (D.ground() ? " primary" : "") + '" data-act="papprove" data-v="' + r.id + '">Approve</button><button class="btn ghost" data-act="pdeny" data-v="' + r.id + '">Deny…</button></span></div>';
   }).join("") + "</div></div>" : "";
-  var vs = Object.keys(byV).sort(function (a, b) { return byV[b].some(placeToday) - byV[a].some(placeToday); });
+  // Ground up: the vendor whose order is due soonest comes first.
+  function soonest(vn) { return byV[vn].map(function (r) { return orderBy(r) || "9999"; }).sort()[0]; }
+  var vs = Object.keys(byV).sort(function (a, b) { return byV[b].some(placeToday) - byV[a].some(placeToday) || (D.ground() ? (soonest(a) < soonest(b) ? -1 : soonest(a) > soonest(b) ? 1 : 0) : 0); });
   if (!vs.length && !waiting.length) return '<div class="card"><p class="mute">Nothing to order. New requests land here, grouped by vendor.</p></div>';
   return html + vs.map(function (vn) {
     var v = vendor(vn), lines = byV[vn], sub = lines.reduce(function (a, r) { return a + total(r); }, 0), today = lines.filter(placeToday);

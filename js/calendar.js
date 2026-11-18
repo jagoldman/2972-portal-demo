@@ -352,6 +352,9 @@ function whosComing(ed, days) {
     (ed && c.pop ? dayPop(ed, c.pop.d, days) : "") + "</div>";
 }
 function answerLabel(a, student) {
+  // Ground up: one style for every answer, a dot and a word.
+  if (D.ground() && a && a.st === "coming") return '<span class="pill ok">' + (range(a) || "Coming") + "</span>";
+  if (D.ground() && a && a.st === "cant" && !student) return '<span class="pill">Not coming</span>';
   if (a && a.st === "coming") return '<span class="ans-ok">' + D.ic("check", 13) + " " + (range(a) || "Coming") + "</span>";
   if (a && a.st === "cant" && !student) return '<span class="mute">✕ Not coming</span>';
   return '<span class="mute" aria-label="No answer">–</span>';

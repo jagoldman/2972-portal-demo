@@ -125,3 +125,8 @@ drops (Tools, To order) were faults the lead introduced in round 4 and fixed bef
 - **Request panel steps, again.** Round 5 showed the round 3 choice still read as two different "now"s. Final form:
   a finished step is named in the past with who and when ("Ordered, Ms. Rivera, Nov 6"); the step being waited for is
   marked "now" and named as the thing to come ("Order"); the sentence above the steps says who it waits on.
+- **Snacks in a parent's week.** Round 3 said "Needs snacks" in the week repeated the sign-up rows; round 6 said a
+  parent then had to look elsewhere to learn if a day was covered. The week shows the amber "Needs snacks" again,
+  and the sign-up rows sit beside it ("Can you help?").
+- **Centre distances.** Rounds 3 and 5 asked for two decimals in the calculator's answer; round 6 said the answer
+  and the table then disagreed. Everything shows three decimals of an inch, which is how the distance is machined.

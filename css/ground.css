@@ -332,4 +332,35 @@
   @media (max-width: 640px) { .season.simple { grid-template-columns: minmax(0, 1fr); } .season.simple .snhead > span { text-align: left; } }
   .tldur { display: block; color: var(--mute); }
   .tlrow > .num { white-space: nowrap; }
+
+  /* ============================================================
+     Hill climb, round 6 (2026-11-18): the top tier
+     ============================================================ */
+  /* On a phone the season line names the next milestone, one line, under the marks. */
+  @media (max-width: 760px) {
+    .snnext { display: grid; padding-top: 6px; }
+    .snnext .snms:nth-child(n+2) { display: none; }
+    .snnext .snms { min-height: 0; }
+  }
+  /* Each group in a mentor's Now starts under a hairline. */
+  .nowgroup { margin-top: 10px; padding-top: 10px; border-top: 1px solid var(--line); }
+  .nowgroup:first-child { margin-top: 2px; padding-top: 0; border-top: 0; }
+  .nowrow .rl br + * , .nowrow .rl { overflow-wrap: anywhere; }
+  @media (max-width: 640px) {
+    /* A row with a long reason gives its button a line of its own. */
+    .nowrow.nowtall { flex-wrap: wrap; row-gap: 8px; }
+    .nowrow.nowtall > .btn { flex: 1 1 100%; }
+  }
+  .homec.parent .homeside > .helpcard { border-top: 0 !important; }
+  /* The event line is two or three plain parts divided by hairlines, not a box. */
+  @media (max-width: 640px) { .evline { border-inline: 0; border-radius: 0; } }
+  /* "Nobody has these yet" starts where the task names above it start. */
+  @media (min-width: 641px) { .li.tkr { padding-left: 46px; } }
+  /* A tick is drawn to fit its box at every size. */
+  @media (min-width: 641px) { .bigcheck svg { width: 18px; height: 18px; } }
+  .month .ev .et { -webkit-line-clamp: 3; }
+  .mavail > .card, .mavail .card:not(.flat) { border: 0; border-radius: 0; background: none; padding-inline: 0; border-top: 1px solid var(--line-2); }
+  /* The profile picture is the same white circle as the one in the bar. */
+  .acc .accav { border-radius: 50%; background: var(--surface); color: var(--text); box-shadow: inset 0 0 0 1px var(--line-2); }
+  .skills .row.between > .tcount.warn { background: var(--surface-3); color: var(--text-2); }
 }

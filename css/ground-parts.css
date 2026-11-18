@@ -209,4 +209,12 @@
     .psteps .psep, .psteps .prare { display: none; }
     .psteps.rareopen .prare { display: inline-flex; }
   }
+
+  /* ---------- Hill climb, round 6 ---------- */
+  .pquiet { color: var(--text-2); font-weight: 600; }
+  .ptable.gt .pth > :nth-child(4), .ptable.gt .ptr .pc { padding-right: 20px; }
+  .pstep.zero { color: inherit; border-color: var(--line-2); }
+  .pstep.zero .tcount { background: var(--surface-3); color: var(--text-2); }
+  .pshop { max-width: 640px; }
+  .pwait b .pill { display: inline; margin-left: 6px; font-size: .86rem; }
 }

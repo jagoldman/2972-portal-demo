@@ -214,7 +214,7 @@ function pairDrawing(r1, r2, C, n1, n2, cLabel, pitch, what) {
   var dash = pitch && pitch * s >= 3 ? ' stroke-dasharray="' + (pitch * s * 0.6).toFixed(2) + " " + (pitch * s * 0.4).toFixed(2) + '"' : "";
   // A wheel's tooth count sits inside it; a small wheel's goes beside its centre line, just above the dimension,
   // where neither belt run passes.
-  function teeth(x, R, n) { return R >= 24 ? '<text class="clabel" x="' + x.toFixed(1) + '" y="' + (cy - 8).toFixed(1) + '" text-anchor="middle">' + n + " teeth</text>" : '<text class="clabel" x="' + (x + 5).toFixed(1) + '" y="' + (dy - 6) + '">' + n + " teeth</text>"; }
+  function teeth(x, R, n) { return R >= 1e9 ? '<text class="clabel" x="' + x.toFixed(1) + '" y="' + (cy - 8).toFixed(1) + '" text-anchor="middle">' + n + " teeth</text>" : '<text class="clabel" x="' + (x + 5).toFixed(1) + '" y="' + (dy - 6) + '">' + n + " teeth</text>"; }
   return '<svg class="calcdraw" viewBox="0 0 ' + W + " " + H.toFixed(0) + '" role="img"><title>' + esc(what + ": " + n1 + " and " + n2 + " teeth, " + cLabel + " apart, drawn to scale") + "</title>" +
     '<circle class="cwheel" cx="' + x1.toFixed(1) + '" cy="' + cy.toFixed(1) + '" r="' + R1.toFixed(1) + '"/><circle class="cwheel" cx="' + x2.toFixed(1) + '" cy="' + cy.toFixed(1) + '" r="' + R2.toFixed(1) + '"/>' +
     '<path class="cbelt' + (pitch ? " chain" : "") + '" d="' + path + '"' + dash + "/>" +
@@ -371,7 +371,7 @@ def({ id: "calc-belt", key: "belt", name: "Belt", icon: "cbelt", line: "Which be
       (mesh && mesh.teeth < 6 ? '<p class="calcwarn"><span class="pill warn">Few teeth</span> Under 6 teeth in mesh can skip under load. Use a bigger small pulley or a longer distance.</p>' : "");
     if (best) html += pairDrawing(b.r1, b.r2, best.C, n1, n2, "C = " + lenText(best.C, u), 0, "Belt drawing");
     if (best) html += '<div class="row"><button type="button" class="btn" data-act="calcparts" data-v="' + esc(name + " belt, " + best.teeth + "T") + '">' + D.ic("search", 16) + " Find it in Parts</button></div>";
-    var ans = err || (best ? "Use a " + best.teeth + "-tooth " + name + " belt. Put the pulleys " + (u === "mm" ? lenText(best.C, u) : fx(best.C / 25.4, 2) + " in") + " apart." : "No belt fits that distance. Make the distance longer.");
+    var ans = err || (best ? "Use a " + best.teeth + "-tooth " + name + " belt. Put the pulleys " + lenText(best.C, u) + " apart." : "No belt fits that distance. Make the distance longer.");
     return { ans: ans, bad: !best, html: html };
   },
   how: function () { return how(["<b>Pitch diameter.</b> D = pitch × teeth ÷ π. A 36-tooth HTD 5 mm pulley: 5 × 36 ÷ π = 57.3 mm.",
@@ -408,7 +408,7 @@ def({ id: "calc-chain", key: "chain", name: "Chain", icon: "cchain", line: "How 
       (mesh && mesh.teeth < 6 ? '<p class="calcwarn"><span class="pill warn">Few teeth</span> Under 6 teeth in mesh can skip under load. Use a bigger small sprocket or a longer distance.</p>' : "");
     if (best) html += pairDrawing(c.r1, c.r2, best.C, n1, n2, "C = " + inText(best.C, u), p, "Chain drawing");
     if (best) html += '<div class="row"><button type="button" class="btn" data-act="calcparts" data-v="#' + st.size + ' roller chain">' + D.ic("search", 16) + " Find it in Parts</button></div>";
-    var ans = err || (best ? "Use " + best.links + " links of #" + st.size + " chain. Put the sprockets " + (u === "mm" ? inText(best.C, u) : fx(best.C, 2) + " in") + " apart." : "No even link count fits that distance. Make the distance longer.");
+    var ans = err || (best ? "Use " + best.links + " links of #" + st.size + " chain. Put the sprockets " + inText(best.C, u) + " apart." : "No even link count fits that distance. Make the distance longer.");
     return { ans: ans, bad: !best, html: html };
   },
   how: function () { return how(["<b>Pitch diameter.</b> D = pitch ÷ sin(180° ÷ teeth). #25 chain has a 0.25 in pitch, #35 a 0.375 in pitch.",
