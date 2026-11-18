@@ -1,4 +1,27 @@
 /* Design 8.3, Ground up ("c"): Schedule, Pit and Scouting. Every rule sits under :root[data-design="c"]. See GROUND_UP.md. */
 
 :root[data-design="c"] {
+  /* ---------- The event line (eventLine in js/compete.js) ----------
+     A quiet strip above the app's top card: two or three parts side by side, each a door to the app that owns it.
+     It must be the same height in all three apps, so every part is one line on a wide screen and the parts share the
+     width equally. On a phone they stack as rows of at least 44 px, which keeps the height the same too. */
+  .evline { display: flex; min-width: 0; border: 1px solid var(--line); border-radius: var(--r); background: var(--surface); overflow: hidden; }
+  .evpart { flex: 1 1 0; min-width: 0; display: flex; flex-wrap: wrap; align-items: baseline; align-content: center; gap: 2px 10px; min-height: 40px; padding: 7px 14px; color: var(--text); text-decoration: none; }
+  .evpart + .evpart { border-left: 1px solid var(--line); }
+  a.evpart:hover { background: var(--surface-2); }
+  a.evpart:hover .evv { text-decoration: underline; text-underline-offset: 3px; }
+  a.evpart:focus-visible { outline-offset: -3px; }
+  .evk { color: var(--mute); font-size: .86rem; white-space: nowrap; }
+  .evv { min-width: 0; font-weight: 600; overflow-wrap: anywhere; }
+  /* The strip sits right under the tab row; the content's first-child spacing would otherwise push it down. */
+  .content > .evline { margin-top: 14px; }
+  .content > .evline + .card.hero { margin-top: 12px; }
+
+  @media (max-width: 640px) {
+    .evline { flex-direction: column; }
+    /* The name sits above its value, so every row is two short lines and no row is taller than the others. */
+    .evpart { display: grid; gap: 1px; min-height: 44px; padding: 7px 12px; }
+    .evk { font-size: .8rem; }
+    .evpart + .evpart { border-left: 0; border-top: 1px solid var(--line); }
+  }
 }

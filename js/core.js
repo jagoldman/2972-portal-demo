@@ -427,12 +427,15 @@ function homeGround() {
   var now = nowRows(), others = role === "student" ? waitingOnOthers() : [];
   var mainCol = "";
   if (role === "student" && S.eventDay && D.myShiftCard) mainCol += D.myShiftCard();
-  mainCol += '<section class="card nowcard"><h2>Now</h2>' + (now.length ? '<div class="list">' + now.map(nowRow).join("") + "</div>" : '<p class="mute">Nothing needs you right now.</p>') + "</section>";
+  if (now.length || !shift) mainCol += '<section class="card nowcard"><h2>Now</h2>' + (now.length ? '<div class="list">' + now.map(nowRow).join("") + "</div>" : '<p class="mute">Nothing needs you right now.</p>') + "</section>";
   if (role === "student" && D.nextUpCard) mainCol += S.eventDay ? '<div class="evcompact">' + D.nextUpCard() + "</div>" : D.nextUpCard();
   if (others.length) mainCol += '<section class="card"><h2>Waiting on others</h2><div class="list">' + others.join("") + "</div></section>";
   var act = role === "parent" ? "" : '<section class="card"><h2>Recent activity</h2><div class="list">' +
     S.activity.slice(0, 4).map(function (a) { return '<div class="li actli"><span class="actapp">' + esc(D.APPNAME[a.app] || "") + '</span><span class="grow"><b>' + esc(a.who) + "</b> " + esc(a.what) + '</span><span class="who">' + esc(a.when) + "</span></div>"; }).join("") + "</div></section>";
-  var top = S.eventDay && D.eventLine && role !== "parent" ? D.eventLine() : role === "parent" ? "" : seasonLine();
+  // On an event day the event line takes the season line's place. A student's shift card below already says "you
+  // now", so the line leaves that part out for them.
+  var shift = role === "student" && S.eventDay && D.myShiftCard;
+  var top = S.eventDay && D.eventLine && role !== "parent" ? D.eventLine(shift ? "schedule" : "") : role === "parent" ? "" : seasonLine();
   return '<div class="content home homeb homec"><div class="homehead"><h1>Hi ' + esc(D.me().short) + '.</h1><p class="homedate">' + esc(date) + "</p></div>" + top + (D.guideCard ? D.guideCard() : "") +
     '<div class="homecols"><div class="homemain">' + mainCol + '</div><aside class="homeside">' +
     '<section class="card"><h2>This week</h2>' + weekRows() + "</section>" +

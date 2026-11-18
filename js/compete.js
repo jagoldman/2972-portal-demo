@@ -74,6 +74,57 @@ function nowRole(p) { return scheduleRows()[p][C().nowSlot]; }
 function onDuty(type) { return PEOPLE.filter(function (p) { return ROLES[nowRole(p)].type === type; }); }
 D.compApi = { onDuty: onDuty };
 
+/* ---------- The event line (Ground up, GROUND_UP.md §4 Competition) ---------- */
+// At an event a person needs three answers: my job now, our next match, and whether the robot is ready. Each app's
+// top card gives one of them, so they were spread over three apps. The event line is one slim strip at the top of
+// Schedule, Pit and Scouting with the other two answers, each a door to the app that owns it. `here` is the open app;
+// its own top card already says its part, so the line leaves that part out: Schedule's card is "you now", and the
+// Pit's card is both the next match and the checklist count, so in the Pit the line is "you now" alone. Scouting's
+// card is the match being scouted, which is none of the three, so Scouting shows all three (the lead, 2026-11-17,
+// on coder E's finding that scouts still could not see our next match). Home passes "" and gets all three.
+// The line only reads the sample data, so it is defined in every version; the apps draw it only in Ground up.
+var EVPARTS = [
+  { k: "now", label: "You now", app: "schedule", tab: "mine", text: evNow },
+  { k: "match", label: "Next match", app: "pit", tab: "check", text: evMatch },
+  { k: "robot", label: "Robot", app: "pit", tab: "check", text: evRobot }
+];
+function eventLine(here) {
+  if (!D.S.comp) return "";
+  return '<nav class="evline" aria-label="At the event">' + EVPARTS.filter(function (p) { return p.app !== here; }).map(function (p) {
+    var inner = '<span class="evk">' + p.label + '</span><span class="evv">' + esc(p.text()) + "</span>";
+    // A door only for someone who may open that app (a parent may not); otherwise the same words, not a link.
+    return D.inGroup(p.app) ? '<a class="evpart" href="' + D.appHref(p.app) + '" data-act="goapp" data-app="' + p.app + '" data-tab="' + p.tab + '">' + inner + "</a>" : '<div class="evpart">' + inner + "</div>";
+  }).join("") + "</nav>";
+}
+D.eventLine = function (here) { return eventLine(here || ""); };
+// The person whose row the schedule has. Students are Sam Ortiz in the sample data, as on My schedule; a mentor not
+// on the schedule (the admin) has no shift.
+function evWho() { return D.S.role === "student" ? "Sam Ortiz" : PEOPLE.indexOf(D.me().name) >= 0 ? D.me().name : null; }
+// "Scouting until 10:00, then Break". Same day and slot as the Schedule's own card and the Scouting form.
+function evNow() {
+  var who = evWho(); if (!who) return "No shift now";
+  var c = C(), runs = runsOf(scheduleRows()[who]), cur = runs.filter(function (r) { return r.from <= c.nowSlot && c.nowSlot <= r.to; })[0];
+  if (!cur) return "No shift now";
+  var nxt = runs[runs.indexOf(cur) + 1];
+  return ROLES[cur.r].label + " until " + slotLabel(cur.to + 1) + (nxt ? ", then " + ROLES[nxt.r].label : "");
+}
+// Match times are 12-hour labels from slotLabel, and the day starts at 8:00, so 1:00 to 7:59 are afternoon.
+function labelMins(t) { var p = String(t).split(":"), h = +p[0]; if (h < 8) h += 12; return h * 60 + (+p[1] || 0); }
+function evDur(m) { var h = Math.floor(m / 60), mm = m % 60; return (h ? h + " h" : "") + (h && mm ? " " : "") + (mm ? mm + " min" : ""); }
+// "Qual 22, Blue, 2:15, in 5 h". When our match is the one on the field, it says so, as the Pit's top card does.
+function evMatch() {
+  var c = C(), m = nextOurs(); if (!m) return "No more matches today";
+  var left = labelMins(m.time) - (START + c.nowSlot * 15);
+  return "Qual " + m.q + ", " + (m.red.indexOf(2972) >= 0 ? "Red" : "Blue") + ", " + m.time + ", " + (m.q === c.current ? "on the field now" : left > 0 ? "in " + evDur(left) : "now");
+}
+// "5 of 11 checked, battery B1 at 12.9 V": the Pit's checklists and the battery marked In robot.
+function evRobot() {
+  var c = C(), total = 0, ticked = 0, inR = c.batteries.filter(function (b) { return b.s === "In robot"; })[0];
+  c.lists.forEach(function (l) { l.items.forEach(function (i) { total++; if (i.c) ticked++; }); });
+  return ticked + " of " + total + " checked" + (inR ? ", battery " + inR.id + (String(inR.v).trim() ? " at " + String(inR.v).trim() + " V" : "") : "");
+}
+function groundLine(here) { return D.ground() ? eventLine(here) : ""; }
+
 /* ---------- Schedule ---------- */
 D.views.schedule = function () {
   var staff = D.isStaff(), list = [["mine", "My schedule"], ["all", "Everyone"]];
@@ -83,7 +134,7 @@ D.views.schedule = function () {
   var dayTabs = '<span class="seg">' + c.days.map(function (d, i) { return '<button data-act="sday" data-v="' + i + '" aria-pressed="' + (c.day === i) + '">' + d + "</button>"; }).join("") + "</span>";
   if (t === "all") body = everyone(dayTabs); else if (t === "roles" && staff) body = rolesView(); else if (t === "settings" && staff) body = settingsView(); else body = mySchedule(dayTabs);
   var meta = '<div class="row evmeta"><span class="mute">' + esc(ev ? ev.name : "Colorado Regional") + '</span><span class="pill ' + (c.published ? "ok" : "warn") + '">' + (c.published ? "Published" : "Draft") + "</span></div>";
-  return D.topbar("Schedule", "", D.tabsFor("schedule", list, "mine"), "") + '<div class="content cmp">' + meta + body + "</div>";
+  return D.topbar("Schedule", "", D.tabsFor("schedule", list, "mine"), "") + '<div class="content cmp">' + groundLine("schedule") + meta + body + "</div>";
 };
 function runsOf(row) { var runs = []; row.forEach(function (r, i) { if (!runs.length || runs[runs.length - 1].r !== r) runs.push({ r: r, from: i, to: i }); else runs[runs.length - 1].to = i; }); return runs; }
 D.myShiftCard = function () { return mySchedule("", true); };
@@ -140,7 +191,7 @@ D.views.pit = function () {
   var staff = D.isStaff(), list = [["check", "Checklists"], ["batt", "Batteries"], ["archives", "Archives"]];
   if (staff) list.push(["edit", "Edit lists"]);
   var t = D.tab("pit", "check"), body = t === "batt" ? batteries() : t === "archives" ? archives() : t === "edit" && staff ? editLists() : checklists();
-  return D.topbar("Pit", "", D.tabsFor("pit", list, "check"), '<button class="btn sm" data-act="go" data-v="monitor">' + D.ic("projector", 16) + '<span class="hide-sm"> Pit monitor</span><span class="show-sm-inline">Monitor</span></button>') + '<div class="content cmp">' + body + "</div>";
+  return D.topbar("Pit", "", D.tabsFor("pit", list, "check"), '<button class="btn sm" data-act="go" data-v="monitor">' + D.ic("projector", 16) + '<span class="hide-sm"> Pit monitor</span><span class="show-sm-inline">Monitor</span></button>') + '<div class="content cmp">' + groundLine("pit") + body + "</div>";
 };
 function nextOurs() { var c = C(); return c.matches.filter(function (m) { return m.q >= c.current && (m.red.indexOf(2972) >= 0 || m.blue.indexOf(2972) >= 0); })[0]; }
 function checklists() {
@@ -200,7 +251,7 @@ D.views.scouting = function () {
   if (staff) list.push(["forms", "Forms"]);
   var t = D.tab("scouting", "form"), body = t === "stats" ? stats() : t === "picks" ? picks() : t === "assign" && lead ? assignments() : t === "coverage" && lead ? coverage() : t === "forms" && staff ? forms() : matchForm();
   var isForm = !(t === "stats" || t === "picks" || (t === "assign" && lead) || (t === "coverage" && lead) || (t === "forms" && staff));
-  return D.topbar("Scouting", "", D.tabsFor("scouting", list, "form"), "") + '<div class="content cmp">' + (isForm && onShiftNow() ? "" : '<p class="mute">Current match: <span class="abbr" tabindex="0" data-tip="Qualification match; the matches before the playoffs.">Qual ' + C().current + "</span></p>") + body + "</div>";
+  return D.topbar("Scouting", "", D.tabsFor("scouting", list, "form"), "") + '<div class="content cmp">' + groundLine("scouting") + (isForm && onShiftNow() ? "" : '<p class="mute">Current match: <span class="abbr" tabindex="0" data-tip="Qualification match; the matches before the playoffs.">Qual ' + C().current + "</span></p>") + body + "</div>";
 };
 function onShiftNow() { return D.S.role !== "student" || nowRole("Sam Ortiz") === "scout"; }
 function matchForm() {

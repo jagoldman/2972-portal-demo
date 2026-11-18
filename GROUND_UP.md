@@ -142,8 +142,9 @@ the way, and what the Ground up version does. "Kept" means the Baseline version 
   checklist has big targets.
 - **In the way:** the three answers are in three apps. A scout does not see the next match time; the pit crew does
   not see who is on shift next.
-- **Ground up:** one line at the top of all three apps, the same in each: **you now**, **next match**, **robot**.
-  Each part is a door to the app that owns it.
+- **Ground up:** one line at the top of all three apps: **you now**, **next match**, **robot**. Each part is a door
+  to the app that owns it. An app's own top card already gives its part, so the line leaves that part out: Schedule
+  shows next match and robot, the Pit shows you now, and Scouting shows all three.
 
 ### Account
 - **Job:** hold a person's own settings. **Kept.**
