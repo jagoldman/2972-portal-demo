@@ -688,7 +688,7 @@ function signoffView() {
        rows drop it. */
     if (g && !can && !pickable) return '<div class="skpick nobox"><b>' + esc(st) + '</b><span class="pill ' + (stt === "complete" ? "ok" : "") + '">' + (stt === "complete" ? "Signed off" : "Not open yet, earlier skills first") + "</span></div>";
     var box = g && !can ? '<span class="skpickno" aria-hidden="true"></span>' : '<button class="bigcheck sm" data-act="skbulkpick" data-v="' + esc(st) + '" aria-pressed="' + !!b.picks[st] + '"' + (can ? "" : " disabled") + ' aria-label="Pick ' + esc(st) + '">' + D.ic("check", 22) + "</button>";
-    return '<div class="skpick">' + box + "<b>" + esc(st) + '</b><span class="pill ' + (stt === "complete" ? "ok" : stt === "locked" ? "" : "info") + '">' + ({ complete: g ? "Signed off" : "Done", locked: g ? "Not open yet, earlier skills first" : "Locked", requested: "Asked", progress: "In progress", available: g ? "Can sign off" : "Available" })[stt] + "</span></div>";
+    return '<div class="skpick">' + box + "<b>" + esc(st) + '</b><span class="pill ' + (stt === "complete" ? "ok" : stt === "locked" ? "" : g && stt === "available" ? "plain" : "info") + '">' + ({ complete: g ? "Signed off" : "Done", locked: g ? "Not open yet, earlier skills first" : "Locked", requested: "Asked", progress: "In progress", available: g ? "Can sign off" : "Available" })[stt] + "</span></div>";
   }).join("");
   var nobody = g && !pickable ? '<p class="skpicknone">Nobody can be signed off on this skill: everyone has it or it is not open to them yet.</p>' : "";
   var n = Object.keys(b.picks).filter(function (k) { return b.picks[k]; }).length;

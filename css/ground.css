@@ -363,4 +363,28 @@
   /* The profile picture is the same white circle as the one in the bar. */
   .acc .accav { border-radius: 50%; background: var(--surface); color: var(--text); box-shadow: inset 0 0 0 1px var(--line-2); }
   .skills .row.between > .tcount.warn { background: var(--surface-3); color: var(--text-2); }
+
+  /* Round 6, Sol and Grok 4.7 */
+  /* An open menu dims the page under it, so nothing under it looks live. */
+  .menu-scrim { background: rgba(0,0,0,.42); }
+  /* Until a student has signed in, Sign in is the one filled button on Home; the task's button is outlined. Once
+     they are signed in there is no Sign in row, and the task's button is filled again (settled in round 6). */
+  .homec .homecols:has(.nowrow.nowfirst .btn.primary) .nextup .btn.primary { background: var(--surface); border-color: var(--line-2); color: var(--text); box-shadow: none; }
+  .stages li.now b::after { content: "  now"; margin-left: 6px; color: var(--accent); font-size: .78rem; font-weight: 700; }
+  .skpick .pill.plain { color: var(--text); }
+  .skpick .pill.plain::before { display: none; }
+  .skmach .pill:not(.ok):not(.warn) { color: var(--text); }
+  .trowx .tst .pill { white-space: normal; text-align: right; }
+  .kpi b.bad { color: var(--bad); }
+  .pitafter h2 { font-size: .95rem; color: var(--text-2); }
+  .pitafter .pitmaint { justify-content: flex-start; }
+  @media (max-width: 640px) {
+    /* Scouting on a phone: the assignment and its timer are one compact strip, so the form starts sooner. */
+    .cmp .card.hero .big { font-size: 1.9rem; }
+    .cmp .card.hero { padding-block: 10px 12px; }
+  }
+  /* Remove stage is quiet and sits at the right of its stage's heading, away from the tooth counts. */
+  .calcstage { position: relative; }
+  .calcstage .calcx { position: absolute; top: 2px; right: 0; min-height: 30px; color: var(--mute); }
+  @media (max-width: 640px) { .calcstage .calcx { min-height: 44px; top: -6px; } }
 }

@@ -207,7 +207,7 @@ function findBox(q, reqHits) {
       var home = i.stock.filter(function (s) { return s.place.indexOf("bot") < 0; }), k = homeK(i);
       return '<div class="li pshopi"><span class="grow"><b>' + esc(i.name) + '</b><span class="pmeta">' + (home.map(function (s) { return esc(s.place); }).join(", ") || "Only on robots") + "</span></span>" +
         '<span class="pinst num">' + inStore(i) + (i.unit === "each" ? "" : " " + esc(i.unit)) + " on the shelf" + (isLow(i) ? ' <span class="pill warn">Low</span>' : "") + "</span>" +
-        (k >= 0 ? '<button class="btn sm' + (takers === 1 ? " primary pmain" : "") + '" data-act="ptake" data-v="' + i.id + '" data-k="' + k + '" aria-label="Take ' + esc(i.name) + '">Take</button>' : '<span class="pnotake" aria-hidden="true"></span>') + "</div>";
+        (k >= 0 ? '<button class="btn sm' + (takers === 1 ? " primary pmain" : "") + '" data-act="ptake" data-v="' + i.id + '" data-k="' + k + '" aria-label="Take ' + esc(i.name) + '">Take one</button>' : '<span class="pnotake" aria-hidden="true"></span>') + "</div>";
     }).join("") + '</div><div class="row pshopact"><button class="btn" data-act="pinvopen">Open Inventory</button><button class="btn" data-act="pask" data-v="more">Request more</button></div></section>';
   } else if (reqHits) {
     html += '<div class="row pnone"><p>Nothing like “' + esc(q) + '” is in the shop.</p><button class="btn" data-act="pask">Request it</button></div>';
@@ -267,11 +267,12 @@ function flowRow(groups, gcount) {
 }
 function requests() {
   var p = P(), me = D.me().name;
-  var groups = [["open", "Open", ["needsok", "toorder", "ordered"]], ["needsok", "Needs mentor OK", ["needsok"]], ["toorder", "To order", ["toorder"]], ["ordered", "Ordered", ["ordered"]], ["done", "Arrived", ["arrived", "putaway"]], ["closed", "Denied or cancelled", ["denied", "cancelled"]], ["all", "All", Object.keys(STATUS)], ["wish", "Wishlist", []]];
+  var groups = [["open", "Open", ["needsok", "toorder", "ordered"]], ["needsok", "Needs mentor OK", ["needsok"]], ["toorder", "To order", ["toorder"]], ["ordered", "Ordered", ["ordered"]], ["done", "Arrived", ["arrived", "putaway"]], ["closed", "Denied or cancelled", ["denied", "cancelled"]], ["all", D.ground() ? "Everything" : "All", Object.keys(STATUS)], ["wish", "Wishlist", []]];
   // In Ground up the counts on the steps follow the search and "Only mine", so they always agree with the list under them.
   function gcount(x) { return x[0] === "wish" ? (p.wish || []).length : p.requests.filter(function (r) { return x[2].indexOf(r.status) >= 0 && (!D.ground() || ((!p.mine || r.by === D.me().name) && (!p.q.trim() || matches(reqText(r), p.q.trim())))); }).length; }
-  var g = groups.filter(function (x) { return x[0] === p.filter; })[0];
   var q = p.q.toLowerCase(), ground = D.ground(), gq = p.q.trim();
+  // Ground up: a search looks through every request, whatever step is chosen, so the step buttons are not drawn then.
+  var g = groups.filter(function (x) { return x[0] === (ground && gq && p.filter !== "wish" ? "all" : p.filter); })[0];
   var rows = p.requests.filter(function (r) { return g[2].indexOf(r.status) >= 0 && (!p.mine || r.by === me) && (ground ? !gq || matches(reqText(r), gq) : !q || (r.name + r.sku + r.vendor + r.by + r.sub).toLowerCase().indexOf(q) >= 0); });
   // Most urgent first: blocking, then waiting for a mentor, then high priority; then your own; then soonest need-by.
   function urg(r) { return r.pri === "blocking" ? 0 : r.status === "needsok" ? 1 : r.pri === "high" ? 2 : 3; }
@@ -300,7 +301,7 @@ function requests() {
     }).join("");
     var table = p.filter === "wish" ? '<div class="list">' + wishList() + "</div>" : none ? "" : rows.length ? '<div class="ptable gt"><div class="pth" aria-hidden="true"><span>Part</span><span>Vendor</span><span>Quantity</span><span class="r">Cost</span><span>Asked by</span><span>Need by</span><span>Priority</span><span>Status</span></div>' + grouped + "</div>" : '<div class="empty">' + (gq ? "No requests like “" + esc(gq) + "” here. Try All open or More." : "Nothing here.") + "</div>";
     // While a search is showing, the list under the shop's answer is what has already been asked for.
-    return '<div class="card preqs">' + findBox(gq, anyReq) + (none ? "" : '<h3 class="preqh">' + (gq ? "Already requested" : "Requests") + "</h3>" + flowRow(groups, gcount)) + table + "</div>";
+    return '<div class="card preqs">' + findBox(gq, anyReq) + (none ? "" : '<h3 class="preqh">' + (gq ? "Already requested" : "Requests") + "</h3>" + (D.ground() && p.q.trim() && p.filter !== "wish" ? "" : flowRow(groups, gcount))) + table + "</div>";
   }
   var filters = '<div class="pfilters"><label class="pf-show"><span>Show</span><select class="inp" data-change="pfiltersel">' + groups.map(function (x) { return '<option value="' + x[0] + '"' + (p.filter === x[0] ? " selected" : "") + ">" + x[1] + " (" + gcount(x) + ")</option>"; }).join("") + "</select></label>" +
     '<label class="pf-mine"><button class="toggle" data-act="pmine" aria-pressed="' + p.mine + '" aria-label="Only my requests"></button><span>Only mine</span></label>' +
@@ -332,7 +333,7 @@ D.drawers.preq = function (d) {
   if (D.ground()) {
     var gacts = acts.length || cancelBtn ? '<div class="row pacts">' + acts.join("") + cancelBtn + "</div>" : "";
     // What a mentor needs to decide sits between the steps and the buttons: why, how much, and what it does to the budget.
-    var ctx = staff && r.status === "needsok" ? '<p class="pctx">' + (r.why ? "“" + esc(r.why) + "” " : "") + "<b>" + money(total(r)) + "</b></p>" : "";
+    var ctx = staff && r.status === "needsok" && r.why ? '<p class="pctx">“' + esc(r.why) + "”</p>" : "";
     return D.drawerHead("Request #" + r.id, r.name) + top + ctx + gacts +
       (r.why && !ctx ? '<p class="mute">“' + esc(r.why) + "”</p>" : "") +
       '<dl class="pkv">' + rows.map(function (x) { return "<dt>" + x[0] + "</dt><dd>" + x[1] + "</dd>"; }).join("") + "</dl>" +
@@ -422,7 +423,7 @@ function toOrderView() {
     }
     return '<div class="card"><div><div class="row between nowrap pvh"><h2>' + esc(vn) + '</h2><div class="row nowrap">' + (today.length ? '<span class="pill bad">Place today</span>' : "") + '<b class="num">' + money(sub) + '</b></div></div>' + facts + "</div>" +
       (v.free ? (D.ground() ? '<div class="pship">' + bar + nudge + "</div>" : bar + nudge) : "") +
-      '<div class="list">' + lines.map(function (r) { var ob = orderBy(r); return '<div class="li pline"><span class="grow"><b>' + esc(r.name) + '</b><span class="pmeta">' + (D.ground() ? (ob ? '<b class="pob">Order by ' + fmt(ob) + "</b>, " : "") + [r.sku, "qty " + qtyText(r), bname(r.bud), "for " + r.sub, r.by].map(esc).join(", ") : [r.sku, "Qty " + qtyText(r), bname(r.bud), "for " + r.sub, r.by].map(esc).join(" · ") + (ob ? " · order by " + fmt(ob) : "")) + '</span></span><span class="pside"><span class="num">' + money(total(r)) + "</span>" + priPill(r.pri) + "</span></div>"; }).join("") + "</div>" +
+      '<div class="list">' + lines.map(function (r) { var ob = orderBy(r); return '<div class="li pline"><span class="grow"><b>' + esc(r.name) + '</b><span class="pmeta">' + (D.ground() ? (ob ? '<b class="pob">' + orderByText(ob) + "</b>" : "") + [r.sku, "qty " + qtyText(r), bname(r.bud), "for " + r.sub, r.by].map(esc).join(", ") : [r.sku, "Qty " + qtyText(r), bname(r.bud), "for " + r.sub, r.by].map(esc).join(" · ") + (ob ? " · order by " + fmt(ob) : "")) + '</span></span><span class="pside"><span class="num">' + money(total(r)) + "</span>" + priPill(r.pri) + "</span></div>"; }).join("") + "</div>" +
       '<div class="row"><button class="btn' + (today.length ? " primary" : "") + '" data-act="pmarkordered" data-v="' + esc(vn) + '">Mark ordered…</button><button class="btn' + (D.ground() ? " ghost" : "") + '" data-act="pcopy" data-v="' + esc(vn) + '">' + (vn === "Amazon" ? "Open Share-A-Cart" : "Copy list") + "</button></div></div>";
   }).join("");
 }
@@ -658,6 +659,8 @@ D.partsApi = {
       .sort(function (a, b) { return (a.pri === "blocking" ? 0 : 1) - (b.pri === "blocking" ? 0 : 1) || String(a.orderBy || "9").localeCompare(String(b.orderBy || "9")) || rank[a.pri] - rank[b.pri] || a.id - b.id; });
   },
   // Exactly the Approve button: the same function, toast, notice and log. It redraws.
+  // The earliest "order by" date among the requests that are ready to order (ISO), or "" when none has one.
+  firstOrderBy: function () { return P().requests.filter(function (r) { return r.status === "toorder"; }).map(function (r) { return orderBy(r) || ""; }).filter(Boolean).sort()[0] || ""; },
   approve: function (id) { A.papprove({ dataset: { v: String(id) } }); },
   // The signed-in person's own requests that are not finished, with who has the next move.
   mine: function () {

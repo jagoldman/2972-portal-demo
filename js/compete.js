@@ -222,10 +222,12 @@ function checklists() {
   var c = C(), total = 0, ticked = 0, m = nextOurs(), red = m.red.indexOf(2972) >= 0;
   c.lists.forEach(function (l) { l.items.forEach(function (i) { total++; if (i.c) ticked++; }); });
   return '<div class="card hero"><div class="row between"><div><p class="eyebrow">' + (D.ground() ? (m.q === c.current ? "Our match is on the field now" : "Next match, " + (m.q - c.current) + " matches away, scheduled " + m.time) : "Next match · " + (m.q === c.current ? "on the field now" : (m.q - c.current) + " matches away") + " · scheduled " + m.time) + '</p><h2 class="herotitle">Qual ' + m.q + " · " + (red ? "Red" : "Blue") + '</h2><p class="mute">With ' + (red ? m.red : m.blue).filter(function (t) { return t !== 2972; }).join(" and ") + " · against " + (red ? m.blue : m.red).join(", ") + '</p></div><span class="pill ' + (ticked === total ? "ok" : "warn") + '">' + ticked + " of " + total + " checked</span></div>" + '<div class="bar"><i class="ok" style="width:' + D.pct(ticked, total) + '%"></i></div>' +
-    '<div class="row pitmaint"><button class="btn" data-act="pitarchive">' + (D.ground() ? "Save Qual " + c.last + " and clear the ticks" : "Archive as Qual " + c.last) + "</button>" + '<button class="btn" data-act="pitreset">' + (D.ground() ? "Reset checklist" : "Reset") + "</button></div></div>" +
+    (D.ground() ? "" : '<div class="row pitmaint"><button class="btn" data-act="pitarchive">Archive as Qual ' + c.last + '</button><button class="btn" data-act="pitreset">Reset</button></div>') + "</div>" +
     '<div class="grid2">' + c.lists.map(function (l, li) {
       return '<div class="card"><h2>' + esc(l.name) + "</h2><div>" + l.items.map(function (it, ii) { return '<div class="checkrow"><button class="bigcheck" data-act="pittick" data-l="' + li + '" data-i="' + ii + '" aria-pressed="' + it.c + '" aria-label="' + esc(it.n) + '">' + D.ic("check", 28) + "</button><div><b>" + esc(it.n) + "</b>" + (it.c ? '<div class="who">' + esc(it.by) + " · " + esc(it.at) + "</div>" : "") + '</div><button class="btn sm" data-act="pitissue" data-l="' + li + '" data-i="' + ii + '">Problem</button></div>'; }).join("") + "</div></div>";
-    }).join("") + "</div>" + issuesCard();
+    }).join("") + "</div>" +
+    // Ground up: saving and clearing are housekeeping for after the match, so they sit after the checks and say so.
+    (D.ground() ? '<div class="card pitafter"><h2>After the match</h2><div class="row pitmaint"><button class="btn" data-act="pitarchive">Save Qual ' + c.last + ' and clear the ticks</button><button class="btn" data-act="pitreset">Reset checklist</button></div></div>' : "") + issuesCard();
 }
 function issuesCard() {
   var c = C();

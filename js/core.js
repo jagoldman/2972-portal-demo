@@ -371,7 +371,7 @@ function nowRow(o) {
 function nowRows() {
   var S = D.S, rows = [], api = D.calApi, c = S.cal, staff = D.isStaff(), P = apiWith(D.partsApi, ["needsOk", "approve", "open"]), K = apiWith(D.skillsApi, ["requests", "signOff"]);
   // At an event, Now holds only what the event needs (hill climb r4): the pit's own rows, from the Competition app.
-  if (S.eventDay && S.role !== "parent") return (D.eventRows ? D.eventRows() : []).map(function (r) { return { app: r.app, tab: r.tab, title: r.title, line: esc(r.line || ""), btn: r.btn ? '<button class="btn" data-act="goapp" data-app="' + r.app + '" data-tab="' + r.tab + '">' + esc(r.btn) + "</button>" : "" }; });
+  if (S.eventDay && S.role !== "parent") return (D.eventRows ? D.eventRows() : []).map(function (r) { return { app: r.app, tab: r.tab, title: r.title, line: esc(r.line || ""), btn: r.btn ? '<button class="btn primary" data-act="goapp" data-app="' + r.app + '" data-tab="' + r.tab + '">' + esc(r.btn) + "</button>" : "" }; });
   practiceRows().forEach(function (r) {
     // A parent's first question is the next practice. When that is today, the row says "today", not the date.
     // A parent's practices are the "This week" list, which leads their page, so Now holds only what they can do.
@@ -410,7 +410,8 @@ function nowRows() {
     waitingRows().forEach(function (r) {
       if (P && r.app === "parts" && /needs? an OK/.test(r.title)) return;
       if (K && r.app === "skills") return;
-      rows.push({ app: r.app, tab: r.tab, title: r.title.replace(/ (is|are) ready to order$/, " $1 waiting to be ordered"), line: r.line ? esc(r.line) : "" });
+      var fo = /ready to order$/.test(r.title) && D.partsApi && D.partsApi.firstOrderBy ? D.partsApi.firstOrderBy() : "";
+      rows.push({ app: r.app, tab: r.tab, title: r.title.replace(/ (is|are) ready to order$/, " $1 waiting to be ordered"), line: fo && api ? esc("The first must be ordered by " + api.fmt(fo)) : r.line ? esc(r.line) : "" });
     });
   }
   // For a mentor the practice row is information, not a decision, so it follows the rows that need one.

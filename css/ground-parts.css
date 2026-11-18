@@ -212,9 +212,16 @@
 
   /* ---------- Hill climb, round 6 ---------- */
   .pquiet { color: var(--text-2); font-weight: 600; }
-  .ptable.gt .pth > :nth-child(4), .ptable.gt .ptr .pc { padding-right: 20px; }
+  @media (min-width: 900px) { .ptable.gt .pth > :nth-child(4), .ptable.gt .ptr .pc { padding-right: 20px; } }
   .pstep.zero { color: inherit; border-color: var(--line-2); }
   .pstep.zero .tcount { background: var(--surface-3); color: var(--text-2); }
   .pshop { max-width: 640px; }
   .pwait b .pill { display: inline; margin-left: 6px; font-size: .86rem; }
+
+  /* Round 6, Sol and Grok 4.7: the order-by date is its own line above the part's other facts. */
+  .pline .pob { display: block; }
+  .pctx { font-size: 1rem; }
+  /* "Only mine" sits on the heading's line, so the list starts sooner. */
+  .preqs { position: relative; }
+  @media (max-width: 640px) { .pflow { gap: 8px 12px; } .pflow .pf-mine { min-height: 36px; } }
 }

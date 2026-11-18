@@ -11,7 +11,8 @@ Every judge in a tier must score every area at the tier's target. Fixes are made
 | 3 | 2 (8.5) | Sonnet, GPT-6.1 Terra, Grok 4.6 | 6.7 to 8.7 | 16 of 16 areas under 8.5 from at least one judge |
 | 4 | 2 (8.5) | Sonnet, GPT-6.1 Terra, Grok 4.6 | 7.0 to 8.8 | 16 of 16 areas under 8.5 from at least one judge; lowest per area 7.0 to 8.3 |
 | 5 | 2 (8.5) | Sonnet, GPT-6.1 Terra, Grok 4.6 | 7.3 to 8.8 | 16 of 16 areas under 8.5 from at least one judge; lowest per area 7.3 to 8.4 |
-| 6 | 3 (9.5) | Opus, GPT-6.1 Sol, Grok 4.7 if it can see images | with the judges | |
+| 6 | 3 (9.5) | Opus, GPT-6.1 Sol, Grok 4.7 (all three passed the proof) | 7.6 to 9.0 | 16 of 16 areas under 9.5; lowest per area 7.6 to 8.6 |
+| 7 | 3 (9.5) | Opus, GPT-6.1 Sol, Grok 4.7 | with the judges | |
 
 Grok 4.5 was thrown out in rounds 1 and 2: asked to copy exact text from three screenshots, it invented it.
 Grok 4.6 copied the text correctly in round 3 and counts.
@@ -130,3 +131,6 @@ drops (Tools, To order) were faults the lead introduced in round 4 and fixed bef
   and the sign-up rows sit beside it ("Can you help?").
 - **Centre distances.** Rounds 3 and 5 asked for two decimals in the calculator's answer; round 6 said the answer
   and the table then disagreed. Everything shows three decimals of an inch, which is how the distance is machined.
+- **"Sign in" and "Mark task done" on Home, final.** Rounds 2, 5 and 6 asked for one filled button until the
+  student has signed in; rounds 3 and 4 asked for the task's button to match Tasks. Until sign-in, Sign in is filled
+  and the task's button is outlined; after it, the task's button is filled. The judges' brief now says so.
