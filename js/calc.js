@@ -103,7 +103,8 @@ function labelTables() {
 }
 // The inputs column scrolls inside itself on a laptop. Say so while there is more below.
 function sideCue() { var el = document.querySelector(".benchside"); if (el) el.classList.toggle("more-b", el.scrollHeight - el.scrollTop - el.clientHeight > 6); }
-function markScroll() { labelTables(); sideCue(); document.querySelectorAll(".bench .scroll, .bench .codeout, .bench .ctable").forEach(function (el) { var wide = el.scrollWidth > el.clientWidth + 3; el.classList.toggle("canscroll", wide); if (wide) edges(el); else el.classList.remove("more-r", "more-l"); }); }
+function chartWords() { document.querySelectorAll(".bench .chart svg").forEach(function (sv) { var w = sv.clientWidth; sv.style.setProperty("--cs", w > 440 ? (440 / w).toFixed(3) : "1"); }); }
+function markScroll() { labelTables(); sideCue(); chartWords(); document.querySelectorAll(".bench .scroll, .bench .codeout, .bench .ctable").forEach(function (el) { var wide = el.scrollWidth > el.clientWidth + 3; el.classList.toggle("canscroll", wide); if (wide) edges(el); else el.classList.remove("more-r", "more-l"); }); }
 D.after.push(markScroll);
 window.addEventListener("resize", markScroll);
 document.addEventListener("scroll", function (e) { var t = e.target; if (t && t.classList && t.classList.contains("canscroll")) edges(t); if (t && t.classList && t.classList.contains("benchside")) sideCue(); }, true);

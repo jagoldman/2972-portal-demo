@@ -207,7 +207,7 @@ details.cg:not([open]) { padding-bottom: 12px; }
 .toolquick .tqa { display: inline-flex; align-items: center; gap: 8px; min-height: 40px; padding: 4px 14px 4px 10px; border: 1px solid var(--line); border-radius: 10px; background: var(--surface); color: var(--text); text-decoration: none; font-weight: 600; font-size: .9rem; }
 .toolquick .tqa:hover { background: var(--surface-2); }
 .toolquick .tqa svg { color: var(--text-2); flex: none; }
-@media (max-width: 640px) { .toolquick .tql { flex-basis: 100%; padding-left: 4px; } .toolquick .tqa { flex: 1 1 auto; min-height: 44px; } }
+@media (max-width: 640px) { .toolquick .tql { flex-basis: 100%; padding-left: 4px; } .toolquick .tqa { flex: 1 1 100%; min-height: 44px; } }
 .tooltag { display: inline-block; margin-left: 6px; padding: 0 7px; border-radius: 999px; background: var(--surface-2); color: var(--text-2); font-size: .72rem; font-weight: 600; vertical-align: 1px; }
 .how { scroll-margin-top: calc(var(--bar) + 12px); }
 .toolgroup:focus { outline: none; }
@@ -221,7 +221,9 @@ details.cg:not([open]) { padding-bottom: 12px; }
 .benchside.more-b::after { content: "More inputs below. Scroll this column."; position: sticky; bottom: 0; display: block; padding: 7px 14px; font-size: .78rem; font-weight: 600; color: var(--text-2); background: var(--surface-2); border-top: 1px solid var(--line-2); text-align: center; }
 @media (max-width: 900px) { .benchside.more-b::after { content: none; } }
 /* Chart lettering a size up. */
-.ctick, .clabel { font-size: 12.5px; } .cnote { font-size: 12px; }
+/* --cs is set per chart by the kit: under 1 when a chart is drawn wider than the usual half column, so its words
+   stay the size of its neighbours' instead of growing with it. */
+.ctick, .clabel { font-size: calc(12.5px * var(--cs, 1)); } .cnote { font-size: calc(12px * var(--cs, 1)); }
 /* Tools page: every row's name starts on the same line, whatever the length of its description. */
 .toolgroup .toolrow { align-items: flex-start; padding-block: 10px; }
 .toolgroup .toolrow .ic { margin-top: 1px; }
