@@ -178,8 +178,8 @@ K.tool({
   controls: function (s) {
     var opts = PRESETS.map(function (p) { return [p[0], p[1] + " (" + p[2].toFixed(2) + (p[3] ? ", 3 in wheel" : "") + ")"]; }).concat([["custom", "Custom"]]);
     var hint = "Ratios as published. Check your module's sheet.";
-    var gear = K.pick(ID, "presetA", "Gearing A", opts, { hint: hint }) + K.num(ID, "ratioA", "Reduction A", { unit: ": 1", min: 1, max: 20, step: 0.01, hintId: "drv-hA", tip: "Motor turns for one turn of the wheel." }) +
-      K.pick(ID, "presetB", "Gearing B", opts) + K.num(ID, "ratioB", "Reduction B", { unit: ": 1", min: 1, max: 20, step: 0.01, hintId: "drv-hB", tip: "Motor turns for one turn of the wheel." });
+    var gear = K.pick(ID, "presetA", "Gearing A", opts, { hint: hint }) + K.num(ID, "ratioA", "Reduction A", { unit: ":1", min: 1, max: 20, step: 0.01, hintId: "drv-hA", tip: "Motor turns for one turn of the wheel." }) +
+      K.pick(ID, "presetB", "Gearing B", opts) + K.num(ID, "ratioB", "Reduction B", { unit: ":1", min: 1, max: 20, step: 0.01, hintId: "drv-hB", tip: "Motor turns for one turn of the wheel." });
     var run = K.num(ID, "dist", "Sprint distance", { unit: "ft", min: 3, max: 54, step: 0.5, slider: true, tip: "From a standing start. The field is about 54 ft long; a dash across the middle is often 15 to 25 ft." });
     var robot = K.num(ID, "lb", "Weight", { unit: "lb", min: 40, max: 200, step: 1, slider: true, tip: "With battery and bumpers." }) +
       K.num(ID, "wheel", "Wheel diameter", { unit: "in", min: 2, max: 8, step: 0.05, tip: "Measure a used wheel; tread wears it down.", hintId: "drv-hW" }) +
@@ -218,7 +218,7 @@ K.tool({
     // The verdict is the race. The battery has its own card in the first row.
     var low = Math.min(A.minV, B.minV), bc = M.batteryCard(low, 6.8), lowK = A.minV <= B.minV ? "A" : "B";
     function two(a, b, n) { return K.fix(a, n) + " / " + K.fix(b, n); }
-    var fast = r.best ? "The fastest reduction tried over " + d + " ft (" + K.fix(r.sweep[0][0], 1) + " to " + K.fix(r.sweep[r.sweep.length - 1][0], 1) + " : 1) is " + K.fix(r.best[0], 2) + " : 1, at " + K.fix(r.best[1], 3) + " s." : "";
+    var fast = r.best ? "The fastest reduction tried over " + d + " ft (" + K.fix(r.sweep[0][0], 1) + " to " + K.fix(r.sweep[r.sweep.length - 1][0], 1) + ":1) is " + K.fix(r.best[0], 2) + ":1, at " + K.fix(r.best[1], 3) + " s." : "";
     // Wheel slip in words: "Neither slips", "A only", or both speeds.
     var sa = A.slipEnd >= 0, sb = B.slipEnd >= 0, slip = !sa && !sb ? { v: "Neither", u: "", sub: "" } : sa && sb ? { v: two(A.slipV / FT, B.slipV / FT, 1), u: "ft/s", sub: "A / B slip until; " } :
       { v: (sa ? "A" : "B") + " only", u: "", sub: (sa ? "A" : "B") + " slips until " + fts((sa ? A : B).slipV) + " ft/s, " + (sa ? "B" : "A") + " does not; " };
@@ -245,7 +245,7 @@ K.tool({
     function bold(L, k, txt) { return r.win === k && A.reached && B.reached && !M.margin(A.time, B.time).tie ? "<b>" + txt + "</b>" : txt; }
     var rows = [
       ["Reduction", both(function (L, k) { return esc(K.fix(L.ratio, 2) + ":1 (" + L.name + ")"); })],
-      ["Time over " + sd + " ft", both(function (L, k) { return bold(L, k, L.reached ? K.fix(L.time, 3) + " s" : "Not in 8 s"); })],
+      ["Time to " + sd + " ft", both(function (L, k) { return bold(L, k, L.reached ? K.fix(L.time, 3) + " s" : "Not in 8 s"); })],
       ["Speed at the line", both(function (L) { return fts(L.vLine) + " ft/s (" + K.fix(L.vLine, 2) + " m/s)"; })],
       ["Top speed", both(function (L) { return fts(L.top) + " ft/s (" + K.fix(L.top, 2) + " m/s)"; }), "Where the push has fallen to the rolling drag."],
       ["Free speed", both(function (L) { return fts(L.free) + " ft/s (" + K.fix(L.free, 2) + " m/s)"; }), "Motor free speed at 12 V through the reduction, with no load. No robot reaches it."],
@@ -259,13 +259,13 @@ K.tool({
       rows.map(function (q) { return row(q[0], q[1][0], q[1][1], q[2]); }).join("") + "</tbody></table></div>" + sagNote() + "</section>";
     // A low battery figure reads like a bad battery. Say what it is: this sprint's own sag at that current.
     function sagNote() {
-      var L = A.minV <= B.minV ? A : B, k = A.minV <= B.minV ? "A" : "B", more = " The Battery and breakers tool goes further: every mechanism drawing at once, a worn battery and the breakers.";
+      var L = A.minV <= B.minV ? A : B, k = A.minV <= B.minV ? "A" : "B", more = " See Battery and breakers for every mechanism at once.";
       if (!(L.minV < 8.5)) return '<p class="mute small">The drive alone keeps the battery above ' + K.fix(L.minV, 1) + " V in this sprint." + more + "</p>";
-      return '<p class="mute small">The lowest battery, ' + K.fix(L.minV, 1) + " V (" + k + "), " + K.fix(Math.abs(L.minV - 6.8), 1) + " V " + (L.minV >= 6.8 ? "above" : "below") + " the 6.8 V brown-out, is the sag during this sprint while the drive draws about " + K.n(M.batteryAmps(s.V0, L.minV, s.Rbat), 0) + " A from the battery in all, through the " + K.fix(s.Rbat, 3) + " Ω of battery and wiring set in Fine tuning. That is the worst moment of the sprint: the speed where the current limit stops holding the motors back, when each takes its full limit from the battery. Slower than that the battery supplies less than the current in the motors, and the model counts it that way. It is not a sign of a worn battery." + more + "</p>";
+      return '<p class="mute small">Lowest battery: ' + K.fix(L.minV, 1) + " V (" + k + "), " + K.fix(Math.abs(L.minV - 6.8), 1) + " V " + (L.minV >= 6.8 ? "above" : "below") + " brown-out, with " + s.motors + " × " + s.statorA + " A through " + K.fix(s.Rbat, 3) + " Ω of battery and wiring. It is the worst moment of the sprint, at the speed where the current limit lets go, not a sign of a worn battery." + more + "</p>";
     }
     var dur = r.dur;
     function pts(L, key, k) { var o = [], sim = L.sim; for (var i = 0; i < sim.t.length && sim.t[i] <= dur + 1e-9; i += 5) o.push([sim.t[i], sim[key][i] * k]); return o; }
-    var sA = { name: "A " + K.fix(A.ratio, 2), color: 1 }, sB = { name: "B " + K.fix(B.ratio, 2), color: 2 };
+    var sA = { name: "A " + K.fix(A.ratio, 2) + ":1", color: 1 }, sB = { name: "B " + K.fix(B.ratio, 2) + ":1", color: 2 };
     var x = { label: "time (s)", name: "Time", unit: "s", min: 0, max: dur };
     var speed = K.chart({ id: "drv-v", title: "Speed", x: x, y: { label: "ft/s", unit: "ft/s" }, series: [Object.assign({ pts: pts(A, "v", 1 / FT) }, sA), Object.assign({ pts: pts(B, "v", 1 / FT) }, sB)] });
     var dist = K.chart({ id: "drv-x", title: "Distance", x: x, y: { label: "ft", unit: "ft" }, series: [Object.assign({ pts: pts(A, "x", 1 / FT) }, sA), Object.assign({ pts: pts(B, "x", 1 / FT) }, sB)], hlines: [{ y: sd, label: "finish, " + sd + " ft", side: "left" }] });
@@ -281,8 +281,8 @@ K.tool({
     var ymax = sw.length ? Math.min(Math.max.apply(null, sw.map(function (p) { return p[1]; })), (r.best ? r.best[1] : 3) * 1.6) : 1;
     sw = sw.map(function (p) { return [p[0], p[1] <= ymax + 1e-9 ? p[1] : NaN]; });   // leave out what is above the top
     if (tA != null && tA <= ymax) dots.push({ x: A.ratio, y: tA, label: "A" }); if (tB != null && tB <= ymax) dots.push({ x: B.ratio, y: tB, label: "B" });
-    var swX = { label: "reduction, to 1", name: "Reduction", min: r.sweep[0][0], max: r.sweep[r.sweep.length - 1][0] }, swY = { label: "s", unit: "s", min: r.best ? Math.floor(r.best[1] * 10 * 0.95) / 10 : 0, max: ymax };
-    var sweep = sweepMarks(K.chart({ id: "drv-s", title: "Time over " + sd + " ft for other reductions", x: swX, y: swY,
+    var swX = { label: "reduction (:1)", name: "Reduction", min: r.sweep[0][0], max: r.sweep[r.sweep.length - 1][0] }, swY = { label: "s", unit: "s", min: r.best ? Math.floor(r.best[1] * 10 * 0.95) / 10 : 0, max: ymax };
+    var sweep = sweepMarks(K.chart({ id: "drv-s", title: "Time to " + sd + " ft for other reductions", x: swX, y: swY,
       series: [{ name: "Time", pts: sw, color: 3 }], marks: r.best ? [{ x: r.best[0] }] : [] }), swX, swY, sw, dots, r.best);
     return '<div class="chartrow">' + dist + ahead + '</div><div class="chartrow">' + speed + amps + '</div><div class="chartrow">' + sweep + batt + "</div>" + table +
       K.notes("<p>Each robot starts at rest and drives at full power through the line. Every 2 ms the calculator works out the motors' torque at the robot's speed, with the current limit and the battery's voltage drop, turns it into a push at the wheels, and moves the robot on.</p>" +
@@ -310,7 +310,10 @@ K.tool({
     var kx = (g.w - pad.l - pad.r) / (x1 - x0), laneH = F.clamp((g.h - pad.t - pad.b) / kx / 2, Lr + 2 * inset, 6);
     var V = g.view({ x0: x0, x1: x1, y0: 0, y1: 2 * laneH }, pad, "middle");
     var step = V.k >= 9 ? 1 : 5;
-    g.grid(V, step, narrow ? "" : step === 1 ? "1 ft squares" : "5 ft squares");
+    // The grid note: top right on a laptop; on a phone the header takes the top, so it sits under the track, right.
+    var gridNote = step === 1 ? "1 ft squares" : "5 ft squares";
+    g.grid(V, step, phone ? "" : gridNote);
+    if (phone) g.text(gridNote, g.w - 10, V.Y(0) + 33, { align: "right", color: c.mute, size: 11 });
     var lanes = [{ k: "A", L: r.A, y: laneH * 1.5, col: c.s1 }, { k: "B", L: r.B, y: laneH * 0.5, col: c.s2 }];
     // Carpet.
     lanes.forEach(function (ln) { g.rect(V.X(x0), V.Y(ln.y + laneH / 2), V.L(x1 - x0), V.L(laneH), { fill: c.surface2, stroke: c.line, width: 1 }); });
@@ -407,7 +410,7 @@ K.tool({
       cuts.concat([[bot - 2, bot - 2]]).forEach(function (cu) { if (cu[0] > y0 + 4) g.line(xq, y0, xq, Math.min(cu[0], bot - 2), { color: ccol, width: 2, dash: [6, 4], cap: "butt" }); y0 = Math.max(y0, cu[1]); });
     });
     // The clock, and the result: once someone has crossed, and on the still picture before Play.
-    var showRes = r.win && (t >= tw || !K.playing(ID)), msg = "";
+    var showRes = !!r.win, msg = "";
     if (showRes) {
       var W = r.win === "A" ? r.A : r.B, Lo = r.win === "A" ? r.B : r.A, ln2 = r.win === "A" ? "B" : "A", mg = M.margin(r.A.time, r.B.time);
       msg = (t < tw ? "Predicted finish: " : "") + (!Lo.reached ? r.win + " finishes; " + ln2 + " cannot get there" : mg.tie ? "a dead heat" : (mg.dp === 3 ? "too close to call, " + r.win + " by " : r.win + " wins by ") + K.fix(mg.gap, mg.dp) + " s" + (narrow ? "" : "; " + ln2 + " is " + K.fix(d - ft(M.at(Lo.sim, "x", tw)), 1) + " ft back"));
@@ -439,7 +442,7 @@ function sweepMarks(html, X0, Y0, pts, dots, best) {
     out += '<text class="cnote" x="' + X(d.x).toFixed(1) + '" y="' + (Y(d.y) + 22).toFixed(1) + '" text-anchor="middle" style="font-size:13px">' + d.label + "</text>";
   });
   if (best) {
-    var txt = "fastest " + best[0].toFixed(2) + " : 1", w = txt.length * 6.6, bx = X(best[0]), ty = pt + 12;
+    var txt = "fastest " + best[0].toFixed(2) + ":1", w = txt.length * 6.6, bx = X(best[0]), ty = pt + 12;
     // Right of the line unless the curve climbs into the label there; then left.
     function hits(a, b) { return pts.some(function (p) { var px = X(p[0]); return isFinite(p[1]) && px >= a && px <= b && Y(p[1]) < ty + 6; }); }
     var right = bx + 6 + w < W - pr && !hits(bx + 4, bx + 8 + w), lx = right ? bx + 6 : bx - 6;

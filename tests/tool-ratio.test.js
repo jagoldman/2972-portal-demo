@@ -92,6 +92,17 @@ fz.forEach(function (c) { c.len = M.length(c.stages); });
 var sz = M.bySize(fz);
 ok("smallest first: same designs", sz.length === fz.length && sz.every(function (c) { return fz.indexOf(c) >= 0; }));
 ok("smallest first: sums never fall", sz.every(function (c, i) { return !i || c.len >= sz[i - 1].len - 1e-12; }));
-ok("smallest first: 10:42, 14:50 (2.90 in) leads", M.trainLabel(sz[0].stages) === "10:42, 14:50" && Math.abs(sz[0].len - 2.9) < 1e-9, M.trainLabel(sz[0].stages));
+ok("smallest first: the shortest (2.90 in: 10:42 with 14:50, or 10:50 with 14:42) leads", Math.abs(sz[0].len - 2.9) < 1e-9 && /^10:(42, 14:50|50, 14:42)$/.test(M.trainLabel(sz[0].stages)), M.trainLabel(sz[0].stages));
+// Round 10: one rounding rule. 15:50 with 16:72 sits 1.625 + 2.200 = 3.825 in, and 15:72 with 16:50 sits 2.175 + 1.650
+// = 3.825 in: both show 3.83 (half up on the exact sum), where toFixed gave 3.83 and 3.82.
+var s1 = M.length([{ kind: "gear", a: 15, b: 50 }, { kind: "gear", a: 16, b: 72 }]), s2 = M.length([{ kind: "gear", a: 15, b: 72 }, { kind: "gear", a: 16, b: 50 }]);
+ok("one rounding: both 3.83", M.round2(s1) === "3.83" && M.round2(s2) === "3.83", M.round2(s1) + " " + M.round2(s2));
+ok("round half up", M.round2(1.005) === "1.01" && M.round2(2.004) === "2.00");
+// Best match: among designs alike in stages, error, small pinion and largest part, the shorter comes first.
+var fb = M.find({ target: 15, tol: 0.02, maxStages: 2, kinds: { gear: true }, minT: 10, maxT: 72 });
+ok("best match: shorter first within a largest-part group", fb.every(function (c, i) {
+  var p = fb[i - 1]; if (!p || p.stages.length !== c.stages.length || Math.abs(Math.abs(p.err) - Math.abs(c.err)) > 1e-9 || (p.small >= M.SMALL) !== (c.small >= M.SMALL) || Math.abs(p.d - c.d) > 1e-9) return true;
+  return M.length(p.stages) <= M.length(c.stages) + 1e-9;
+}));
 console.log(fails ? fails + " of " + n + " checks failed" : "All " + n + " checks passed");
 process.exit(fails ? 1 : 0);

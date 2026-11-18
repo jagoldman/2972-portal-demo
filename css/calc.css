@@ -102,6 +102,12 @@ details.cg:not([open]) { padding-bottom: 12px; }
 .chart svg { display: block; width: 100%; max-width: 560px; height: auto; overflow: visible; cursor: crosshair; border-radius: 4px; }
 .chart svg:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
 .chartrow { display: grid; grid-template-columns: repeat(auto-fit, minmax(260px, 1fr)); gap: 16px; }
+/* A chart that takes a whole row (Motors) puts its words beside the plot on a wide screen, so the row is not half empty. */
+@media (min-width: 900px) {
+  .t-motors-row3 > figure.chart:first-child { grid-template-columns: minmax(0, 3fr) minmax(0, 2fr); column-gap: 24px; align-items: start; }
+  .t-motors-row3 > figure.chart:first-child > svg { grid-column: 1; grid-row: 1 / span 4; }
+  .t-motors-row3 > figure.chart:first-child > :not(svg) { grid-column: 2; }
+}
 .cgrid { stroke: var(--line); stroke-width: 1; }
 .caxis { stroke: var(--line-2); stroke-width: 1; }
 .ctick { font-size: 11px; fill: var(--mute); font-variant-numeric: tabular-nums; }
