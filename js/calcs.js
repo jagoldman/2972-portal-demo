@@ -214,7 +214,7 @@ function pairDrawing(r1, r2, C, n1, n2, cLabel, pitch, what) {
   var dash = pitch && pitch * s >= 3 ? ' stroke-dasharray="' + (pitch * s * 0.6).toFixed(2) + " " + (pitch * s * 0.4).toFixed(2) + '"' : "";
   // A wheel's tooth count sits inside it; a small wheel's goes beside its centre line, just above the dimension,
   // where neither belt run passes.
-  function teeth(x, R, n) { return R >= 24 ? '<text class="clabel" x="' + x.toFixed(1) + '" y="' + (cy - 8).toFixed(1) + '" text-anchor="middle">' + n + "T</text>" : '<text class="clabel" x="' + (x + 5).toFixed(1) + '" y="' + (dy - 6) + '">' + n + "T</text>"; }
+  function teeth(x, R, n) { return R >= 24 ? '<text class="clabel" x="' + x.toFixed(1) + '" y="' + (cy - 8).toFixed(1) + '" text-anchor="middle">' + n + " teeth</text>" : '<text class="clabel" x="' + (x + 5).toFixed(1) + '" y="' + (dy - 6) + '">' + n + " teeth</text>"; }
   return '<svg class="calcdraw" viewBox="0 0 ' + W + " " + H.toFixed(0) + '" role="img"><title>' + esc(what + ": " + n1 + " and " + n2 + " teeth, " + cLabel + " apart, drawn to scale") + "</title>" +
     '<circle class="cwheel" cx="' + x1.toFixed(1) + '" cy="' + cy.toFixed(1) + '" r="' + R1.toFixed(1) + '"/><circle class="cwheel" cx="' + x2.toFixed(1) + '" cy="' + cy.toFixed(1) + '" r="' + R2.toFixed(1) + '"/>' +
     '<path class="cbelt' + (pitch ? " chain" : "") + '" d="' + path + '"' + dash + "/>" +
@@ -272,7 +272,7 @@ def({ id: "calc-gearbox", key: "gearbox", name: "Gearbox", icon: "cgearbox", lin
     var stages = st.stages.map(function (s, i) {
       return '<fieldset class="calcstage"><legend>Stage ' + (i + 1) + "</legend>" +
         numField("s" + i + "a", "Driving gear", s[0], "teeth", { min: 6, max: 200, step: 1, whole: true }) + numField("s" + i + "b", "Driven gear", s[1], "teeth", { min: 6, max: 200, step: 1, whole: true }) +
-        (st.stages.length > 1 ? '<button type="button" class="btn ghost sm calcx" data-act="calcstage" data-v="del" data-i="' + i + '" aria-label="Remove stage ' + (i + 1) + '">Remove</button>' : "") + "</fieldset>";
+        (st.stages.length > 1 ? '<button type="button" class="btn ghost sm calcx" data-act="calcstage" data-v="del" data-i="' + i + '" aria-label="Remove stage ' + (i + 1) + '">Remove stage ' + (i + 1) + "</button>" : "") + "</fieldset>";
     }).join("");
     return motorFields(st, true) + effField(st) + '<div class="calcstages">' + stages + "</div>" +
       (st.stages.length < 4 ? '<button type="button" class="btn calcadd" id="calc-addstage" data-act="calcstage" data-v="add">' + D.ic("plus", 16) + " Add a stage</button>" : "");
@@ -539,7 +539,8 @@ def({ id: "calc-drill", key: "drill", name: "Drill and tap chart", icon: "cdrill
     var ans = !String(st.q).trim() ? "Type a thread, like 10-32 or M5, to see its drills. The two most used on the robot are marked." :
       !first ? "No thread matches that. Try 10-32, 1/4-20 or M5." :
       "For a " + first[0] + " tap, drill " + drillName(first[1]) + ". For a " + first[0] + " bolt to pass through, drill " + drillName(first[2]) + " for a close fit or " + drillName(first[3]) + " for a free fit.";
-    return { ans: esc(ans), bad: !!String(st.q).trim() && !first, html: html };
+    // With nothing typed the sentence is an instruction, not an answer, so it is not drawn in the answer box.
+    return { ans: esc(ans), bad: !!String(st.q).trim() && !first, plain: !String(st.q).trim(), html: html };
   },
   how: function () { return how(["<b>Tap drill.</b> The hole you drill before tapping. It leaves enough metal for about 75% of a full thread, which is strong and easy to tap.",
     "<b>Close clearance.</b> A hole the bolt just passes through, for parts that must line up well.",
@@ -633,7 +634,7 @@ function view(c) {
   var acts = c.link ? '<button type="button" class="btn" id="calc-copy" data-act="calccopy">Copy link</button>' : "";
   if (c.link || c.reset) acts += '<button type="button" class="btn ghost" id="calc-reset" data-act="calcreset">Reset</button>';
   return head(c.name) + '<div class="content calcpage">' +
-    '<p class="calcans' + (o.bad ? " bad" : "") + '" id="calc-ans" aria-live="polite">' + o.ans + "</p>" +
+    '<p class="calcans' + (o.bad ? " bad" : "") + (o.plain ? " plain" : "") + '" id="calc-ans" aria-live="polite">' + o.ans + "</p>" +
     '<div class="calccols' + (c.single ? " one" : "") + '"><form class="calcin" onsubmit="return false" aria-label="Inputs">' + c.inputs(st) + '</form><div class="calcout" id="calc-out">' + o.html + "</div></div>" +
     (o.wide != null ? '<div class="calcwide" id="calc-wide">' + o.wide + "</div>" : "") +
     '<div class="calcfoot">' + c.how() + (acts ? '<div class="row calcacts">' + acts + "</div>" : "") + (c.motorLine ? '<p class="calcnote">' + esc(MOTOR_LINE) + "</p>" : "") + "</div></div>";
@@ -645,7 +646,7 @@ function paint() {
   var c = C[D.S.route]; if (!c) return;
   var o = c.out(ST(c.key)), ans = document.getElementById("calc-ans"), out = document.getElementById("calc-out"), wide = document.getElementById("calc-wide");
   if (D.hideTip) D.hideTip();
-  if (ans) { ans.innerHTML = o.ans; ans.className = "calcans" + (o.bad ? " bad" : ""); }
+  if (ans) { ans.innerHTML = o.ans; ans.className = "calcans" + (o.bad ? " bad" : "") + (o.plain ? " plain" : ""); }
   if (out) out.innerHTML = o.html;
   if (wide && o.wide != null) wide.innerHTML = o.wide;
 }

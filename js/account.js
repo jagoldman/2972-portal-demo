@@ -19,7 +19,7 @@ function appSummary(ap, linked) { var names = KINDS.map(function (k) { return ch
   var n = KINDS.length, d = 0, e = 0;
   KINDS.forEach(function (k) { var c = choiceOf(ap[k[0]], linked); if (c[2]) d++; if (c[3]) e++; });
   var parts = [["Discord", d], ["email", e]].filter(function (x) { return x[1] > 0; }).sort(function (a, b) { return (b[1] === n) - (a[1] === n); });
-  var text = parts.map(function (x, i) { return x[0] + " for " + (x[1] === n ? "all" : x[1] + (i === parts.length - 1 ? " of " + n : "")); }).join(", ");
+  var text = parts.map(function (x, i) { return x[0] + " for " + (x[1] === n ? "all" : x[1] + (i === parts.length - 1 ? " of " + n + " kinds" : "")); }).join(", ");
   return text.charAt(0).toUpperCase() + text.slice(1); }
 function Acc() { return D.S.account; }
 D.views.account = function () {

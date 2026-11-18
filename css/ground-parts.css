@@ -169,4 +169,24 @@
     .pwait .grow { flex: 1 1 100%; }
     .pship .bar { flex-basis: 100%; }
   }
+
+  /* ---------- Hill climb, round 4 ---------- */
+  .pstep.zero { color: var(--mute); border-color: var(--line); }
+  .pstep.zero .tcount { background: none; color: var(--mute); }
+  .psteps { flex: 0 1 auto; }
+  .pob { color: var(--text); font-weight: 650; }
+  /* A vendor's total sits beside its name, not at the far edge of a wide page. */
+  .pvh { justify-content: flex-start; gap: 14px; }
+  .pship .bar > i:not(.ok) { background: var(--mute); }
+  /* "Needs your OK": the choices sit under the facts, where every vendor's buttons sit. */
+  .card.hero .pwait { display: grid; grid-template-columns: auto minmax(0, 1fr); align-items: center; gap: 8px 12px; }
+  .card.hero .pwait .grow { grid-column: 1 / -1; min-width: 0; }
+  .card.hero .pwait > .row { grid-column: 2; justify-self: start; }
+  .card.hero .pwait > .pill + .row { grid-column: 2; }
+  .card.hero .pwait > .row:first-of-type:not(.pill + .row) { grid-column: 1 / -1; }
+  @media (max-width: 899px) {
+    /* The need-by date is its own darker line; the other facts follow, and no line ends in a comma. */
+    .ptable.gt .pfacts .pd { flex: 1 1 100%; order: -1; color: var(--text-2); }
+    .ptable.gt .pfacts .pb::after { content: none !important; }
+  }
 }

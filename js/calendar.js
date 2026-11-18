@@ -146,7 +146,7 @@ D.views.calendar = function () {
   } else if (top === "snacks") body = snacks();
   else {
     body = calendarTab();
-    right = staff ? '<button class="btn primary sm" data-act="calnew" aria-label="New event">' + D.ic("plus", 16) + '<span>New<span class="hide-sm"> event</span></span></button>' : '<button class="btn sm" data-act="calical">Subscribe<span class="hide-sm"> on my phone</span></button>';
+    right = staff ? '<button class="btn primary sm" data-act="calnew" aria-label="New event">' + D.ic("plus", 16) + '<span>New<span class="hide-sm"> event</span></span></button>' : '<button class="btn sm" data-act="calical"><span>Subscribe<span class="hide-sm"> on my phone</span></span></button>';
   }
   var row = tabs.length > 1 ? D.tabsFor("calapp", tabs.map(function (t) { return [t.id, D.ground() && t.id === "calendar" ? "Events" : t.name]; }), "calendar") : "";
   return D.topbar("Calendar", "", row, right) + '<div class="content">' + body + "</div>";
@@ -161,7 +161,7 @@ function calendarTab() {
   if (!list.some(function (x) { return x[0] === t; })) t = def;
   return subnav("calendar", list, def) + (t === "agenda" ? agenda() : t === "setup" ? setup() : month());
 }
-function evBtn(e) { return '<button class="ev ' + KIND[e.kind][1] + '" data-act="calev" data-v="' + e.id + '" data-tip="' + esc(e.name + " · " + span(e)) + '" aria-label="' + esc(e.name) + '"><span class="et">' + (e.start ? t12(e.start).replace(" pm", "p").replace(" am", "a") + " " : "") + esc(e.name) + "</span></button>"; }
+function evBtn(e) { return '<button class="ev ' + KIND[e.kind][1] + '" data-act="calev" data-v="' + e.id + '" data-tip="' + esc(e.name + " · " + span(e)) + '" aria-label="' + esc(e.name) + '"><span class="et">' + (e.start ? (D.ground() ? t12(e.start) : t12(e.start).replace(" pm", "p").replace(" am", "a")) + " " : "") + esc(D.ground() ? e.name.split(":")[0] : e.name) + "</span></button>"; }
 function month() {
   var c = C(), y = c.month[0], m = c.month[1], first = new Date(y, m, 1), start = new Date(y, m, 1 - first.getDay());
   var cells = "";
@@ -203,7 +203,7 @@ function dayDoors(e, brief) {
   if (D.calTab("here")) out += door("here", e.date === TODAYS ? "today" : "mentors", e.date, "user", hereLine(e, brief), "Attendance");
   // Ground up: where a family can settle it in one tap, the row has the same Sign up button Home has (hill climb r2).
   var sn = C().snacks[e.date] || (D.ground() && isPractice(e) ? (C().snacks[e.date] = new Array(C().slots).fill(null)) : null), k = sn ? sn.indexOf(null) : -1;
-  if (D.calTab("snacks") && D.ground() && D.S.role === "parent" && sn && k >= 0 && sn.indexOf(snackName()) < 0) out += '<div class="doorln doorask">' + D.ic("snacks", 16) + '<span class="dtxt">' + esc(snackLine(e.date)) + '</span><button class="btn sm" data-act="snack" data-d="' + e.date + '" data-k="' + k + '">Sign up</button></div>';
+  if (D.calTab("snacks") && D.ground() && D.S.role === "parent" && sn && k >= 0 && sn.indexOf(snackName()) < 0) out += '<div class="doorln doorask">' + D.ic("snacks", 16) + '<span class="dtxt"><span class="pill warn">' + esc(snackLine(e.date)) + '</span></span><button class="btn sm" data-act="snack" data-d="' + e.date + '" data-k="' + k + '">Sign up</button></div>';
   else if (D.calTab("snacks")) out += door("snacks", "", e.date, "snacks", snackLine(e.date), "Snacks");
   return out ? '<div class="agdoors">' + out + "</div>" : "";
 }

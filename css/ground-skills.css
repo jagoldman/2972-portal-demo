@@ -70,4 +70,10 @@
   .skeveryone .grphead { padding-inline: 4px; min-height: 44px; }
   .skeveryone .grpname { font-family: var(--display); font-stretch: var(--wide); font-weight: 700; font-size: 1rem; color: var(--text); }
   .skeveryone #sk-everyone { display: grid; gap: 8px; padding-top: 4px; }
+
+  /* Hill climb r4 */
+  .skmach .skml { color: var(--text-2); }
+  .skperms .pill:not(.ok):not(.warn) { color: var(--mute); font-weight: 400; }
+  .skeveryone .skshow { margin-left: auto; color: var(--accent); font-weight: 600; font-size: .86rem; }
+  .skeveryone .grpchev { margin-left: 6px; }
 }

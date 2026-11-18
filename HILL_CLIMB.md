@@ -9,7 +9,8 @@ Every judge in a tier must score every area at the tier's target. Fixes are made
 | 1 | 1 (7.5) | Haiku, GPT-6 Luna | 7.0 to 8.7 | 10 of 16 areas under 7.5 |
 | 2 | 1 (7.5) | Haiku, GPT-6 Luna | 7.5 to 8.5 | passed |
 | 3 | 2 (8.5) | Sonnet, GPT-6.1 Terra, Grok 4.6 | 6.7 to 8.7 | 16 of 16 areas under 8.5 from at least one judge |
-| 4 | 2 (8.5) | Sonnet, GPT-6.1 Terra, Grok 4.6 | with the judges | |
+| 4 | 2 (8.5) | Sonnet, GPT-6.1 Terra, Grok 4.6 | 7.0 to 8.8 | 16 of 16 areas under 8.5 from at least one judge; lowest per area 7.0 to 8.3 |
+| 5 | 2 (8.5) | Sonnet, GPT-6.1 Terra, Grok 4.6 | with the judges | |
 
 Grok 4.5 was thrown out in rounds 1 and 2: asked to copy exact text from three screenshots, it invented it.
 Grok 4.6 copied the text correctly in round 3 and counts.
@@ -103,3 +104,15 @@ Calculators
 
 Shoot: the Skills overview (student, 1280 and 390), Sign off (mentor, 1280), Permissions with "pri" typed (mentor,
 390), Account (student, 390), and the drivetrain, belt and gearbox calculators (1280 and 390).
+
+## What the lead settled when judges disagreed across rounds
+- **Late tasks.** Round 1 asked for a red dot and a word; round 4 said lateness then reads as a second status. Late
+  is plain red text with no dot.
+- **Request panel steps.** Round 3 asked for "now" to be the step the request has reached; round 4 asked for the step
+  it waits for. It stays the step reached, and the line under the steps says what happens next and who does it.
+- **Rarely used Parts filters.** Round 1 asked for one shape of control; round 3 asked for a "More" menu. They stay
+  plain buttons after a divider, and a filter with nothing in it is greyed.
+- **"Done" and "Sign in" on Home.** Round 2 asked for one filled button; round 3 asked for "Done" to match Tasks.
+  Sign in is a tinted first step with its own filled button, and the task's button stays filled.
+- **A parent's next practice.** Round 1 wanted it as the first row of Now; round 3 said it was then on the page
+  twice. The week leads the parent's page, and "Can you help?" holds only what they can do.

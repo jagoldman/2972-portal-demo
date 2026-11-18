@@ -466,7 +466,7 @@ function overview() {
      closed until asked for, so the page does not end on a comparison table (hill climb r3). Mentors see it open. */
   if (D.ground() && !staff) {
     var open = !!S.sk.everyone;
-    html += '<div class="card skeveryone"><button class="grphead" data-act="skeveryone" aria-expanded="' + open + '" aria-controls="sk-everyone"><span class="grpname">Everyone\'s progress</span><span class="grpchev" aria-hidden="true">' + D.ic("chevron", 16) + '</span></button><div id="sk-everyone"' + (open ? "" : " hidden") + '><p class="who">Tap a row to open their trees.</p><div class="tablewrap" data-keepscroll="skstudents"><table class="sktable"><thead><tr><th>Student</th>' + TREES.map(function (t) { return D.ground() ? '<th class="sktreeh">' + esc(t.name) + "</th>" : "<th" + (t.name !== t.tag ? ' data-tip="' + esc(t.name) + '"' : "") + ">" + t.tag + "</th>"; }).join("") + "<th>Done</th><th>Started</th><th>Overall</th></tr></thead><tbody>" + rows + "</tbody></table></div></div></div>";
+    html += '<div class="card skeveryone"><button class="grphead" data-act="skeveryone" aria-expanded="' + open + '" aria-controls="sk-everyone"><span class="grpname">Everyone\'s progress</span><span class="who skshow">' + (open ? "Hide" : "Show") + '</span><span class="grpchev" aria-hidden="true">' + D.ic("chevron", 16) + '</span></button><div id="sk-everyone"' + (open ? "" : " hidden") + '><p class="who">Tap a row to open their trees.</p><div class="tablewrap" data-keepscroll="skstudents"><table class="sktable"><thead><tr><th>Student</th>' + TREES.map(function (t) { return D.ground() ? '<th class="sktreeh">' + esc(t.name) + "</th>" : "<th" + (t.name !== t.tag ? ' data-tip="' + esc(t.name) + '"' : "") + ">" + t.tag + "</th>"; }).join("") + "<th>Done</th><th>Started</th><th>Overall</th></tr></thead><tbody>" + rows + "</tbody></table></div></div></div>";
   } else
   html += '<div class="card"><div class="row between"><h2>Students</h2><span class="who">Tap a row to open their trees.</span></div><div class="tablewrap" data-keepscroll="skstudents"><table class="sktable"><thead><tr><th>Student</th>' + TREES.map(function (t) { return D.ground() ? '<th class="sktreeh">' + esc(t.name) + "</th>" : "<th" + (t.name !== t.tag ? ' data-tip="' + esc(t.name) + '"' : "") + ">" + t.tag + "</th>"; }).join("") + "<th>Done</th><th>Started</th><th>Overall</th></tr></thead><tbody>" + rows + "</tbody></table></div></div>";
   return html;
@@ -474,7 +474,7 @@ function overview() {
 /* ---------- Ground up (GROUND_UP.md §4, Skills) ----------
    A student opens Skills to learn two things: what they may use, and what to finish next. So the Overview starts with
    their own machines, then puts what they started before what they could start. Drawn only when D.ground() is true. */
-var PERMIT_WORD = { yes: "Cleared", training: "In training", no: "Not yet" };
+var PERMIT_WORD = { yes: "Cleared", training: "In training", no: "Not cleared" };
 var PERMIT_PILL = { yes: "ok", training: "warn", no: "" };
 function permitPill(state) { return '<span class="pill ' + PERMIT_PILL[state] + '">' + PERMIT_WORD[state] + "</span>"; }
 function notDone(P, s) { return !(P[s.id] && P[s.id].s === "done"); }
@@ -509,7 +509,7 @@ function machineRow(m, name) {
   return '<button class="li skmach" data-act="skmine" data-v="' + open + '"><b class="skmn">' + esc(m.tool.name) + "</b>" + permitPill(m.state) + '<span class="who skml">' + esc(line) + '</span><span class="chev" aria-hidden="true">›</span></button>';
 }
 function groundStudent(me) {
-  var n = nextUp(me), cap = readyAll ? n.ready.length : 3, html = "";
+  var n = nextUp(me), cap = readyAll ? n.ready.length : 5, html = "";
   var mach = myMachines(me), cleared = mach.filter(function (m) { return m.state === "yes"; }).length;
   html += '<div class="card skmachines"><div class="row between"><h2>Your machines</h2><span class="who">' + cleared + " of " + mach.length + ' cleared</span></div>' +
     '<p class="who">Cleared: a mentor signed off your test and your demonstration.</p>' +
@@ -517,7 +517,7 @@ function groundStudent(me) {
   html += '<div class="card skhalf"><div class="row between"><h2>Finish what you started</h2>' + (n.prog.length ? '<span class="tcount">' + n.prog.length + "</span>" : "") + "</div>" +
     (n.prog.length ? '<div class="list">' + n.prog.map(function (x) { return skillRow(x, "In progress", "warn"); }).join("") + "</div>" : '<p class="mute">Nothing started yet. Pick one from Ready to start.</p>') + "</div>";
   html += '<div class="card skhalf"><div class="row between"><h2>Ready to start</h2>' + (n.ready.length ? '<span class="tcount">' + n.ready.length + "</span>" : "") + "</div>" +
-    (n.ready.length ? '<div class="list">' + n.ready.slice(0, cap).map(function (x) { return skillRow(x, "Ready", "info"); }).join("") + "</div>" + (n.ready.length > 3 ? '<div><button class="btn ghost" data-act="skreadyall">' + (readyAll ? "Show fewer" : "Show all " + n.ready.length) + "</button></div>" : "") : '<p class="mute">Nothing new is open. Finish what you started.</p>') + "</div>";
+    (n.ready.length ? '<div class="list">' + n.ready.slice(0, cap).map(function (x) { return skillRow(x, "Ready", "info"); }).join("") + "</div>" + (n.ready.length > 5 ? '<div><button class="btn ghost" data-act="skreadyall">' + (readyAll ? "Show fewer" : "Show all " + n.ready.length) + "</button></div>" : "") : '<p class="mute">Nothing new is open. Finish what you started.</p>') + "</div>";
   if (n.wait.length) html += '<div class="card"><div class="row between"><h2>Waiting for sign-off</h2><span class="tcount">' + n.wait.length + '</span></div><div class="list">' + n.wait.map(function (x) {
     var r = D.S.sk.requests.filter(function (q) { return q.st === me && q.id === x.s.id; })[0];
     return '<button class="li skwait" data-act="skmine" data-v="' + x.s.id + '"><span class="grow"><b>' + esc(x.s.name) + '</b><br><span class="who">' + esc(x.t.name) + " › " + esc(x.c.name) + '</span></span><span class="skwho">' + D.move("a mentor") + (r && r.at ? ' <span class="move">since ' + esc(r.at) + "</span>" : "") + "</span></button>";
@@ -697,7 +697,7 @@ function signoffView() {
     return '<div class="li skq"><span class="grow"><b>' + esc(r.st) + "</b> asks for <b>" + esc(x.name) + '</b><br><span class="who">' + esc(tree(x.tree).name) + " › " + esc(cat(tree(x.tree), x.cat).name) + (r.note ? " · “" + esc(r.note) + "”" : "") + '</span></span><span class="skqa"><button class="btn" data-act="skqok" data-i="' + i + '">Sign off</button><button class="btn ghost" data-act="skqno" data-i="' + i + '">' + (D.ground() ? "Send back" : "Not yet") + "</button></span></div>";
   }).join("") : '<p class="mute">No one is waiting for a sign-off.</p>';
   var sendBack = g && S.sk.requests.length ? '<p class="who">Send back tells the student what to practice first.</p>' : "";
-  return '<div class="grid2"><div class="card">' + (sendBack ? "<div>" : "") + '<div class="row between"><h2>Waiting for sign-off</h2>' + (S.sk.requests.length ? '<span class="tcount warn">' + S.sk.requests.length + "</span>" : "") + "</div>" + (sendBack ? sendBack + "</div>" : "") + '<div class="list">' + queue + '</div></div><div class="card"><div><h2>Sign off a group</h2><p class="who">Pick the skill, tick who did it.</p></div><div class="field"><label for="sk-bulk">Skill</label><select id="sk-bulk" data-change="skbulk">' + opts + "</select></div><div>" + people + "</div>" + nobody + '<div class="row"><button class="btn primary" data-act="skbulkgo"' + (n ? "" : " disabled") + ">" + (D.ground() && !n ? "Sign off" : "Sign off " + n + " student" + (n === 1 ? "" : "s")) + "</button></div></div></div>";
+  return '<div class="grid2"><div class="card">' + (sendBack ? "<div>" : "") + '<div class="row between"><h2>Waiting for sign-off</h2>' + (S.sk.requests.length ? '<span class="tcount warn">' + S.sk.requests.length + "</span>" : "") + "</div>" + (sendBack ? sendBack + "</div>" : "") + '<div class="list">' + queue + '</div></div><div class="card"><div><h2>Sign off a group</h2><p class="who">Pick the skill, tick who did it.</p></div><div class="field"><label for="sk-bulk">Skill</label><select id="sk-bulk" data-change="skbulk">' + opts + "</select></div><div>" + people + "</div>" + nobody + '<div class="row"><button class="btn primary" data-act="skbulkgo"' + (n ? "" : " disabled") + ">" + (D.ground() && !n ? "Sign off" : "Sign off " + n + " student" + (n === 1 ? "" : "s")) + "</button>" + (D.ground() && !n && pickable ? '<span class="who">Tick at least one student.</span>' : "") + "</div></div></div>";
 }
 function editView() {
   var ai = D.S.sk.ai;

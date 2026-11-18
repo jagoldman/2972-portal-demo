@@ -132,3 +132,8 @@
 @media (max-width: 640px) {
   .calcchart text, .calcdraw text { font-size: 16px; }
 }
+
+/* Hill climb r4: the answer box is for answers; an instruction is plain muted text. The calculator sheet is as wide
+   as every other page's. */
+.calcans.plain { padding: 0; border: 0; background: none; color: var(--mute); font-weight: 400; }
+.content.calcpage { max-width: var(--maxw); }

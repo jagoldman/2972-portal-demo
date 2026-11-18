@@ -108,7 +108,7 @@ function labs(x) { return simple() ? "" : x.labels.map(function (l) { return '<s
 // In Ground up a waiting task says so on its row for everyone, students too: a thick ring beside a task that
 // cannot go on read as "in progress" (hill climb r3).
 function showWait() { return !simple() || D.ground(); }
-function stOf(x) { return x.st !== "done" && x.st !== "blocked" && showWait() && blockedBy(x).length ? '<span class="pill bad" data-tip="Waiting on ' + esc(blockedBy(x).map(function (b) { return b.title; }).join(", ")) + '">Waiting</span>' : stPill(x.st); }
+function stOf(x) { return x.st !== "done" && x.st !== "blocked" && showWait() && blockedBy(x).length ? '<span class="pill ' + (D.ground() ? "warn" : "bad") + '" data-tip="Waiting on ' + esc(blockedBy(x).map(function (b) { return b.title; }).join(", ")) + '">Waiting</span>' : stPill(x.st); }
 function names(who) { return who.length ? who.map(esc).join(", ") : "Nobody yet"; }
 function check(x) { return '<button class="tcheck" data-act="tdone" data-v="' + x.id + '" aria-pressed="' + (x.st === "done") + '" aria-label="Done: ' + esc(x.title) + '" data-tip="' + (x.st === "done" ? "Mark this task not done." : "Mark this task done.") + '">' + D.ic("check", 14) + "</button>"; }
 // Row-only versions (My tasks, Dashboard, a subteam's list). A row shows a status word only when the task needs attention:
@@ -122,7 +122,7 @@ function rowCheck(x) {
   var doing = x.st === "doing" && !(D.ground() && blockedBy(x).length);
   return '<button class="tcheck' + (doing ? " doing" : "") + '" data-act="tdone" data-v="' + x.id + '" aria-pressed="' + (x.st === "done") + '" aria-label="' + (doing ? "In progress. Mark done: " : "Done: ") + esc(x.title) + '" data-tip="' + (x.st === "done" ? "Mark this task not done." : doing ? "In progress (the ring); mark this task done when it is finished." : "Mark this task done.") + '">' + D.ic("check", 14) + "</button>";
 }
-function dueTxt(x) { if (!x.due) return '<span class="who due">No date</span>'; var n = days(x.due); return '<span class="who num due' + (n < 0 && x.st !== "done" ? " late" + (D.ground() ? " pill bad" : "") : "") + '">' + (n === 0 ? "Today" : n === 1 ? "Tomorrow" : n < 0 && x.st !== "done" ? Math.abs(n) + "d late" : fmt(x.due, { month: "short", day: "numeric" })) + "</span>"; }
+function dueTxt(x) { if (!x.due) return '<span class="who due">No date</span>'; var n = days(x.due); return '<span class="who num due' + (n < 0 && x.st !== "done" ? " late" : "") + '">' + (n === 0 ? "Today" : n === 1 ? "Tomorrow" : n < 0 && x.st !== "done" ? Math.abs(n) + "d late" : fmt(x.due, { month: "short", day: "numeric" })) + "</span>"; }
 function blockedBy(x) { return x.by.map(task).filter(function (b) { return b && b.st !== "done"; }); }
 function subsOf(x) { return T().list.filter(function (y) { return y.parent === x.id; }); }
 
@@ -191,11 +191,11 @@ function nextUp() {
   var skipped = next ? mine.filter(function (x) { return x !== next && (x.due || "9") < (next.due || "9"); })[0] : null;
   if (!next) return '<div class="card hero nextup"><h2>Nothing assigned to you</h2><p class="mute">Take something nobody has yet.</p></div>';
   var bn = blockedBy(next), steps = next.check.filter(function (c) { return c[1]; }).length;
-  return '<div class="card hero nextup"><p class="eyebrow">Your next task</p><h2>' + esc(next.title) + '</h2><p class="mute">' + esc(proj(next.p).name) + " › " + esc(next.sub) + (next.ms ? " · for “" + esc(msName(next.p, next.ms)) + "”" : "") + " · due " + fmt(next.due) + (D.ground() && next.due && D.practicesText(next.due) ? ", " + D.practicesText(next.due) : "") + "</p>" +
+  return '<div class="card hero nextup"><p class="eyebrow">Your next task</p><h2>' + (D.ground() ? '<button class="nexttitle" data-act="topen" data-v="' + next.id + '" data-tip="Open this task.">' + esc(next.title) + '<span class="chev" aria-hidden="true">›</span></button>' : esc(next.title)) + '</h2><p class="mute">' + esc(proj(next.p).name) + " › " + esc(next.sub) + (next.ms ? " · for “" + esc(msName(next.p, next.ms)) + "”" : "") + " · due " + fmt(next.due) + (D.ground() && next.due && D.practicesText(next.due) ? ", " + D.practicesText(next.due) : "") + "</p>" +
     (skipped && !bn.length ? (D.ground() ? '<p class="small mute">Skipped for now: “' + esc(skipped.title) + "”" + (blockedBy(skipped).length ? " waits on “" + esc(blockedBy(skipped)[0].title) + "”." : " is on hold.") + "</p>" : '<p class="small mute">“' + esc(skipped.title) + "” is on hold" + (blockedBy(skipped).length ? " until “" + esc(blockedBy(skipped)[0].title) + "” is done." : ".") + "</p>") : "") +
     (next.check.length ? '<div class="row"><div class="bar" style="width:160px"><i class="ok" style="width:' + D.pct(steps, next.check.length) + '%"></i></div><span class="small mute">' + steps + " of " + next.check.length + " steps</span></div>" : "") +
     (bn.length ? '<p class="small"><span class="pill bad">Waiting on</span> <button class="linkbtn" data-act="topen" data-v="' + bn[0].id + '">' + esc(bn[0].title) + "</button> (" + esc(bn[0].who.join(", ") || "nobody yet") + ").</p>" : "") +
-    '<div class="row heroacts"><button class="btn' + (bn.length ? "" : " primary") + '" data-act="tdone" data-v="' + next.id + '">' + D.ic("check", 16) + ' Done</button><button class="btn" data-act="tstuck" data-v="' + next.id + '">I\'m stuck</button><button class="btn" data-act="tpart" data-v="' + next.id + '">' + D.ic("parts", 16) + ' Request a part</button><button class="btn ghost" data-act="topen" data-v="' + next.id + '">Open</button></div></div>';
+    '<div class="row heroacts"><button class="btn' + (bn.length ? "" : " primary") + '" data-act="tdone" data-v="' + next.id + '">' + D.ic("check", 16) + (D.ground() ? " Mark task done" : " Done") + "</button>" + '<button class="btn" data-act="tstuck" data-v="' + next.id + '">I\'m stuck</button><button class="btn" data-act="tpart" data-v="' + next.id + '">' + D.ic("parts", 16) + ' Request a part</button>' + (D.ground() ? "" : '<button class="btn ghost" data-act="topen" data-v="' + next.id + '">Open</button>') + '</div></div>';
 }
 D.nextUpCard = nextUp;
 /* Small read-only answers for Home (Ground up): the milestones not yet met, soonest first, and what is due on a day.

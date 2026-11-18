@@ -253,4 +253,55 @@
     .li.tkr .due { grid-column: 1; grid-row: 2; text-align: left; }
     .li.tkr .btn { grid-column: 2; grid-row: 1 / span 2; }
   }
+
+  /* ============================================================
+     Hill climb, round 4 (2026-11-18): Sonnet and GPT-6.1 Terra again
+     ============================================================ */
+  /* Home */
+  .nowdue { font-weight: 650; color: var(--text); }
+  .homec .nowcard { padding-bottom: 8px; }
+  .homec .homemain > .card.hero { margin-top: 6px; }
+  .snpractice { justify-self: end; margin: 0; font-weight: 600; }
+  .season.simple { grid-template-columns: auto minmax(0, 1fr); align-items: center; }
+  @media (max-width: 640px) { .season.simple { grid-template-columns: minmax(0, 1fr); } .snpractice { justify-self: start; } }
+  /* "Open" is a real button on a phone, drawn like its neighbours, not a pale one that looks switched off. */
+  @media (max-width: 640px) { .heroacts .btn.ghost { border-color: var(--line-2); background: var(--surface); color: var(--text); } }
+
+  /* Shell */
+  .appsmenu .menugroups { margin-top: 6px; }
+  .nli .who { display: none; }
+  .tabs.more-l { --fl: 44px; }
+
+  /* Tasks */
+  .kpi span { color: var(--text-2); font-size: .86rem; }
+  @media (max-width: 640px) { .tcheck { width: 28px; height: 28px; } .tcheck::after { inset: -8px; } }
+
+  /* Selects look like the other fields, with one small chevron. */
+  select.inp, .field select { -webkit-appearance: none; appearance: none; padding-right: 34px; background-image: linear-gradient(45deg, transparent 50%, var(--text-2) 50%), linear-gradient(135deg, var(--text-2) 50%, transparent 50%); background-position: calc(100% - 18px) 50%, calc(100% - 13px) 50%; background-size: 5px 5px, 5px 5px; background-repeat: no-repeat; }
+  @media (min-width: 641px) { .bigcheck { width: 28px; height: 28px; border-radius: 7px; } .checkrow { grid-template-columns: 34px minmax(0, 1fr) auto; min-height: 44px; } }
+
+  /* Calendar */
+  /* The usual week lists only the days the team meets; a greyed day that cannot be picked read as a broken choice. */
+  .usual .chip[disabled] { display: none; }
+  .mavail .usual, .side > .usual { padding: 12px 0 6px; border: 0; border-top: 1px solid var(--line-2); border-radius: 0; background: none; }
+  @media (max-width: 640px) {
+    .subnav .seg { -webkit-mask-image: none; mask-image: none; padding-right: 2px; }
+    .subnav .seg:has(button:nth-child(4)) { -webkit-mask-image: linear-gradient(to right, #000 calc(100% - 32px), transparent); mask-image: linear-gradient(to right, #000 calc(100% - 32px), transparent); padding-right: 28px; }
+    .banner { gap: 0 16px; }
+    .banner b, .banner span { flex: 1 1 100%; }
+  }
+  .doorask .pill { font-size: inherit; }
+
+  /* Competition */
+  .pitmaint { gap: 4px 18px; }
+
+  /* Round 4, third judge */
+  .nowgroup { margin: 12px 0 2px; padding: 0 4px; color: var(--mute); font-size: .84rem; font-weight: 650; }
+  .nowgroup:first-child { margin-top: 2px; }
+  .nowgroup + .nowrow { border-top: 0; }
+  /* The next task's title opens the task. */
+  .nexttitle { display: inline-flex; align-items: baseline; gap: 8px; max-width: 100%; padding: 0; border: 0; background: none; color: inherit; font: inherit; text-align: left; cursor: pointer; }
+  .nexttitle:hover { text-decoration: underline; text-underline-offset: 3px; }
+  .nexttitle .chev { font-size: 1.1rem; }
+  @media (max-width: 640px) { .nexttitle { min-height: 44px; align-items: center; } }
 }

@@ -27,4 +27,8 @@
 
   /* Hill climb r2: on a phone the small names in the event line are 14 px, readable at arm's length. */
   @media (max-width: 640px) { .evline .evk { font-size: .875rem; } }
+
+  /* Hill climb r4: the line is the point of the page at an event, so its values are the main size and have room. */
+  .evline .evv { font-size: 1.02rem; font-weight: 700; }
+  @media (max-width: 640px) { .evline .evpart { padding: 9px 14px 10px; } .evline .evk { line-height: 1.5; } }
 }

@@ -210,7 +210,7 @@ function appbar() {
   return '<header class="appbar"><button class="appsbtn" data-act="apps" aria-expanded="' + !!S.appsOpen + '" aria-label="All apps" data-tip="Every app, tool and team link.">' + D.ic("apps", 20) + "</button>" +
     '<a class="brand" href="' + D.appHref("portal") + '" target="_blank" rel="noopener noreferrer" aria-label="Portal home" data-act="go" data-v="portal"><span class="badge-2972">2972</span></a>' +
     '<span class="appname">' + (D.ground() && !cur && S.route === "portal" ? '<span class="hide-sm">' + esc(here) + '</span><span class="show-sm-inline">Home</span>' : esc(here)) + '</span><span class="grow"></span>' +
-    (S.mode === "competition" ? '<button class="modechip" data-act="go" data-v="account" aria-label="Competition mode" data-tip="Event apps are showing; change it on your Account page.">' + (D.ground() ? 'Competition<span class="hide-sm"> mode</span>' : 'Comp<span class="hide-sm">etition mode</span>') + "</button>" : "") +
+    (S.mode === "competition" ? '<button class="modechip" data-act="go" data-v="account" aria-label="Competition mode" data-tip="Event apps are showing; change it on your Account page.">' + (D.ground() ? "Competition" : 'Comp<span class="hide-sm">etition mode</span>') + "</button>" : "") +
     '<button class="iconbtn" data-act="bell" aria-expanded="' + !!S.bell + '" aria-label="Notifications" data-tip="What is new for you in every app.">' + D.ic("bell") + (unread ? '<span class="count">' + unread + "</span>" : "") + "</button>" +
     (S.role !== "display" ? '<button class="iconbtn acct" data-act="accountmenu" aria-controls="account-menu" aria-expanded="' + !!S.accountOpen + '" aria-label="Account: ' + esc(D.me().name) + '" data-tip="Your theme, notices and account settings.">' + esc(D.me().name.replace(/^(Ms|Mr|Dr)\. /, "").split(" ").map(function (w) { return w[0]; }).join("").slice(0, 2)) + "</button>" : "") +
     (S.appsOpen ? appsMenu() : "") + (S.bell ? bellPanel() : "") + (S.accountOpen && S.role !== "display" ? accountMenu() : "") + "</header>" +
@@ -218,7 +218,7 @@ function appbar() {
 }
 function accountMenu() {
   var theme = document.documentElement.getAttribute("data-theme") || "";
-  return '<div class="accountmenu" id="account-menu" aria-label="Account" data-keepscroll="accountmenu"><div><b>' + esc(D.me().name) + '</b><small class="mute">' + esc(D.me().groups.join(" · ")) + '</small></div><div role="group" aria-label="Theme"><h3>Theme</h3>' +
+  return '<div class="accountmenu" id="account-menu" aria-label="Account" data-keepscroll="accountmenu"><div><b>' + esc(D.me().name) + '</b><small class="mute">' + esc(D.ground() ? D.me().label : D.me().groups.join(" · ")) + '</small></div><div role="group" aria-label="Theme"><h3>Theme</h3>' +
     [["", "Match my device"], ["light", "Light"], ["dark", "Dark"]].map(function (t) { return '<button class="accountchoice" data-act="menutheme" data-v="' + t[0] + '" aria-pressed="' + (theme === t[0]) + '">' + t[1] + '</button>'; }).join("") +
     '</div><a class="accountchoice" href="#account" data-act="accountnotifications">Notification settings</a><a class="accountchoice" href="#account" data-act="go" data-v="account">All account settings</a><button class="accountchoice" data-act="demosignout">Sign out</button></div>';
 
@@ -263,7 +263,7 @@ function appsMenu() {
 function noticeRow(n) {
   var i = D.S.notices.indexOf(n), app = D.APPNAME[n.app] || "";
   return '<button class="li nli' + (n.read ? "" : " unread") + '" data-act="notice" data-i="' + i + '" data-tip="Open it. Right-click or press and hold to mark it ' + (n.read ? "unread" : "read") + '.">' +
-    (n.read ? "" : '<span class="srt">Unread: </span>') + '<span class="grow"><span class="app">' + esc(app) + "</span> " + esc(n.text) + '</span><span class="who">' + esc(n.when) + "</span></button>";
+    (n.read ? "" : '<span class="srt">Unread: </span>') + (D.ground() ? '<span class="grow"><span class="app">' + esc(app + (app && n.when ? ", " : "") + n.when) + "</span> " + esc(n.text) + "</span>" : '<span class="grow"><span class="app">' + esc(app) + "</span> " + esc(n.text) + '</span><span class="who">' + esc(n.when) + "</span>") + "</button>";
 }
 function bellPanel() {
   var list = D.myNotices();
@@ -335,7 +335,10 @@ function seasonLine(simple) {
   if (!target) return "";
   var meets = api.meetDays(today, isoAdd(target.date, -1)), n = meets.length, days = daysTo(target.date, today);
   // A parent does not count in practices: their line is the date and the days to it, with no marks.
-  if (simple) return '<section class="season simple" aria-label="The season"><p class="snhead"><b class="snnum num">' + days + "</b><span><b>" + (days === 1 ? "day" : "days") + " to " + esc(target.name) + '</b><span class="mute num">' + esc(api.fmt(target.date)) + "</span></span></p></section>";
+  if (simple) {
+    var np = api.practiceDays(1)[0], npt = np ? (np.date === today ? "Practice today" : "Next practice " + api.fmt(np.date)) + ", " + api.span(np) : "";
+    return '<section class="season simple" aria-label="The season"><p class="snhead"><b class="snnum num">' + days + "</b><span><b>" + (days === 1 ? "day" : "days") + " to " + esc(target.name) + '</b><span class="mute num">' + esc(api.fmt(target.date)) + "</span></span></p>" + (npt ? '<p class="snpractice">' + esc(npt) + "</p>" : "") + "</section>";
+  }
   var ms = D.tasksApi ? D.tasksApi.milestones(12).filter(function (m) { return m.date >= today && m.date < target.date; }) : [];
   var due = {}; ms.forEach(function (m) { (due[m.date] = due[m.date] || []).push(m); });
   var marks = meets.map(function (d) {
@@ -361,6 +364,8 @@ function nowRow(o) {
    owning app's own function (D.partsApi.approve, D.skillsApi.signOff), so they are not a second way of doing it. */
 function nowRows() {
   var S = D.S, rows = [], api = D.calApi, c = S.cal, staff = D.isStaff(), P = apiWith(D.partsApi, ["needsOk", "approve", "open"]), K = apiWith(D.skillsApi, ["requests", "signOff"]);
+  // At an event, Now holds only what the event needs (hill climb r4): the pit's own rows, from the Competition app.
+  if (S.eventDay && S.role !== "parent") return (D.eventRows ? D.eventRows() : []).map(function (r) { return { app: r.app, tab: r.tab, title: r.title, line: esc(r.line || "") }; });
   practiceRows().forEach(function (r) {
     // A parent's first question is the next practice. When that is today, the row says "today", not the date.
     // A parent's practices are the "This week" list, which leads their page, so Now holds only what they can do.
@@ -378,21 +383,21 @@ function nowRows() {
       var sn = c.snacks[e.date] || (c.snacks[e.date] = new Array(c.slots).fill(null)), k = sn.indexOf(null);
       if (k < 0 || sn.indexOf(mine) >= 0) return;
       var open = sn.filter(function (x) { return !x; }).length;
-      rows.push({ app: "snacks", title: "Snacks needed " + api.fmt(e.date), line: esc(plural(open, "family", "families") + " needed"), btn: '<button class="btn' + (n++ ? "" : " primary") + '" data-act="snack" data-d="' + e.date + '" data-k="' + k + '">Sign up</button>' });
+      rows.push({ app: "snacks", title: "Snacks needed " + api.fmt(e.date), line: esc(plural(open, "family", "families") + " needed"), btn: '<button class="btn primary" data-act="snack" data-d="' + e.date + '" data-k="' + k + '">Sign up</button>' });
     });
   }
   if (staff) {
     if (P && hasTile("parts")) P.needsOk().forEach(function (r) {
-      rows.push({ act: "homereq", v: r.id, title: r.name, line: esc(D.money(r.total) + ", asked by " + r.by) + (r.orderBy ? (api && r.orderBy < api.TODAYS ? ', <b class="nowbad">the order was due ' + esc(api.fmt(r.orderBy)) + "</b>" : ", order by " + esc(api ? api.fmt(r.orderBy) : r.orderBy)) : ""),
+      rows.push({ group: "Needs your OK", act: "homereq", v: r.id, title: r.name, line: esc(D.money(r.total) + ", asked by " + r.by) + (r.orderBy ? (api && r.orderBy < api.TODAYS ? ', <b class="nowdue">the order was due ' + esc(api.fmt(r.orderBy)) + "</b>" : ", order by " + esc(api ? api.fmt(r.orderBy) : r.orderBy)) : ""),
         mark: r.pri === "blocking" ? '<span class="pill pri bad">Blocking</span>' : r.pri === "high" ? '<span class="pill pri warn">High</span>' : "",
         btn: '<button class="btn' + (r.pri === "blocking" ? " primary" : "") + '" data-act="homeapprove" data-v="' + r.id + '">Approve</button>' });
     });
     if (K && hasTile("skills")) K.requests().forEach(function (q) {
-      rows.push({ app: "skills", tab: "signoff", title: q.student, line: esc("Asks for a sign-off on " + q.skill), btn: '<button class="btn" data-act="homesignoff" data-v="' + esc(q.key) + '">Sign off</button>' });
+      rows.push({ group: "Sign-off requests", app: "skills", tab: "signoff", title: q.skill, line: esc(q.student + " asks for a sign-off"), btn: '<button class="btn" data-act="homesignoff" data-v="' + esc(q.key) + '">Sign off</button>' });
     });
     // Stuck work comes to the mentors as a row, not only as a notice: nothing waits silently (GROUND_UP.md §1).
     if (apiWith(D.tasksApi, ["stuck", "openTask"]) && hasTile("tasks")) D.tasksApi.stuck().forEach(function (x) {
-      rows.push({ act: "hometask", v: x.id, title: x.title, line: esc((x.who.length ? x.who.join(", ") : "Nobody has it") + ", " + x.project + (x.waitsOn.length ? ". Waits on " + x.waitsOn.join(" and ") : "")), mark: '<span class="pill bad">Blocked</span>' });
+      rows.push({ group: "Stuck", act: "hometask", v: x.id, title: x.title, line: esc((x.who.length ? x.who.join(", ") : "Nobody has it") + ", " + x.project + (x.waitsOn.length ? ". Waits on " + x.waitsOn.join(" and ") : "")), mark: '<span class="pill bad">Blocked</span>' });
     });
     // What cannot be settled in one tap stays a door, as it was.
     waitingRows().forEach(function (r) {
@@ -401,6 +406,9 @@ function nowRows() {
       rows.push({ app: r.app, tab: r.tab, title: r.title, line: r.line ? esc(r.line) : "" });
     });
   }
+  // For a mentor the practice row is information, not a decision, so it follows the rows that need one.
+  var isPractice = function (r) { return /^(Practice today|Next practice)/.test(r.title); };
+  if (staff) rows = rows.filter(function (r) { return r.group; }).concat(rows.filter(function (r) { return !r.group && !isPractice(r); }), rows.filter(function (r) { return !r.group && isPractice(r); }));
   return rows;
 }
 // Waiting on others (a student's own open requests and sign-offs), each with who has the next move (rule 2).
@@ -442,16 +450,21 @@ function homeGround() {
   var main = tiles.filter(isCore), more = tiles.filter(function (t) { return t.more; });
   function link(t) { return '<li><a href="' + D.appHref(t.id) + '" target="_blank" rel="noopener noreferrer"' + D.tileTip(t.id) + '>' + D.ic(t.icon, 16) + esc(t.name) + (t.ext ? " ↗" : "") + "</a></li>"; }
   var SHORTER = { calendar: "Practices, attendance, snacks" };
+  if (role === "parent") { SHORTER.tasks = "This week and due dates"; SHORTER.calendar = "Practices, events, snacks"; }
   function approw(t) { return '<a class="approw" href="' + D.appHref(t.id) + '" target="_blank" rel="noopener noreferrer" aria-label="' + esc(t.name) + ' (opens in a new tab)"' + D.tileTip(t.id) + '><span class="ic">' + D.ic(t.icon, 18) + "</span><b>" + esc(t.name) + (t.ext ? " ↗" : "") + "</b><small>" + esc(SHORTER[t.id] || SHORT[t.id] || t.desc) + "</small></a>"; }
   var d = new Date(2026, 10, 10); try { if (D.calApi && D.calApi.TODAYS) { var q = D.calApi.TODAYS.split("-"); d = new Date(+q[0], +q[1] - 1, +q[2]); } } catch (e) {}
   var date = d.toLocaleDateString("en-US", { weekday: "long", month: "long", day: "numeric" });
-  var now = nowRows(), others = role === "student" ? waitingOnOthers() : [];
+  var now = nowRows(), others = role === "student" && !S.eventDay ? waitingOnOthers() : [];
   var mainCol = "", shift = role === "student" && S.eventDay && !!D.myShiftCard;
   // On an event day a student's shift is what needs them now, so it leads and no "nothing needs you" sits above it.
   if (shift) mainCol += '<div class="shiftcard">' + D.myShiftCard() + "</div>";
   var week = S.eventDay ? "" : '<section class="card wkcard"><h2>This week</h2>' + weekRows() + "</section>";
   if (role === "parent") { mainCol += week; if (now.length) mainCol += '<section class="card nowcard"><h2>Can you help?</h2><div class="list">' + now.map(nowRow).join("") + "</div></section>"; }
-  else if (now.length || !shift) mainCol += '<section class="card nowcard"><h2>Now</h2>' + (now.length ? '<div class="list">' + now.map(nowRow).join("") + "</div>" : '<p class="mute">Nothing needs you right now.</p>') + "</section>";
+  else if (now.length || !shift) mainCol += '<section class="card nowcard"><h2>Now</h2>' + (now.length ? '<div class="list">' + now.map(function (r, i) {
+    // A short label starts each kind of decision, so a mentor's list reads in groups (hill climb r4).
+    var g = r.group || (i && now[i - 1].group ? "Also" : "");
+    return (g && (!i || (now[i - 1].group || "") !== (r.group || "")) ? '<h3 class="nowgroup">' + esc(g) + "</h3>" : "") + nowRow(r);
+  }).join("") + "</div>" : '<p class="mute">Nothing needs you right now.</p>') + "</section>";
   // At an event the shop task waits: a student in the pit is not sent back to the shop (hill climb r3).
   if (role === "student" && D.nextUpCard && !S.eventDay) mainCol += D.nextUpCard();
   // A parent's two questions are the next practice and the next event. The events get their own short list, so the
@@ -464,12 +477,12 @@ function homeGround() {
     }).join("") + "</div></section>";
   }
   if (others.length) mainCol += '<section class="card"><h2>Waiting on others</h2><div class="list">' + others.join("") + "</div></section>";
-  var act = role === "parent" ? "" : '<section class="card actcard"><h2>Recent activity</h2><div class="list">' +
+  var act = role === "parent" || S.eventDay ? "" : '<section class="card actcard"><h2>Recent activity</h2><div class="list">' +
     S.activity.slice(0, 4).map(function (a) { return '<div class="li actli"><span class="actapp">' + esc(D.APPNAME[a.app] || "") + '</span><span class="grow"><b>' + esc(a.who) + "</b> " + esc(a.what) + '</span><span class="who">' + esc(a.when) + "</span></div>"; }).join("") + "</div></section>";
   // On an event day the event line takes the season line's place. A student's shift card below already says "you
   // now", so the line leaves that part out for them.
   var top = S.eventDay && D.eventLine && role !== "parent" ? D.eventLine(shift ? "schedule" : "") : seasonLine(role === "parent");
-  return '<div class="content home homeb homec' + (S.eventDay ? " evday" : "") + (role === "parent" ? " parent" : "") + '"><div class="homehead"><h1>Hi ' + esc(D.me().short) + '.</h1><p class="homedate">' + esc(date) + "</p></div>" + top +
+  return '<div class="content home homeb homec' + (S.eventDay ? " evday" : "") + (role === "parent" ? " parent" : "") + '"><div class="homehead"><h1>Hi ' + esc(D.me().short) + '.</h1><p class="homedate">' + esc(S.eventDay && D.calApi && D.calApi.currentEvent && D.calApi.currentEvent() ? D.calApi.currentEvent().name : date) + "</p></div>" + top +
     '<div class="homecols"><div class="homemain">' + mainCol + act + '</div><aside class="homeside">' +
     (role === "parent" ? "" : week) +
     '<section class="card appscard"><h2>Apps</h2><div class="applist">' + main.map(approw).join("") + "</div>" +

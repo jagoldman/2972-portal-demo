@@ -102,6 +102,15 @@ function evPart(p) {
   })(p);
 }
 D.eventLine = function (here) { return eventLine(here || ""); };
+// What the event needs from the people in the pit right now, for Home's "Now" on an event day: the checks still open
+// before our next match, and the open issues. Each is a door to the Pit.
+D.eventRows = function () {
+  var c = C(), rows = [], total = 0, ticked = 0, m = nextOurs();
+  c.lists.forEach(function (l) { l.items.forEach(function (i) { total++; if (i.c) ticked++; }); });
+  if (total - ticked > 0) rows.push({ app: "pit", tab: "check", title: (total - ticked) + (total - ticked === 1 ? " check is" : " checks are") + " still open" + (m ? " before Qual " + m.q : ""), line: ticked + " of " + total + " checked" });
+  if (c.issues && c.issues.length) rows.push({ app: "pit", tab: "check", title: c.issues.length + (c.issues.length === 1 ? " open issue" : " open issues") + " in the pit", line: c.issues.slice(0, 2).map(function (i) { return i.n; }).join(", ") });
+  return rows;
+};
 // The person whose row the schedule has. Students are Sam Ortiz in the sample data, as on My schedule; a mentor not
 // on the schedule (the admin) has no shift.
 function evWho() { return D.S.role === "student" ? "Sam Ortiz" : PEOPLE.indexOf(D.me().name) >= 0 ? D.me().name : null; }
@@ -150,7 +159,7 @@ function mySchedule(dayTabs, heroOnly) {
   var row = scheduleRows()[who], runs = runsOf(row), cur = runs.filter(function (r) { return r.from <= c.nowSlot && c.nowSlot <= r.to; })[0], nxt = runs[runs.indexOf(cur) + 1];
   return '<div class="card hero"><div class="row between"><div><p class="eyebrow">' + c.days[c.day] + " · now " + slotLabel(c.nowSlot) + '</p><h2 class="herotitle">' + esc(ROLES[cur.r].label) + " until " + slotLabel(cur.to + 1) + "</h2>" + (nxt ? '<p class="mute">Then ' + esc(ROLES[nxt.r].label) + " at " + slotLabel(nxt.from) + ".</p>" : "") + "</div>" + dayTabs + "</div>" +
     (cur.r === "scout" ? '<div><button class="btn primary" data-act="go" data-v="scouting">Open my scouting match</button></div>' : cur.r === "pit" ? '<div><button class="btn primary" data-act="go" data-v="pit">Open Pit checklists</button></div>' : "") + "</div>" +
-    (heroOnly ? "" : '<div class="card"><h2>' + esc(who) + '</h2><div class="timeline">' + runs.map(function (r) { return '<div class="tlrow"><span class="num small">' + slotLabel(r.from) + "–" + slotLabel(r.to + 1) + '</span><div class="tlbar' + (r === cur ? " now" : "") + '" style="--rc:' + ROLES[r.r].color + '"><span>' + esc(ROLES[r.r].label) + "</span>" + (r === cur ? '<b class="nowtag">Now</b>' : "") + "</div></div>"; }).join("") + "</div></div>");
+    (heroOnly ? "" : '<div class="card"><h2>' + esc(who) + '</h2><div class="timeline">' + runs.map(function (r) { return '<div class="tlrow"><span class="num small">' + slotLabel(r.from) + "–" + slotLabel(r.to + 1) + (D.ground() ? (START + (r.to + 1) * 15 <= 720 ? " am" : " pm") + ", " + ((r.to - r.from + 1) / 4) + " h" : "") + '</span><div class="tlbar' + (r === cur ? " now" : "") + '" style="--rc:' + ROLES[r.r].color + '"><span>' + esc(ROLES[r.r].label) + "</span>" + (r === cur ? '<b class="nowtag">Now</b>' : "") + "</div></div>"; }).join("") + "</div></div>");
 }
 function everyone(dayTabs) {
   var c = C(), rows = scheduleRows(), staff = D.isStaff();
@@ -205,7 +214,7 @@ function checklists() {
   var c = C(), total = 0, ticked = 0, m = nextOurs(), red = m.red.indexOf(2972) >= 0;
   c.lists.forEach(function (l) { l.items.forEach(function (i) { total++; if (i.c) ticked++; }); });
   return '<div class="card hero"><div class="row between"><div><p class="eyebrow">Next match · ' + (m.q === c.current ? "on the field now" : (m.q - c.current) + " matches away") + " · scheduled " + m.time + '</p><h2 class="herotitle">Qual ' + m.q + " · " + (red ? "Red" : "Blue") + '</h2><p class="mute">With ' + (red ? m.red : m.blue).filter(function (t) { return t !== 2972; }).join(" and ") + " · against " + (red ? m.blue : m.red).join(", ") + '</p></div><span class="pill ' + (ticked === total ? "ok" : "warn") + '">' + ticked + " of " + total + " checked</span></div>" + '<div class="bar"><i class="ok" style="width:' + D.pct(ticked, total) + '%"></i></div>' +
-    '<div class="row pitmaint"><button class="btn" data-act="pitarchive">Archive as Qual ' + c.last + '</button><button class="btn" data-act="pitreset">Reset</button></div></div>' +
+    '<div class="row pitmaint"><button class="btn" data-act="pitarchive">Archive as Qual ' + c.last + '</button><button class="btn" data-act="pitreset">' + (D.ground() ? "Reset checklist" : "Reset") + "</button></div></div>" +
     '<div class="grid2">' + c.lists.map(function (l, li) {
       return '<div class="card"><h2>' + esc(l.name) + "</h2><div>" + l.items.map(function (it, ii) { return '<div class="checkrow"><button class="bigcheck" data-act="pittick" data-l="' + li + '" data-i="' + ii + '" aria-pressed="' + it.c + '" aria-label="' + esc(it.n) + '">' + D.ic("check", 28) + "</button><div><b>" + esc(it.n) + "</b>" + (it.c ? '<div class="who">' + esc(it.by) + " · " + esc(it.at) + "</div>" : "") + '</div><button class="btn sm" data-act="pitissue" data-l="' + li + '" data-i="' + ii + '">Problem</button></div>'; }).join("") + "</div></div>";
     }).join("") + "</div>" + issuesCard();
@@ -287,7 +296,7 @@ function drawField(cv) {
   x.fillStyle = g ? "#24272b" : "#1d2a1f"; x.fillRect(0, 0, w, h);
   x.strokeStyle = "rgba(255,255,255,.5)"; x.lineWidth = 2; x.strokeRect(6, 6, w - 12, h - 12); x.beginPath(); x.moveTo(w / 2, 6); x.lineTo(w / 2, h - 6); x.stroke();
   x.fillStyle = "rgba(220,60,50,.35)"; x.fillRect(6, 6, 70, h - 12); x.fillStyle = "rgba(60,110,220,.35)"; x.fillRect(w - 76, 6, 70, h - 12);
-  x.fillStyle = "rgba(255,255,255,.7)"; x.font = g ? "600 20px sans-serif" : "12px sans-serif"; x.fillText("Red start", g ? 84 : 14, g ? 30 : 22); x.fillText("Blue start", w - (g ? 178 : 70), g ? 30 : 22);
+  x.fillStyle = "rgba(255,255,255,.7)"; if (g) x.fillStyle = "#ffffff"; x.font = g ? "700 26px sans-serif" : "12px sans-serif"; x.fillText("Red start", g ? 86 : 14, g ? 36 : 22); x.fillText("Blue start", w - (g ? 210 : 70), g ? 36 : 22);
   [[180, 90], [180, 230], [w - 180, 90], [w - 180, 230]].forEach(function (p) { x.beginPath(); x.arc(p[0], p[1], 18, 0, 7); x.strokeStyle = mark; x.stroke(); });
   x.strokeStyle = pen; x.lineWidth = 4; x.lineCap = "round";
   f.path.forEach(function (stroke) { x.beginPath(); stroke.forEach(function (p, i) { if (i) x.lineTo(p[0], p[1]); else x.moveTo(p[0], p[1]); }); x.stroke(); });
