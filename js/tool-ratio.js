@@ -171,6 +171,8 @@ M.countDesigns = function (o, cap) {
   return { n: n, exact: true, orders: orders };
 };
 /* The parts in a train: two gears, pulleys or sprockets a stage, plus the belt or chain; a planetary stage counts as one. */
+/* Find one's second order: smallest first, by the sum of the centre distances; ties keep the best-match order. */
+M.bySize = function (list) { return list.map(function (c, i) { return [c, i]; }).sort(function (a, b) { return a[0].len - b[0].len || a[1] - b[1]; }).map(function (p) { return p[0]; }); };
 M.parts = function (stages) { return stages.reduce(function (t, st) { return t + (st.kind === "planet" ? 1 : st.kind === "gear" ? 2 : 3); }, 0); };
 /* A stage's centre distance (in): gears at half the sum of their pitch diameters; a belt or chain on the stock loop
    nearest a 0.75 in gap between the wheels; a planetary on its own axis (0). Returns { C, count (belt teeth or links) }. */
@@ -214,7 +216,7 @@ css.textContent =
   ".t-ratio-badge{display:inline-block;font-size:.72rem;font-weight:700;color:var(--warn);border:1px solid currentColor;border-radius:999px;padding:0 7px;margin-left:4px;white-space:nowrap;vertical-align:1px}" +
   ".t-ratio-plist{display:none;list-style:none;margin:0;padding:0}.t-ratio-plist li{display:grid;grid-template-columns:minmax(0,1fr) auto;gap:4px 10px;align-items:center;padding:8px 0;border-top:1px solid var(--line)}" +
   ".t-ratio-plist li:first-child{border-top:0}.t-ratio-plist li.pick{background:var(--tint);box-shadow:inset 3px 0 0 var(--accent);padding-left:8px}.t-ratio-plist small{color:var(--text-2)}.t-ratio-l2{grid-column:1/-1;margin-top:-2px}" +
-  ".t-ratio-ends{margin-top:-4px}.t-ratio-order{font-weight:500;color:var(--text-2);font-size:.86em}" +
+  ".t-ratio-ends{margin-top:-4px}.t-ratio-sort{margin-left:6px;vertical-align:middle}.t-ratio-order{font-weight:500;color:var(--text-2);font-size:.86em}" +
   "@media (max-width:640px){.t-ratio-stt .inp,.t-ratio-sth select.inp{min-height:44px}.t-ratio-ftab .scroll{display:none}.t-ratio-plist{display:block}}";
 document.head.appendChild(css);
 
@@ -253,7 +255,7 @@ K.tool({
   id: ID,
   defaults: { mode: "build", stages: [{ kind: "gear", a: 12, b: 60, p: 4 }, { kind: "gear", a: 18, b: 54, p: 4 }], motor: "kraken60", motors: 1, statorA: 60,
     out: "none", wheelD: 4, spoolD: 1.5, volts: 12, effGear: 97, effPlanet: 93,
-    want: 15, tol: 2, maxStages: 2, kGear: true, kBelt: false, kChain: false, kPlanet: false, minT: 10, maxT: 72 },
+    want: 15, tol: 2, maxStages: 2, sortBy: "best", kGear: true, kBelt: false, kChain: false, kPlanet: false, minT: 10, maxT: 72 },
   stage: { ratio: 2.2, narrow: 0.62, tall: true, label: "The gear train to scale, every part turning at its real speed relative to the motor, with each shaft's speed." },
   loop: true, autoplay: true,
 
@@ -264,8 +266,10 @@ K.tool({
       var t0 = Date.now();
       var fo = { target: s.want, tol: s.tol / 100, maxStages: s.maxStages, kinds: { gear: s.kGear, belt: s.kBelt, chain: s.kChain, planet: s.kPlanet }, minT: s.minT, maxT: s.maxT };
       r.found = M.find(fo); r.designs = M.countDesigns(fo); r.total = Math.max(r.found.length, r.designs.n);
+      // The second way to sort: the same designs, smallest first (by the sum of the centre distances).
       r.oneStage = M.count(Object.assign({}, fo, { maxStages: 1 }));
       r.found.forEach(function (c) { c.parts = M.parts(c.stages); c.len = M.length(c.stages); c.small = M.smallGear(c.stages); });
+      if (s.sortBy === "small") r.found = M.bySize(r.found);
       r.ms = Date.now() - t0;
     }
     r.stages = s.mode === "find" ? (r.found[0] ? r.found[0].stages : []) : s.stages;
@@ -333,12 +337,13 @@ K.tool({
       if (!r.found.length) return K.verdict("warn", "No train of these parts comes within " + K.n(s.tol, 1) + "% of " + ratioTxt(s.want) + ". Allow more stages, more kinds of part or a bigger error.");
       var b = r.found[0], exact = Math.abs(b.err) < 1e-9;
       // "Note", not "Works on paper": the search has done the arithmetic, not checked that the parts carry the load.
-      return K.verdict("info", "Start with the first row, " + M.trainLabel(b.stages) + " (" + (exact ? "exactly " + ratioTxt(b.ratio) : ratioTxt(b.ratio) + ", " + (b.err > 0 ? "+" : "−") + K.fix(Math.abs(b.err) * 100, 2) + "%") + "), drawn above: it has the fewest stages, then " + (exact ? "an exact ratio" : "the closest ratio") + (b.small >= M.SMALL ? ", no small pinion" : "") + ", then the smallest largest gear. These are sizes vendors commonly make, not a check of what is in stock.",
-        "These are the best " + r.found.length + " of " + (r.designs.exact ? "" : "more than ") + K.n(r.total, 0) + " designs within " + K.n(s.tol, 1) + "%." + (b.small < M.SMALL ? " Every train this close has a small pinion: its " + b.small + "-tooth gear is likely cut with a shifted profile, so use the maker's centre distance." : "") + " Check each gear's and shaft's torque rating, and that the centres fit your plates.") +
+      // One sentence on the top row, and that these are catalogue sizes. The rest goes to the second line.
+      return K.verdict("info", M.trainLabel(b.stages).replace(", ", " then ") + " gives " + (exact ? "exactly " + ratioTxt(b.ratio) : ratioTxt(b.ratio) + " (" + (b.err > 0 ? "+" : "−") + K.fix(Math.abs(b.err) * 100, 2) + "%)") + ". These are sizes vendors commonly make, not a stock check.",
+        "These are the best " + r.found.length + " of " + (r.designs.exact ? "" : "more than ") + K.n(r.total, 0) + " designs within " + K.n(s.tol, 1) + "%." + (b.small < M.SMALL ? (s.sortBy === "small" ? " This one has a small pinion: its " : " Every train this close has a small pinion: its ") + b.small + "-tooth gear is likely cut with a shifted profile, so use the maker's centre distance." : "") + " Check each gear's and shaft's torque rating, and that the centres fit your plates.") +
         K.outs([{ k: "Best reduction", v: K.n(b.ratio, 3), u: ": 1", sub: M.trainLabel(b.stages) },
           { k: "Error", v: Math.abs(b.err) < 1e-9 ? "0" : (b.err > 0 ? "+" : "−") + K.fix(Math.abs(b.err) * 100, 2), u: "%", sub: (Math.abs(b.err) < 1e-9 ? "exactly " : "against ") + ratioTxt(s.want) },
           { k: "Stages", v: String(b.stages.length), sub: b.parts + " parts; centres sum to " + K.fix(b.len, 2) + " in", tip: "Parts: gears, pulleys, sprockets, belts and chains, with a planetary stage counted as one." },
-          { k: "Largest part", v: K.fix(b.d, 2), u: "in", sub: b.t ? "pitch diameter; the outside is a little larger" : "the planetary ring", tip: "Pitch diameter of the biggest gear, pulley, sprocket or planetary ring in the train" + (b.t ? " (" + b.t + " teeth)" : "") + ". Its outside diameter is a little larger: allow for it in the plates." },
+          { k: "Largest part", v: K.fix(b.d, 2), u: "in", sub: b.t ? "pitch diameter; outside a little more" : "the planetary ring", tip: "Pitch diameter of the biggest gear, pulley, sprocket or planetary ring in the train" + (b.t ? " (" + b.t + " teeth)" : "") + ". Its outside diameter is a little larger: allow for it in the plates." },
           { k: "Output speed", v: K.n(r.t.freeOut, 0), u: "rpm", sub: "at " + K.n(s.volts, s.volts % 1 ? 1 : 0) + " V, no load" }]);
     }
     var t = r.t, lb = t.torqueOut * M.NM_LBIN, dirTxt = t.dirOut > 0 ? "the same way as the motor" : "the other way to the motor";
@@ -357,7 +362,7 @@ K.tool({
     var state = big || tiny ? "warn" : "info";
     if (big) text += " One " + (big.kind === "gear" ? "gear" : big.kind) + " stage is " + K.fix(big.b / big.a, 1) + " : 1; above about 7 : 1 the driven part gets large, and two stages are often smaller.";
     else if (tiny) text += " A " + Math.min(tiny.a, tiny.b) + "-tooth gear is very small for 20 DP; check that the part exists.";
-    return K.verdict(state, text, "This is the arithmetic of the train. Check each gear's and shaft's torque rating against the stalled torque here, and that the centre distances fit your plates.") + K.outs(items) +
+    return K.verdict(state, text, "This is the arithmetic of the train. Check each shaft's own row in the table below (lb in, stalled) against its gears' and shaft's ratings, and that the centre distances fit your plates.") + K.outs(items) +
       '<p class="mute small t-ratio-ends">Stalled torque and no-load speed are the two ends of the torque curve below: the output never has both at once. Under load it runs somewhere between them.</p>';
   },
 
@@ -365,7 +370,9 @@ K.tool({
     var out = "";
     if (s.mode === "find") {
       var title = r.found.length < r.total ? "The best " + r.found.length + " of " + (r.designs.exact ? "" : "more than ") + K.n(r.total, 0) + " designs within " : (r.total === 1 ? "The one design within " : "All " + r.total + " designs within ");
-      out += '<section class="ctab t-ratio-ftab"><h2>' + title + K.n(s.tol, 1) + "% of " + esc(ratioTxt(s.want)) + '<small class="t-ratio-order">, by fewest stages, then the closest ratio, then no small pinion, then the smallest largest part</small></h2>' +
+      out += '<section class="ctab t-ratio-ftab"><h2>' + title + K.n(s.tol, 1) + "% of " + esc(ratioTxt(s.want)) + '</h2><p class="mute small">' + (s.sortBy === "small" ? "Smallest first: by the sum of the centre distances." : "Best match first: fewest stages, then the closest ratio, then no small pinion, then the smallest largest part.") + " " +
+        '<span class="seg t-ratio-sort" role="group" aria-label="Order"><button data-act="calcseg" data-tool="' + ID + '" data-k="sortBy" data-v="best" aria-pressed="' + (s.sortBy !== "small") + '">Best match</button><button data-act="calcseg" data-tool="' + ID + '" data-k="sortBy" data-v="small" aria-pressed="' + (s.sortBy === "small") + '">Smallest first</button></span></p>' +
+        '<p class="mute small">Largest part: the biggest gear\'s pitch diameter. Sum of centres: how long the plate must be.</p>' +
         (r.found.length && r.oneStage === 0 && s.maxStages > 1 ? '<p class="mute small">No single stage reaches ' + esc(ratioTxt(s.want)) + " with gears of " + s.minT + " to " + s.maxT + " teeth, so every design here has two or more.</p>" : "") +
         (r.found.length ? '<p class="mute small">Each pair is driving teeth : driven teeth.' + (r.found.some(function (c) { return c.either; }) ? " Either order: the ratio is the same, but the order changes the torque on the middle shaft, so check it." : "") + '</p><div class="scroll"><table><thead><tr><th>Stages</th><th class="r">Reduction</th><th class="r">Error</th><th class="r">Largest part</th><th class="r">Parts</th><th class="r">Sum of centre distances</th><th></th></tr></thead><tbody>' +
         r.found.map(function (c, i) {
@@ -382,7 +389,7 @@ K.tool({
     t.shafts.forEach(function (sh, i) {
       var st = i ? r.stages[i - 1] : null, L = i ? r.layout.stages[i - 1] : null;
       var what = !st ? s.motors + " × " + F.motor(s.motor).name : (st.kind === "planet" ? "Planetary " + st.p + " : 1" : st.a + " : " + st.b + " " + (st.kind === "gear" ? "gears" : st.kind));
-      var where = !st ? "" : st.kind === "planet" ? "same axis" : K.fix(L.C, 3) + " in" + (st.kind === "gear" ? "" : ", " + L.count + (st.kind === "belt" ? "T belt" : " links"));
+      var where = !st ? "" : st.kind === "planet" ? "same axis" : K.fix(L.C, 3) + " in" + (st.kind === "gear" ? (Math.min(st.a, st.b) < M.SMALL ? ", nominal" : "") : ", " + L.count + (st.kind === "belt" ? "T belt" : " links"));
       rows.push("<tr><td>" + (i === 0 ? "Motor" : i === t.shafts.length - 1 ? "Output" : "Shaft " + (i + 1)) + "</td><td>" + esc(what) + "</td><td>" + esc(where) + '</td><td class="r num">' + (st ? K.fix(t.stages[i - 1].ratio, 3) : "") + '</td><td class="r num">' + K.n(sh.rpm, sh.rpm >= 100 ? 0 : 1) + '</td><td class="r num">' + K.n(sh.torque * M.NM_LBIN, 1) + '</td><td class="r num">' + K.n(sh.torque, 2) + "</td><td>" + (sh.dir > 0 ? "as motor" : "reversed") + "</td></tr>");
     });
     out += '<section class="ctab"><h2>Speed and torque after each stage</h2><div class="scroll"><table><thead><tr><th>Shaft</th><th>Parts</th><th>Centres</th><th class="r">Ratio</th><th class="r">rpm at ' + K.n(s.volts, s.volts % 1 ? 1 : 0) + ' V, no load</th><th class="r">lb in, stalled</th><th class="r">N m, stalled</th><th>Turns</th></tr></thead><tbody>' + rows.join("") + "</tbody></table></div>" +
@@ -491,7 +498,7 @@ function drawTrain(g, s, r, t) {
   var m = 0.15, phone = g.w < 560, warnAny = r.stages.some(function (st) { return st.kind === "gear" && Math.min(st.a, st.b) < M.SMALL; });
   var top = 80 + (warnAny ? 14 : 0) + (s.out === "wheel" && outR ? 34 : 0);
   // The view from above: beside the drawing on a laptop (the right third), under it on a phone.
-  var RW = phone ? g.w : Math.round(g.w * 0.64), insetH = phone ? 86 + r.stages.length * 16 : 0;
+  var RW = phone ? g.w : Math.round(g.w * 0.64), insetH = phone ? 92 + (r.stages.length + 1) * 26 : 0;
   var box = { x0: x0 - m, x1: x1 + m, y0: -big - m, y1: big + m };
 
   // Shaft labels. Laptop: each name and speed under its shaft, in rows; a label drops a row when it would touch the one
@@ -641,23 +648,29 @@ function drawTrain(g, s, r, t) {
   var ends = [-Infinity, -Infinity];
   r.stages.forEach(function (st, i) {
     var xa = X(sh[i]), xb = X(sh[i + 1]), txt = st.kind === "planet" ? "Planetary " + st.p + " : 1" : st.a + " : " + st.b + (st.kind === "gear" ? "" : " " + st.kind), w = g.textWidth(txt, { size: 11, weight: 600 });
-    var planet = st.kind === "planet", a0 = planet ? xb : Math.min(xa, xb) + 4, a1 = planet ? xb : Math.max(xa, xb) - 4, mid = (a0 + a1) / 2;
-    // A gear under 14 teeth: say beside the stage that its spacing comes from its maker.
-    var warnT = st.kind === "gear" && Math.min(st.a, st.b) < M.SMALL ? (phone ? "check spacing" : "small pinion: check the maker's spacing") : "", ww = warnT ? g.textWidth(warnT, { size: 11, weight: 700 }) + 8 : 0;
+    // A gear under 14 teeth: a warning above, with a leader down to that gear. The bracket starts a little further in
+    // on that side so the two lines do not run side by side.
+    var warnT = st.kind === "gear" && Math.min(st.a, st.b) < M.SMALL ? (phone ? "small pinion: check spacing" : "small pinion: check the maker's spacing") : "", ww = warnT ? g.textWidth(warnT, { size: 11, weight: 700 }) + 8 : 0;
+    var smallA = warnT && st.a <= st.b, scol = stageCol(c, i);
+    var planet = st.kind === "planet", a0 = planet ? xb : Math.min(xa, xb) + (warnT && smallA ? 10 : 4), a1 = planet ? xb : Math.max(xa, xb) - (warnT && !smallA ? 10 : 4), mid = (a0 + a1) / 2;
     var left = F.clamp(mid - w / 2, 4, RW - w - 4), row = i % 2;
     if (left < ends[row] + 10) return;     // no room: the table below names every stage
     ends[row] = left + w;
     var y0r = 56 + (warnAny ? 14 : 0), ty = y0r + row * 14, by = ty + 4;
-    g.text(txt, left + w / 2, ty, { size: 11, weight: 600, color: c.text2, align: "center" });
-    // The small-pinion warning: on its own line above, centred over this stage's own bracket, with a tick down to it.
-    if (warnT) { ww -= 8; var wl = F.clamp(mid - ww / 2, 4, RW - ww - 4); g.text(warnT, wl + ww / 2, y0r - 16, { size: 11, weight: 700, color: c.warn, align: "center" }); g.line(mid, y0r - 13, mid, ty - 11, { color: c.warn, width: 1 }); }
-    if (!planet) g.line(a0, by, a1, by, { color: c.mute, width: 1 });
+    g.text(txt, left + w / 2, ty, { size: 11, weight: 700, color: scol, align: "center" });
+    if (warnT) {
+      ww -= 8;
+      var gx = smallA ? xa : xb, gr = V.L((smallA ? st.a : st.b) / M.DP / 2) + 3, wl = F.clamp(gx - 12, 4, RW - ww - 4);
+      g.text(warnT, wl, y0r - 16, { size: 11, weight: 700, color: c.warn });
+      g.line(gx, y0r - 12, gx, Y - gr, { color: c.warn, width: 1.25 });
+    }
+    if (!planet) g.line(a0, by, a1, by, { color: scol, width: 1.5 });
     [[a0, i], [a1, i + 1]].forEach(function (q, j) {
       if (planet && j === 0) return;
-      var yTop = Y - V.L(sh[q[1]].r) - 3; if (yTop > by + 2) g.line(q[0], by, q[0], yTop, { color: c.mute, width: 1 });
+      var yTop = Y - V.L(sh[q[1]].r) - 3; if (yTop > by + 2) g.line(q[0], by, q[0], yTop, { color: scol, width: 1.5 });
     });
   });
-  if (sh.length > 1) topView(g, s, r, phone ? { x: 12, y: g.h - insetH + 2, w: g.w - 24, h: insetH - 10 } : { x: RW + 4, y: 52, w: g.w - RW - 14, h: Math.min(g.h - 66, 112 + (r.stages.length + 1) * 24) }, phone);
+  if (sh.length > 1) topView(g, s, r, phone ? { x: 12, y: g.h - insetH + 2, w: g.w - 24, h: insetH - 10 } : { x: RW + 4, y: 52, w: g.w - RW - 14, h: Math.min(g.h - 62, 128 + (r.stages.length + 1) * 30) }, phone);
   var head = ratioTxt(tr.total) + " in " + r.stages.length + (r.stages.length === 1 ? " stage" : " stages"), hw = g.textWidth(head, { weight: 700 });
   g.text(head, 12, 18, { weight: 700 });
   g.text(", slowed " + K.n(tr.shafts[0].rpm / 60 / (SHOW_RPS * spd), 0) + " times so you can watch it turn", 12 + hw, 18, { color: c.mute, size: 12 });
@@ -669,50 +682,57 @@ function drawTrain(g, s, r, t) {
 function topView(g, s, r, B, phone) {
   var c = g.c, Lo = r.layout, sh = Lo.shafts, st = r.stages, ns = st.length, nn = sh.length;
   g.rect(B.x, B.y, B.w, B.h, { fill: c.sheet, stroke: c.line, width: 1, radius: 6 });
-  g.text("Seen from above", B.x + 10, B.y + 16, { size: 11, weight: 700, color: c.text2 });
-  g.text("front at the bottom", B.x + B.w - 10, B.y + 16, { size: 10, color: c.mute, align: "right" });
-  var labW = 50, xa = Infinity, xb = -Infinity;
+  g.text("Seen from above", B.x + 10, B.y + 18, { size: 12, weight: 700, color: c.text2 });
+  g.text("front at the bottom", B.x + B.w - 10, B.y + 18, { size: 11, color: c.mute, align: "right" });
+  var labW = 56, xa = Infinity, xb = -Infinity;
   sh.forEach(function (q) { xa = Math.min(xa, q.x - q.r); xb = Math.max(xb, q.x + q.r); });
   var ix0 = B.x + labW + 8, ix1 = B.x + B.w - 10, k = (ix1 - ix0) / Math.max(1e-6, xb - xa);
   function PX(x) { return ix0 + (x - xa) * k; }
-  var ph = phone ? 16 : Math.min(26, Math.max(16, (B.h - 76) / (ns + 1))), y0 = B.y + 34 + ph * 0.5;
+  var ph = phone ? 26 : Math.min(32, Math.max(22, (B.h - 104) / (ns + 1))), y0 = B.y + 36 + ph * 0.4;
   function PY(i) { return y0 + (i + 1) * ph; }        // i = -1: the motor; 0 .. ns-1: the stages
-  // Plane names on the left.
-  g.text("motor", B.x + 10, PY(-1) + 4, { size: 10, color: c.mute });
-  for (var i = 0; i < ns; i++) g.text("stage " + (i + 1), B.x + 10, PY(i) + 4, { size: 10, color: c.mute });
-  // The motor: a block behind stage 1 on the first shaft.
-  var mw = Math.max(12, Math.min(34, 2.4 * k));
-  g.rect(PX(sh[0].x) - mw / 2, PY(-1) - 5, mw, 10, { fill: c.part2, stroke: c.partLine, width: 1, radius: 2 });
+  // Plane names on the left, each stage in its own colour, as its bracket in the main drawing.
+  g.text("motor", B.x + 10, PY(-1) + 4, { size: 11, color: c.mute });
+  for (var i = 0; i < ns; i++) g.text("stage " + (i + 1), B.x + 10, PY(i) + 4, { size: 11, weight: 700, color: stageCol(c, i) });
+  // Shafts first, so the bars and their tooth counts sit on top: each runs from the first plane it carries a part in
+  // to the last.
+  sh.forEach(function (q, j) {
+    var a = j === 0 ? -1 : j - 1, b = Math.min(j, ns - 1), x = PX(q.x);
+    g.line(x, PY(a) - 9, x, PY(b) + (j === nn - 1 ? 15 : 9), { color: c.text, width: 2, cap: "butt" });
+  });
+  var mw = Math.max(14, Math.min(34, 2.4 * k));
+  g.rect(PX(sh[0].x) - mw / 2, PY(-1) - 6, mw, 12, { fill: c.part2, stroke: c.partLine, width: 1, radius: 2 });
   st.forEach(function (q, i) {
-    var L = Lo.stages[i], y = PY(i), xs = PX(sh[i].x), xd = PX(sh[i + 1].x);
-    // Driving part pale, driven part dark: where two gear bars meet is the mesh.
-    function bar(x, d, fill) { g.rect(x - d * k / 2, y - 4, d * k, 8, { fill: fill, stroke: c.partLine, width: 1, radius: 1.5 }); }
+    var L = Lo.stages[i], y = PY(i), xs = PX(sh[i].x), xd = PX(sh[i + 1].x), col = stageCol(c, i);
+    // A bar in the stage's colour with its tooth count on it (beside it when the bar is too short to hold it).
+    function bar(x, d, txt) {
+      var w = Math.max(6, d * k), tw = g.textWidth(txt, { size: 11, weight: 700 });
+      g.rect(x - w / 2, y - 7, w, 14, { fill: col, stroke: null, radius: 2 });
+      if (tw + 6 <= w) g.text(txt, x, y + 0.5, { size: 11, weight: 700, align: "center", base: "middle", color: c.sheet, halo: false });
+      // Too short to hold it: under the bar and left of the shaft, so the shaft line does not run through it.
+      else g.text(txt, x - 5, y + 20, { size: 11, weight: 700, align: "right", color: col });
+    }
     if (q.kind === "planet") {
-      if (L.apart) g.line(xs, y, xd, y, { color: c.accent, width: 1, dash: [6, 3, 1, 3] });
-      bar(xd, 2 * L.rRing, c.part2);
+      if (L.apart) g.line(xs, y, xd, y, { color: col, width: 1.25, dash: [6, 3, 1, 3] });
+      bar(xd, 2 * L.rRing, q.p + " : 1");
       return;
     }
     if (q.kind !== "gear") g.line(xs, y, xd, y, { color: c.text, width: 3, cap: "butt" });
-    bar(xs, q.kind === "gear" ? L.pa : L.oa, c.part); bar(xd, q.kind === "gear" ? L.pb : L.ob, c.part2);
-    if (q.kind === "gear") g.circle(PX(sh[i].x + L.pa / 2), y, 3.5, { fill: c.accent, stroke: c.sheet, width: 1 });
+    bar(xs, q.kind === "gear" ? L.pa : L.oa, q.a + "T"); bar(xd, q.kind === "gear" ? L.pb : L.ob, q.b + "T");
+    if (q.kind === "gear") g.circle(PX(sh[i].x + L.pa / 2), y, 3.5, { fill: c.text, stroke: c.sheet, width: 1.5 });
   });
-  // Shafts on top: each runs from the first plane it carries a part in to the last.
-  sh.forEach(function (q, j) {
-    var a = j === 0 ? -1 : j - 1, b = Math.min(j, ns - 1), x = PX(q.x);
-    g.line(x, PY(a) - 7, x, PY(b) + (j === nn - 1 ? 13 : 7), { color: c.text, width: 2, cap: "butt" });
-  });
-  if (!phone) { g.text("bars: each gear, pulley or sprocket", B.x + 10, PY(ns - 1) + 26, { size: 10, color: c.mute }); g.text("dot: where two gears mesh", B.x + 10, PY(ns - 1) + 39, { size: 10, color: c.mute }); }
+  if (!phone) { g.text("each bar: a gear, pulley or sprocket", B.x + 10, PY(ns - 1) + 30, { size: 11, color: c.mute }); g.text("dot: where two gears mesh", B.x + 10, PY(ns - 1) + 45, { size: 11, color: c.mute }); }
   // Shaft names along the bottom, in two rows when they would touch (numbers on a phone, as in the drawing).
-  var by = B.y + B.h - 8, ends = [-Infinity, -Infinity];
-  by = Math.max(by, PY(ns - 1) + (phone ? 30 : 58));
+  var by = Math.max(B.y + B.h - 8, PY(ns - 1) + (phone ? 34 : 66)), ends = [-Infinity, -Infinity];
   sh.forEach(function (q, j) {
     var x = PX(q.x);
     if (phone) { tag(g, x, by - 4, j + 1); return; }
-    var name = j === 0 ? "Motor" : j === nn - 1 ? "Output" : "Shaft " + (j + 1), w = g.textWidth(name, { size: 10, weight: 600 }), l = F.clamp(x - w / 2, B.x + 4, B.x + B.w - w - 4), row = l > ends[0] + 6 ? 0 : 1;
+    var name = j === 0 ? "Motor" : j === nn - 1 ? "Output" : "Shaft " + (j + 1), w = g.textWidth(name, { size: 11, weight: 600 }), l = F.clamp(x - w / 2, B.x + 4, B.x + B.w - w - 4), row = l > ends[0] + 6 ? 0 : 1;
     ends[row] = l + w;
-    g.text(name, l + w / 2, by - (1 - row) * 13, { size: 10, weight: 600, color: c.text2, align: "center" });
+    g.text(name, l + w / 2, by - (1 - row) * 14, { size: 11, weight: 600, color: c.text2, align: "center" });
   });
 }
+// Each stage's colour, the same in the main drawing (its bracket and tooth counts) and in the view from above.
+function stageCol(c, i) { return [c.s1, c.s2, c.s3, c.text2][i % 4]; }
 // A shaft's number in a small ring, for the phone's key.
 function tag(g, x, y, k) { g.circle(x, y, 7.5, { fill: g.c.sheet, stroke: g.c.accent, width: 1.25 }); g.text(String(k), x, y + 0.5, { size: 10, weight: 700, align: "center", base: "middle", color: g.c.accent, halo: false }); }
 function hexBore(g, x, y, rp, ang) {

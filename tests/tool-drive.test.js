@@ -89,6 +89,11 @@ near("lead: level at the crossing", M.lead(A.sim, B.sim, tc), 0, 0.01);
 // Battery current from the sag: 12.3 V resting, 7.5 V under load through 0.02 ohm is (12.3 - 7.5) / 0.02 = 240 A.
 near("battery current from the sag", M.batteryAmps(12.3, 7.5, 0.02), 240, 1e-9);
 
+// Round 9: the lowest-battery card. 7.5 V against a 6.8 V brown-out is 0.7 V above it, amber (within 1 V).
+var bcA = M.batteryCard(7.5, 6.8);
+ok("battery card: amber within 1 V", bcA.state === "warn" && /^0\.7 V above/.test(bcA.sub), JSON.stringify(bcA));
+ok("battery card: red below brown-out", M.batteryCard(6.5, 6.8).state === "bad" && /0\.3 V below/.test(M.batteryCard(6.5, 6.8).sub));
+ok("battery card: plain with room", M.batteryCard(9, 6.8).state === "");
 console.log(fails ? fails + " of " + n + " checks failed" : "all " + n + " checks passed");
 console.log("default race: A " + A.time.toFixed(3) + " s, B " + B.time.toFixed(3) + " s; top " + (A.top / F.FT).toFixed(2) + " / " + (B.top / F.FT).toFixed(2) + " ft/s; slip until " + (A.slipV / F.FT).toFixed(2) + " / " + (B.slipV / F.FT).toFixed(2) + " ft/s; min V " + A.minV.toFixed(2) + "; crossings (ft) " + cr.map(function (c) { return (c.d / F.FT).toFixed(1) + c.ahead; }).join(" "));
 if (fails) process.exit(1);

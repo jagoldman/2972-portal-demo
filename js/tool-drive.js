@@ -114,6 +114,12 @@ M.lead = function (simA, simB, t) { return M.at(simB, "x", t) - M.at(simA, "x", 
 /* The battery's total current (A) when it reads V: (rest - V) / resistance. */
 M.batteryAmps = function (V0, V, Rb) { return Rb > 0 ? (V0 - V) / Rb : 0; };
 
+/* The lowest battery voltage in words for its card: { state, sub }. Amber within 1 V of brown-out, red below it. */
+M.batteryCard = function (low, brown) {
+  var m = low - brown;
+  return { state: m < 0 ? "bad" : m < 1 ? "warn" : "", sub: (m < 0 ? (-m).toFixed(1) + " V below" : m.toFixed(1) + " V above") + " brown-out (" + brown.toFixed(1) + " V)" };
+};
+
 if (typeof module !== "undefined" && module.exports) { module.exports = M; return; }
 
 /* ---------- The page ---------- */
@@ -209,22 +215,25 @@ K.tool({
     if (Lo.reached && !M.margin(A.time, B.time).tie) {
       text += " " + M.leadText(r.cross, r.dist, r.searched, wn);
     }
-    var low = Math.min(A.minV, B.minV);
-    // The battery warning goes in the second line, starting with the figure; the verdict keeps the race.
-    var batt = "";
-    if (low >= 7 && low < 7.8 && state !== "bad") { state = "warn"; batt = K.fix(low, 1) + " V at the lowest, only " + K.fix(low - 6.8, 1) + " V above the 6.8 V brown-out: a worn battery or another mechanism running would cross it."; }
-    if (low < 7 && state !== "bad") { state = "warn"; batt = K.fix(low, 1) + " V at the lowest, " + (low < 6.8 ? "below" : "close to") + " the 6.8 V where the roboRIO cuts the motors (a brownout), so a real robot would not run this fast: lower the " + s.statorA + " A current limit or add a supply limit."; }
+    // The verdict is the race. The battery has its own card in the first row.
+    var low = Math.min(A.minV, B.minV), bc = M.batteryCard(low, 6.8), lowK = A.minV <= B.minV ? "A" : "B";
     function two(a, b, n) { return K.fix(a, n) + " / " + K.fix(b, n); }
     var fast = r.best ? "The fastest reduction tried over " + d + " ft (" + K.fix(r.sweep[0][0], 1) + " to " + K.fix(r.sweep[r.sweep.length - 1][0], 1) + " : 1) is " + K.fix(r.best[0], 2) + " : 1, at " + K.fix(r.best[1], 3) + " s." : "";
     // Wheel slip in words: "Neither slips", "A only", or both speeds.
-    var sa = A.slipEnd >= 0, sb = B.slipEnd >= 0, slip = !sa && !sb ? { v: "Neither slips", u: "", sub: "" } : sa && sb ? { v: two(A.slipV / FT, B.slipV / FT, 1), u: "ft/s", sub: "A / B slip until; " } :
+    var sa = A.slipEnd >= 0, sb = B.slipEnd >= 0, slip = !sa && !sb ? { v: "Neither", u: "", sub: "" } : sa && sb ? { v: two(A.slipV / FT, B.slipV / FT, 1), u: "ft/s", sub: "A / B slip until; " } :
       { v: (sa ? "A" : "B") + " only", u: "", sub: (sa ? "A" : "B") + " slips until " + fts((sa ? A : B).slipV) + " ft/s, " + (sa ? "B" : "A") + " does not; " };
-    return K.verdict(state, text, (batt ? batt + " " : "") + fast) + K.outs([
-      { k: "Time to " + d + " ft", v: two(A.time, B.time, M.margin(A.time, B.time).dp), u: "s", sub: "A / B", tip: "From a standing start, full power all the way." },
-      { k: "Speed at the line", v: two(A.vLine / FT, B.vLine / FT, 1), u: "ft/s", sub: two(A.vLine, B.vLine, 2) + " m/s" },
-      { k: "Top speed", v: two(A.top / FT, B.top / FT, 1), u: "ft/s", sub: "from " + K.fix(s.V0, 1) + " V at rest; free speed at 12 V: " + two(A.free / FT, B.free / FT, 1), tip: "The speed where the motors' push has fallen to the rolling drag, from the rested battery in Fine tuning less its sag. Free speed is the catalogue figure: 12 V and no load." },
-      { k: "Wheel slip", v: slip.v, u: slip.u, sub: slip.sub + "launch " + two(A.acc0 / F.G, B.acc0 / F.G, 2) + " g of " + K.fix(s.grip, 1) + " grip", state: sa || sb ? "" : "ok", tip: "While the motors could push harder than the tread grips, the wheels spin on the carpet and grip sets the acceleration." }
-    ]);
+    var dp = M.margin(A.time, B.time).dp;
+    return K.verdict(state, text, fast) + '<dl class="outs t-drive-outs">' +
+      abCard("Time to " + d + " ft", K.fix(A.time, dp), K.fix(B.time, dp), "s", "full power from a standstill") +
+      plainCard({ k: "Lowest battery", v: K.fix(low, 1), u: "V", sub: bc.sub, state: bc.state, tip: "The lowest voltage at the robot during the sprint (" + lowK + "), from " + K.fix(s.V0, 1) + " V at rest. The roboRIO cuts the motors below 6.8 V. " + (bc.state ? "Lower the " + s.statorA + " A current limit or add a supply limit to keep clear of it; a worn battery or another mechanism running would sag further." : "A worn battery or another mechanism running sags further.") }) +
+      abCard("Speed at the line", fts(A.vLine), fts(B.vLine), "ft/s", two(A.vLine, B.vLine, 2) + " m/s") +
+      abCard("Top speed", fts(A.top), fts(B.top), "ft/s", "free speed at 12 V: " + two(A.free / FT, B.free / FT, 1), "The speed where the motors' push has fallen to the rolling drag, from the " + K.fix(s.V0, 1) + " V rested battery less its sag. Free speed is the catalogue figure: 12 V and no load.") +
+      plainCard({ k: "Wheels slip", v: slip.v, u: slip.u, sub: slip.sub + "launch " + two(A.acc0 / F.G, B.acc0 / F.G, 2) + " g of " + K.fix(s.grip, 1) + " grip", state: sa || sb ? "" : "ok", tip: "While the motors could push harder than the tread grips, the wheels spin on the carpet and grip sets the acceleration." }) + "</dl>";
+    // A card with A's and B's figures, each in its colour with its letter, one to a line.
+    function abCard(k, a, b, u, sub, tip) {
+      return '<div class="out"><dt' + (tip ? ' class="abbr" tabindex="0" data-tip="' + esc(tip) + '"' : "") + ">" + esc(k) + '</dt><dd><b class="num t-drive-ab"><i class="a">A</i>' + esc(a) + ' <span>' + esc(u) + '</span></b><b class="num t-drive-ab"><i class="b">B</i>' + esc(b) + ' <span>' + esc(u) + "</span></b>" + (sub ? "<small>" + esc(sub) + "</small>" : "") + "</dd></div>";
+    }
+    function plainCard(o) { return K.outs([o]).replace(/^<dl class="outs">/, "").replace(/<\/dl>$/, ""); }
   },
 
   more: function (s, r) {
@@ -264,6 +273,8 @@ K.tool({
     var cr = r.cross.filter(function (c) { return c.d <= r.dist; });
     var ahead = K.chart({ id: "drv-l", title: "How far B is ahead of A (ft)", x: x, y: { label: "ft, B ahead above 0", unit: "ft" }, series: [{ name: "B ahead of A", pts: lead, color: 2 }],
       hlines: [{ y: 0, label: "level", side: "left", below: lead[Math.min(20, lead.length - 1)][1] > 0 }], marks: cr.length ? [{ x: M.timeAt(cr[cr.length - 1].ahead === "A" ? A.sim : B.sim, cr[cr.length - 1].d), label: cr[cr.length - 1].ahead + " takes the lead" }] : [] });
+    var vlow = Math.min(A.minV, B.minV), batt = K.chart({ id: "drv-b", title: "Battery at the robot", note: "Brown-out at 6.8 V: the roboRIO cuts the motors below it.", x: x, y: { label: "V", unit: "V", min: Math.min(6, Math.floor(vlow - 0.5)), max: Math.ceil(s.V0 + 0.3) },
+      series: [Object.assign({ pts: pts(A, "volts", 1) }, sA), Object.assign({ pts: pts(B, "volts", 1) }, sB)], hlines: [{ y: 6.8, label: "brown-out 6.8 V", side: "right", below: true }] });
     var amps = K.chart({ id: "drv-a", title: "Current per motor", x: x, y: { label: "A", unit: "A", min: 0 }, series: [Object.assign({ pts: pts(A, "amps", 1) }, sA), Object.assign({ pts: pts(B, "amps", 1) }, sB)], hlines: s.statorA ? [{ y: s.statorA, label: "limit" }] : [] });
     var sw = r.sweep.filter(function (p) { return isFinite(p[1]); });
     var tA = A.reached ? A.time : null, tB = B.reached ? B.time : null, dots = [];
@@ -273,7 +284,7 @@ K.tool({
     var swX = { label: "reduction, to 1", name: "Reduction", min: r.sweep[0][0], max: r.sweep[r.sweep.length - 1][0] }, swY = { label: "s", unit: "s", min: r.best ? Math.floor(r.best[1] * 10 * 0.95) / 10 : 0, max: ymax };
     var sweep = sweepMarks(K.chart({ id: "drv-s", title: "Time over " + sd + " ft for other reductions", x: swX, y: swY,
       series: [{ name: "Time", pts: sw, color: 3 }], marks: r.best ? [{ x: r.best[0] }] : [] }), swX, swY, sw, dots, r.best);
-    return '<div class="chartrow">' + dist + ahead + '</div><div class="chartrow">' + speed + amps + '</div><div class="chartrow">' + sweep + "<div></div></div>" + table +
+    return '<div class="chartrow">' + dist + ahead + '</div><div class="chartrow">' + speed + amps + '</div><div class="chartrow">' + sweep + batt + "</div>" + table +
       K.notes("<p>Each robot starts at rest and drives at full power through the line. Every 2 ms the calculator works out the motors' torque at the robot's speed, with the current limit and the battery's voltage drop, turns it into a push at the wheels, and moves the robot on.</p>" +
         '<p class="eq">push = motor torque × motors × reduction × efficiency ÷ wheel radius</p>' +
         '<p class="eq">acceleration = (smaller of push and grip − rolling drag) ÷ mass</p>' +
@@ -412,7 +423,7 @@ K.tool({
       g.text(K.fix(t, 2) + " s", 12, 19, { weight: 700, size: 13 });
       if (msg) g.text(msg, 70, 19, { weight: 600, color: c.text2, size: 12 });
     }
-    K.chartNow("drv-v", t); K.chartNow("drv-x", t); K.chartNow("drv-a", t); K.chartNow("drv-l", t);
+    K.chartNow("drv-v", t); K.chartNow("drv-x", t); K.chartNow("drv-a", t); K.chartNow("drv-l", t); K.chartNow("drv-b", t);
   }
 });
 /* The sweep chart's own marks, drawn into its SVG in the chart's coordinates (the kit's: 480 by 190, 46 px left, 14 px
@@ -440,7 +451,11 @@ function sweepMarks(html, X0, Y0, pts, dots, best) {
 // The table's colour keys, matching the chart lines.
 if (!document.getElementById("t-drive-css")) {
   var st = document.createElement("style"); st.id = "t-drive-css";
-  st.textContent = ".t-drive-key{display:inline-block;width:10px;height:10px;border-radius:2px;margin-right:6px;vertical-align:-1px}.t-drive-key.a{background:var(--s1)}.t-drive-key.b{background:var(--s2)}";
+  st.textContent = ".t-drive-key{display:inline-block;width:10px;height:10px;border-radius:2px;margin-right:6px;vertical-align:-1px}.t-drive-key.a{background:var(--s1)}.t-drive-key.b{background:var(--s2)}" +
+    ".t-drive-ab{display:block}.t-drive-ab i{font-style:normal;font-size:.72rem;font-weight:700;margin-right:5px;vertical-align:2px}.t-drive-ab i.a{color:var(--s1)}.t-drive-ab i.b{color:var(--s2)}" +
+    ".t-drive-outs .out:nth-child(1) .t-drive-ab:first-of-type,.t-drive-outs .out:nth-child(3) .t-drive-ab:first-of-type,.t-drive-outs .out:nth-child(4) .t-drive-ab:first-of-type{color:var(--s1)}" +
+    ".t-drive-outs .out .t-drive-ab+.t-drive-ab{color:var(--s2)}" +
+    "@media (max-width:640px){.t-drive-outs .out:first-child{grid-column:span 2}}";
   document.head.appendChild(st);
 }
 })(typeof window !== "undefined" ? window : this);

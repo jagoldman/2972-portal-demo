@@ -86,5 +86,12 @@ ok("find: no design listed twice", keys.every(function (k, i) { return keys.inde
 ok("design key ignores order", M.designKey([{ kind: "gear", a: 16, b: 56 }, { kind: "gear", a: 14, b: 60 }]) === M.designKey([{ kind: "gear", a: 14, b: 60 }, { kind: "gear", a: 16, b: 56 }]));
 ok("find: 16:56, 14:60 is marked either order", fd.some(function (c) { return c.either && M.designKey(c.stages) === M.designKey([{ kind: "gear", a: 14, b: 60 }, { kind: "gear", a: 16, b: 56 }]); }));
 ok("find: 18 teeth cannot drive from the motor, so 14:54, 18:70 is one order only", fd.filter(function (c) { return M.trainLabel(c.stages) === "14:54, 18:70"; }).every(function (c) { return !c.either; }));
+// Round 9: "Smallest first" orders the same designs by the sum of their centre distances, ties in best-match order.
+var fz = M.find({ target: 15, tol: 0.02, maxStages: 2, kinds: { gear: true }, minT: 10, maxT: 72 });
+fz.forEach(function (c) { c.len = M.length(c.stages); });
+var sz = M.bySize(fz);
+ok("smallest first: same designs", sz.length === fz.length && sz.every(function (c) { return fz.indexOf(c) >= 0; }));
+ok("smallest first: sums never fall", sz.every(function (c, i) { return !i || c.len >= sz[i - 1].len - 1e-12; }));
+ok("smallest first: 10:42, 14:50 (2.90 in) leads", M.trainLabel(sz[0].stages) === "10:42, 14:50" && Math.abs(sz[0].len - 2.9) < 1e-9, M.trainLabel(sz[0].stages));
 console.log(fails ? fails + " of " + n + " checks failed" : "All " + n + " checks passed");
 process.exit(fails ? 1 : 0);
