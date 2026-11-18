@@ -46,7 +46,7 @@ ok("branch at its rating: nothing", M.branchNote(1) === "");
 
 // Fix round 5: the verdict names the largest row, its share and the number to lower (the default: Drive, 4 x 40 A).
 var dflt = M.power([{ name: "Drive", n: 4, a: 40 }, { name: "Shooter", n: 2, a: 25 }, { name: "Intake", n: 1, a: 20 }, { name: "Elevator hold", n: 2, a: 10 }, { name: "Everything else", n: 1, a: 8 }], { rest: 12.5, rbat: 0.015, rwire: 0.006, brown: 6.8, main: 120 });
-ok("lever sentence", M.lever(dflt.rows[dflt.worst], dflt.I) === "Drive is the largest draw (160 A of 258 A): cutting what each of its motors draws from the battery (40 A here) helps most. A supply current limit in the motor controller does that.", M.lever(dflt.rows[dflt.worst], dflt.I));
+ok("lever sentence", M.lever(dflt.rows[dflt.worst], dflt.I) === "Drive is the largest draw (160 A of 258 A): cutting what each of its motors draws from the battery (40 A here) helps most. Set a supply current limit (for example 30 A) on the drive motors.", M.lever(dflt.rows[dflt.worst], dflt.I));
 var src = require("fs").readFileSync(require("path").join(__dirname, "../js/tool-power.js"), "utf8");
 ok("breaker timing called a rough guide, with the trip curve named", /rough guide/.test(src) && /trip curve/.test(src) && !/carries its rating all day/.test(src));
 
@@ -58,5 +58,8 @@ ok("Everything else is a lump", M.isAggregate({ name: "Everything else" }) && M.
 var fe = M.fromTool({ motors: 2, statorA: 60 }, "Elevator");
 ok("fill from a calculator", fe.name === "Elevator" && fe.n === 2 && fe.a === 60, JSON.stringify(fe));
 ok("fill: no motors, nothing", M.fromTool({}, "Arm") === null);
+// Round 10: amps without a needless ".0", and the suggested supply limit (three quarters, to the 5 A below).
+ok("amps: 20 not 20.0", M.amps(20) === "20" && M.amps(8) === "8" && M.amps(12.5) === "12.5");
+ok("supply limit suggestion", M.supplySuggest(40) === 30 && M.supplySuggest(60) === 45 && M.supplySuggest(4) === 5);
 console.log(fails ? fails + " of " + n + " checks failed" : "All " + n + " checks passed");
 process.exit(fails ? 1 : 0);

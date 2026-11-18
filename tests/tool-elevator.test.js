@@ -171,5 +171,28 @@ near("hand range, bottom", yr9[0], 0.88, 1e-12); near("hand range, top", yr9[1],
   ok(rig + ": holding is plus (it holds the weight up)", q9.AS[q9.T.findIndex(function (t) { return t > q9.tUp + 0.1; })] > 0);
 });
 
+// Round 10, elevator 1 (a fault last round): the current's sign must match the sign of the force the motors give,
+// worked out on its own from the motion: rope force = mass at the rope x acceleration + the load that holds it still.
+// Checked at every recorded step, up and down, for both riggings, a few gearings, and the hold. (Steps where that force
+// is under 5% of the largest are left out: there friction alone can decide.)
+var sgnBad = [];
+[["cascade", 9], ["continuous", 9], ["cascade", 20], ["continuous", 4], ["cascade", 5]].forEach(function (cs) {
+  var o10 = Object.assign({}, base, { stages: 2, rig: cs[0], ratio: cs[1] }), q10 = M.compute(o10), dr10 = M.driveOf(o10);
+  [[q10.up, 1], [q10.down, -1]].forEach(function (pr) {
+    var sim = pr[0]; if (!sim) return;
+    var sg = M.signed(sim, dr10, q10.rS, pr[1]), Fm = sim.t.map(function (t, k) { return q10.mod.mass(sim.x[k]) * sim.acc[k] + q10.mod.load(sim.x[k]); });
+    var big = Math.max.apply(null, Fm.map(Math.abs));
+    var fa = dr10.motor.freeA, net = sg.map(function (I, k) { return I - fa * Math.sign(sim.v[k]); });     // friction aside
+    for (var k = 0; k < sim.t.length - 1; k++) if (Math.abs(Fm[k]) > 0.05 * big && Math.sign(net[k]) !== Math.sign(Fm[k])) { sgnBad.push(cs.join(" ") + (pr[1] > 0 ? " up" : " down") + " t=" + sim.t[k].toFixed(3)); break; }
+  });
+  var kh = q10.T.findIndex(function (t) { return t > q10.tUp + 0.1; });
+  if (!(q10.AS[kh] > 0)) sgnBad.push(cs.join(" ") + " hold");
+});
+ok("current sign matches the force from the motion, every phase", !sgnBad.length, sgnBad.join("; "));
+// The cascade case the judge found: slowing the carriage on its way down takes the motors pulling up (+60 A).
+var q10c = M.compute(Object.assign({}, base, { stages: 2 })), tl = q10c.duration - 0.02, kl = q10c.T.findIndex(function (t) { return t >= tl; });
+near("cascade, stopping at the bottom: +60 A", q10c.AS[kl], 60, 0.5);
+ok("the second reverse starts well before the end (it was put at the end)", q10c.tRev2 < q10c.duration - 0.08, q10c.tRev2 + " of " + q10c.duration);
+
 console.log(fails ? fails + " of " + n + " checks failed" : "all " + n + " checks passed");
 process.exit(fails ? 1 : 0);

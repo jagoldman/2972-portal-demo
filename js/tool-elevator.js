@@ -33,7 +33,6 @@ M.model = function (o) {
 /* When a simulated move switches to full reverse to stop on its goal: the start of the last stretch where the speed
    only falls. (In continuous rigging a stage joining can slow the lift too, but under full power it speeds up again
    after, so the last falling stretch is the stop.) */
-M.reverseAt = function (sim) { var v = sim.v, i = v.length - 2; while (i > 0 && v[i - 1] > v[i] + 1e-12) i--; return sim.t[Math.max(0, i)]; };
 // Work done lifting from the bottom to the top (J): the integral of rope tension over rope travel.
 M.work = function (mod) { var N = 2000, dx = mod.rope / N, w = 0; for (var i = 0; i < N; i++) w += mod.load((i + 0.5) * dx) * dx; return w; };
 M.driveOf = function (s, ratio) { return F.drive({ motor: s.motor, n: Math.max(1, Math.round(s.motors)), ratio: ratio == null ? s.ratio : ratio, eff: s.eff / 100, statorA: s.statorA }); };
@@ -94,7 +93,7 @@ M.compute = function (s) {
   }
   r.T = T; r.X = X; r.V = Vv; r.A = A; r.B = B; r.AS = AS;
   // When full reverse starts on each move (absolute times), for the phase marks on the current chart.
-  if (r.reached) { r.tRev1 = M.reverseAt(r.up); if (r.down && r.down.reached) r.tRev2 = r.tHold + 1e-4 + M.reverseAt(r.down); }
+  if (r.reached) { r.tRev1 = M.reverseAt(r.up, dr, rS, 1); if (r.down && r.down.reached) r.tRev2 = r.tHold + 1e-4 + M.reverseAt(r.down, dr, rS, -1); }
   // Continuous: when each stage joins on the way up (stage n first, the one the carriage rides in, then n - 1 ...).
   r.joins = [];
   if (r.rig === "continuous") for (i = 1; i <= n; i++) { var xj = i * mod.seg, tj = null; for (var q = 0; q < r.up.x.length; q++) if (r.up.x[q] >= xj - 1e-9) { tj = r.up.t[q]; break; } if (tj != null && tj < r.up.time - 1e-6) r.joins.push({ t: tj, stage: n - i + 1 }); }
@@ -174,24 +173,40 @@ M.ropes = function (n, rig) {
   var lifts = [{ part: "c", name: "the carriage" }]; for (k = n; k >= 1; k--) lifts.push({ part: String(k), name: "stage " + k });
   return [{ name: "the laced rope, one rope", col: "s3", end: "its end on the spool", pulleys: pul, tied: "tied to the carriage", lifts: lifts }];
 };
-/* The current in each motor with its sign, for a move simulated by F.move or F.moveLinear (which record its size only).
-   The motor drives at full voltage toward the goal, then reverses to stop: the reverse starts at M.reverseAt. The
-   current is worked out again from the recorded speed and battery voltage, I = (command x V - back-EMF) / R held to the
-   limit, and its size checked against the record (where both commands give the same size, at the limit, the reverse
-   time decides). up: +1 when the move goes the positive way (up, or to a larger angle). r: drum radius in metres, or 1
-   for an angle. Positive current pushes the positive way. */
-M.signed = function (sim, dr, r, up) {
-  var m = dr.motor, Ls = dr.statorA || Infinity, tRev = M.reverseAt(sim), out = [];
-  for (var k = 0; k < sim.t.length; k++) {
-    var w = (sim.v ? sim.v[k] / r : sim.w[k]) * up, e = m.ke * w * dr.ratio, V = sim.volts[k], rec = sim.statorA[k];
-    var ip = Math.max(-Ls, Math.min(Ls, (V - e) / m.R)), im = Math.max(-Ls, Math.min(Ls, (-V - e) / m.R)), cmd = sim.t[k] >= tRev - 1e-12 ? -1 : 1;
-    var I = cmd > 0 ? ip : im, other = cmd > 0 ? im : ip;
-    if (Math.abs(Math.abs(I) - rec) > 0.05 && Math.abs(Math.abs(other) - rec) <= 0.05) I = other;
-    if (rec === 0) I = 0;
-    out.push(up * I);
+// The current in each motor with its sign (plus pushes the positive way: up, or to a larger angle).
+/* Which way the motor was commanded at each recorded step of a move: +1 toward the goal (full power), -1 reverse (to
+   stop). F.move records only the size of the current, so each step's current is worked out again both ways from the
+   recorded speed toward the goal u (output rad/s) and battery voltage, I = (command x V - back-EMF) / R held to the
+   limit, and compared with the record. A step only one command fits is certain. The switch to reverse comes after the
+   last step that is certainly full power, if a step that is certainly reverse follows; steps where both fit (both at
+   the limit) take the side of the switch they are on. Returns { cmd: [], at: [I toward the goal], k: first reverse
+   index or -1 }. */
+function commands(u, V, rec, dr, ag) {
+  var m = dr.motor, Ls = dr.statorA || Infinity, n = u.length, ip = [], im = [], fOk = [], rOk = [], k, tol = 0.05;
+  for (k = 0; k < n; k++) {
+    var e = m.ke * u[k] * dr.ratio;
+    ip.push(Math.max(-Ls, Math.min(Ls, (V[k] - e) / m.R))); im.push(Math.max(-Ls, Math.min(Ls, (-V[k] - e) / m.R)));
+    fOk.push(Math.abs(Math.abs(ip[k]) - rec[k]) <= tol); rOk.push(Math.abs(Math.abs(im[k]) - rec[k]) <= tol);
   }
-  return out;
+  var lastF = -1, firstR = -1;
+  for (k = 0; k < n; k++) if (fOk[k] && !rOk[k]) lastF = k;
+  for (k = lastF + 1; k < n; k++) if (rOk[k] && !fOk[k] && rec[k] > 0) { firstR = k; break; }
+  /* Where every step between is at the limit both ways (a big reduction can hold the limit the whole move), the switch
+     is the sharp drop in acceleration toward the goal: full power one step, full reverse the next. */
+  var lo = lastF + 1, hi = firstR >= 0 ? firstR : n - 1, best = -1, drop = 0, amax = 0;
+  for (k = 0; k < n; k++) amax = Math.max(amax, Math.abs(ag[k]));
+  for (k = Math.max(1, lo); k <= hi; k++) if (ag[k - 1] - ag[k] > drop) { drop = ag[k - 1] - ag[k]; best = k; }
+  var sw = firstR >= 0 ? (best >= 0 && drop > 0.3 * amax ? best : lastF >= 0 ? lastF + 1 : firstR) : best >= 0 && drop > 0.3 * amax && rec[n - 1] === 0 ? best : -1, cmd = [], at = [];
+  for (k = 0; k < n; k++) { var c = sw >= 0 && k >= sw ? -1 : 1; cmd.push(c); at.push(rec[k] === 0 ? 0 : c > 0 ? ip[k] : im[k]); }
+  return { cmd: cmd, at: at, k: sw };
+}
+M.signed = function (sim, dr, r, up) {
+  var u = sim.t.map(function (t, k) { return (sim.v[k] / r) * up; }), c = commands(u, sim.volts, sim.statorA, dr, sim.acc.map(function (a) { return a / r * up; }));
+  return c.at.map(function (I) { return up * I; });
 };
+// When a move switches to full reverse to stop (its own time), or its end if it never does.
+M.reverseAt = function (sim, dr, r, up) { var u = sim.t.map(function (t, k) { return (sim.v[k] / r) * up; }), c = commands(u, sim.volts, sim.statorA, dr, sim.acc.map(function (a) { return a / r * up; })); return c.k >= 0 ? sim.t[c.k] : sim.t[sim.t.length - 1]; };
+M.commands = commands;
 if (typeof module !== "undefined" && module.exports) { module.exports = M; return; }
 
 /* ---------- The page ---------- */
@@ -204,7 +219,7 @@ function secs(x) { return isFinite(x) ? K.fix(x, 2) : "–"; }
 K.tool({
   id: ID,
   defaults: { stages: 2, rig: "cascade", travel: 55, carLb: 14, stageLb: 5, motor: "kraken60", motors: 2, ratio: 9, statorA: 60, eff: 90, spool: 1.75, tilt: 0, spring: 0, vbat: 12.3, rbat: 0.02 },
-  stage: { ratio: 1.3, narrow: 0.8, tall: true, label: "The elevator from the front, to scale, with its stages, ropes and carriage, rising and coming back down as simulated." },
+  stage: { ratio: 1.3, narrow: 0.62, tall: true, label: "The elevator from the front, to scale, with its stages, ropes and carriage, rising and coming back down as simulated." },
   autoplay: true, speed: 0.25,
   compute: M.compute,
   duration: function (s, r) { return r && isFinite(r.duration) ? r.duration : 1; },
@@ -221,7 +236,7 @@ K.tool({
     var n1 = r.n + 1, sumK = 0, kk; for (kk = 1; kk <= r.n; kk++) sumK += kk;
     var pullCas = n1 * s.carLb + sumK * s.stageLb, pullCon = s.carLb + r.n * s.stageLb;     // lb of rope pull to hold it at the top
     if (r.rig === "cascade") txt = "Cascade: all " + n1 + " parts rise at once, so " + K.fix(s.travel / n1, 1) + " in of rope lifts the carriage " + K.fix(s.travel, 1) + " in. The price is pull: rope tension when holding at the top, " + K.n(pullCas, 0) + " lb (the carriage " + n1 + " times over, plus the stages). Continuous: " + K.n(pullCon, 0) + " lb.";
-    else txt = "Continuous: one rope lifts one part at a time, the lightest first, so " + K.fix(s.travel, 1) + " in of rope lifts the carriage " + K.fix(s.travel, 1) + " in. The pull is small: " + K.n(s.carLb, 0) + " lb while only the carriage moves, " + K.n(pullCon, 0) + " lb at the top with every stage hanging on it (rope tension when holding). Cascade: " + K.n(pullCas, 0) + " lb.";
+    else txt = "Continuous: one rope lifts one part at a time, the smallest load first: the carriage, then each stage with what it carries. So " + K.fix(s.travel, 1) + " in of rope lifts the carriage " + K.fix(s.travel, 1) + " in. The pull is small: " + K.n(s.carLb, 0) + " lb while only the carriage moves, " + K.n(pullCon, 0) + " lb at the top with every stage hanging on it (rope tension when holding). Cascade: " + K.n(pullCas, 0) + " lb.";
     return { "h-el-travel": txt.trim() };
   },
 
@@ -249,7 +264,7 @@ K.tool({
     } else if (!r.downOk) v = K.verdict("bad", "Cannot pull it back down: the spring is stronger than the carriage is heavy and the gearbox cannot overcome it.");
     else {
       var ideal = "The time is ideal: full power, then full reverse, with no controller. A real motion profile, with limits on speed and acceleration, often takes about twice the ideal time." + (r.rig === "continuous" ? " Each stage also joins with a jolt that the model ignores." : "");
-      if (holdA > 0.6 * lim) v = K.verdict("warn", "Holds with little to spare: holding at the top takes " + K.fix(holdA, 1) + " A of the " + lim + " A limit, so the motors heat up. Use a bigger reduction than " + K.fix(s.ratio, 1) + ":1 or add a constant-force spring.", ideal);
+      if (holdA > 0.6 * lim) v = K.verdict("warn", "Holds with little to spare: holding at the top takes " + K.fix(holdA, 1) + " A of the " + lim + " A limit, so the motors heat up. Use a bigger reduction than " + K.fix(s.ratio, 2) + ":1 or add a constant-force spring.", ideal);
       else v = K.verdict("ok", "Reaches the top in " + secs(r.timeUp) + " s at best and holds there with " + K.fix(holdA, 1) + " A of the " + lim + " A limit.", ideal);
     }
     var vin = r.topV / IN;
@@ -257,11 +272,10 @@ K.tool({
       { k: "Time to top", v: secs(r.timeUp), u: "s", sub: "ideal, at best", state: r.reached ? "" : "bad" },
       { k: "Time down", v: secs(r.timeDown), u: "s", sub: "ideal, at best" },
       { k: "Top speed going up", v: K.n(vin, 0), u: "in/s", sub: K.fix(r.topV, 2) + " m/s" + (r.topVDown > 0 ? ". Coming down, gravity helps: " + K.n(r.topVDown / IN, 0) + " in/s" : ""), tip: "The carriage's fastest on the way up. " + (r.mod.load(0) < 0 ? "Here the spring is stronger than the weight it carries, so it can pass the motors' no-load speed, " + K.n(r.freeV / IN, 0) + " in/s." : "It cannot pass the motors' no-load speed, " + K.n(r.freeV / IN, 0) + " in/s here.") },
-      { k: "Peak current", v: K.fix(r.peakA, 0), u: "A", sub: "per motor, briefly, while it speeds up", tip: "The stator current in each motor. It sits at the limit while the motors are working hardest." }
+      r.other ? { k: "With " + r.other.rig + " rigging", v: r.other.reached ? secs(r.other.timeUp) : "stalls", u: r.other.reached ? "s" : "", sub: (r.other.reached ? "to the top; " : "") + "holds with " + K.fix(r.other.holdA, 1) + " A, rope pull " + K.n(r.other.pullLb, 0) + " lb", tip: "The same lift, motors and reduction rigged the other way. Rope pull is the rope's tension holding at the top. Yours: " + secs(r.timeUp) + " s, " + K.fix(holdA, 1) + " A, " + K.n(r.pullLb, 0) + " lb." } : null
     ]) + K.outs([
       { k: "Lowest battery", v: K.fix(Math.max(0, r.minV), 1), u: "V", state: r.minV < 7 ? "bad" : r.minV < 8 ? "warn" : "", sub: s.rbat > 0 && s.vbat - r.minV > 0.2 ? "at the worst moment, " + K.n((s.vbat - r.minV) / s.rbat, 0) + " A from the battery" : "", tip: "The battery voltage at its lowest during the move, with the resistance in Fine tuning. The worst moment is when the motors reach the speed where the current limit stops holding them back: only then does each take its full limit from the battery. Slower than that the battery gives less than the current in the motors." },
       { k: "Holding at the top", v: K.fix(holdA, 1), u: "A", sub: "per motor, with " + K.fix(r.freeA, 1) + "\u00a0A of free current", state: holdA > 0.6 * lim ? "warn" : "", tip: "The current that holds the carriage still at the top, and just starts it rising. " + K.fix(r.freeA, 1) + " A of it is the motor's free current (its own friction); the rest, " + K.fix(holdA - r.freeA, 1) + " A, holds the weight. Continuous rigging is heaviest at the top, with every stage on the rope." },
-      r.other ? { k: "With " + r.other.rig + " rigging", v: r.other.reached ? secs(r.other.timeUp) : "stalls", u: r.other.reached ? "s" : "", sub: (r.other.reached ? "to the top; " : "") + "holds with " + K.fix(r.other.holdA, 1) + " A, rope pull " + K.n(r.other.pullLb, 0) + " lb", tip: "The same lift, motors and reduction rigged the other way. Rope pull is the rope's tension holding at the top. Yours: " + secs(r.timeUp) + " s, " + K.fix(holdA, 1) + " A, " + K.n(r.pullLb, 0) + " lb." } : null,
       { k: "Heaviest carriage it could hold", v: r.maxCarLb > 0 ? lbs(r.maxCarLb) : "none", u: r.maxCarLb > 0 ? "lb" : "", sub: "in theory, held still at " + lim + "\u00a0A", tip: "The heaviest carriage this gearbox holds still at the top with the motors at the current limit: a limit in theory, not a working load. " + (r.rig === "cascade" ? "In cascade the rope feels the carriage " + (r.n + 1) + " times over." : "In continuous rigging the rope feels the carriage once.") + " As with the holding current, the motor's free current (" + K.fix(r.freeA, 1) + " A) goes on its own friction, so " + K.fix(lim - r.freeA, 1) + " A of the " + lim + " A holds weight." }
     ]) + K.outs([
       { k: r.rig === "continuous" ? "kG, last section" : "kG", v: K.fix(r.kG, 3), u: "V", sub: r.rig === "continuous" ? "every stage moving. Use each section's, in the code box" : "", tip: "Volts that hold the carriage against gravity." + (r.rig === "continuous" ? SECTION : "") },
@@ -276,33 +290,32 @@ K.tool({
       K.chart({ id: "el-h", title: "Carriage height", x: { label: "time (s)", unit: "s", name: "Time" }, y: { label: "in", unit: "in", min: 0 }, series: [{ name: "Height", pts: r.chH }] }) +
       (r.joins.length ? timeChart("el-v", "Carriage speed", "in/s", "in/s", r.chV, 3, null, r.joins.map(function (j) { return { x: j.t, label: "stage " + j.stage + " joins" }; }), r.duration) :
         K.chart({ id: "el-v", title: "Carriage speed", x: { label: "time (s)", unit: "s", name: "Time" }, y: { label: "in/s", unit: "in/s" }, series: [{ name: "Speed", pts: r.chV, color: 3 }] })) + "</div>";
-    out += timeChart("el-a", "Current in each motor", "A", "A", r.chAS, 2, s.statorA * 1.12, phases(r), r.duration, [{ y: s.statorA }, { y: -s.statorA }], "Above zero the motors pull the carriage up; below zero they push it down. Dashed: the " + s.statorA + " A limit, either way.", { min: -s.statorA * 1.12, ticks: [-s.statorA, 0, s.statorA] }) +
-      (r.reached ? '<p class="t-elevator-cap">The current limit caps the current while the motors are slow: as they start, and as they reverse to stop. As the motors speed up their back-voltage grows and the current falls under the limit. Holding takes much less.' + (r.rig === "continuous" ? " In continuous rigging the tall spikes are the reverse to stop at each end, not the stages joining: a stage joining only adds a small step of current, marked on the chart." : "") + "</p>" : "");
-    var range = K.fix(r.sweepLo, r.sweepLo < 10 ? 1 : 0) + " to " + K.fix(r.sweepHi, 0), bestTxt;
+    out += timeChart("el-a", "Current in each motor", "A", "A", r.chAS, 2, s.statorA * 1.12, phases(r), r.duration, [{ y: s.statorA }, { y: -s.statorA }], "Above zero the motors pull the carriage up; below zero they push it down. Stop: full reverse to stop at the end of a move. Dashed: the " + s.statorA + " A limit, either way.", { min: -s.statorA * 1.12, ticks: [-s.statorA, 0, s.statorA] }) +
+      (r.reached ? '<p class="t-elevator-cap">' + (r.rig === "continuous" ? "The tall spikes are the stops at each end, where the motors reverse; a stage joining adds only a small step." : "The limit caps the current while the motors are slow, as they start and as they reverse to stop; faster, it falls under the limit.") + "</p>" : "");
+    var range = K.fix(r.sweepLo, 2) + " to " + K.fix(r.sweepHi, 2) + ":1", bestTxt;
     if (!r.best) bestTxt = "No reduction from " + range + " lifts this load with these motors.";
-    else if (r.reached && r.timeUp <= r.best[1] + 0.015) bestTxt = "Yours, " + K.fix(s.ratio, 1) + ":1, is as fast as any reduction tried (" + range + "): " + K.fix(r.timeUp, 2) + " s to the top.";
+    else if (r.reached && r.timeUp <= r.best[1] + 0.015) bestTxt = "Yours, " + K.fix(s.ratio, 2) + ":1, is as fast as any reduction tried (" + range + "): " + K.fix(r.timeUp, 2) + " s to the top.";
     else {
-      bestTxt = r.bestEnd ? (r.rig === "continuous" && r.bestEnd === "lo" ? "Continuous rigging wants a low reduction here: it lifts one part at a time, so the pull is small and speed matters more. " : "") + "The fastest tried (" + range + ") is the " + (r.bestEnd === "lo" ? "lowest" : "highest") + ", " + K.fix(r.best[0], 1) + ":1, at " + K.fix(r.best[1], 2) + " s to the top; a " + (r.bestEnd === "lo" ? "lower" : "higher") + " one might be faster still." :
-        "Fastest at about " + K.fix(r.best[0], 1) + ":1 of the reductions tried (" + range + "), " + K.fix(r.best[1], 2) + " s to the top.";
-      bestTxt += r.reached ? " Yours, " + K.fix(s.ratio, 1) + ":1, takes " + K.fix(r.timeUp, 2) + " s." : " Yours, " + K.fix(s.ratio, 1) + ":1, cannot lift it.";
+      bestTxt = r.bestEnd ? (r.rig === "continuous" && r.bestEnd === "lo" ? "Continuous rigging wants a low reduction: it lifts one part at a time, so the pull is small and speed matters more. " : "") + "The fastest tried (" + range + ") is the " + (r.bestEnd === "lo" ? "lowest" : "highest") + ", " + K.fix(r.best[0], 2) + ":1, at " + K.fix(r.best[1], 2) + " s to the top; a " + (r.bestEnd === "lo" ? "lower" : "higher") + " one might be faster still." :
+        "Fastest at about " + K.fix(r.best[0], 2) + ":1 of the reductions tried (" + range + "), " + K.fix(r.best[1], 2) + " s to the top.";
+      bestTxt += r.reached ? " Yours, " + K.fix(s.ratio, 2) + ":1, takes " + K.fix(r.timeUp, 2) + " s." : " Yours, " + K.fix(s.ratio, 2) + ":1, cannot lift it.";
     }
-    bestTxt += " Ideal times, as above.";
-    var dots = r.reached ? [{ x: s.ratio, y: r.timeUp, label: "yours" }] : [], sweepHtml;
+    var dots = r.reached ? [{ x: s.ratio, y: r.timeUp }] : [], sweepHtml;
     if (r.bestEnd) {
       // The fastest is at an end of the range tried: say so on the chart, at that end, in a row above the data.
-      var endItems = [{ x: r.best[0], label: r.bestEnd === "lo" ? "fastest tried; lower may be faster" : "fastest tried; higher may be faster" }, { x: s.ratio, label: K.fix(s.ratio, 1) + ":1" }];
-      sweepHtml = sweepChart(r, s, dots.concat([{ x: r.best[0], y: r.best[1] }]), endItems);
-    } else sweepHtml = sweepChart(r, s, dots, [{ x: s.ratio, label: K.fix(s.ratio, 1) + ":1" }]);
-    out += '<div class="t-elevator-sweep"><p>' + D.esc(bestTxt) + " A bigger reduction holds with less current but is slower; a smaller one is quicker until the current limit caps the torque.</p>" + sweepHtml + "</div>";
+      var endItems = [{ x: r.best[0], label: r.bestEnd === "lo" ? "fastest tried; lower may be faster" : "fastest tried; higher may be faster" }, { x: s.ratio, label: "yours, " + K.fix(s.ratio, 2) + ":1" }];
+      sweepHtml = sweepChart(r, s, dots, endItems);
+    } else sweepHtml = sweepChart(r, s, dots, [{ x: s.ratio, label: "yours, " + K.fix(s.ratio, 2) + ":1" }]);
+    out += '<div class="t-elevator-sweep"><p>' + D.esc(bestTxt) + (r.rig === "continuous" ? "" : " A bigger reduction holds with less current but is slower; a smaller one is quicker until the current limit caps the torque.") + "</p>" + sweepHtml + "</div>";
     var code = "// Elevator feedforward, carriage position in metres (" + r.n + " moving " + (r.n > 1 ? "stages" : "stage") + ", " + r.rig + ")\n" +
-      "public static final double kS = " + K.fix(r.kS, 3) + "; // volts: the motor's own friction only; a real mechanism's is larger, measure it\n" +
+      "public static final double kS = " + K.fix(r.kS, 3) + "; // V: the motor's own friction; measure the real one\n" +
       "public static final double kG = " + K.fix(r.kG, 3) + "; // volts" + (r.kGs ? ", last section" : "") + "\n" +
-      "public static final double kV = " + K.fix(r.kV, 3) + "; // volts per (m/s)\n" +
-      "public static final double kA = " + K.fix(r.kA, 4) + "; // volts per (m/s^2)" + (r.kAs ? ", last section" : "") + "\n" +
+      "public static final double kV = " + K.fix(r.kV, 3) + "; // V per m/s\n" +
+      "public static final double kA = " + K.fix(r.kA, 4) + "; // V per m/s^2" + (r.kAs ? ", last section" : "") + "\n" +
       "public static final double kMetersPerMotorRotation = " + K.fix(r.mPerRot, 5) + ";" +
       (r.kGs ? "\n// Continuous rigging: each section, the carriage alone first, then as each stage joins\n" +
-        "public static final double[] kGBySection = { " + r.kGs.map(function (x) { return K.fix(x, 3); }).join(", ") + " }; // volts\n" +
-        "public static final double[] kABySection = { " + r.kAs.map(function (x) { return K.fix(x, 4); }).join(", ") + " }; // volts per (m/s^2)" : "");
+        "public static final double[] kGBySection = { " + r.kGs.map(function (x) { return K.fix(x, 3); }).join(", ") + " }; // V\n" +
+        "public static final double[] kABySection = { " + r.kAs.map(function (x) { return K.fix(x, 4); }).join(", ") + " }; // V per m/s^2" : "");
     out += '<section class="ctab"><h2>For robot code</h2>' + K.code("el-ff", code, "Copy the constants") + "</section>";
     var n = r.n, sk = "", sk2 = "";
     for (var k = 1; k <= n; k++) { var mk = "m<sub>" + k + "</sub>"; sk += (k > 1 ? " + " : "") + (k > 1 ? k + " " : "") + mk; sk2 += (k > 1 ? " + " : "") + (k > 1 ? k * k + " " : "") + mk; }
@@ -410,8 +423,9 @@ function phases(r) {
   if (!r.reached) return [{ x: 0, label: "full power" }];
   var ph = [{ x: 0, label: "full power up" }];
   r.joins.forEach(function (j) { ph.push({ x: j.t, label: "stage " + j.stage + " joins" }); });
-  ph.push({ x: r.tRev1, label: "reverse to stop" }, { x: r.tUp, label: "holding" });
-  if (r.down) { ph.push({ x: r.tHold, label: "full power down" }); if (r.tRev2 != null && r.tRev2 < r.duration - 1e-3) ph.push({ x: r.tRev2, label: "reverse to stop" }); }
+  // A stop too short to name on its own is joined to the hold that follows it.
+  if (r.tUp - r.tRev1 < 0.04 * r.duration) ph.push({ x: r.tRev1, label: "stop, then hold" }); else ph.push({ x: r.tRev1, label: "stop" }, { x: r.tUp, label: "holding" });
+  if (r.down) { ph.push({ x: r.tHold, label: "full power down" }); if (r.tRev2 != null && r.tRev2 < r.duration - 1e-3) ph.push({ x: r.tRev2, label: "stop" }); }
   return ph;
 }
 /* A chart against time with named marks in a band above the plot. ymax: where the y axis ends (null: just above the
@@ -469,18 +483,21 @@ function draw(g, s, r, t) {
   // The ropes are explained in the rope diagram under the drawing, so the drawing carries no key and no rope names.
   /* The read-out is a column at the left. On a phone the stage can only be so tall (the kit keeps it under half the
      screen), and the elevator is tall and narrow, so a narrow column beside it leaves it more room than a strip above. */
-  var hudW = phone ? Math.min(126, g.w * 0.32) : Math.min(176, Math.max(132, g.w * 0.3)), hx = phone ? 10 : 14, hy = 22, ks = phone ? 10 : 11;
+  /* The read-out: a column at the left on a laptop; on a phone a strip across the top (title, one line, the two meters
+     side by side, the load), so the tall elevator gets the whole width under it. */
+  var hudW = phone ? g.w - 20 : Math.min(176, Math.max(132, g.w * 0.3)), hx = phone ? 10 : 14, hy = 22, ks = phone ? 10 : 11;
   var l2 = wrap(g, line2, hudW, { size: 11 });
   var badMsg = !r.reached || brown ? (brown ? (phone ? "The battery falls below 7 V: the robot's controller would shut down." : "The motors draw so much current that the battery falls below 7 V and the robot's controller would shut down.") : (phone ? "Needs " + K.fix(r.needRatio, 2) + " times the torque the gearbox has at " + s.statorA + " A." : "The load needs " + K.fix(r.needRatio, 2) + " times the torque the gearbox has at " + s.statorA + " A, so the motors push at the limit and nothing moves" + (hNow[n] > 0.6 ? " past here." : "."))) : "";
   var bl = badMsg ? wrap(g, badMsg, hudW, { size: 12, weight: 600 }) : [];
+  var stripH = phone ? hy + 17 + 14 * l2.length + 12 + 26 + 16 + (bl.length ? 15 * bl.length + 4 : 0) + (s.tilt > 0 ? 14 : 0) : 0;
 
   // The view: the whole elevator at full height, the robot under it, room for the speed labels on the right.
   var topY = G.bot[0] + G.len[0];
   for (i = 1; i <= n; i++) topY = Math.max(topY, G.bot[i] + G.len[i] + i * G.seg);
   topY = Math.max(topY, G.carBot + s.travel + G.carH) + 2.5;
   var right = G.hw[0] + 3.2 + 1.5 * (n + 1);
-  var V = g.view({ x0: Math.min(-18, G.motX - 3.2), x1: right + 1, y0: -0.5, y1: topY }, phone ? { l: hudW + 18, r: 92, t: 22, b: 24 } : { l: hudW + 24, r: 128, t: 26, b: 10 });
-  g.grid(V, 6, phone ? "" : "6 in squares");
+  var V = g.view({ x0: Math.min(-18, G.motX - 3.2), x1: right + 1, y0: -0.5, y1: topY }, phone ? { l: 8, r: 96, t: stripH + 8, b: 24 } : { l: hudW + 24, r: 128, t: 26, b: 10 });
+  g.grid(V, 6, "6 in squares");
   var X = V.X, Y = V.Y, L = V.L;
   function rect(x0, y0, x1, y1, o) { g.rect(X(x0), Y(y1), L(x1 - x0), L(y1 - y0), o); }
   // Floor and robot.
@@ -566,7 +583,7 @@ function draw(g, s, r, t) {
   var spa = -ropeIn / G.Rs;
   g.circle(X(G.spX), Y(G.spY), L(G.Rs), { fill: c.part, stroke: c.partLine, width: 1 });
   for (i = 0; i < 3; i++) { var a = spa + i * 2 * Math.PI / 3; g.line(X(G.spX), Y(G.spY), X(G.spX) + Math.cos(a) * L(G.Rs) * 0.85, Y(G.spY) + Math.sin(a) * L(G.Rs) * 0.85, { color: c.partLine, width: 1.25 }); }
-  var motorName = F.motor(s.motor).name, cap = Math.round(s.motors) + " × " + motorName + ", " + K.fix(s.ratio, s.ratio < 10 ? 1 : 0) + ":1";
+  var motorName = F.motor(s.motor).name, cap = Math.round(s.motors) + " × " + motorName + ", " + K.fix(s.ratio, 2) + ":1";
   // The motor's caption: left of it on a laptop, under the floor on a phone, never touching it.
   if (phone) g.text(cap, Math.max(8, X(G.motX - 2.4)), Y(0) + 20, { size: 11, color: c.text2 });
   else g.text(cap, X(G.motX - 2.4) - 10, Y(G.yb + 2.3), { size: 11, color: c.text2, align: "right", base: "middle" });
@@ -629,7 +646,7 @@ function draw(g, s, r, t) {
     gp.y = Math.min.apply(null, gp.ys);
     var head = gp.names.length > 1 ? gp.names.slice().reverse().join(" and ") : gp.names[0];
     // A number keeps its unit on its line (a no-break space between them); a phone drops "moving".
-    var spd = K.n(gp.sp, 0) + "\u00a0in/s", words = gp.sp > 0 ? (gp.names.length > 1 ? [head, (phone ? "together, " : "moving together, ") + spd] : [head + " " + spd]) : [head];
+    var spd = K.n(gp.sp, 0) + "\u00a0in/s", words = gp.sp > 0 ? (gp.names.length > 1 ? [gp.names.slice().reverse().join(" + ") + ", " + spd] : [head + " " + spd]) : [head];
     gp.lines = []; words.forEach(function (wd) { gp.lines = gp.lines.concat(wrap(g, wd, colW, lo)); });
   });
   // Each label on its own lines, at its part's height, pushed down (then all up, at the bottom) so no two share a line.
@@ -648,11 +665,12 @@ function draw(g, s, r, t) {
   var my = hy + 17 + 14 * l2.length + 12, ny;
   if (phone) {
     // Thin meters on a phone: the current and the battery, each a word, a number and a bar 3 px high.
-    meter(g, hx, my, hudW, "Current", K.fix(amps, 0) + " of " + s.statorA + " A", amps / s.statorA, amps >= s.statorA - 0.5 ? "warn" : "", 3);
-    meter(g, hx, my + 24, hudW, "Battery", K.fix(Math.max(0, volts), 1) + " V", (volts - 6) / (s.vbat - 6), volts < 7 ? "bad" : volts < 8 ? "warn" : "", 3);
-    g.line(hx + 4, my + 44, hx + 4, my + 58, { color: c.force, width: 2.5 }); g.arrow(hx + 4, my + 50, hx + 4, my + 60, { color: c.force, width: 2.5, head: 6 });
-    g.text("carriage " + lbs(s.carLb) + " lb", hx + 14, my + 52, { size: 11, weight: 700, color: c.force, base: "middle" });
-    ny = my + 72;
+    var mw = (hudW - 14) / 2;
+    meter(g, hx, my, mw, "Current per motor", K.fix(amps, 0) + " of " + s.statorA + " A", amps / s.statorA, amps >= s.statorA - 0.5 ? "warn" : "", 3);
+    meter(g, hx + mw + 14, my, mw, "Battery", K.fix(Math.max(0, volts), 1) + " V", (volts - 6) / (s.vbat - 6), volts < 7 ? "bad" : volts < 8 ? "warn" : "", 3);
+    g.arrow(hx + 4, my + 20, hx + 4, my + 32, { color: c.force, width: 2.5, head: 6 });
+    g.text("carriage and load, " + lbs(s.carLb) + " lb", hx + 14, my + 26, { size: 11, weight: 700, color: c.force, base: "middle" });
+    ny = my + 46;
   } else {
     meter(g, hx, my, hudW, "Current per motor", K.fix(amps, 0) + " of " + s.statorA + " A", amps / s.statorA, amps >= s.statorA - 0.5 ? "warn" : "");
     meter(g, hx, my + 32, hudW, "Battery", K.fix(Math.max(0, volts), 1) + " V", (volts - 6) / (s.vbat - 6), volts < 7 ? "bad" : volts < 8 ? "warn" : ""); ny = my + 64;

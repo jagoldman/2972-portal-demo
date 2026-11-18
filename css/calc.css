@@ -63,6 +63,9 @@
 .out dd { margin: 0; line-height: 1.25; }
 .out dd b { font-size: 1.3rem; font-weight: 700; letter-spacing: -.01em; }
 .out dd span { font-size: .82rem; color: var(--text-2); font-weight: 500; }
+.out dd span.tight { font-size: 1.05rem; font-weight: 700; color: var(--text); }
+/* On a phone the cards sit two to a row: a last card that would sit beside an empty cell takes the whole row. */
+@media (max-width: 640px) { .outs > .out:last-child:nth-child(odd) { grid-column: 1 / -1; } }
 .out dd small { display: block; font-size: .78rem; color: var(--mute); }
 .out.warn dd b { color: var(--warn); } .out.bad dd b { color: var(--bad); } .out.ok dd b { color: var(--ok); }
 .outs + .outs { margin-top: -2px; }
@@ -99,6 +102,12 @@ details.cg:not([open]) { padding-bottom: 12px; }
 .chart svg { display: block; width: 100%; max-width: 560px; height: auto; overflow: visible; cursor: crosshair; border-radius: 4px; }
 .chart svg:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
 .chartrow { display: grid; grid-template-columns: repeat(auto-fit, minmax(260px, 1fr)); gap: 16px; }
+/* A chart that takes a whole row (Motors) puts its words beside the plot on a wide screen, so the row is not half empty. */
+@media (min-width: 900px) {
+  .t-motors-row3 > figure.chart:first-child { grid-template-columns: minmax(0, 3fr) minmax(0, 2fr); column-gap: 24px; align-items: start; }
+  .t-motors-row3 > figure.chart:first-child > svg { grid-column: 1; grid-row: 1 / span 4; }
+  .t-motors-row3 > figure.chart:first-child > :not(svg) { grid-column: 2; }
+}
 .cgrid { stroke: var(--line); stroke-width: 1; }
 .caxis { stroke: var(--line-2); stroke-width: 1; }
 .ctick { font-size: 11px; fill: var(--mute); font-variant-numeric: tabular-nums; }
@@ -154,7 +163,11 @@ details.cg:not([open]) { padding-bottom: 12px; }
 .toolsearch .inp { max-width: 360px; }
 .toolgroup { display: grid; gap: 2px; }
 .toolgroup > h2 { font-size: .85rem; color: var(--mute); font-weight: 600; padding: 0 8px 2px; }
-.toolgroup .toollist { grid-template-columns: repeat(auto-fill, minmax(280px, 1fr)); gap: 0 12px; background: var(--surface); border: 1px solid var(--line); border-radius: var(--r); padding: 6px; }
+/* The cards share each row's width, so a group of two or five leaves no empty column. */
+.toolgroup .toollist { display: flex; flex-wrap: wrap; gap: 0 12px; background: var(--surface); border: 1px solid var(--line); border-radius: var(--r); padding: 6px; }
+.toolgroup .toollist .toolrow { flex: 1 1 280px; }
+/* Four cards sit two and two, not three and one. */
+.toolgroup .toollist:has(> .toolrow:nth-child(4):last-child) .toolrow { flex-basis: 40%; }
 .toolgroup .toollist .toolrow + .toolrow { border-top: 0; border-radius: 10px; }
 .codebox { display: grid; gap: 6px; justify-items: start; }
 .codebox .codeout { justify-self: stretch; }
@@ -210,7 +223,7 @@ details.cg:not([open]) { padding-bottom: 12px; }
 .toolquick .tqa b { display: block; font-weight: 600; line-height: 1.2; } .toolquick .tqa small { display: block; font-weight: 500; font-size: .74rem; color: var(--mute); line-height: 1.2; }
 .toolquick .tqa { min-height: 46px; }
 /* On a phone the three sit in one row, each as tall as a thumb, so the first tools stay on the first screen. */
-@media (max-width: 640px) { .toolquick { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 6px; align-items: stretch; } .toolquick .tql { grid-column: 1 / -1; padding-left: 4px; } .toolquick .tqa { flex-direction: column; align-items: flex-start; justify-content: flex-start; gap: 4px; padding: 8px; min-height: 44px; } .toolquick .tqa b { font-size: .8rem; } .toolquick .tqa small { font-size: .68rem; } }
+@media (max-width: 640px) { .toolquick { display: grid; grid-template-columns: minmax(0, 1fr); gap: 6px; } .toolquick .tql { padding-left: 4px; } .toolquick .tqa { min-height: 44px; padding: 4px 12px 4px 10px; } .toolquick .tqa > span { display: flex; flex: 1; align-items: baseline; justify-content: space-between; gap: 10px; min-width: 0; } .toolquick .tqa b { font-size: .92rem; white-space: nowrap; } .toolquick .tqa small { font-size: .76rem; text-align: right; } }
 .tooltag { display: inline-block; margin-left: 6px; padding: 0 7px; border-radius: 999px; background: var(--surface-2); color: var(--text-2); font-size: .72rem; font-weight: 600; vertical-align: 1px; }
 .how { scroll-margin-top: calc(var(--bar) + 12px); }
 .toolgroup:focus { outline: none; }

@@ -31,7 +31,7 @@ function drawCurve(g, s, r, t) {
   var phone = g.w < 520, V = s.volts, L = s.statorA, n = q.n, free = Math.max.apply(null, r.list.map(function (o) { return o.free; })), wf = q.free * F.RPM;
   var Tlim = q.limT * n, Tst = q.stallT * n, limited = L > 0 && Tst > Tlim * 1.001, others = r.list.slice(1);
   var tops = r.list.map(function (o) { return o.limT * o.n; }), ymax = limited ? Math.max(Math.min(Tst, Tlim * 1.75), Math.max.apply(null, tops) * 1.3) * 1.08 : Math.max(Tst, Math.max.apply(null, r.list.map(function (o) { return o.stallT * o.n; }))) * 1.1;
-  var pl = phone ? 40 : 54, pr = phone ? 16 : 24, pt = 72, pb = 34, x0 = pl, x1 = g.w - pr, y0 = g.h - pb, y1 = pt;
+  var pl = phone ? 40 : 54, pr = phone ? 16 : 24, pt = phone && r.list.length > 1 ? 90 : 72, pb = 34, x0 = pl, x1 = g.w - pr, y0 = g.h - pb, y1 = pt;
   function X(rpm) { return x0 + (x1 - x0) * rpm / free; } function Y(T) { return y0 - (y0 - y1) * Math.min(T, ymax) / ymax; }
   // Grid and axes.
   var step = ymax > 6 ? 2 : ymax > 3 ? 1 : ymax > 1.2 ? 0.5 : 0.2;
@@ -53,24 +53,31 @@ function drawCurve(g, s, r, t) {
   g.circle(hpx, hpy, 4, { fill: mc, stroke: c.sheet, width: 1.5 });
   // End the label left of the dashed no-limit line where it crosses the label's height.
   var pend = hpx - 9;
-  if (limited) { var lyT = (y0 - (hpy - 13)) / (y0 - y1) * ymax, lx = X(q.free * (1 - lyT / Tst)); pend = Math.min(pend, lx - 8); }
+  if (limited) { var lyT = (y0 - (hpy - 13)) / (y0 - y1) * ymax, lx = X(q.free * (1 - lyT / Tst)); pend = Math.min(pend, lx - 16); }
   g.text("power peak " + K.n(Pk, 0) + " W", pend, hpy - 9, { align: "right", size: 11, weight: 700, color: mc });
   // With no limit: the straight line from stall torque, dashed, cut where it leaves the top.
   if (limited) {
     var xs = q.free * (1 - ymax / Tst);
     g.line(X(Math.max(0, xs)), Y(ymax), X(q.free), Y(0), { color: c.mute, width: 1.5, dash: [5, 4] });
-    g.text(phone ? "no limit" : "with no limit: " + K.fix(Tst, 2) + " N m at standstill, off the top", X(Math.max(0, xs)) - 8, Y(ymax) + 2, { align: "right", size: 11, color: c.mute, base: "top" });
+    g.text(phone ? "no limit: " + K.fix(Tst, 2) + " N m at standstill" : "with no limit: " + K.fix(Tst, 2) + " N m at standstill, off the top", X(Math.max(0, xs)) - 8, Y(ymax) + 2, { align: "right", size: 11, color: c.mute, base: "top" });
   }
   // The other motors: thin lines in their own colours, each named where it falls, right of the line.
-  var nameYs = [], nameX = 0;
-  others.forEach(function (o) {
-    var oc = c["s" + (o.i + 1)] || c.s2, op = [], ow = o.free * F.RPM, Tm = o.limT * o.n;
-    for (var j = 0; j <= N; j++) { var w2 = ow * j / N; op.push([X(w2 / F.RPM), Y(M.at(o.id, V, L, w2).torque * o.n)]); }
-    g.path(op, { color: oc, width: 1.75 });
+  var nameYs = [], nameX = 0, lines = others.map(function (o) {
+    var op = [], ow = o.free * F.RPM; for (var j = 0; j <= N; j++) { var w2 = ow * j / N; op.push([X(w2 / F.RPM), Y(M.at(o.id, V, L, w2).torque * o.n)]); }
+    return op;
+  });
+  // A line whose flat part lies within 3 px of a later one is hidden under it: draw it again dashed on top.
+  var hid = others.map(function (o, k) { return others.some(function (p2, j) { return j > k && Math.abs(Y(o.limT * o.n) - Y(p2.limT * p2.n)) < 3; }); });
+  others.forEach(function (o, k) { g.path(lines[k], { color: c["s" + (o.i + 1)] || c.s2, width: 1.75 }); });
+  others.forEach(function (o, k) { if (hid[k]) g.path(lines[k], { color: c["s" + (o.i + 1)] || c.s2, width: 1.75, dash: [6, 5] }); });
+  others.forEach(function (o, k) {
+    var oc = c["s" + (o.i + 1)] || c.s2, Tm = o.limT * o.n;
     // Named on its flat part near the left: above the line where nothing else is within a label's height, else below.
-    var on = shortOf(o), oy = Y(Tm), flats = r.list.filter(function (p2) { return p2 !== o; }).map(function (p2) { return Y(p2.limT * p2.n); });
+    var on = shortOf(o) + (hid[k] ? ", dashed (overlaps)" : ""), oy = Y(Tm), flats = r.list.filter(function (p2) { return p2 !== o; }).map(function (p2) { return Y(p2.limT * p2.n); });
     var above = !flats.some(function (fy) { return fy < oy && fy > oy - 18; }) && !nameYs.some(function (ny) { return Math.abs(ny - (oy - 8)) < 14; });
     var ny2 = above ? oy - 8 : oy + 14; nameYs.push(ny2);
+    // Phone: the names go in a key line under the read-out, where nothing else is.
+    if (phone) { g.text(shortOf(o) + (hid[k] ? ", dashed" : ""), 12 + nameX, 58, { size: 11, weight: 700, color: oc }); nameX += g.textWidth(shortOf(o) + (hid[k] ? ", dashed" : ""), { size: 11, weight: 700 }) + 14; return; }
     g.text(on, x0 + 10 + nameX, ny2, { base: "middle", size: 11, weight: 700, color: oc }); nameX += g.textWidth(on, { size: 11, weight: 700 }) + 14;
   });
   // The first motor's line, with the limit.
@@ -82,7 +89,7 @@ function drawCurve(g, s, r, t) {
     g.circle(kx, ky, 5, { fill: c.sheet, stroke: mc, width: 2.5 });
     // The knee's words in two lines, left of its drop line and well below the flat part.
     var k1 = "knee, " + K.n(kr, 0) + " rpm", k2 = "above this the limit no longer matters", kb = ky;
-    others.forEach(function (o) { var fy = Y(o.limT * o.n); if (fy > kb && fy < ky + 60) kb = fy; });
+    others.forEach(function (o) { var fy = Y(o.limT * o.n); if (fy > kb && fy < ky + 60) kb = fy + (phone ? 0 : 0); });
     g.text(k1, kx - 10, kb + 22, { align: "right", size: 11, weight: 700, color: c.text2 });
     g.text(k2, kx - 10, kb + 37, { align: "right", size: 11, weight: 600, color: c.text2 });
   }
@@ -140,7 +147,7 @@ var K = D.calc, ID = "tool-motors";
 // On a phone the side-by-side table comes before the four charts: it answers the question the charts explain.
 if (!document.getElementById("t-motors-css")) {
   var st = document.createElement("style"); st.id = "t-motors-css";
-  st.textContent = ".t-motors-cap{margin:2px 0 4px;max-width:60ch}.t-motors-play{margin:-6px 0 6px}.t-motors-charts{display:grid;gap:16px}@media (max-width:640px){.t-motors-tab{order:-1}}";
+  st.textContent = ".t-motors-row3>figure:first-child{grid-column:1/-1}.t-motors-cap{margin:2px 0 4px;max-width:60ch}.t-motors-play{margin:-6px 0 6px}.t-motors-charts{display:grid;gap:16px}@media (max-width:640px){.t-motors-tab{order:-1}}";
   document.head.appendChild(st);
 }
 var LIST = F.MOTORS.map(function (m) { return [m.id, m.name]; });
@@ -246,10 +253,9 @@ K.tool({
     var amp = placeLabels({ id: "motors-amp", title: "Current from the battery, each motor", x: Xa, y: { label: "supply current (A)", unit: "A", min: 0, max: Math.ceil(top("amp", s.statorA) * 1.15 / 10) * 10 }, series: ser("amp"), hlines: limLine });
     amp.note = (s.statorA > 0 ? "Dashed: the stator limit, on the current in the motor itself. The lines are battery current, lower than motor current at low speed. " : "") +
       "Each line ends at its motor's free current (" + L.map(function (q) { return shortOf(q).replace(/^\d+ × /, "") + " " + K.fix(q.m.freeA, 1) + " A"; }).join(", ") + "), not at zero: a motor spinning freely still draws it.";
-    var out = '<div class="t-motors-charts"><div class="chartrow">' +
-      kneeRings(K.chart(tq), tq, L, s) +
-      endRings(K.chart(amp), amp, L) + "</div>" +
-      '<div class="chartrow">' +
+    // The torque chart is the drawing above; the three others share one row.
+    var out = '<div class="t-motors-charts"><div class="chartrow t-motors-row3">' +
+      endRings(K.chart(amp), amp, L) +
       K.chart({ id: "motors-pw", title: "Power out", x: X, y: { label: "power (W)", unit: "W", min: 0 }, series: ser("pw"), dots: L.map(function (q) { return { x: q.peak.rpm, y: q.peak.power * q.n }; }) }) +
       K.chart({ id: "motors-eff", title: "Efficiency", note: "It falls to nothing at free speed: the motor turns but does no work there.", x: X, y: { label: "efficiency (%)", unit: "%", min: 0, max: 100 }, series: ser("eff") }) + "</div></div>";
     var rowsT = [
