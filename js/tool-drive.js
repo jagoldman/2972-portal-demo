@@ -166,7 +166,7 @@ K.tool({
     var run = K.num(ID, "dist", "Sprint distance", { unit: "ft", min: 3, max: 54, step: 0.5, slider: true, tip: "From a standing start. The field is about 54 ft long; a dash across the middle is often 15 to 25 ft." });
     var robot = K.num(ID, "lb", "Weight", { unit: "lb", min: 40, max: 200, step: 1, slider: true, tip: "With battery and bumpers." }) +
       K.num(ID, "wheel", "Wheel diameter", { unit: "in", min: 2, max: 8, step: 0.05, tip: "Measure a used wheel; tread wears it down.", hintId: "drv-hW" }) +
-      K.num(ID, "grip", "Wheel grip on carpet", { min: 0.3, max: 2, step: 0.05, slider: true, tip: "Friction coefficient: the most push the wheels give, as a share of the weight on them. 1.0 to 1.3 for tread on carpet; lower when it is worn." }) +
+      K.num(ID, "grip", "Wheel grip on carpet", { min: 0.3, max: 2, step: 0.05, slider: true, hint: "About 1.0 to 1.3 for tread on carpet.", tip: "Friction coefficient: the most push the wheels give, as a share of the weight on them. 1.0 to 1.3 for tread on carpet; lower when it is worn." }) +
       K.seg(ID, "driven", "Driven wheels", [["all", "All wheels (swerve)"], ["some", "Some"]]) +
       (s.driven === "some" ? K.num(ID, "share", "Weight on driven wheels", { unit: "%", min: 10, max: 100, step: 1, tip: "Only the weight on the driven wheels gives them grip." }) : "");
     return K.group(ID, "gear", "Gearings to race", gear) + K.group(ID, "run", "Run", run) + K.group(ID, "robot", "Robot", robot) +
@@ -218,7 +218,7 @@ K.tool({
     function bold(L, k, txt) { return r.win === k && A.reached && B.reached && Math.abs(A.time - B.time) >= 0.005 ? "<b>" + txt + "</b>" : txt; }
     var rows = [
       ["Reduction", both(function (L, k) { return esc(K.fix(L.ratio, 2) + ":1 (" + L.name + ")"); })],
-      ["Time over " + sd + " ft", both(function (L, k) { return bold(L, k, L.reached ? K.fix(L.time, 2) + " s" : "Not in 8 s"); })],
+      ["Time over " + sd + " ft", both(function (L, k) { return bold(L, k, L.reached ? K.fix(L.time, 3) + " s" : "Not in 8 s"); })],
       ["Speed at the line", both(function (L) { return fts(L.vLine) + " ft/s (" + K.fix(L.vLine, 2) + " m/s)"; })],
       ["Top speed", both(function (L) { return fts(L.top) + " ft/s (" + K.fix(L.top, 2) + " m/s)"; }), "Where the push has fallen to the rolling drag."],
       ["Free speed", both(function (L) { return fts(L.free) + " ft/s (" + K.fix(L.free, 2) + " m/s)"; }), "Motor free speed at 12 V through the reduction, with no load. No robot reaches it."],

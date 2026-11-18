@@ -307,7 +307,7 @@ function draw(g, s, r, t) {
   if (Math.abs(s.end - s.start) >= 1) {
     g.arc(PX, PY, aR, Math.min(ca0, ca1), Math.max(ca0, ca1), { color: c.mute, width: 1.25, dash: [3, 3] });
     var mid = (ca0 + ca1) / 2, lr = aR + 14;
-    g.text(K.fix(Math.abs(s.end - s.start), 0) + "°", PX + lr * Math.cos(mid), PY + lr * Math.sin(mid), { size: 12, weight: 700, color: c.text2, align: Math.cos(mid) < -0.3 ? "right" : Math.cos(mid) > 0.3 ? "left" : "center", base: "middle" });
+    g.text("swing " + K.fix(Math.abs(s.end - s.start), 0) + "°", PX + lr * Math.cos(mid), PY + lr * Math.sin(mid), { size: 12, weight: 700, color: c.text2, align: Math.cos(mid) < -0.3 ? "right" : Math.cos(mid) > 0.3 ? "left" : "center", base: "middle" });
   }
   // Ghosts at the start and end, each with its angle.
   function bar(a, o) {
@@ -350,7 +350,7 @@ function draw(g, s, r, t) {
   g.text("At " + K.fix(th / DEG, 0) + "°, the end moving " + K.fix(Math.abs(w) * r.L / F.FT, 1) + " ft/s", hx2, hy2 + 17, { size: 11, color: c.text2 });
   var ky = hy2 + 34;
   g.line(hx2, ky, hx2 + 16, ky, { color: c.force, width: 2.5 }); g.text("gravity " + K.n(Math.abs(gq) * NM_LBIN, 0) + " lb in", hx2 + 22, ky, { size: 11, color: c.text2, base: "middle" });
-  g.line(hx2, ky + 15, hx2 + 16, ky + 15, { color: c.s1, width: 2.5 }); g.text("motor " + K.n(Math.abs(q) * NM_LBIN, 0) + " lb in", hx2 + 22, ky + 15, { size: 11, color: c.text2, base: "middle" });
+  g.line(hx2, ky + 15, hx2 + 16, ky + 15, { color: c.s1, width: 2.5 }); g.text((q * w < -1e-9 ? "motor, braking " : "motor ") + K.n(Math.abs(q) * NM_LBIN, 0) + " lb in", hx2 + 22, ky + 15, { size: 11, color: c.text2, base: "middle" });
   meter(g, hx2, ky + 40, hudW, "Current per motor", K.fix(amps, 0) + " of " + s.statorA + " A", amps / s.statorA, amps >= s.statorA - 0.5 ? "warn" : "");
   var ny = ky + 66;
   if (!r.reached) {

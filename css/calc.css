@@ -134,7 +134,7 @@ details.cg:not([open]) { padding-bottom: 12px; }
 .how[open] > summary::before { transform: rotate(90deg); }
 .howbody { display: grid; gap: 10px; padding: 0 0 14px; max-width: 72ch; font-size: .92rem; color: var(--text-2); }
 .howbody ul { margin: 0; padding-left: 18px; display: grid; gap: 4px; }
-.howbody .eq { font-family: var(--mono); font-size: .85rem; background: var(--surface-2); border-radius: 6px; padding: 8px 10px; overflow-x: auto; white-space: nowrap; color: var(--text); }
+.howbody .eq { font-family: var(--mono); font-size: .85rem; background: var(--surface-2); border-radius: 6px; padding: 8px 10px; white-space: normal; overflow-wrap: break-word; color: var(--text); }
 .ctab { background: var(--surface); border: 1px solid var(--line); border-radius: var(--r); padding: 12px 14px; display: grid; gap: 8px; min-width: 0; }
 .ctab h2 { font-size: .92rem; }
 .ctab .scroll { overflow-x: auto; }
@@ -203,5 +203,5 @@ details.cg:not([open]) { padding-bottom: 12px; }
 .toolgroup { scroll-margin-top: calc(var(--bar) + 12px); }
 .toolgroup:focus { outline: none; }
 .tooljump { margin-top: -4px; }
-@media (max-width: 640px) { .tooljump { flex-wrap: nowrap; overflow-x: auto; scrollbar-width: none; margin-inline: calc(-1 * var(--gut)); padding-inline: var(--gut); } .tooljump::-webkit-scrollbar { display: none; } .tooljump .chip { flex: none; } }
+@media (max-width: 640px) { .tooljump { flex-wrap: nowrap; overflow-x: auto; scrollbar-width: none; margin-inline: calc(-1 * var(--gut)); padding-inline: var(--gut); } .tooljump::-webkit-scrollbar { display: none; } .tooljump .chip { flex: none; } .tooljump { -webkit-mask-image: linear-gradient(to right, #000 calc(100% - 44px), transparent); mask-image: linear-gradient(to right, #000 calc(100% - 44px), transparent); padding-right: 44px; } }
 .ctab th { white-space: normal; vertical-align: bottom; line-height: 1.2; }

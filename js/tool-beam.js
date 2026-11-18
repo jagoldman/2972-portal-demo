@@ -215,7 +215,7 @@ K.tool({
       else g.text("Yields here", V.X(hot) - th / 2 - 14, hy, { color: c.bad, weight: 700, align: "right", base: "middle" });
     }
     // The bend, dimensioned in true inches.
-    var dTrue = M.deflect(s.hold, P, L, r.EI, xl), dDraw = dTrue * k * f, lab = inch(dTrue);
+    var dTrue = M.deflect(s.hold, P, L, r.EI, xl), dDraw = dTrue * k * f, lab = "really " + inch(dTrue);
     if (s.hold === "cant") {                       // beside the free end
       if (dDraw > 10) g.dim(lx + 12, cy, lx + 12, cy + dDraw, lab, 0, { side: "right", color: c.text2 });
       else if (s.P > 0) g.text("Bends " + lab, lx + 8, cy + dDraw + th / 2 + 16, { color: c.text2, weight: 600, align: "right" });
