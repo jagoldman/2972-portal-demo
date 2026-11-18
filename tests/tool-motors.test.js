@@ -46,5 +46,11 @@ ok("knee: falls just past it", M.at("kraken60", 12, 60, kn * 1.02).torque < flat
 var srcM = require("fs").readFileSync(require("path").join(__dirname, "../js/tool-motors.js"), "utf8");
 ok("no file names in the notes", srcM.split("module.exports")[1].indexOf("frc.js") < 0);
 ok("table note names both NEO Vortex rows", /NEO Vortex \(CTRE\\'s test\)/.test(srcM) && /NEO Vortex \(REV\\'s sheet\)/.test(srcM));
+// Round 7: the supply-current lines end at the free current, not at zero (the chart's note says so). At free speed
+// on 12 V the motor draws its free current, from the battery as in the windings.
+["kraken60", "vortex", "kraken44"].forEach(function (id) {
+  var m = F.motor(id), q = M.at(id, 12, 60, m.free);
+  near("free current at free speed, " + id, q.supplyA, m.freeA, 1e-6);
+});
 console.log(fails ? fails + " of " + n + " checks failed" : "All " + n + " checks passed");
 process.exit(fails ? 1 : 0);

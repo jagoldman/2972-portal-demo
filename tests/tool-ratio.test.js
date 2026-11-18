@@ -55,9 +55,12 @@ ok("clean: empty gets one stage", M.clean([]).length === 1 && M.clean("no").leng
 
 // Fix round 5. The count is the whole set the best rows come from: the same as listing them all (gears, 15 : 1, 2%).
 var cO = { target: 15, tol: 0.02, maxStages: 2, kinds: { gear: true }, minT: 10, maxT: 72 };
-ok("count = every train listed", M.count(cO) === M.find(Object.assign({ limit: 1e6 }, cO)).length, M.count(cO));
+// (Round 7: the list merges orderings, so it is compared with the count of designs.)
+ok("count of designs = every design listed", M.countDesigns(cO).n === M.find(Object.assign({ limit: 1e6 }, cO)).length && M.countDesigns(cO).exact, M.countDesigns(cO).n);
+ok("orderings counted: at least the designs", M.count(cO) >= M.countDesigns(cO).n);
 var cO3 = { target: 37, tol: 0.02, maxStages: 3, kinds: { gear: true }, minT: 10, maxT: 72 };
-ok("count = every train listed, three stages", M.count(cO3) === M.find(Object.assign({ limit: 1e6 }, cO3)).length, M.count(cO3));
+ok("count of designs = every design listed, three stages", M.countDesigns(cO3, 1e7).n === M.find(Object.assign({ limit: 1e6 }, cO3)).length, M.countDesigns(cO3, 1e7).n);
+ok("past the cap, a floor of orderings / 6", (function () { var d = M.countDesigns(cO3, 10); return !d.exact && d.n === Math.ceil(M.count(cO3) / 6) && d.n <= M.countDesigns(cO3, 1e7).n; })());
 // Parts and length, by hand: 12:60 and 18:54 at 20 DP sit (12 + 60) / 40 = 1.8 in and (18 + 54) / 40 = 1.8 in apart.
 ok("length of 12:60, 18:54", Math.abs(M.length([{ kind: "gear", a: 12, b: 60 }, { kind: "gear", a: 18, b: 54 }]) - 3.6) < 1e-12);
 ok("parts: gear 2, belt 3, planetary 1", M.parts([{ kind: "gear", a: 12, b: 60 }, { kind: "belt", a: 18, b: 36 }, { kind: "planet", p: 4 }]) === 6);
@@ -76,5 +79,12 @@ ok("find: small reported right", fs.every(function (c) { return c.small === M.sm
 var f5 = M.find({ target: 5, tol: 0.1, maxStages: 1, kinds: { gear: true }, minT: 8, maxT: 84 });
 ok("find: 14:70 before 8:40 at 5 : 1, both offered", M.trainLabel(f5[0].stages) === "14:70" && f5.some(function (c) { return M.trainLabel(c.stages) === "8:40"; }), f5.map(function (c) { return M.trainLabel(c.stages); }).join(" "));
 ok("find: a closer train still beats one without a small pinion", f5.every(function (c, i) { return !i || Math.abs(c.err) >= Math.abs(f5[i - 1].err) - 1e-9; }));
+// Round 7: the same stages in another order are one design, listed once and marked "either order".
+var fd = M.find({ target: 15, tol: 0.02, maxStages: 2, kinds: { gear: true }, minT: 10, maxT: 72 });
+var keys = fd.map(function (c) { return M.designKey(c.stages); });
+ok("find: no design listed twice", keys.every(function (k, i) { return keys.indexOf(k) === i; }));
+ok("design key ignores order", M.designKey([{ kind: "gear", a: 16, b: 56 }, { kind: "gear", a: 14, b: 60 }]) === M.designKey([{ kind: "gear", a: 14, b: 60 }, { kind: "gear", a: 16, b: 56 }]));
+ok("find: 16:56, 14:60 is marked either order", fd.some(function (c) { return c.either && M.designKey(c.stages) === M.designKey([{ kind: "gear", a: 14, b: 60 }, { kind: "gear", a: 16, b: 56 }]); }));
+ok("find: 18 teeth cannot drive from the motor, so 14:54, 18:70 is one order only", fd.filter(function (c) { return M.trainLabel(c.stages) === "14:54, 18:70"; }).every(function (c) { return !c.either; }));
 console.log(fails ? fails + " of " + n + " checks failed" : "All " + n + " checks passed");
 process.exit(fails ? 1 : 0);

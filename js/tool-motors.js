@@ -24,6 +24,67 @@ M.peak = function (id, V, L) {
 M.free = function (id, V) { return F.motor(id).freeRpm * V / 12; };      // rpm with no load
 
 if (typeof module !== "undefined" && module.exports) { module.exports = M; return; }
+/* The stage: one motor's torque against speed, annotated. t (0..4 s) sweeps a dot from standstill to free speed. */
+function drawCurve(g, s, r, t) {
+  var c = g.c, q = r.list[0]; if (!q) { g.text("Pick a motor.", 16, 28, { color: c.mute }); return; }
+  var phone = g.w < 520, V = s.volts, L = s.statorA, n = q.n, free = q.free, wf = free * F.RPM;
+  var Tlim = q.limT * n, Tst = q.stallT * n, limited = L > 0 && Tst > Tlim * 1.001;
+  var ymax = limited ? Math.min(Tst, Tlim * 1.75) * 1.08 : Tst * 1.1;
+  var pl = phone ? 40 : 54, pr = phone ? 16 : 24, pt = 72, pb = 34, x0 = pl, x1 = g.w - pr, y0 = g.h - pb, y1 = pt;
+  function X(rpm) { return x0 + (x1 - x0) * rpm / free; } function Y(T) { return y0 - (y0 - y1) * Math.min(T, ymax) / ymax; }
+  // Grid and axes.
+  var step = ymax > 6 ? 2 : ymax > 3 ? 1 : ymax > 1.2 ? 0.5 : 0.2;
+  for (var v = 0; v <= ymax + 1e-9; v += step) { g.line(x0, Y(v), x1, Y(v), { color: c.sheetLine, width: 1, cap: "butt" }); g.text(K.fix(v, step < 1 ? 1 : 0), x0 - 6, Y(v), { align: "right", base: "middle", size: 10, color: c.mute }); }
+  var rs = free > 8000 ? 2000 : 1000;
+  for (var x = 0; x <= free; x += rs) { g.line(X(x), y0, X(x), y0 + 4, { color: c.mute, width: 1 }); if (x1 - X(x) > 72) g.text(K.n(x, 0), X(x), y0 + 16, { align: "center", size: 10, color: c.mute }); }
+  g.line(x0, y0, x1, y0, { color: c.text2, width: 1.5 }); g.line(x0, y0, x0, y1 - 6, { color: c.text2, width: 1.5 });
+  g.text("torque (N m)", x0 - (phone ? 34 : 46), y1 - 14, { size: 11, color: c.mute });
+  g.text("speed (rpm)", x1, y0 + 30, { align: "right", size: 11, color: c.mute });
+  // The power hump, shaded under the axis at its own scale (its peak reaches 60% of the height).
+  var N = 120, pts = [], Pk = q.peak.power * n, hump = [[X(0), y0]];
+  for (var i = 0; i <= N; i++) { var w = wf * i / N, a = M.at(q.id, V, L, w); pts.push([X(w / F.RPM), Y(a.torque * n)]); hump.push([X(w / F.RPM), y0 - (y0 - y1) * 0.6 * Math.max(0, a.power * n) / Pk]); }
+  hump.push([X(free), y0]);
+  g.ctx.globalAlpha = 0.16; g.poly(hump, { fill: c.s3, stroke: null, close: true }); g.ctx.globalAlpha = 1;
+  // Named inside the shaded hump, low down where no line runs.
+  g.text(phone ? "power, shaded: peak " + K.n(Pk, 0) + " W" : "power out, shaded: peak " + K.n(Pk, 0) + " W at " + K.n(q.peak.rpm, 0) + " rpm", X(free * 0.55), y0 - 12, { align: "center", size: 11, weight: 700, color: c.s3 });
+  // With no limit: the straight line from stall torque, dashed, cut where it leaves the top.
+  if (limited) {
+    var xs = free * (1 - ymax / Tst);
+    g.line(X(Math.max(0, xs)), Y(ymax), X(free), Y(0), { color: c.mute, width: 1.5, dash: [5, 4] });
+    g.text(phone ? "no limit" : "with no limit: " + K.fix(Tst, 2) + " N m at standstill, off the top", X(Math.max(0, xs)) - 8, Y(ymax) + 2, { align: "right", size: 11, color: c.mute, base: "top" });
+  }
+  // The motor's line, with the limit.
+  g.path(pts, { color: c.s1, width: 3 });
+  if (limited) {
+    var kr = q.peak.knee / F.RPM, kx = X(kr), ky = Y(Tlim);
+    g.text(phone ? "limit holds torque" : "the current limit holds torque here", (x0 + kx) / 2, ky - 8, { align: "center", size: 11, weight: 700, color: c.s1 });
+    g.line(kx, ky, kx, y0, { color: c.mute, width: 1, dash: [3, 3] });
+    g.circle(kx, ky, 5, { fill: c.sheet, stroke: c.s1, width: 2.5 });
+    var kt = phone ? "knee " + K.n(kr, 0) + " rpm" : "knee, " + K.n(kr, 0) + " rpm: above this the limit no longer matters", kw = g.textWidth(kt, { size: 11, weight: 600 });
+    g.text(kt, kx + 10 + kw < x1 ? kx + 10 : kx - 10, ky + 16, { align: kx + 10 + kw < x1 ? "left" : "right", size: 11, weight: 600, color: c.text2 });
+  }
+  g.text("free " + K.n(free, 0), X(free), y0 + 16, { align: "right", size: 10, weight: 700, color: c.text2 });
+  // The dot and its read-out.
+  var wt = wf * F.clamp(t / 4, 0, 1), at = M.at(q.id, V, L, wt), dx = X(wt / F.RPM), dy = Y(at.torque * n);
+  g.line(dx, dy, dx, y0, { color: c.accent, width: 1 });
+  g.circle(dx, dy, 6, { fill: c.accent, stroke: c.sheet, width: 2 });
+  g.text(q.name + " at " + K.fix(V, 1) + " V, " + (L > 0 ? L + " A limit" : "no limit"), 12, 18, { weight: 700 });
+  g.text(phone ? K.n(wt / F.RPM, 0) + " rpm: " + K.fix(at.torque * n, 2) + " N m, " + K.n(at.statorA, 0) + " A motor, " + K.n(at.supplyA, 0) + " A battery, " + K.n(at.power * n, 0) + " W" : "At the dot: " + K.n(wt / F.RPM, 0) + " rpm, " + K.fix(at.torque * n, 2) + " N m, " + K.n(at.statorA, 0) + " A in the motor, " + K.n(at.supplyA, 0) + " A from the battery, " + K.n(at.power * n, 0) + " W", 12, 38, { size: phone ? 11 : 12, weight: 600, color: c.accent });
+}
+// A ring at each motor's knee, in that motor's colour, drawn into the torque chart's SVG (the kit's coordinates:
+// 480 by 190, 46 px left, 14 right, 24 top, 34 bottom). The first is named.
+function kneeRings(html, o, L, s) {
+  if (!(s.statorA > 0)) return html;
+  var W = 480, H = 190, pl = 46, pr = 14, pt = 24, pb = 34, out = "";
+  function X(x) { return pl + (x - o.x.min) / (o.x.max - o.x.min) * (W - pl - pr); } function Y(y) { return H - pb - (y - o.y.min) / (o.y.max - o.y.min) * (H - pt - pb); }
+  L.forEach(function (q, k) {
+    if (q.peak.knee == null || q.peak.knee / F.RPM >= q.free) return;
+    var x = X(q.peak.knee / F.RPM), y = Y(q.limT * q.n);
+    out += '<circle cx="' + x.toFixed(1) + '" cy="' + y.toFixed(1) + '" r="4.5" style="fill:var(--surface);stroke:var(--s' + (q.i + 1) + ');stroke-width:2.5"/>';
+    if (k === 0) out += '<text class="cnote" x="' + (x > W - 120 ? x - 8 : x + 8).toFixed(1) + '" y="' + (y - 8).toFixed(1) + '"' + (x > W - 120 ? ' text-anchor="end"' : "") + ">limit stops here</text>";
+  });
+  return html.replace("</svg>", out + "</svg>");
+}
 
 /* ---------- The calculator ---------- */
 var K = D.calc, ID = "tool-motors";
@@ -70,7 +131,11 @@ function placeLabels(o) {
 K.tool({
   id: ID,
   defaults: { m1: "kraken60", n1: 1, m2: "vortex", n2: 1, m3: "kraken44", n3: 1, volts: 12, statorA: 60 },
-  stage: null,
+  stage: { ratio: 2.3, narrow: 1.05, label: "The first motor's torque against speed: the flat part the current limit holds, the knee, free speed, and its power shaded underneath. Play moves a dot from standstill to free speed." },
+  duration: function () { return 4; },
+  // Rest on the moment of peak power, the speed a mechanism should be geared for.
+  rest: function (s, r) { var q = r.list[0]; return q ? 4 * Math.min(1, q.peak.rpm / q.free) : 0; },
+  draw: function (g, s, r, t) { drawCurve(g, s, r, t); },
 
   compute: function (s) {
     var V = s.volts, L = s.statorA, list = slots(s);
@@ -113,7 +178,7 @@ K.tool({
     text += " A mechanism only gets that power if it is geared so the motor runs near that speed.";
     return K.verdict("info", text) +
       K.outs(L.map(function (q) { return { k: q.name, v: K.n(q.peak.power * q.n, 0), u: "W", sub: "peak at " + K.n(q.peak.rpm, 0) + " rpm", tip: "The most mechanical power " + (q.n > 1 ? "these motors give" : "this motor gives") + " " + lim + " at " + K.fix(s.volts, 1) + " V." }; })) +
-      K.outs(L.map(function (q) { var T = q.limT * q.n; return { k: "Torque, " + (q.n > 1 ? q.n + " × " : "") + q.m.name, v: K.n(T, 2), u: "N m", sub: K.n(T / (F.LBF * F.IN), 1) + " lb in from a standstill" }; }));
+      K.outs(L.map(function (q) { var T = q.limT * q.n; return { k: "Torque, " + (q.n > 1 ? q.n + " × " : "") + q.m.name, v: K.n(T, 2), u: "N m", sub: K.n(T / (F.LBF * F.IN), 1) + " lb in from a standstill, " + (s.statorA > 0 ? "at the " + s.statorA + " A limit" : "with no limit") }; }));
   },
 
   more: function (s, r) {
@@ -126,13 +191,14 @@ K.tool({
     // The knee: where the current limit stops holding torque flat, marked for the first motor.
     var q0 = L[0], knee = q0.peak.knee != null && q0.peak.knee / F.RPM < q0.free ? [{ x: q0.peak.knee / F.RPM, y: q0.limT * q0.n, label: "limit stops here" }] : [];
     // Torque: headroom above the curves for the band's name; the band is the first motor's flat part.
-    var tq = { id: "motors-tq", title: "Torque", x: X, y: { label: "torque (N m)", unit: "N m", min: 0, max: top("tq") * 1.4 }, series: ser("tq"), dots: knee,
+    var tq = { id: "motors-tq", title: "Torque", x: X, y: { label: "torque (N m)", unit: "N m", min: 0, max: top("tq") * 1.4 }, series: ser("tq"),
       bands: knee.length ? [{ x0: 0, x1: knee[0].x, label: "the current limit holds torque flat" + (L.length > 1 ? " (" + shortOf(q0) + ")" : "") }] : [] };
     var amp = placeLabels({ id: "motors-amp", title: "Current from the battery, each motor", x: X, y: { label: "supply current (A)", unit: "A", min: 0, max: Math.ceil(top("amp", s.statorA) * 1.15 / 10) * 10 }, series: ser("amp"), hlines: limLine });
-    var cap = '<p class="mute small t-motors-cap">Dashed: the stator limit, on the current in the motor itself. The lines are battery current, which is lower than motor current at low speed.</p>';
+    amp.note = (s.statorA > 0 ? "Dashed: the stator limit, on the current in the motor itself. The lines are battery current, lower than motor current at low speed. " : "") +
+      "Each line ends at its motor's free current (" + L.map(function (q) { return shortOf(q).replace(/^\d+ × /, "") + " " + K.fix(q.m.freeA, 1) + " A"; }).join(", ") + "), not at zero: a motor spinning freely still draws it.";
     var out = '<div class="t-motors-charts"><div class="chartrow">' +
-      K.chart(tq) +
-      K.chart(amp).replace("</figcaption>", "</figcaption>" + (s.statorA > 0 ? cap : "")) + "</div>" +
+      kneeRings(K.chart(tq), tq, L, s) +
+      K.chart(amp) + "</div>" +
       '<div class="chartrow">' +
       K.chart({ id: "motors-pw", title: "Power out", x: X, y: { label: "power (W)", unit: "W", min: 0 }, series: ser("pw"), dots: L.map(function (q) { return { x: q.peak.rpm, y: q.peak.power * q.n }; }) }) +
       K.chart({ id: "motors-eff", title: "Efficiency", x: X, y: { label: "efficiency (%)", unit: "%", min: 0, max: 100 }, series: ser("eff") }) + "</div></div>";

@@ -53,6 +53,19 @@ M.handover = function (w, I, m, G, P, Q) {
   var w1 = w * (I + m * (gq[0] * gp[0] + gq[1] * gp[1])) / (I + m * (gq[0] * gq[0] + gq[1] * gq[1]));
   return w1 * w < 0 ? 0 : w1;
 };
+/* Accelerating forward at `want` g (the tread caps it): does the front lift? The robot tips backward about its rear
+   wheels when acceleration ÷ g > (distance to the rear wheel ÷ height) cos b + sin b. Returns { acc, tips, capped }. */
+M.judgeAccel = function (o, want) {
+  var L = M.limits(o), a = Math.max(0, Math.min(want, L.gripAccel));
+  return { acc: a, tips: L.tipAccel > 1e-9 && L.tipBrake > 1e-9 && a >= L.tipAccel - 1e-9, capped: want > L.gripAccel + 1e-9 };
+};
+// The mechanism height (in) above which accelerating at a (g) lifts the front wheels.
+M.heightForAccel = function (o, a) {
+  var c = M.cg(o), b = (o.ramp || 0) * D2R, dr = o.wb / 2 + c.x;
+  if (dr <= 0) return -Infinity;
+  var den = a - Math.sin(b); if (!(den > 0)) return Infinity;
+  return (dr * Math.cos(b) / den * c.m - o.m1 * o.h1) / o.m2;
+};
 /* Where the line of the resultant (weight plus the braking force) meets the floor, in forward of the middle. */
 M.landing = function (o, a) { var c = M.cg(o), b = (o.ramp || 0) * D2R; return c.x + c.h * (a + Math.sin(b)) / Math.cos(b); };
 /* A hard stop. The robot brakes at a (g; already no more than the tread allows) from v0 (in/s) until it stops, then lets
@@ -126,6 +139,8 @@ K.tool({
     r.hFor = M.heightFor(o, r.brake);
     r.land = M.landing(o, r.brake);
     r.sim = M.stop(o, r.brake, s.v0 * 12, 2);
+    // The same figure as an acceleration: it can lift the front wheels too.
+    var ja = M.judgeAccel(o, s.brake); r.acc = ja.acc; r.backTips = !r.still && ja.tips; r.hBack = M.heightForAccel(o, r.acc);
     // The braking that tips it, for every mechanism height (and the acceleration that tips it backward).
     var lo = Math.min(s.kdown, s.kup), hi = Math.max(s.kdown, s.kup, lo + 1), curve = [], back = [];
     for (var i = 0; i <= 60; i++) { var h = lo + (hi - lo) * i / 60, q = M.limits(Object.assign({}, o, { h2: h })); curve.push([h, q.tipBrake]); back.push([h, q.tipAccel]); }
@@ -155,23 +170,30 @@ K.tool({
     var limit = isFinite(r.hFor) && r.hFor > Math.min(s.kdown, s.kup);
     if (r.kind === "back") { st = "bad"; text = "It tips over backward standing still" + on + ", because its weight acts " + K.fix(-s.wb / 2 - off, 1) + " in behind the rear wheels: move weight forward or lengthen the wheelbase."; }
     else if (r.kind === "front") { st = "bad"; text = "It tips over forward standing still" + on + ", because its weight acts " + K.fix(off - s.wb / 2, 1) + " in ahead of the front wheels: move weight back or lengthen the wheelbase."; }
-    else if (r.tips) {
-      // One sentence: what happens and what to change. The detail of the stop goes in the quieter second line.
-      st = "bad"; text = "Braking at " + g2(r.brake) + " g lifts the rear wheels (they lift from " + g2(L.tipBrake) + " g): " +
-        (limit ? "keep the mechanism's centre of gravity below " + K.fix(r.hFor, 0) + " in while driving hard, with some margin, or move weight back." : "move weight back or lower it.");
-      more = (sim.fell ? "From " + s.v0 + " ft/s this model predicts it falls over onto its front." : sim.bumper ? "From " + s.v0 + " ft/s this model predicts the rear lifts until the front bumper hits the floor (" + deg(sim.maxPhi) + "°), then drops back." : sim.lifted ? "From " + s.v0 + " ft/s the rear lifts to " + deg(sim.maxPhi) + "° and drops back." : "") +
+    else if (r.tips || r.backTips) {
+      // One sentence: what happens, both ways when both, and what to change. The detail goes in the quieter line.
+      var lo2 = Math.min(s.kdown, s.kup), hs = [];
+      if (r.tips && isFinite(r.hFor) && r.hFor > lo2) hs.push(r.hFor);
+      if (r.backTips && isFinite(r.hBack) && r.hBack > lo2) hs.push(r.hBack);
+      var ways = [];
+      if (r.tips) ways.push("braking at " + g2(r.brake) + " g lifts the rear wheels (from " + g2(L.tipBrake) + " g)");
+      if (r.backTips) ways.push("accelerating at " + g2(r.acc) + " g lifts the front wheels (from " + g2(L.tipAccel) + " g)");
+      var dir = r.tips && r.backTips ? "lower" : r.tips ? "back" : "forward";
+      st = "bad"; text = ways.join(" and ") + ": " + (hs.length && hs.length === (r.tips ? 1 : 0) + (r.backTips ? 1 : 0) ? "keep the mechanism's centre of gravity well under " + K.fix(Math.min.apply(null, hs), 0) + " in (the ideal limit) or move weight " + dir : "move weight " + dir + " or lower it") + ", and test with someone ready to catch the robot.";
+      text = text.charAt(0).toUpperCase() + text.slice(1);
+      more = !r.tips ? "The animation shows a stop, which this robot survives; the front lifts when it speeds up at this rate." : (sim.fell ? "From " + s.v0 + " ft/s this model predicts it falls over onto its front." : sim.bumper ? "From " + s.v0 + " ft/s this model predicts the rear lifts until the front bumper hits the floor (" + deg(sim.maxPhi) + "°), then drops back." : sim.lifted ? "From " + s.v0 + " ft/s the rear lifts to " + deg(sim.maxPhi) + "° and drops back." : "") +
         (sim.lifted ? " A real bumper can bounce or crush, so near the edge it could go either way." : "");
     } else if (r.kind === "slides") { st = "ok"; text = "The wheels slide before it can tip: tipping needs " + g2(L.tipBrake) + " g of braking and the tread gives at most " + g2(Math.max(0, L.gripBrake)) + " g."; }
     else {
       st = "warn"; text = "Holds at " + g2(r.brake) + " g, but a harder stop could tip it: it tips at " + g2(L.tipBrake) + " g and the tread allows " + g2(L.gripBrake) + " g.";
-      if (isFinite(r.hFor)) more = "At this braking it tips once the mechanism's centre of gravity is above " + K.fix(r.hFor, 0) + " in; keep a margin below that.";
+      if (isFinite(r.hFor)) more = "At this braking it tips once the mechanism's centre of gravity is above " + K.fix(r.hFor, 0) + " in, the ideal limit: stay well under it, and test with someone ready to catch the robot.";
     }
     if (r.capped && !r.still) more = (more ? more + " " : "") + "The tread cannot brake at " + g2(s.brake) + " g here; the most is " + g2(Math.max(0, L.gripBrake)) + " g, used above.";
     var hTxt = !isFinite(r.hFor) ? (r.hFor > 0 ? "never" : "always") : K.fix(r.hFor, 1);
     return K.verdict(st, text, more) + K.outs([
       { k: "Combined centre of gravity", v: K.fix(c.x, 1) + " / " + K.fix(c.h, 1), u: "in", sub: "forward / high", tip: "The weighted average of the chassis and the mechanism." },
       { k: "Braking that tips it", v: g2(L.tipBrake), u: "g", sub: "forward", state: r.tips ? "bad" : r.still ? "" : L.slidesFirstBrake ? "ok" : "warn", tip: "Forward tip when braking ÷ g is more than (distance to the front wheel ÷ height)." },
-      { k: "Acceleration that tips it", v: g2(L.tipAccel), u: "g", sub: r.kind === "back" ? "backward; it tips standing still" : L.slidesFirstAccel ? "backward; the wheels slip first" : "backward; tread allows " + g2(L.gripAccel), state: r.kind === "back" ? "bad" : L.slidesFirstAccel ? "" : "warn" },
+      { k: "Acceleration that tips it", v: g2(L.tipAccel), u: "g", sub: r.kind === "back" ? "backward; it tips standing still" : r.backTips ? "backward; your " + g2(r.acc) + " g is over it" : L.slidesFirstAccel ? "backward; the wheels slip first" : "backward; tread allows " + g2(L.gripAccel), state: r.kind === "back" || r.backTips ? "bad" : L.slidesFirstAccel ? "" : "warn" },
       { k: "Static tip angle", v: K.fix(L.staticF, 0) + "° / " + K.fix(L.staticR, 0) + "°", sub: "forward / backward", tip: "The steepest slope it can stand on without tipping, nose down and nose up." },
       { k: "Mechanism height limit", v: hTxt, u: isFinite(r.hFor) ? "in" : "", sub: "of its centre of gravity; tips above it at " + g2(r.brake) + " g", tip: "The mechanism's centre of gravity height above which braking at this rate tips the robot." },
       { k: "Comes first", v: L.slidesFirstBrake ? "Sliding" : "Tipping", sub: "when braking harder", state: r.still ? "" : L.slidesFirstBrake ? "ok" : r.tips ? "bad" : "warn", tip: "The tread lets go before the robot tips when grip is less than (distance to the front wheel ÷ height)." }
@@ -179,11 +201,15 @@ K.tool({
   },
 
   more: function (s, r) {
-    var L = r.L, hl = [{ y: Math.max(0, L.gripBrake), label: "tread limit " + g2(L.gripBrake) + " g" }, { y: r.brake, label: "your braking " + g2(r.brake) + " g" }];
+    var L = r.L, hl = [{ y: Math.max(0, L.gripBrake), label: "tread limit " + g2(L.gripBrake) + " g" }];
+    // Shade the heights where your figure tips it, braking or accelerating.
+    var hx = []; if (isFinite(r.hFor) && r.hFor < r.hi) hx.push(Math.max(r.lo, r.hFor)); if (isFinite(r.hBack) && r.hBack < r.hi && L.tipAccel <= L.gripAccel + 1e-9) hx.push(Math.max(r.lo, r.hBack));
+    var band = hx.length ? [{ x0: Math.min.apply(null, hx), x1: r.hi }] : [];
     var top = Math.max(1.5, L.gripBrake * 1.25, r.brake * 1.25), cut = function (p) { return [p[0], p[1] <= top && p[1] >= 0 ? p[1] : NaN]; };
     var chOpts = { id: "tip-h", title: "Braking that tips it, by mechanism height", x: { label: "mechanism centre of gravity (in)", name: "Height", unit: "in", min: r.lo, max: r.hi }, y: { label: "g", unit: "g", min: 0, max: top },
-      series: [{ name: "Tips forward when braking", pts: r.curve.map(cut), color: 1 }, { name: "Tips backward when accelerating", pts: r.back.map(cut), color: 2, dash: true }], hlines: hl,
-      dots: [{ x: r.o.h2, y: Math.min(top, Math.max(0, L.tipBrake)), label: "now" }] };
+      series: [{ name: "Tips forward when braking", pts: r.curve.map(cut), color: 1 }, { name: "Tips backward when accelerating", pts: r.back.map(cut), color: 2, dash: true }, { name: "Your figure, " + g2(r.brake) + " g", pts: [[r.lo, r.brake], [r.hi, r.brake]], color: 3 }], hlines: hl, bands: band,
+      dots: [{ x: r.o.h2, y: Math.min(top, Math.max(0, L.tipBrake)) }],
+      note: "The ring is your mechanism, at " + K.fix(r.o.h2, 0) + " in." + (band.length ? " Shaded: the heights at which your " + g2(r.brake) + " g tips the robot, braking or accelerating." : "") };
     placeLabels(chOpts);
     var ch = K.chart(chOpts);
     var sim = r.sim, pts = sim.t.map(function (t, i) { return [t, sim.phi[i] / D2R]; });
@@ -231,7 +257,7 @@ K.tool({
     pts.push(W([cg.x + fx * Lg, cg.h - fy * Lg]));
     var bx0 = Math.min.apply(null, pts.map(function (p) { return p[0]; })) - 4, bx1 = Math.max.apply(null, pts.map(function (p) { return p[0]; })) + 4;
     var by0 = Math.min.apply(null, pts.map(function (p) { return p[1]; })) - 3, by1 = Math.max.apply(null, pts.map(function (p) { return p[1]; })) + 3;
-    var V = g.view({ x0: bx0, x1: bx1, y0: by0, y1: by1 }, { l: 12, r: 12, t: 30, b: 52 }, "middle");
+    var V = g.view({ x0: bx0, x1: bx1, y0: by0, y1: by1 }, { l: 12, r: 12, t: 44, b: 52 }, "middle");
     g.grid(V, 6, g.w > 480 ? "6 in squares" : "");
     function S(p) { var w = W(p); return [V.X(w[0]), V.Y(w[1])]; }
     function SR(p) { return S(R(p)); }
@@ -265,7 +291,9 @@ K.tool({
     // The forces at the combined centre of gravity: weight (straight down), braking (forward), and their sum.
     // In the slope frame the weight is (g sin b, -g cos b) and the braking force (a, 0). They do not turn with the robot.
     // Once the robot has stopped, the line for the chosen braking stays as a faint guide, so the lesson stays on screen.
-    var k = V.L(Lg), brk = braking ? r.brake : 0, level = phi < 0.02, ghost = !braking && level && r.brake > 0.01;
+    // On the still picture the forces of the stop are drawn too, so it shows why the robot tips.
+    var still = !K.playing(ID) && r.brake > 0.01;
+    var k = V.L(Lg), brk = braking || still ? r.brake : 0, level = phi < 0.02, ghost = !braking && level && r.brake > 0.01 && !still;
     var wv = [Math.sin(b), -Math.cos(b)];
     function vec(v) { var w = W(v); return [w[0] * k, -w[1] * k]; }
     function sum(a) { return [wv[0] + a, wv[1]]; }
@@ -273,13 +301,13 @@ K.tool({
     // The line of the resultant, carried on to the floor, and where it lands.
     var cgw = R([cg.x, cg.h]), landX = cgw[0] + cgw[1] * shown[0] / -shown[1], landP = S([landX, 0]);
     var out2 = landX > wb / 2 || landX < -wb / 2 || r.still, lcol = ghost ? c.ghost : out2 ? c.bad : c.force;
-    if (level) {
+    if (level || still) {
       g.line(C[0], C[1], landP[0], landP[1], { color: lcol, width: 1.25, dash: [5, 4] });
       g.circle(landP[0], landP[1], 4.5, { fill: ghost ? c.ghost : out2 ? c.bad : c.ok, stroke: c.sheet, width: 1.5 });
     }
-    g.arrow(C[0], C[1], C[0] + wS[0], C[1] + wS[1], { color: c.mute, width: 1.5, head: 7 });
+    g.arrow(C[0], C[1], C[0] + wS[0], C[1] + wS[1], { color: c.text2, width: 2, head: 8 });
     if (brk > 0.01) {
-      g.arrow(C[0], C[1], C[0] + bS[0], C[1] + bS[1], { color: c.mute, width: 1.5, head: 7 });
+      g.arrow(C[0], C[1], C[0] + bS[0], C[1] + bS[1], { color: c.text2, width: 2, head: 8 });
       g.arrow(C[0], C[1], C[0] + rS[0], C[1] + rS[1], { color: c.force, width: 2.5, head: 9 });
     }
     cgMark(g, C, rad, c.accent, c.sheet);
@@ -297,8 +325,9 @@ K.tool({
     if (phi > 0.004 && sim.piv[fi] < 4) {
       var pv = S([sim.qx[fi], sim.qy[fi]]), pn = ["", "front wheel", "front bumper's edge", "top of the bumper"][sim.piv[fi]] || "";
       g.circle(pv[0], pv[1], 4, { fill: c.bad, stroke: c.sheet, width: 1.5 });
-      var ptx = wide ? "pivot now: the " + pn + ", on the floor" : "pivot now: " + pn, pw = g.textWidth(ptx, { size: 11, weight: 700 }), pr = pv[0] + 22 + pw < g.w - 6;
-      g.callout(ptx, pv[0] + (pr ? 3 : -3), pv[1] + 2, pv[0] + (pr ? 18 : -18), pv[1] + 26, { size: 11, weight: 700, color: c.bad });
+      var ptx = "pivot now: " + pn.replace("front bumper's edge", "bumper's edge"), pw = g.textWidth(ptx, { size: 11, weight: 700 }), pr = pv[0] + 22 + pw < g.w - 6;
+      // On a phone the caption at the top names the pivot; there is no room beside it here.
+      if (wide) g.callout(ptx, pv[0] + (pr ? 3 : -3), pv[1] - 3, pv[0] + (pr ? 26 : -18), pv[1] - (pr ? 18 : 30), { size: 11, weight: 700, color: c.bad });
       var rw = R([-wb / 2, 0]), up = rw[1];
       if (up > 0.3) {
         var r0 = S([rw[0], 0]), r1 = S(rw), ux = Math.min(r0[0], r1[0]) - 14;
@@ -307,10 +336,16 @@ K.tool({
       }
     }
     if (wide) g.callout("combined", C[0] - rad, C[1], C[0] - 46, C[1] - 18, { size: 11 });
-    if (wide && brk > 0.01 && level) g.text("weight + braking", C[0] + rS[0] + (rS[0] > 0 ? 8 : -8), C[1] + rS[1], { align: rS[0] > 0 ? "left" : "right", base: "middle", color: c.force, size: 11, weight: 600 });
+    // Name each force where its arrow ends: the weight, the braking as a share of it, and their sum.
+    g.text("weight", C[0] - 8, C[1] + wS[1] * 0.22, { align: "right", base: "middle", color: c.text2, size: 11, weight: 700 });
+    if (brk > 0.01) {
+      g.text(wide ? "braking, " + g2(brk) + " × weight" : g2(brk) + " × weight", C[0] + bS[0] + 8, C[1] + bS[1] - 2, { base: "middle", color: c.text2, size: 11, weight: 700 });
+      g.text(wide ? "their sum" : "sum", C[0] + rS[0] * 0.5 + 10, C[1] + rS[1] * 0.5, { base: "middle", color: c.force, size: 11, weight: 700 });
+    }
     var state = r.kind === "back" ? "tips backward standing still" : r.kind === "front" ? "tips forward standing still" : sim.piv[fi] >= 3 ? "fallen over" : sim.piv[fi] === 2 ? "now pivoting on the front bumper's edge, " + K.fix(phi / D2R, 0) + "°" : sim.piv[fi] === 3 ? "now pivoting on the top of the bumper, " + K.fix(phi / D2R, 0) + "°" : phi > 0.004 ? "pivoting on the front wheels, rear up " + K.fix(phi / D2R, 0) + "°" : braking ? "braking " + g2(r.brake) + " g" : sim.stopT > 0 && t >= sim.stopT ? "the robot has stopped" : "standing";
     g.text(K.fix(t, 2) + " s", 10, 19, { weight: 700, size: 13 });
     g.text(state, 60, 19, { weight: 600, color: phi > 0.004 || r.still ? c.bad : c.text2 });
+    g.text("A stop from " + s.v0 + " ft/s. Model: rigid robot, no bounce.", 10, 37, { size: 11, color: c.mute });
     K.chartNow("tip-a", t);
   }
 });
@@ -320,6 +355,7 @@ function placeLabels(o) {
   var W = 480, H = 190, pl = 46, pr = 14, pt = 24, pb = 34, x0 = o.x.min, x1 = o.x.max, y0 = o.y.min, y1 = o.y.max, taken = [];
   function X(x) { return pl + (x - x0) / (x1 - x0) * (W - pl - pr); } function Y(y) { return H - pb - (y - y0) / (y1 - y0) * (H - pt - pb); }
   var pts = []; o.series.forEach(function (sr) { for (var i = 0; i < sr.pts.length; i++) { var p = sr.pts[i], q = sr.pts[i + 1]; if (!isFinite(p[1])) continue; pts.push([X(p[0]), Y(p[1])]); if (q && isFinite(q[1])) for (var k = 1; k < 4; k++) pts.push([X(p[0] + (q[0] - p[0]) * k / 4), Y(p[1] + (q[1] - p[1]) * k / 4)]); } });
+  (o.marks || []).forEach(function (m) { var mx = X(m.x); taken.push([mx - 3, pt, mx + 3, H - pb]); });
   (o.dots || []).forEach(function (d) { var dx = X(d.x), dy = Y(d.y); taken.push([dx - 6, dy - 6, dx + 6, dy + 6]); if (d.label) taken.push([dx + 5, dy - 18, dx + 9 + d.label.length * 6.6, dy - 2]); });
   (o.hlines || []).forEach(function (h) {
     if (!h.label || h.y < y0 || h.y > y1) return;

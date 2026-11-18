@@ -36,6 +36,15 @@ M.lever = function (row, I) {
   var name = row.name || "The biggest row";
   return name + " is the largest draw (" + Math.round(row.I) + " A of " + Math.round(I) + " A): cutting what each of its motors draws from the battery (" + (Math.round(row.a * 10) / 10) + " A here) helps most. A supply current limit in the motor controller does that.";
 };
+/* A row that lumps several small loads together ("Everything else") is not one motor on one branch breaker, so it
+   gets no breaker percentage. A row is such a lump when it says so (agg) or its name reads like one. */
+M.isAggregate = function (row) { return !!(row && (row.agg || /^\s*(everything|all) else|^\s*(other|misc|the rest)/i.test(row.name || ""))); };
+/* A row filled from another calculator: its motor count and current limit (the most each motor can draw). st: that
+   tool's state; name: the row's name. Returns { name, n, a } or null when the state has no motor count. */
+M.fromTool = function (st, name) {
+  if (!st || !(st.motors > 0)) return null;
+  return { name: name, n: Math.round(st.motors), a: st.statorA > 0 ? st.statorA : 0 };
+};
 // The voltage at the robot for a total current I (A) through resistance R (ohm).
 M.volts = function (rest, R, I) { return rest - I * R; };
 
@@ -43,6 +52,8 @@ if (typeof module !== "undefined" && module.exports) { module.exports = M; retur
 
 /* ---------- The calculator ---------- */
 var K = D.calc, ID = "tool-power", esc = D.esc, MAXROWS = 10;
+// The calculators a row can be filled from: [tool id, button name, row name].
+var FILL = [["tool-drive", "Drivetrain", "Drive"], ["tool-elevator", "Elevator", "Elevator"], ["tool-arm", "Arm", "Arm"], ["tool-shooter", "Shooter", "Shooter"], ["tool-intake", "Intake", "Intake"]];
 var css = document.createElement("style");
 css.textContent =
   ".t-power-row{display:grid;grid-template-columns:minmax(0,1fr) auto;gap:6px 8px;padding:10px 0 12px;border-top:1px solid var(--line)}" +
@@ -52,14 +63,17 @@ css.textContent =
   ".t-power-nums label{display:grid;gap:2px;font-size:.78rem;color:var(--mute);font-weight:600}" +
   ".t-power-nums .inp{width:76px;text-align:right}.t-power-nums .inp.bad,.t-power-row .inp.bad{border-color:var(--bad);background:var(--bad-bg)}" +
   ".t-power-nums span{padding-bottom:9px;color:var(--mute)}.t-power-nums output{padding-bottom:9px;margin-left:auto;font-size:.85rem;font-weight:600;color:var(--text-2)}" +
-  "@media (max-width:640px){.t-power-row .inp{min-height:44px}}";
+  ".t-power-fill{display:flex;flex-wrap:wrap;gap:6px;margin-top:10px}.t-power-ph{display:none}" +
+  "@media (max-width:640px){.t-power-row .inp{min-height:44px}.t-power-ph{display:block}}";
 document.head.appendChild(css);
 
 function opts(s) { return { rest: s.rest, rbat: s.rbat, rwire: s.rwire, brown: s.brown, main: s.main }; }
 function clean(rows) {
   if (!Array.isArray(rows)) rows = [];
   return rows.filter(function (r) { return r && typeof r === "object"; }).slice(0, MAXROWS).map(function (r) {
-    return { name: String(r.name == null ? "" : r.name).slice(0, 40), n: isFinite(+r.n) && +r.n >= 0 ? Math.round(+r.n) : 1, a: isFinite(+r.a) && +r.a >= 0 ? +r.a : 0 };
+    var o = { name: String(r.name == null ? "" : r.name).slice(0, 40), n: isFinite(+r.n) && +r.n >= 0 ? Math.round(+r.n) : 1, a: isFinite(+r.a) && +r.a >= 0 ? +r.a : 0 };
+    if (r.agg) o.agg = true;
+    return o;
   });
 }
 function vTxt(v) { return K.fix(Math.max(0, v), 1) + " V"; }
@@ -70,8 +84,9 @@ K.tool({
   defaults: {
     // The lead's choice of rows (2026-11-18): a hard moment that lands just above brown-out, so the page opens on a
     // close call to look into, not on a failure.
-    rows: [{ name: "Drive", n: 4, a: 40 }, { name: "Shooter", n: 2, a: 25 }, { name: "Intake", n: 1, a: 20 }, { name: "Elevator hold", n: 2, a: 10 }, { name: "Everything else", n: 1, a: 8 }],
-    rest: 12.5, rbat: 0.015, rwire: 0.006, brown: 6.8, main: 120
+    rows: [{ name: "Drive", n: 4, a: 40 }, { name: "Shooter", n: 2, a: 25 }, { name: "Intake", n: 1, a: 20 }, { name: "Elevator hold", n: 2, a: 10 }, { name: "Everything else", n: 1, a: 8, agg: true }],
+    // 12.3 V at rest, as in every other calculator: a charged battery under a light load.
+    rest: 12.3, filled: "", rbat: 0.015, rwire: 0.006, brown: 6.8, main: 120
   },
   stage: { ratio: 2, narrow: 0.95, label: "A one-line power diagram: the battery, the main breaker and one branch per row, each wire as thick as its current, over a gauge of the voltage at the robot." },
 
@@ -96,8 +111,11 @@ K.tool({
         '<label>Amps each<input type="number" inputmode="decimal" class="inp num" min="0" max="400" step="any" value="' + q.a + '" data-input="pownum" data-i="' + i + '" data-k="a" aria-label="' + esc(q.name || "Row " + (i + 1)) + ' amps each"></label><output id="t-power-t' + i + '">= ' + K.n(q.I != null ? q.I : q.n * q.a, 0) + " A</output></div></div>";
     }).join("");
     var add = s.rows.length < MAXROWS ? '<div><button class="btn sm" data-act="powadd">' + D.ic("plus", 16) + " Add a row</button></div>" : "";
+    // Fill a row from another calculator's present numbers (its motor count and current limit).
+    add += '<div class="t-power-fill">' + FILL.map(function (f) { return '<button class="btn sm" data-act="powfill" data-v="' + f[0] + '">' + (f[0] === "tool-drive" ? "Fill from " : "") + esc(f[1]) + "</button>"; }).join("") + "</div>" +
+      (s.filled ? '<p class="cfh">' + esc(s.filled) + "</p>" : "");
     return K.group(ID, "rows", "Drawing current at the worst moment", '<p class="mute small">Battery side amps, for each motor. Count only what runs at the same time.</p><p class="cfh">A motor at a 60 A stator limit draws less than 60 A from the battery, except near its top speed. The Motors tool shows how much less.</p><div>' + rows + "</div>" + add) +
-      K.group(ID, "bat", "Battery", K.num(ID, "rest", "At rest", { unit: "V", min: 10, max: 13.5, step: 0.1, slider: true, tip: "What the battery reads with nothing running. A charged battery reads 12.6 to 13 V." }) +
+      K.group(ID, "bat", "Battery", K.num(ID, "rest", "At rest", { unit: "V", min: 10, max: 13.5, step: 0.1, slider: true, hint: "Starts at 12.3 V, as in the other calculators.", tip: "What the battery reads with nothing running. A charged battery reads 12.6 to 13 V; 12.3 V allows for one that has run a little." }) +
         K.num(ID, "rbat", "Inside the battery", { unit: "Ω", min: 0.005, max: 0.05, step: 0.001, slider: true, tip: "The battery's own resistance. A fresh battery is near 0.012 Ω, a worn one 0.025 Ω or more. A battery tester reads it." })) +
       K.group(ID, "adv", "Fine tuning", K.num(ID, "rwire", "Wiring and connections", { unit: "Ω", min: 0, max: 0.03, step: 0.001, tip: "Main wire, Anderson connector, main breaker and distribution. 0.006 Ω is a tidy robot with 6 AWG." }) +
         K.num(ID, "brown", "Brown-out", { unit: "V", min: 4, max: 10, step: 0.1, tip: "The roboRIO cuts the motor outputs near 6.8 V (roboRIO 1) or a level you set (roboRIO 2)." }) +
@@ -111,7 +129,7 @@ K.tool({
     else if (r.state === "warn") text = (r.margin < 1 ? "Close: " + vTxt(r.V) + " is only " + K.fix(r.margin, 1) + " V above brown-out." : "Fine on this battery at " + vTxt(r.V) + ", but a worn one drops to " + vTxt(r.tired.V) + " and browns out.") + " " + M.lever(worst, r.I);
     else text = "Holds " + vTxt(r.V) + " with " + K.n(r.I, 0) + " A drawn, " + K.fix(r.margin, 1) + " V above brown-out, and a worn battery still holds " + vTxt(r.tired.V) + ".";
     if (r.V <= 0) text += " No battery can give this: it is more than the battery's short-circuit current, " + K.n(s.rest / r.R, 0) + " A, so the numbers past 0 V are not real.";
-    if (r.share >= 2) text += " The main breaker carries " + K.n(r.share * 100, 0) + "% of its rating here; held for more than a few seconds it can trip.";
+    if (r.share > 1) text += " The main breaker carries " + K.n(r.share * 100, 0) + "% of its rating here: " + (r.share >= 2 ? "held for more than a few seconds it may trip (read the breaker's trip curve)." : "above its rating, so read its trip curve for how long it holds this.");
     var bs = r.state;
     return K.verdict(bs, text) + K.outs([
       { k: "Total current", v: K.n(r.I, 0), u: "A", sub: r.rows.length + (r.rows.length === 1 ? " row" : " rows") },
@@ -119,15 +137,17 @@ K.tool({
       { k: "Margin to brown-out", v: (r.margin < 0 ? "−" : "") + K.fix(Math.abs(Math.max(0, r.V) - s.brown), 1), u: "V", state: r.margin < 0 ? "bad" : r.margin < 1 ? "warn" : "", sub: (r.marginA >= 0 ? K.n(r.marginA, 0) + " A to spare" : K.n(-r.marginA, 0) + " A too many") + " of " + K.n(r.Imax, 0) + " A; tired: " + K.n(r.tired.Imax, 0) + " A", tip: "Most current before brown-out = (rest volts − brown-out volts) ÷ (battery + wiring resistance)." },
       { k: "Main breaker", v: K.n(r.share * 100, 0), u: "%", state: r.share >= 2 ? "bad" : r.share > 1 ? "warn" : "", sub: breakerNote(r.share), tip: "A rough guide, not a trip curve. A thermal breaker's timing varies with how hot it is and what it carried just before; read the maker's trip curve." },
       { k: "Lost as heat", v: K.n(r.heat, 0), u: "W", sub: "worn battery: " + K.n(r.tired.heat, 0) + " W", tip: "Current² × resistance: " + K.n(r.heatBat, 0) + " W in the battery and " + K.n(r.heatWire, 0) + " W in the wiring." }
-    ]);
+    ]) + '<div class="t-power-ph">' + K.outs([
+      { k: "Lost inside the battery", v: K.fix(Math.min(r.dropBat, s.rest), 1), u: "V", sub: "its own resistance" },
+      { k: "Lost in the wiring", v: K.fix(Math.min(r.dropWire, s.rest), 1), u: "V", sub: "wires, connector, main breaker" }]) + "</div>";
   },
 
   more: function (s, r) {
     var out = K.chart({ id: "power-v", title: "Voltage at the robot against total current", x: { label: "total current (A)", name: "Current", unit: "A", min: 0, max: r.xmax }, y: { label: "volts at the robot (V)", unit: "V", min: 0, max: Math.ceil(s.rest + 0.5) },
       series: [{ name: "This battery (" + K.fix(s.rbat, 3) + " Ω)", pts: r.line, color: 1 }, { name: "Worn battery (" + M.TIRED + " Ω)", pts: r.lineT, color: 2, dash: true }],
       hlines: [{ y: s.brown, label: "Brown-out " + K.fix(s.brown, 1) + " V", side: "left", below: true }], marks: r.I > 0 ? [{ x: Math.min(r.I, r.xmax), label: "Now " + K.n(r.I, 0) + " A" }] : [] });
-    if (r.rows.length) out += '<section class="ctab"><h2>Where the current goes</h2><div class="scroll"><table><thead><tr><th>Row</th><th class="r">Motors</th><th class="r">Amps each</th><th class="r">Total</th><th class="r">Share</th><th class="r">Of a 40 A breaker</th></tr></thead><tbody>' +
-      r.rows.map(function (q, i) { var b = q.a / M.BRANCH; return "<tr" + (i === r.worst && r.state !== "ok" ? ' class="pick"' : "") + "><td>" + esc(q.name || "Row " + (i + 1)) + '</td><td class="r num">' + q.n + '</td><td class="r num">' + K.n(q.a, 1) + ' A</td><td class="r num">' + K.n(q.I, 0) + ' A</td><td class="r num">' + K.n(q.share * 100, 0) + '%</td><td class="r num">' + K.n(b * 100, 0) + "%" + M.branchNote(b) + "</td></tr>"; }).join("") +
+    if (r.rows.length) out += '<section class="ctab"><h2>Where the current goes</h2><div class="scroll"><table><thead><tr><th>Row</th><th class="r">Motors</th><th class="r">Amps each</th><th class="r">Total</th><th class="r">Share</th><th class="r">Of its 40 A branch breaker</th></tr></thead><tbody>' +
+      r.rows.map(function (q, i) { var b = q.a / M.BRANCH; return "<tr" + (i === r.worst && r.state !== "ok" ? ' class="pick"' : "") + "><td>" + esc(q.name || "Row " + (i + 1)) + '</td><td class="r num">' + q.n + '</td><td class="r num">' + K.n(q.a, 1) + ' A</td><td class="r num">' + K.n(q.I, 0) + ' A</td><td class="r num">' + K.n(q.share * 100, 0) + '%</td><td class="r num">' + (M.isAggregate(q) ? "several loads, not one breaker" : K.n(b * 100, 0) + "%" + M.branchNote(b)) + "</td></tr>"; }).join("") +
       "</tbody></table></div><p class=\"mute small\">Each motor has its own 40 A branch breaker. As a rough guide, a breaker carries its rating for a long time and can trip within seconds at about twice it, so a short peak over 40 A is normal. These are not trip times: a thermal breaker's timing varies with how hot it already is and what it carried just before, so read the maker's trip curve.</p></section>";
     out += K.notes("<p>A battery behaves like a perfect voltage source with a small resistor inside it. Everything the robot draws flows through that resistor and through the wiring, and each ohm costs volts:</p>" +
       '<p class="eq">volts at the robot = rest volts − total current × (battery + wiring resistance)</p>' +
@@ -185,12 +205,13 @@ function drawPower(g, s, r) {
   // The margin between now and brown-out, as a bracket just above the bar with its size beside it.
   if (r.I > 0) {
     var nx = GX(r.V), my = gy - 14, ml = Math.min(nx, bx6), mr = Math.max(nx, bx6), short = r.V < s.brown;
-    var mTxt = K.fix(Math.abs(r.V - s.brown), 1) + " V " + (short ? "short" : "margin"), mw = g.textWidth(mTxt, { size: 11, weight: 700 }), mcol = short ? c.bad : r.margin < 1 ? c.warn : c.ok;
+    var mTxt = K.fix(Math.abs(r.V - s.brown), 1) + " V " + (short ? "short" : "to spare"), mw = g.textWidth(mTxt, { size: 14, weight: 700 }), mcol = short ? c.bad : r.margin < 1 ? c.warn : c.ok;
     g.line(ml, my, mr, my, { color: mcol, width: 2, cap: "butt" }); g.line(ml, my - 4, ml, my + 4, { color: mcol, width: 2, cap: "butt" }); g.line(mr, my - 4, mr, my + 4, { color: mcol, width: 2, cap: "butt" });
     // Beside the bracket on the side with room, kept clear of the other marks' ticks.
     var clear = function (a, b) { return a > 4 && b < W - 4 && marks.every(function (m) { var x = GX(m.v); return m.kind === "now" || x < a - 3 || x > b + 3; }); };
-    var mx = clear(mr + 6, mr + 6 + mw) ? mr + 6 : clear(ml - 6 - mw, ml - 6) ? ml - 6 - mw : mr + 6;
-    g.text(mTxt, mx, my, { size: 11, weight: 700, color: mcol, base: "middle" });
+    var gapL = mr - ml < 24 ? 16 : 8;   // a narrow bracket: keep the label clear of the "now" stem
+    var mx = clear(mr + gapL, mr + gapL + mw) ? mr + gapL : clear(ml - gapL - mw, ml - gapL) ? ml - gapL - mw : mr + gapL;
+    g.text(mTxt, mx, my, { size: 14, weight: 700, color: mcol, base: "middle" });
   }
 
   // The one-line diagram above the gauge.
@@ -205,7 +226,7 @@ function drawPower(g, s, r) {
   g.text("−", bx + bw * 0.72, by + 14, { size: 12, weight: 700, color: c.text, align: "center", halo: false });
   g.text("Battery", bx + bw / 2, by + bh + 14, { size: 11, weight: 700, align: "center" });
   var over = r.V < 0 ? s.rest / (r.dropBat + r.dropWire) : 1;     // past 0 V the battery cannot push more: share out what it has
-  g.text("−" + K.fix(r.dropBat * over, 1) + " V inside", Math.max(bx + bw / 2, 4 + g.textWidth("−" + K.fix(r.dropBat * over, 1) + " V inside", { size: 10, weight: 600 }) / 2), by + bh + 27, { size: 10, weight: 600, color: c.force, align: "center" });
+  if (!phone) g.text("−" + K.fix(r.dropBat * over, 1) + " V inside", Math.max(bx + bw / 2, 4 + g.textWidth("−" + K.fix(r.dropBat * over, 1) + " V inside", { size: 10, weight: 600 }) / 2), by + bh + 27, { size: 10, weight: 600, color: c.force, align: "center" });
   // Main wire, main breaker, distribution.
   var labW = phone ? 104 : 150, busX = phone ? bx + bw + 100 : bx + bw + 128, endX = W - labW - 10, brX = (bx + bw + busX) / 2;
   g.line(bx + bw, mid, busX, mid, { color: c.text2, width: thick(r.I), cap: "butt" });
@@ -214,15 +235,15 @@ function drawPower(g, s, r) {
   g.line(brX - 6, mid + 5, brX + 6, mid - 5, { color: mc, width: 2 });
   g.text("Main " + K.n(s.main, 0) + " A", brX, mid - 18, { size: 11, weight: 700, align: "center" });
   g.text(K.n(r.share * 100, 0) + "%", brX, mid + 26, { size: 11, weight: 700, color: mc, align: "center" });
-  g.text("−" + K.fix(r.dropWire * over, 1) + " V in wiring", brX, mid + (phone ? -32 : 40), { size: 10, weight: 600, color: c.force, align: "center" });
+  if (!phone) g.text("−" + K.fix(r.dropWire * over, 1) + " V in wiring", brX, mid + 40, { size: 10, weight: 600, color: c.force, align: "center" });
   // One branch per row, as thick as its current.
   var gap = (bot - top) / n, y0 = top + gap / 2;
   g.line(busX, Math.min(mid, y0) - 4, busX, Math.max(mid, y0 + gap * (n - 1)) + 4, { color: c.text, width: 5, cap: "butt" });
   rows.forEach(function (q, i) {
     var y = y0 + gap * i, hot = i === r.worst && r.state !== "ok", lc = hot ? c.force : c.s1, sx = busX + 16;
     g.line(busX, y, endX, y, { color: lc, width: thick(q.I), cap: "butt" });
-    var b = q.a / M.BRANCH, bc = b > 2 ? c.bad : b > 1 ? c.warn : c.text2;
-    g.rect(sx, y - 7, 14, 14, { fill: c.sheet, stroke: bc, width: 1.5, radius: 2 });
+    var b = q.a / M.BRANCH, bc = b > 2 ? c.bad : b > 1 ? c.warn : c.text2, agg = M.isAggregate(q);
+    if (!agg) g.rect(sx, y - 7, 14, 14, { fill: c.sheet, stroke: bc, width: 1.5, radius: 2 });
     var one = gap < 30, full = q.name || "Row " + (i + 1), amps = (one ? "" : q.n + " × " + K.n(q.a, 0) + " A = ") + K.n(q.I, 0) + " A", tag = hot && !phone ? ", largest draw" : "";
     if (one) { g.text(fit(g, full, labW - 50, 11) + "  " + amps, endX + 8, y, { size: 11, weight: 600, base: "middle", color: hot ? c.force : c.text }); return; }
     // A long name wraps onto a second line rather than being cut off; only a name too long for two lines is shortened.
@@ -256,5 +277,17 @@ D.inputs.pownum = function (el) {
   if (bad) return; q[k] = v; K.refresh(ID);
 };
 D.acts.powadd = function () { var s = S(); if (s.rows.length < MAXROWS) s.rows.push({ name: "", n: 1, a: 20 }); D.render(); var el = document.querySelector('[data-input="powname"][data-i="' + (s.rows.length - 1) + '"]'); if (el) el.focus(); };
+/* Fill a row from another calculator's present numbers: its motor count and current limit. The row with that name is
+   updated (or "Elevator hold" for the elevator), else a row is added. Nothing is changed in the other calculator. */
+D.acts.powfill = function (b) {
+  var s = S(), f = FILL.filter(function (x) { return x[0] === b.dataset.v; })[0]; if (!f) return;
+  var q = M.fromTool(K.state(f[0]), f[2]);
+  if (!q) { s.filled = "The " + f[1] + " calculator has no motors set."; D.render(); return; }
+  var i = -1; s.rows.forEach(function (r, k) { if (i < 0 && (r.name || "").toLowerCase().indexOf(f[2].toLowerCase()) === 0) i = k; });
+  if (i < 0 && s.rows.length >= MAXROWS) { s.filled = "There is no room for another row: remove one first."; D.render(); return; }
+  if (i < 0) { s.rows.push(q); i = s.rows.length - 1; } else { s.rows[i].n = q.n; s.rows[i].a = q.a; q.name = s.rows[i].name; }
+  s.filled = "Copied from " + f[1] + ": " + q.n + (q.n === 1 ? " motor" : " motors") + " at its " + q.a + " A current limit, into the row " + q.name + ". That is the most each can draw; from the battery it is less while the motor is slow.";
+  D.render();
+};
 D.acts.powdel = function (b) { var s = S(); s.rows.splice(+b.dataset.v, 1); D.render(); };
 })(typeof window !== "undefined" ? window : this);

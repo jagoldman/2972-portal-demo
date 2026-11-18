@@ -53,5 +53,10 @@ ok("breaker timing called a rough guide, with the trip curve named", /rough guid
 // Round 6: twice the rating is where the tile turns red, so the words change there too, not just above it.
 ok("200%: the same words as above it", M.breakerNote(2) === M.breakerNote(2.5), M.breakerNote(2));
 ok("199%: the softer words", M.breakerNote(1.99) !== M.breakerNote(2));
+// Round 7: a lump of small loads has no branch breaker; a row filled from another calculator takes its motors and limit.
+ok("Everything else is a lump", M.isAggregate({ name: "Everything else" }) && M.isAggregate({ name: "x", agg: true }) && !M.isAggregate({ name: "Drive" }));
+var fe = M.fromTool({ motors: 2, statorA: 60 }, "Elevator");
+ok("fill from a calculator", fe.name === "Elevator" && fe.n === 2 && fe.a === 60, JSON.stringify(fe));
+ok("fill: no motors, nothing", M.fromTool({}, "Arm") === null);
 console.log(fails ? fails + " of " + n + " checks failed" : "All " + n + " checks passed");
 process.exit(fails ? 1 : 0);
