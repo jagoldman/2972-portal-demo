@@ -157,5 +157,19 @@ ok("y range holds your time", yr8[0] < sw8.timeUp && yr8[1] > sw8.timeUp, yr8);
 var yr9 = M.sweepRange([[2, 5], [3.4, 2], [10, 1], [30, 1.5], [40, 3]], 10);
 near("hand range, bottom", yr9[0], 0.88, 1e-12); near("hand range, top", yr9[1], 2.12, 1e-12);
 
+// Round 9, item 3: the current with its sign. Its size always matches the simulation's record; it is plus while the
+// motors drive up at the start and minus while they reverse to stop at the top, and the other way round coming down.
+["cascade", "continuous"].forEach(function (rig) {
+  var q9 = M.compute(Object.assign({}, base, { stages: 2, rig: rig })), worst = 0, i;
+  for (i = 0; i < q9.A.length; i++) worst = Math.max(worst, Math.abs(Math.abs(q9.AS[i]) - q9.A[i]));
+  near(rig + ": signed size matches the record", worst, 0, 0.06);
+  ok(rig + ": plus at the start of the lift", q9.AS[1] > 0, q9.AS[1]);
+  var tr = q9.tRev1 + 0.002, k = q9.T.findIndex(function (t) { return t >= tr; });
+  ok(rig + ": minus while reversing to stop at the top", q9.AS[k] < 0, q9.AS[k]);
+  var kd = q9.T.findIndex(function (t) { return t > q9.tHold + 0.003; });
+  ok(rig + ": minus at the start of the way down", q9.AS[kd] < 0, q9.AS[kd]);
+  ok(rig + ": holding is plus (it holds the weight up)", q9.AS[q9.T.findIndex(function (t) { return t > q9.tUp + 0.1; })] > 0);
+});
+
 console.log(fails ? fails + " of " + n + " checks failed" : "all " + n + " checks passed");
 process.exit(fails ? 1 : 0);
