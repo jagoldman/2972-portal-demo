@@ -228,6 +228,7 @@ function tickFmt(v, step) { var dp = step >= 1 ? 0 : Math.min(4, Math.ceil(-Math
 /* A line chart. o: { id (unique on the page), title, x: { label, min, max }, y: { label, min, max },
      series: [{ name, pts: [[x, y], ...], color: 1 | 2 | 3 | "mute", dash: true }],
      (the y label is written above the top of the axis, the x label under its right-hand end)
+     note: one quiet line under the title (what a dashed line means, for example), so the title stays short.
      marks: [{ x, label }] (upright reference lines), hlines: [{ y, label, side: "left", below: true }] (level reference
      lines; the label sits at the right end above the line unless side or below say otherwise),
      bands: [{ x0, x1, label }] (a shaded range of x), dots: [{ x, y, label }], h (height, default 190), table: false }
@@ -270,7 +271,7 @@ K.chart = function (o) {
     for (var k = 0; k <= n; k++) { var xv = x0 + (x1 - x0) * k / n; rows.push("<tr><td>" + K.n(xv) + "</td>" + series.map(function (s) { return "<td>" + K.n(sample(s.pts, xv)) + "</td>"; }).join("") + "</tr>"); }
     table = '<details class="ctable" data-open="t-' + esc(o.id) + '"><summary>Show as a table</summary><table><thead><tr><th>' + esc(o.x && (o.x.name || o.x.label) || "x") + "</th>" + series.map(function (s) { return "<th>" + esc(s.name) + "</th>"; }).join("") + "</tr></thead><tbody>" + rows.join("") + "</tbody></table></details>";
   }
-  return '<figure class="chart"><figcaption>' + esc(o.title || "") + "</figcaption>" + legend + '<svg viewBox="0 0 ' + W + " " + H + '" data-chart="' + esc(o.id) + '" tabindex="0" role="img" aria-label="' + esc((o.title || "Chart") + ". Use the left and right arrow keys to read values.") + '">' + g + "</svg>" + table + "</figure>";
+  return '<figure class="chart"><figcaption>' + esc(o.title || "") + "</figcaption>" + (o.note ? '<p class="chartnote">' + esc(o.note) + "</p>" : "") + legend + '<svg viewBox="0 0 ' + W + " " + H + '" data-chart="' + esc(o.id) + '" tabindex="0" role="img" aria-label="' + esc((o.title || "Chart") + ". Use the left and right arrow keys to read values.") + '">' + g + "</svg>" + table + "</figure>";
 };
 var F = window.FRC;
 function sample(pts, x) { if (!pts.length) return NaN; if (x <= pts[0][0]) return pts[0][1]; for (var i = 1; i < pts.length; i++) if (pts[i][0] >= x) { var a = pts[i - 1], b = pts[i], t = (x - a[0]) / ((b[0] - a[0]) || 1); return a[1] + (b[1] - a[1]) * t; } return pts[pts.length - 1][1]; }

@@ -52,7 +52,12 @@ function toolList() {
   if (!tools.length) return '<p class="empty">No tool matches “' + esc(D.S.tools.q) + '”. Try a shorter word.</p>';
   // First, the three a student opens with a part in hand. They are also in their own groups below.
   var quick = q ? [] : ["tool-holes", "tool-units", "tool-spacing"].map(D.tool).filter(function (t) { return t && tools.indexOf(t) >= 0; });
-  return (quick.length ? '<section class="toolgroup" id="tg-quick" tabindex="-1"><h2>Quick answers at the bench</h2><p class="small mute toolnote">Shortcuts to three tools that are also in their groups below.</p><div class="toollist">' + quick.map(D.toolRow).join("") + "</div></section>" : "") + D.TOOL_GROUPS.map(function (g) {
+  // They are short links worded as the question, not a second set of cards: every tool has one card, in its group.
+  var ask = { "tool-holes": "Drill and tap sizes", "tool-units": "Convert a unit", "tool-spacing": "Belt and gear centres" };
+  return (quick.length ? '<nav class="toolquick" id="tg-quick" aria-label="Quick answers at the bench"><span class="tql">Quick answers at the bench</span>' + quick.map(function (t) { return '<a class="tqa" href="#' + t.id + '" data-act="go" data-v="' + t.id + '">' + D.ic(t.icon, 16) + "<span>" + ask[t.id] + "</span></a>"; }).join("") + "</nav>" : "") +
+    // On a phone, links that jump to each group. They come after the quick answers, which a student wants first.
+    (q ? "" : '<nav class="tooljump chips" aria-label="Jump to a group"><span class="tjl">Jump to</span>' + D.TOOL_GROUPS.filter(function (g) { return tools.some(function (t) { return t.group === g[0]; }); }).map(function (g) { return '<button class="chip" data-act="tooljump" data-v="' + g[0] + '">' + esc(g[1]) + "</button>"; }).join("") + "</nav>") +
+    D.TOOL_GROUPS.map(function (g) {
     var rows = tools.filter(function (t) { return t.group === g[0]; }); if (!rows.length) return "";
     return '<section class="toolgroup" id="tg-' + g[0] + '" tabindex="-1"><h2>' + esc(g[1]) + '</h2><div class="toollist">' + rows.map(D.toolRow).join("") + "</div></section>";
   }).join("");
@@ -60,7 +65,6 @@ function toolList() {
 D.views.tools = function () {
   if (!allowed()) return D.denied("Tools");
   return D.topbar("Tools", "", "", "") + '<div class="content toolspage"><div class="toolsearch"><input class="inp" type="search" id="toolq" data-input="toolq" value="' + esc(D.S.tools.q || "") + '" placeholder="Find a tool" aria-label="Find a tool"></div>' +
-    '<nav class="tooljump chips" aria-label="Jump to a group"><span class="tjl">Jump to</span>' + D.TOOL_GROUPS.filter(function (g) { return D.visibleTools().some(function (t) { return t.group === g[0]; }); }).map(function (g) { return '<button class="chip" data-act="tooljump" data-v="' + g[0] + '">' + esc(g[1]) + "</button>"; }).join("") + "</nav>" +
     '<div id="toollist" class="stack" style="display:grid;gap:16px">' + toolList() + "</div></div>";
 };
 // A jump link moves the page to its group; a search that hid the group is cleared first.

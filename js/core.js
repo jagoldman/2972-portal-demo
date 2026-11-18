@@ -243,7 +243,7 @@ function groupRow(id, label, count, place, body, tip) {
     '<span class="grpname">' + esc(label) + '</span><span class="tcount">' + count + '</span><span class="grpchev" aria-hidden="true">' + D.ic("chevron", 16) + "</span></button>" +
     '<div class="grpbody" id="' + bid + '"' + (open ? "" : " hidden") + ">" + body + "</div></div>";
 }
-D.toolRow = function (t) { return '<a class="toolrow" href="#' + t.id + '" data-act="go" data-v="' + t.id + '" data-tip="' + esc(t.tip) + '"><span class="ic">' + D.ic(t.icon, 18) + "</span><span><b>" + esc(t.name) + "</b><small>" + esc(t.line) + "</small></span></a>"; };
+D.toolRow = function (t) { return '<a class="toolrow" href="#' + t.id + '" data-act="go" data-v="' + t.id + '" data-tip="' + esc(t.tip) + '"><span class="ic">' + D.ic(t.icon, 18) + "</span><span><b>" + esc(t.name) + (t.group === "photo" ? '<span class="tooltag">needs a photo</span>' : "") + "</b><small>" + esc(t.line) + "</small></span></a>"; };
 function toolsGroup(place) {
   var tools = D.visibleTools(); if (!tools.length) return "";
   // The group is a short list of doors: the tools people open most, then one link to the page that has them all.
