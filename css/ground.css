@@ -167,7 +167,8 @@
     .homec .gnext .btn { flex: 1 1 100%; }
     .li.tkr { flex-wrap: nowrap; }
     .li.tkr .grow { min-width: 0; }
-    .subnav .seg { -webkit-mask-image: linear-gradient(to right, #000 calc(100% - 32px), transparent); mask-image: linear-gradient(to right, #000 calc(100% - 32px), transparent); padding-right: 28px; }
+    .subnav { min-width: 0; max-width: 100%; }
+    .subnav .seg { box-sizing: border-box; max-width: 100%; -webkit-mask-image: linear-gradient(to right, #000 calc(100% - 32px), transparent); mask-image: linear-gradient(to right, #000 calc(100% - 32px), transparent); padding-right: 28px; }
     .calcchart text { font-size: 15px; }
   }
   .doorask { cursor: default; }
