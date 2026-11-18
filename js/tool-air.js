@@ -111,7 +111,7 @@ K.tool({
   id: ID,
   defaults: { tanks: 2, ml: 574, stored: 120, work: 60, comp: "none", cfm: 0.35, match: 160,
     cyls: [{ name: "Intake deploy", bore: 1.0625, stroke: 4, rod: 0.3125, cycles: 6 }, { name: "Climber latch", bore: 0.75, stroke: 2, rod: 0.25, cycles: 2 }] },
-  stage: { ratio: 2.3, narrow: 1.0, label: "The air system as a schematic: tanks filled to their pressure, a gauge, the regulator, and each cylinder to scale, stroking as the match plays." },
+  stage: { ratio: 2.3, narrow: 0.78, tall: true, label: "The air system as a schematic: tanks filled to their pressure, a gauge, the regulator, and each cylinder to scale, stroking as the match plays." },
   duration: function () { return DUR; }, autoplay: true, playLabel: "Play the match",
 
   compute: function (s) {
@@ -149,11 +149,11 @@ K.tool({
     var share = r.stored > 0 ? r.used / r.stored : Infinity;
     var more = r.cycles ? "This assumes the cycles are spread evenly through the match, no leaks and ideal air use (no air lost in tubing, fittings or cooling). Keep a margin." : "";
     return K.verdict(st, text, more) + K.outs([
-      { k: "Air used in a match", v: K.n(L(r.used), 2), u: "L", sub: "free air: its volume let out to room pressure", tip: "Free air: the volume it would fill at atmospheric pressure. Each stroke fills its cylinder at working pressure, then lets it out." },
+      { k: "Air used in a match", v: K.n(L(r.used), 2), u: "L", sub: "free air, measured at room pressure", tip: "Free air: the volume it would fill at atmospheric pressure. Each stroke fills its cylinder at working pressure, then lets it out." },
       { k: "Stored above working", v: K.n(L(r.stored), 2), u: "L", sub: r.cycles && isFinite(share) ? "the match uses " + K.n(share * 100, 0) + "% of it" : "between " + o.stored + " and " + o.work + " psi", state: !r.firstShort && share > 0.8 ? "warn" : "", tip: "Free air the tanks give up falling from " + o.stored + " to " + o.work + " psi. Only the air above working pressure is usable at full force." },
       { k: "Pressure at the end", v: K.n(r.end, 0), u: "psi", state: r.end < o.work - 1e-6 ? "bad" : "", sub: "in the tanks" },
       { k: "Cycles at full force", v: r.firstShort ? r.fullCycles + " of " + r.cycles : r.cycles ? "All " + r.cycles : "None", state: r.firstShort ? "bad" : "",
-        sub: r.firstShort ? "then below " + o.work + " psi" : r.cycles ? "all " + r.cycles + " cycles get the full " + o.work + " psi" : "no cycles planned", tip: "Assumes evenly spaced cycles, no leaks and no line losses. Full force is theoretical: pressure times area, before friction and flow losses." },
+        sub: r.firstShort ? "then below " + o.work + " psi" : r.cycles ? "each gets the full " + o.work + " psi" : "no cycles planned", tip: "Assumes evenly spaced cycles, no leaks and no line losses. Full force is theoretical: pressure times area, before friction and flow losses." },
       r.firstShort ? { k: "Tanks it would take", v: r.firstShort ? (r.need === Infinity ? "none will do" : r.need ? String(r.need) : "over " + M.MAXT) : K.n(share * 100, 0) + "%", state: r.firstShort ? "bad" : share > 0.8 ? "warn" : "", sub: r.firstShort ? "of " + K.n(o.ml, 0) + " mL" + (o.cfm ? ", with the compressor" : "") : "of what is stored above " + o.work + " psi" } : null]);
   },
 
@@ -168,9 +168,9 @@ K.tool({
       marks: r.firstShort ? [{ x: r.firstShort.t, label: "Below working" }] : [] });
     var strokes = !anyShort ? "" : K.chart({ id: "air-s", title: "Pressure each stroke gets", x: { label: "match time, s", name: "At", unit: "s", min: 0, max: o.match }, y: { label: "psi", unit: "psi", min: 0, max: Math.max(o.work * 1.2, 5) },
       series: r.cyls.map(function (cy, j) { return { name: cy.name, color: j < 3 ? j + 1 : "mute", dash: j % 2 === 1, pts: r.ev.filter(function (e) { return e.i === j; }).map(function (e) { return [e.t, e.p]; }) }; }), hlines: [workLine(o.work, "Working " + o.work + " psi", r.cyls.map(function (cy, j) { return r.ev.filter(function (e) { return e.i === j; }).map(function (e) { return [e.t, e.p]; }); }), Math.max(o.work * 1.2, 5), o.match, [])] });
-    var tab = '<section class="ctab"><h2>Cylinders at ' + o.work + ' psi</h2><div class="scroll"><table><thead><tr><th>Cylinder</th><th class="r">Bore × stroke</th><th class="r">Rod</th><th class="r">Cycles</th><th class="r">Air per cycle</th><th class="r">Push, theoretical</th><th class="r">Pull, theoretical</th><th class="r"><span class="abbr" tabindex="0" data-tip="Before the tanks fall to working pressure, starting full, if no other cylinder drew on them.">Cycles if only this cylinder used the tanks</span></th></tr></thead><tbody>' +
+    var tab = '<section class="ctab"><h2>Cylinders at ' + o.work + ' psi</h2><div class="scroll"><table><thead><tr><th>Cylinder</th><th class="r">Bore × stroke</th><th class="r">Rod</th><th class="r">Cycles</th><th class="r">Air per cycle</th><th class="r">Push, theoretical</th><th class="r">Pull, theoretical</th><th class="r"><span class="abbr" tabindex="0" data-tip="Before the tanks fall to working pressure, starting full, if no other cylinder drew on them.">Cycles alone</span></th></tr></thead><tbody>' +
       r.per.map(function (p) { return "<tr><td>" + esc(p.c.name) + '</td><td class="r num">' + M.inFrac(p.c.bore).replace(" in", "") + " × " + M.inFrac(p.c.stroke) + '</td><td class="r num">' + K.fix(p.c.rod, 4).replace(/0+$/, "").replace(/\.$/, "") + ' in</td><td class="r num">' + p.c.cycles + '</td><td class="r num">' + K.n(L(p.cycleAir), 3) + ' L</td><td class="r num">' + K.n(p.push, 1) + ' lbf</td><td class="r num">' + K.n(p.pull, 1) + ' lbf</td><td class="r num">' + (o.stored > o.work ? p.alone : 0) + "</td></tr>"; }).join("") +
-      '</tbody></table></div><p class="t-air-hint">Last column: cycles before the tanks fall to working pressure, starting full, if only that cylinder drew on them.</p></section>';
+      '</tbody></table></div><p class="t-air-hint">Cycles alone: how many cycles full tanks give one cylinder before they fall to working pressure, if no other cylinder draws on them.</p></section>';
     // When every stroke gets full pressure there is nothing to chart per stroke: the tank chart takes the whole width
     // and says so under it.
     var charts = anyShort ? '<div class="chartrow">' + chart + strokes + "</div>" :
@@ -262,20 +262,16 @@ function drawAir(g, s, r, t) {
   g.text(clock(T) + " into the " + clock(o.match) + " match", 12, 20, { weight: 700, size: 13 });
   g.text("Tanks " + K.n(P, 0) + " psi" + (low ? ", below working pressure" : ""), 12, 37, { color: low ? c.bad : c.text2, weight: 600, size: 12 });
   playNote(o.match);
-  // Along the bottom: how the valves work. (What the playback time means sits on its own line beside Play.)
-  // Along the bottom: a key for the two lines from each valve.
-  var kx = 12, ky = H - 9, k0 = narrow ? "Double-acting:" : "Double-acting cylinders, each with a valve:";
-  g.text(k0, kx, ky, { color: c.mute, size: 11 }); kx += g.textWidth(k0, { size: 11 }) + 10;
-  g.line(kx, ky - 4, kx + 22, ky - 4, { color: c.s1, width: 3 }); kx += 27; g.text("fed", kx, ky, { color: c.text2, size: 11, weight: 600 }); kx += g.textWidth("fed", { size: 11, weight: 600 }) + 14;
-  g.line(kx, ky - 4, kx + 22, ky - 4, { color: c.mute, width: 1.5, dash: [4, 3] }); kx += 27; g.text(narrow ? "venting" : "venting to the room", kx, ky, { color: c.text2, size: 11, weight: 600 }); kx += g.textWidth(narrow ? "venting" : "venting to the room", { size: 11, weight: 600 }) + 14;
-  ctx.globalAlpha = 0.45; g.rect(kx, ky - 10, 18, 9, { fill: c.s1, stroke: null }); ctx.globalAlpha = 1; g.rect(kx, ky - 10, 18, 9, { stroke: c.partLine, width: 1 }); kx += 23;
-  g.text(narrow ? "pressure" : "side under pressure", kx, ky, { color: c.text2, size: 11, weight: 600 });
+  // Along the bottom: one key for the gauge's bands and the lines from each valve, the same words on every screen,
+  // flowing onto as many lines as the width needs.
+  var keyLines = keyLayout(g, W - 24), keyH = keyLines.length * 16;
+  drawKey(g, keyLines, 12, H - 9 - (keyLines.length - 1) * 16);
   /* The supply: tanks, gauge, regulator. A narrow column at the left on a laptop; a short band across the top on a
      phone. The cylinders get the rest, so they are the larger part of the drawing. */
   var leftW = narrow ? W : F.clamp(W * 0.35, 250, 340);
   var tw = narrow ? 24 : 30, gapT = narrow ? 7 : 9, maxDraw = narrow ? 3 : Math.max(1, Math.floor((leftW - 2 - 64 - 10 - 64 - 20 - 20 + gapT) / (tw + gapT)));   // room left for a gauge of radius 32 and the regulator
   var nDraw = Math.min(o.tanks, maxDraw);
-  var tx0 = narrow ? 16 : 20, ty0 = narrow ? 88 : 92, th = narrow ? 64 : Math.max(60, Math.min(170, H - ty0 - 120));
+  var tx0 = narrow ? 16 : 20, ty0 = narrow ? 88 : 92, th = narrow ? 78 : Math.max(60, Math.min(170, H - ty0 - 120));
   var tanksRight = tx0 + nDraw * (tw + gapT) - gapT, feedY = ty0 + th + (narrow ? 14 : 24);
   // What the tanks are. They hold air, so they are tinted, not filled: the tint is darker the higher the pressure,
   // and the gauge gives the number.
@@ -294,18 +290,7 @@ function drawAir(g, s, r, t) {
   var gr = narrow ? 36 : F.clamp(Math.min((leftW - (tanksRight - tx0) - 66) / 2, (feedY - ty0 - 34) / 2, (leftW - 2 - 64 - 10 - tanksRight - 20) / 2), 32, 44), gx = tanksRight + 20 + gr, gy = narrow ? ty0 + th / 2 - 2 : ty0 + gr + 10;
   if (gy + gr + 6 > feedY) gy = feedY - gr - 6;
   g.line(gx, gy + gr, gx, feedY, { color: c.mute, width: 2 });
-  // The band key: under the gauge, right of its stem, on a laptop; at the top right of the supply band on a phone.
-  // On a laptop the band key is a line of its own along the bottom, above the line key.
-  var keyBox = narrow ? { x: W - 160, y: ty0 + 4, w: 148, align: "right" } : null;
-  gauge(g, gx, gy, gr, P, o, full, keyBox);
-  if (!narrow) {
-    var bx0 = 12, by0 = H - 26;
-    g.text("Gauge:", bx0, by0, { color: c.mute, size: 11 }); bx0 += g.textWidth("Gauge:", { size: 11 }) + 10;
-    [["above working: usable", c.ok], ["below working: no full force", c.bad]].forEach(function (it) {
-      g.line(bx0, by0 - 4, bx0 + 18, by0 - 4, { color: it[1], width: 4, cap: "butt" }); bx0 += 23;
-      g.text(it[0], bx0, by0, { color: it[1], size: 11, weight: 600 }); bx0 += g.textWidth(it[0], { size: 11, weight: 600 }) + 16;
-    });
-  }
+  gauge(g, gx, gy, gr, P, o, full, null);
   // Regulator on the feed line.
   var regW = 64, regX = narrow ? W - regW - 14 : Math.max(leftW - regW - 2, gx + gr + 10), regY = feedY - 14;
   g.line(tx0 + tw / 2, feedY, regX, feedY, { color: c.mute, width: 2 });
@@ -322,7 +307,7 @@ function drawAir(g, s, r, t) {
   }
   // The cylinders, to scale against each other: right of the supply on a laptop, under it on a phone.
   var cyls = r.cyls, n = cyls.length, manX = narrow ? 8 : leftW + 22;
-  var ax0 = narrow ? 58 : leftW + 78, ax1 = W - 14, ay0 = narrow ? feedY + 32 : 50, ay1 = H - (narrow ? 38 : 42);
+  var ax0 = narrow ? 58 : leftW + 78, ax1 = W - 14, ay0 = narrow ? feedY + 32 : 50, ay1 = H - keyH - (narrow ? 22 : 26);
   if (narrow) { g.line(regX + regW / 2, regY + 28, regX + regW / 2, feedY + 22, { color: c.mute, width: 2 }); g.line(regX + regW / 2, feedY + 22, manX, feedY + 22, { color: c.mute, width: 2 }); }
   else g.line(regX + regW, feedY, manX, feedY, { color: c.mute, width: 2 });
   if (!n) { g.text("No cylinders. Add one in Cylinders.", ax0, (ay0 + ay1) / 2, { color: c.mute }); return; }
@@ -337,13 +322,16 @@ function drawAir(g, s, r, t) {
     var short = st.p < o.work - 1e-6, col = short && st.started ? c.bad : c.text;
     if (j > 0) g.line(ax0 - 4, ry, ax1, ry, { color: c.line, width: 1 });
     /* Supply to the cylinder's valve, then a line from the valve to each end: the cap end (extends it) and the rod end
-       (retracts it). While it strokes, the end being fed is lit and the other end, venting, is dashed. */
-    var vw = 24, vh = 16, vx = manX + (narrow ? 10 : 12), feedOn = st.moving ? (short ? c.bad : c.s1) : c.mute;
+       (retracts it). The valve always feeds one end and vents the other through its exhaust, an open mark under it,
+       to the room: the fed route is drawn blue (bolder while the cylinder moves), the venting route dashed. Before its
+       first stroke a cylinder sits retracted, so its rod end is the fed one. */
+    var vw = 24, vh = 16, vx = manX + (narrow ? 10 : 12), fedCol = short && st.started ? c.bad : c.s1, fw = st.moving ? 3 : 2;
     g.line(manX, Math.min(feedTop, mid), manX, Math.max(feedTop, mid), { color: c.mute, width: 2 });
     g.line(manX, mid, vx, mid, { color: c.mute, width: 2 });
-    var aOn = st.moving && st.dir === "out", bOn = st.moving && st.dir !== "out", yB = mid + bh / 2 + 9, xB = bx + body - cap * 0.3;
-    g.line(vx + vw, mid, bx, mid, { color: aOn ? feedOn : c.mute, width: aOn ? 3 : 1.5, dash: bOn ? [4, 3] : null });
-    g.path([[vx + vw / 2, mid + vh / 2], [vx + vw / 2, yB], [xB, yB], [xB, mid + bh / 2]], { color: bOn ? feedOn : c.mute, width: bOn ? 3 : 1.5, dash: aOn ? [4, 3] : null });
+    var capFed = st.started && st.dir === "out", yB = mid + bh / 2 + 9, xB = bx + body - cap * 0.3;
+    g.line(vx + vw, mid, bx, mid, capFed ? { color: fedCol, width: fw } : { color: c.mute, width: 1.5, dash: [4, 3] });
+    g.path([[vx + vw / 2, mid + vh / 2], [vx + vw / 2, yB], [xB, yB], [xB, mid + bh / 2]], capFed ? { color: c.mute, width: 1.5, dash: [4, 3] } : { color: fedCol, width: fw });
+    exhaust(g, vx + 5, mid + vh / 2);
     g.rect(vx, mid - vh / 2, vw, vh, { fill: c.part2, stroke: c.partLine, width: 1, radius: 2 });
     g.line(vx + 5, mid, vx + vw - 5, mid, { color: c.partLine, width: 1 });
     g.text("valve", vx + vw / 2, mid - vh / 2 - 4, { align: "center", size: 10, color: c.mute });
@@ -351,10 +339,10 @@ function drawAir(g, s, r, t) {
     var ly = ry + (narrow ? 15 : 20), nw = g.textWidth(cy.name, { weight: 700, size: narrow ? 12 : 13 });
     g.text(cy.name, bx, ly, { weight: 700, size: narrow ? 12 : 13, color: col });
     g.text(M.inFrac(cy.bore) + " bore, cycle " + Math.min(st.done, cy.cycles) + " of " + cy.cycles + (short && st.started ? ", short of air" : ""), bx + nw + 8, ly, { size: 11, color: short && st.started ? c.bad : c.mute });
-    // Where the rod reaches at full stroke, dashed, with the stroke dimensioned under it.
+    // Where the rod reaches at full stroke: a faint shadow of the rod (not a dashed line, which is the venting route),
+    // with the stroke dimensioned under it.
     var rh = Math.max(2, cy.rod * k), endK = 0.25 * k, rod0 = bx + body + endK, rodFull = rod0 + cy.stroke * k;
-    g.rect(bx + body, mid - rh / 2, rodFull - bx - body, rh, { stroke: c.ghost, width: 1, dash: [4, 3] });
-    g.rect(rodFull, mid - Math.max(rh, 6) / 2 - 1, 4, Math.max(rh, 6) + 2, { stroke: c.ghost, width: 1, dash: [3, 2] });
+    ctx.globalAlpha = 0.18; g.rect(bx + body, mid - rh / 2, rodFull - bx - body, rh, { fill: c.text2, stroke: null }); g.rect(rodFull, mid - Math.max(rh, 6) / 2 - 1, 4, Math.max(rh, 6) + 2, { fill: c.text2, stroke: null }); ctx.globalAlpha = 1;
     g.dim(rod0 + 2, mid + bh / 2 + 4, rodFull + 2, mid + bh / 2 + 4, fmtIn(cy.stroke) + " in stroke", -1, { side: "below", size: 11 });
     // Body, with the pressurised side tinted.
     var px = bx + cap + st.ext * cy.stroke * k, pw = Math.max(3, 0.3 * k);
@@ -380,6 +368,49 @@ function drawAir(g, s, r, t) {
       var lx0 = Math.max(bx + body + 12, Math.min((rod0 + rodFull) / 2 - lw / 2, W - 10 - lw));
       g.text(lab, lx0, mid - Math.max(rh, 6) / 2 - 8, { color: fcol, weight: 700, size: 11 });
     }
+  });
+}
+/* The key: items { head } (a grey lead-in that stays with the item after it) or { sw: "band" | "line" | "dash" | "box",
+   col, text, tc }. Laid out into lines no wider than maxW; returns [[{ item, w }], ...]. */
+// A valve's exhaust: a short stub down from the valve and an open triangle, the symbol for a port open to the room.
+function exhaust(g, x, y) {
+  var c = g.c;
+  g.line(x, y, x, y + 5, { color: c.mute, width: 1.25 });
+  g.poly([[x - 4, y + 5], [x + 4, y + 5], [x, y + 11]], { stroke: c.mute, width: 1.25, close: true });
+}
+function keyItems(c) {
+  return [{ head: "Gauge:" }, { sw: "band", col: c.ok, text: "above working: usable", tc: c.ok }, { sw: "band", col: c.bad, text: "below working: no full force", tc: c.bad },
+    { head: "Double-acting cylinders, each with a valve:" }, { sw: "line", col: c.s1, text: "fed" }, { sw: "dash", col: c.mute, text: "venting to the room" }, { sw: "exh", text: "exhaust" }, { sw: "box", col: c.s1, text: "side under pressure" }];
+}
+function keyW(g, it) { return it.head ? g.textWidth(it.head, { size: 11 }) + 8 : 23 + g.textWidth(it.text, { size: 11, weight: 600 }) + 14; }
+function keyLayout(g, maxW) {
+  // Each lead-in starts a new line, so the gauge's key and the cylinders' key never share one; within a group the
+  // items flow on as the width allows.
+  var items = keyItems(g.c), lines = [], used = 0;
+  for (var i = 0; i < items.length; i++) {
+    var it = items[i], w = keyW(g, it), need = it.head && items[i + 1] ? w + keyW(g, items[i + 1]) : w;
+    if (!lines.length || it.head || used + need > maxW) { lines.push([]); used = 0; }
+    lines[lines.length - 1].push({ item: it, w: w }); used += w;
+  }
+  return lines;
+}
+function drawKey(g, lines, x0, y0) {
+  var c = g.c, ctx = g.ctx;
+  lines.forEach(function (line, n) {
+    var x = x0, y = y0 + n * 16;
+    line.forEach(function (e) {
+      var it = e.item;
+      if (it.head) g.text(it.head, x, y, { color: c.mute, size: 11 });
+      else {
+        if (it.sw === "band") g.line(x, y - 4, x + 18, y - 4, { color: it.col, width: 4, cap: "butt" });
+        else if (it.sw === "line") g.line(x, y - 4, x + 18, y - 4, { color: it.col, width: 3 });
+        else if (it.sw === "dash") g.line(x, y - 4, x + 18, y - 4, { color: it.col, width: 1.5, dash: [4, 3] });
+        else if (it.sw === "exh") exhaust(g, x + 9, y - 13);
+        else { ctx.globalAlpha = 0.45; g.rect(x, y - 10, 18, 9, { fill: it.col, stroke: null }); ctx.globalAlpha = 1; g.rect(x, y - 10, 18, 9, { stroke: c.partLine, width: 1 }); }
+        g.text(it.text, x + 23, y, { color: it.tc || c.text2, size: 11, weight: 600 });
+      }
+      x += e.w;
+    });
   });
 }
 function fmtIn(x) { return String(Math.round(x * 10000) / 10000); }
@@ -411,7 +442,7 @@ function gauge(g, x, y, R, P, o, full, key) {
   (close ? [[0, "0"], [o.stored, String(o.stored)]] : [[0, "0"], [o.work, String(o.work)], [o.stored, String(o.stored)]]).forEach(function (m) {
     var a = ang(m[0]), cs = Math.cos(a), sn = Math.sin(a);
     g.line(x + cs * (R - 7), y + sn * (R - 7), x + cs * (R + 3), y + sn * (R + 3), { color: c.text, width: 2 });
-    g.text(m[1], x + cs * (R + 7), y + sn * (R + 7) + (sn > 0.5 ? 4 : sn < -0.5 ? -1 : 0), { size: 11, color: c.text, weight: 700, align: cs < -0.25 ? "right" : cs > 0.25 ? "left" : "center", base: sn < -0.5 ? "alphabetic" : sn > 0.5 ? "top" : "middle" });
+    g.text(m[1], x + cs * (R + 11), y + sn * (R + 11) + (sn > 0.5 ? 4 : sn < -0.5 ? -1 : 0), { size: 11, color: c.text, weight: 700, align: cs < -0.25 ? "right" : cs > 0.25 ? "left" : "center", base: sn < -0.5 ? "alphabetic" : sn > 0.5 ? "top" : "middle" });
   });
   // A key for the two bands, in their own colours, where the caller has room for it.
   if (key) {

@@ -73,8 +73,8 @@ function mechOf(s, r) {
     o.sent = "One motor turn moves the " + (s.mk === "wheel" ? "wheel's surface" : "carriage") + " " + sig(m.perRot) + " m (" + sig(m.perRot / IN_M) + " in). At the " + K.n(s.rpm, 0) + " rpm you entered that is " + sig(m.max) + " m/s (" + sig(m.maxFt) + " ft/s).";
     o.items = [
       { k: "Per motor rotation", v: sig(m.perRot), u: "m", sub: sig(m.perRot / IN_M) + " in", kc: "k" + P + "MetersPerMotorRotation" },
-      { k: "Per " + what(s.mk) + " turn", v: sig(m.perOut), u: "m", sub: sig(m.perOut / IN_M) + " in" + (m.rig > 1 ? ", with " + m.rig + "× rigging" : "") },
-      { k: "Speed per motor rpm", v: sig(m.perRpm), u: "m/s per rpm", sub: "1 rpm of the motor = " + M.plain3(m.perRpm) + " m/s", kc: "k" + P + "MetersPerSecondPerMotorRpm" },
+      { k: (s.mk === "spool" ? "Carriage travel" : "Travel") + " per " + what(s.mk) + " turn", v: sig(m.perOut), u: "m", sub: sig(m.perOut / IN_M) + " in" + (s.mk === "spool" ? ", " + m.rig + "× rigging" : "") },
+      { k: "Speed per motor rpm", v: sig(m.perRpm), u: "m/s per rpm", sub: "1,000 rpm = " + M.plain3(m.perRpm * 1000) + " m/s", kc: "k" + P + "MetersPerSecondPerMotorRpm" },
       { k: "Speed at the motor speed you entered", v: sig(m.max), u: "m/s", sub: sig(m.maxFt) + " ft/s at " + K.n(s.rpm, 0) + " rpm", kc: "k" + P + "SpeedAtEnteredRpmMetersPerSecond" }];
     o.work = [[cap(what(s.mk)) + " turn", "π × " + num(s.dia) + " in × 0.0254 m per in" + (s.mk === "spool" ? " × " + m.rig + " (rigging)" : ""), sig(m.perOut) + " m"],
       ["Per motor rotation", sig(m.perOut) + " m ÷ " + num(s.ratio), sig(m.perRot) + " m"],
@@ -93,7 +93,7 @@ function mechOf(s, r) {
     o.sent = "One motor turn swings the arm " + sig(m.perRotDeg) + "°. At the " + K.n(s.rpm, 0) + " rpm you entered it turns " + sig(m.maxDeg) + "° per second (" + sig(m.outRpm) + " rpm).";
     o.items = [
       { k: "Per motor rotation", v: sig(m.perRotDeg), u: "°", sub: sig(m.perRot) + " rad", kc: "kArmDegreesPerMotorRotation" },
-      { k: "Speed per motor rpm", v: sig(m.perRpm), u: "rad/s per rpm", sub: "1 rpm of the motor = " + M.plain3(m.perRpm * 180 / Math.PI) + "°/s", kc: "kArmRadiansPerSecondPerMotorRpm" },
+      { k: "Speed per motor rpm", v: sig(m.perRpm), u: "rad/s per rpm", sub: "1,000 rpm = " + M.plain3(m.perRpm * 1000 * 180 / Math.PI) + "°/s", kc: "kArmRadiansPerSecondPerMotorRpm" },
       { k: "Speed at the motor speed you entered", v: sig(m.maxDeg), u: "°/s", sub: sig(m.max) + " rad/s at " + K.n(s.rpm, 0) + " rpm", kc: "kArmSpeedAtEnteredRpmRadiansPerSecond" },
       { k: "Arm turns", v: sig(m.outRpm), u: "rpm", sub: "at that motor speed" }];
     o.work = [["Per motor rotation", "360° ÷ " + num(s.ratio), sig(m.perRotDeg) + "°"],
@@ -148,7 +148,7 @@ K.tool({
     var ins = K.pick(ID, "kind", "Kind", M.KINDS.map(function (q) { return [q.id, q.name]; })) +
       K.num(ID, "x", "Number", { step: "any" }) +
       K.pick(ID, "unit", "From", k.units.map(function (u) { return [u[0], u[1] + " (" + u[3].toLowerCase() + ")"]; })) +
-      K.pick(ID, "to", "To", [["all", others.length === 1 ? "the other unit" : "the common " + (["", "one", "two", "three", "four"][others.length] || others.length)]].concat(others.map(function (u) { return [u[0], u[1] + " (" + u[3].toLowerCase() + ")"]; })));
+      K.pick(ID, "to", "To", [["all", others.map(function (u) { return u[1]; }).join(", ").replace(/, ([^,]*)$/, others.length > 2 ? ", and $1" : " and $1")]].concat(others.map(function (u) { return [u[0], u[1] + " (" + u[3].toLowerCase() + ")"]; })));
     function bigRow(u) { return '<div><dd><b class="num" id="un-v-' + u[0] + '">' + esc(h["un-v-" + u[0]]) + "</b> " + esc(u[1]) + "</dd><dt>" + esc(u[3]) + "</dt></div>"; }
     var ans = '<div class="t-units-conv" aria-live="polite"><h3 id="un-h">' + esc(h["un-h"]) + "</h3>" +
       (one ? '<p class="t-units-one"><b class="num" id="un-v-' + one[0] + '">' + esc(h["un-v-" + one[0]]) + "</b> " + esc(one[1]) + '<span>' + esc(one[3]) + "</span></p>" +
@@ -170,7 +170,7 @@ K.tool({
     var o = mechOf(s, r);
     // Each card that is a constant in the Java names it, on a line of its own under the card's figures.
     var cards = K.outs(o.items), i = 0;
-    cards = cards.replace(/<\/dd><\/div>/g, function (m0) { var it = o.items[i++]; return (it && it.kc ? '<code class="t-units-kc">' + esc(it.kc).replace(/([a-z])([A-Z])/g, "$1<wbr>$2") + "</code>" : "") + m0; });
+    cards = cards.replace(/<\/dd><\/div>/g, function (m0) { var it = o.items[i++]; return (it && it.kc ? '<code class="t-units-kc">' + esc(it.kc) + "</code>" : "") + m0; });
     return '<h2 class="t-units-h">Code constants for the ' + what(s.mk) + "</h2>" + K.verdict("info", o.sent) + cards;
   },
 
@@ -212,9 +212,9 @@ D.after.push(function () { if (D.S.route === ID) showPart(); });
   st.textContent = ".t-units-h { font-size: .95rem; margin: 0; }" +
     ".t-units-ticks { grid-column: 1 / -1; display: flex; justify-content: space-between; margin: -6px 0 2px; padding: 0 4px; font-size: .78rem; font-weight: 600; color: var(--text-2); }" +
     ".bench[data-calc=\"tool-units\"] .codeout { white-space: pre-wrap; overflow-wrap: normal; word-break: normal; }" +
-    ".t-units-kc { display: block; margin-top: 4px; font-size: .74rem; color: var(--text-2); overflow-wrap: break-word; }" +
+    ".t-units-kc { display: block; margin-top: 4px; font-size: .72rem; color: var(--text-2); white-space: nowrap; overflow-x: auto; scrollbar-width: thin; }" +
     ".t-units-conv { display: grid; gap: 6px; padding-top: 4px; align-content: start; } .t-units-conv h3 { font-size: .9rem; margin: 0; }" +
-    ".t-units-cgrid { display: grid; gap: 8px 32px; } .t-units-ins { display: grid; gap: 10px; align-content: start; } @media (min-width: 901px) { .t-units-show-conv .t-units-cgrid { grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); } }" +
+    ".t-units-cgrid { display: grid; gap: 8px 32px; } .t-units-ins { display: grid; gap: 10px; align-content: start; } .t-units-ins .cf { grid-template-columns: 76px minmax(0, 1fr); } .t-units-ins .cf.stack { grid-template-columns: 76px minmax(0, 1fr); } .t-units-ins .cfv, .t-units-ins .cfv.wide { display: flex; width: 100%; } .t-units-ins .cfv .inp, .t-units-ins .cfv.wide .inp { width: 100%; text-align: left; } @media (min-width: 901px) { .t-units-show-conv .t-units-cgrid { grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); } }" +
     ".t-units-one { margin: 2px 0 6px; display: flex; flex-wrap: wrap; align-items: baseline; gap: 4px 10px; font-size: 1.1rem; color: var(--text-2); } .t-units-one b { font-size: 2.3rem; color: var(--text); line-height: 1.1; } .t-units-one span { flex-basis: 100%; font-size: .85rem; color: var(--mute); }" +
     ".t-units-rest { border-collapse: collapse; width: 100%; font-size: .92rem; } .t-units-rest caption { text-align: left; font-size: .8rem; font-weight: 600; color: var(--mute); padding-bottom: 2px; } .t-units-rest td { padding: 5px 0; border-top: 1px solid var(--line); color: var(--text-2); } .t-units-rest td + td { text-align: right; color: var(--mute); font-size: .82rem; } .t-units-rest b { color: var(--text); }" +
     ".t-units-conv dl { display: grid; gap: 0; margin: 0; } .t-units-conv dl > div { display: flex; justify-content: space-between; align-items: baseline; gap: 12px; padding: 6px 0; border-bottom: 1px solid var(--line); }" +
@@ -223,7 +223,8 @@ D.after.push(function () { if (D.S.route === ID) showPart(); });
     // The switch sits above the page's two views, in one place for both (moved there by showPart).
     ".t-units-jump { width: 100%; max-width: var(--maxw); margin: 0 auto -8px; padding: 14px max(var(--gut), env(safe-area-inset-left, 0px)) 0; } .t-units-jump .seg { display: flex; max-width: 460px; } .t-units-jump .seg button { flex: 1; min-height: 40px; }" +
     "@media (min-width: 901px) { .bench[data-calc=\"tool-units\"] .outs { grid-template-columns: repeat(2, minmax(0, 1fr)); } }" +
-    ".bench[data-calc=\"tool-units\"] .outs dd > span { white-space: nowrap; } .t-units-a { scroll-margin-top: calc(var(--bar) + 8px); }" +
+    ".bench[data-calc=\"tool-units\"] .outs > .out, .bench[data-calc=\"tool-units\"] .outs dd { min-width: 0; } .t-units-kc { max-width: 100%; }" +
+    "@media (min-width: 641px) { .bench[data-calc=\"tool-units\"] .outs dd > span { white-space: nowrap; } } @media (max-width: 640px) { .bench[data-calc=\"tool-units\"] .outs { grid-template-columns: minmax(0, 1fr); } } .t-units-a { scroll-margin-top: calc(var(--bar) + 8px); }" +
     ".t-units-v p { font-size: .9rem; color: var(--text-2); margin: 0; max-width: 72ch; } .t-units-v p b { color: var(--text); overflow-wrap: anywhere; } .t-units-v .t-units-m { font-size: .8rem; color: var(--mute); }" +
     // One part at a time on every screen. Convert: its inputs and answers alone, in the main column. Code constants:
     // the drawing, answers, working and code, with its inputs in the side column (under them on a phone).
@@ -318,10 +319,13 @@ function drawUnits(g, s, r) {
     var ya = ry - 16, yc = ry - 72;
     g.arrow(cxs, ya, V.X(C), ya, { color: c.s1, width: 2.5, head: 8 });
 
-    labelAt(g, (two ? "rope: " : narrow ? "rope and carriage (1× rigging): " : "rope, and the carriage at 1× rigging: ") + sig(C) + " in per " + word + " turn", cxs, ya - 8, c.text);
+    // Without rigging: the orange piece's own label above the arrow at its start, and the turn's travel under the rope,
+    // right of the spool, so no leader crosses the rope. With rigging: the rope's travel above its arrow.
+    if (two) labelAt(g, "rope, 1 " + word + " turn: " + K.fix(C, 2) + " in", cxs, ya - 8, c.text);
+    else g.text("1 " + word + " turn: " + K.fix(C, 2) + " in, rope and carriage", Math.min(cxs + Rs + 12, g.w - 8 - g.textWidth("1 " + word + " turn: " + K.fix(C, 2) + " in, rope and carriage", { size: 11, weight: 600 })), ry + 18, { size: 11, weight: 600, color: c.text });
     if (two) {
       g.arrow(cxs, yc, V.X(Cr), yc, { color: c.s3, width: 2.5, head: 8 });
-      labelAt(g, "carriage: " + sig(Cr) + " in, " + rig + "× the rope", cxs, yc - 8, c.text);
+      labelAt(g, "carriage: " + K.fix(Cr, 2) + " in, " + rig + "× the rope", cxs, yc - 8, c.text);
     }
     // The thick stretch: how far the carriage moves for one motor turn (the same as the rope when there is no rigging).
     var sEnd = Math.min(cxs + V.L(Cr / G), V.X(box.x1));
@@ -331,7 +335,7 @@ function drawUnits(g, s, r) {
     g.rect(cb, (two ? yc : ry) - 9, 16, 18, { fill: c.part2, stroke: c.partLine, width: 1, radius: 2 });
     // Without rigging the orange piece sits on the rope's arrow, with the rope's label above and the rope just below:
     // its own label goes under the rope, right of the spool, on a short leader.
-    if (!two) { var lt = "one motor turn, " + K.fix(Cr / G, 2) + " in", lx2 = cxs + Rs + 14, ly2 = ry + 22; g.line((cxs + sEnd) / 2, ya + 3, lx2 - 2, ly2 - 6, { color: c.s2, width: 1 }); g.text(lt, lx2, ly2, { size: 11, weight: 700, color: c.s2, base: "middle" }); }
+    if (!two) g.text("one motor turn, " + K.fix(Cr / G, 2) + " in", cxs, ya - 8, { size: 11, weight: 700, color: c.s2 });
     dimX = cxs - Rs - 12; g.dim(dimX, cy + Rs, dimX, cy - Rs, sig(d) + " in", 0, { side: "left" });
   }
 }
