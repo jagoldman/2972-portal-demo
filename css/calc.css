@@ -209,7 +209,8 @@ details.cg:not([open]) { padding-bottom: 12px; }
 .toolquick .tqa svg { color: var(--text-2); flex: none; }
 .toolquick .tqa b { display: block; font-weight: 600; line-height: 1.2; } .toolquick .tqa small { display: block; font-weight: 500; font-size: .74rem; color: var(--mute); line-height: 1.2; }
 .toolquick .tqa { min-height: 46px; }
-@media (max-width: 640px) { .toolquick .tql { flex-basis: 100%; padding-left: 4px; } .toolquick .tqa { flex: 1 1 100%; min-height: 44px; } }
+/* On a phone the three sit in one row, each as tall as a thumb, so the first tools stay on the first screen. */
+@media (max-width: 640px) { .toolquick { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 6px; align-items: stretch; } .toolquick .tql { grid-column: 1 / -1; padding-left: 4px; } .toolquick .tqa { flex-direction: column; align-items: flex-start; justify-content: flex-start; gap: 4px; padding: 8px; min-height: 44px; } .toolquick .tqa b { font-size: .8rem; } .toolquick .tqa small { font-size: .68rem; } }
 .tooltag { display: inline-block; margin-left: 6px; padding: 0 7px; border-radius: 999px; background: var(--surface-2); color: var(--text-2); font-size: .72rem; font-weight: 600; vertical-align: 1px; }
 .how { scroll-margin-top: calc(var(--bar) + 12px); }
 .toolgroup:focus { outline: none; }
