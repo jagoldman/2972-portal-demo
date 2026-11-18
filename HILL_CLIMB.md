@@ -20,7 +20,8 @@ Every judge in a tier must score every area at the tier's target. Fixes are made
 | 12 | 3 (9.5) | Opus, GPT-6.1 Sol, Grok 4.7 | 8.2 to 9.3 | 16 of 16 areas under 9.5; Opus 8.3 to 8.8, Sol 8.4 to 9.3, Grok 4.7 8.2 to 9.2; lowest per area 8.2 to 8.8. Sol found nothing worth changing in 8 areas |
 | 13 | 3 (9.5) | Opus, GPT-6.1 Sol, Grok 4.7 (second try; its first run could not open the images) | 8.2 to 9.3 | 16 of 16 areas under 9.5; Opus 8.5 to 8.8, Sol 8.2 to 9.3, Grok 4.7 8.5 to 9.3; lowest per area 8.2 to 8.8 |
 | 14 | 3 (9.5) | Opus, GPT-6.1 Sol, Grok 4.7 | 7.9 to 9.2 | 16 of 16 areas under 9.5; Opus 8.4 to 8.8, Sol 7.9 to 9.2, Grok 4.7 8.2 to 9.2; lowest per area 7.9 to 8.8. A dip caused by a fault the lead introduced in round 13 (see below) |
-| 15 | 3 (9.5) | Opus, GPT-6.1 Sol, Grok 4.7 | with the judges | |
+| 15 | 3 (9.5) | Opus, GPT-6.1 Sol, Grok 4.7 | 8.2 to 9.4 | 16 of 16 areas under 9.5; Opus 8.4 to 8.9, Sol 8.8 to 9.4, Grok 4.7 8.2 to 9.1; lowest per area 8.2 to 8.9. Sol's best round: nothing under 8.8, every finding marked low |
+| 16 | 3 (9.5) | Opus, GPT-6.1 Sol, Grok 4.7 | with the judges | |
 
 Grok 4.5 was thrown out in rounds 1 and 2: asked to copy exact text from three screenshots, it invented it.
 Grok 4.6 copied the text correctly in round 3 and counts.
@@ -209,3 +210,9 @@ drops (Tools, To order) were faults the lead introduced in round 4 and fixed bef
   heading then had no status. Every row names its step at every width.
 - **Order of the top of Schedule and Scouting.** They led with the match line; Home leads with the person's card.
   All three now lead with the person's card.
+- **Round 15: the judges part ways.** Sol's lowest area is 8.8 and it finds nothing to change in five. Opus has
+  scored 8.3 to 9.0 for six rounds, and in round 15 asked to remove the permission-cell chevrons (asked for by three
+  judges in rounds 9 to 14) and to quieten the mentor's group headings (strengthened for Sol in round 12). Both stay
+  as they are and are in the brief.
+- **The calendar notice's wording** has been rewritten in five rounds, each time because the next judge wanted the
+  other order. It is fixed in the brief now.

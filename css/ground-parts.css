@@ -341,3 +341,15 @@
   .ptable.gt .pnodate { color: var(--mute); }
   .pinvh { margin: 0 0 10px; }
 }
+
+/* ---- Hill climb round 15 ---- */
+:root[data-design="c"] {
+  /* "Needs your OK": Approve has its own row; Deny and "Approve a different part" share the next, as in the panel. */
+  .pwait > .row.nowrap .btn.primary { flex: 1 1 100%; }
+}
+
+:root[data-design="c"] {
+  /* A late order: the date in the text colour, only "2 days late" in red. */
+  .ptable.gt .pobrow.late { color: var(--text-2); font-weight: 400; }
+  .ptable.gt .pobrow.late .nw { color: var(--bad); font-weight: 600; }
+}

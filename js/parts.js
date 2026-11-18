@@ -120,7 +120,7 @@ function placeToday(r) { var ob = orderBy(r); return r.pri === "blocking" || (ob
 function qtyText(r) { return r.qty + (r.pack > 1 ? (D.ground() ? (r.qty === 1 ? " pack of " : " packs of ") : " × pack of ") + r.pack + (r.unit ? " " + r.unit : "") : ""); }
 function stockTotal(i) { return i.stock.reduce(function (a, s) { return a + s.qty; }, 0); }
 function inStore(i) { return i.stock.filter(function (s) { return s.place.indexOf("bot") < 0; }).reduce(function (a, s) { return a + s.qty; }, 0); }
-function statusPill(s) { return '<span class="pill ' + STATUS[s][1] + '">' + (s === "needsok" && D.ground() && D.isStaff() ? "Needs your OK" : STATUS[s][0]) + "</span>"; }
+function statusPill(s) { return '<span class="pill ' + STATUS[s][1] + '">' + (s === "needsok" && D.ground() ? (D.isStaff() ? "Needs your OK" : "Needs OK") : STATUS[s][0]) + "</span>"; }
 function priPill(p) { return p !== "blocking" && p !== "high" ? "" : '<span class="pill pri ' + PRI[p][1] + '">' + PRI[p][0] + "</span>"; }
 function split(totalC, weights) { var sum = weights.reduce(function (a, b) { return a + b; }, 0) || 1; var w = weights.some(function (x) { return x > 0; }) ? weights : weights.map(function () { return 1; }); sum = w.reduce(function (a, b) { return a + b; }, 0); var out = w.map(function (x) { return Math.floor(totalC * x / sum); }); out[out.length - 1] += totalC - out.reduce(function (a, b) { return a + b; }, 0); return out; }
 
@@ -257,7 +257,7 @@ function reqSteps(r, part) {
 // The steps of the flow, each a filter with its count; the rarely used views sit in one small "More" select.
 function flowRow(groups, gcount) {
   var p = P(), steps = ["open", "needsok", "toorder", "ordered", "done"], more = ["closed", "all", "wish"];
-  var NAMES = { open: "All open", needsok: "Needs OK", toorder: "To order", ordered: "Ordered", done: "Arrived" };
+  var NAMES = { open: "All open", needsok: D.ground() && D.isStaff() ? "Needs your OK" : "Needs OK", toorder: "To order", ordered: "Ordered", done: "Arrived" };
   function g(id) { return groups.filter(function (x) { return x[0] === id; })[0]; }
   var inMore = more.indexOf(p.filter) >= 0;
   return '<div class="pflow"><div class="psteps' + (p.rare || more.indexOf(p.filter) >= 0 ? " rareopen" : "") + '" role="group" aria-label="Show requests">' + steps.map(function (id) {
@@ -292,7 +292,7 @@ function requests() {
     /* Hill climb r3: the rows go in the order of the flow, each step under one heading row with its name, its count
        and whose move it is, said once. Inside a step the rows keep the urgency order above. */
     var staffG = D.isStaff(), FLOW = [
-      ["needsok", "Needs OK", ["needsok"], staffG ? "your move" : "waiting on a mentor"],
+      ["needsok", staffG ? "Needs your OK" : "Needs OK", ["needsok"], staffG ? "" : "waiting on a mentor"],
       ["toorder", "To order", ["toorder"], staffG ? "your move" : "waiting on a mentor"],
       ["ordered", "Ordered", ["ordered"], ""], ["done", "Arrived", ["arrived", "putaway"], ""],
       ["closed", "Denied or cancelled", ["denied", "cancelled"], ""]];

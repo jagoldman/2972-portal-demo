@@ -677,3 +677,46 @@
   .stages small { font-size: .86rem; }
   @media (max-width: 640px) { .trowx > .due { align-self: start; padding-top: 2px; } }
 }
+
+/* ---- Hill climb round 15 ---- */
+:root[data-design="c"] {
+  /* Before sign-in: "Your next task" is a section heading of the usual size; the task's name is the larger line. */
+  .homemain > .nowcard:has(.nowfirst) ~ .card.hero.nextup h2 { font-size: 1.3rem; }
+  .homemain > .nowcard:has(.nowfirst) ~ .card.hero.nextup > .eyebrow { font-size: 1.05rem; }
+  /* A parent's line: the practice is the fact; the countdown to kickoff is the quieter second line. */
+  .season.simple .snhead b { font-weight: 500; color: #cdd1d6; }
+  .appsmenu .grpname { font-size: 1rem; font-weight: 650; }
+  /* Pit: "Report problem" is grey; with a mouse the underline shows on hover. */
+  .checkrow > .btn { color: var(--mute); }
+  @media (hover: hover) and (min-width: 641px) { .checkrow > .btn { text-decoration: none; } .checkrow > .btn:hover { text-decoration: underline; color: var(--text); } }
+  .acc .choice button { color: var(--text); }
+  /* The phone tab row's one button is a little shorter than the row, with even space above and below. */
+  @media (max-width: 640px) { .topbar .right .btn.primary.sm { min-height: 36px; height: 36px; } }
+}
+/* Drivetrain inputs, wide: Efficiency pairs with Current limit, so no input sits alone beside an empty half. */
+@media (min-width: 1100px) {
+  :root:is([data-design="b"], [data-design="c"]) .calcin:has(> .calcwith) > :nth-child(-n+3) { order: 1; }
+  :root:is([data-design="b"], [data-design="c"]) .calcin:has(> .calcwith) > :nth-child(9) { order: 2; }
+  :root:is([data-design="b"], [data-design="c"]) .calcin:has(> .calcwith) > .calcwith { order: 3; }
+  :root:is([data-design="b"], [data-design="c"]) .calcin:has(> .calcwith) > :nth-child(n+5):nth-child(-n+8) { order: 4; }
+}
+
+:root[data-design="c"] {
+  .nowrow .nowbud { margin-top: 4px; }
+  /* Next for us: the match time reads as easily as the alliance. */
+  .nextcard .wkd .num { font-size: .95rem; color: var(--text); }
+  .acc .napp:last-child { border-bottom: 0; }
+  @media (max-width: 640px) {
+    .trowx .due { font-size: .86rem; }
+    .cmp .card.hero .btn.primary { width: 100%; }
+    /* Agenda: an event's snack line follows its time and place without a band of space between. */
+    .agitem > .agrow { min-height: 0; padding-bottom: 2px; }
+  }
+}
+
+:root[data-design="c"] {
+  /* Tasks menu: a project's subteams sit one step in from its name. */
+  .tside .trowl2 { padding-left: 58px; }
+  .pitaway { margin: 12px 0 0; color: var(--text-2); }
+}
+:root[data-design="c"] .tside .trowl2 { padding-left: 58px !important; }

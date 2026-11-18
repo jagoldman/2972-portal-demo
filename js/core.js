@@ -263,7 +263,7 @@ function appsMenu() {
 function noticeRow(n) {
   var i = D.S.notices.indexOf(n), app = D.APPNAME[n.app] || "";
   return '<button class="li nli' + (n.read ? "" : " unread") + '" data-act="notice" data-i="' + i + '" data-tip="Open it. Right-click or press and hold to mark it ' + (n.read ? "unread" : "read") + '.">' +
-    (n.read ? "" : '<span class="srt">Unread: </span>') + (D.ground() ? '<span class="grow"><span class="app">' + esc(app + (app && n.when ? ", " : "") + n.when) + "</span> " + esc(n.text.replace(/^Are you coming (.+)\? Your usual week says yes, but you marked Can't\.$/, "$1: your usual week says Coming, but you marked Not coming. Check it.").replace("you marked Can't.", "you marked Not coming.")) + '</span><span class="chev" aria-hidden="true">›</span>' : '<span class="grow"><span class="app">' + esc(app) + "</span> " + esc(n.text) + '</span><span class="who">' + esc(n.when) + "</span>") + "</button>";
+    (n.read ? "" : '<span class="srt">Unread: </span>') + (D.ground() ? '<span class="grow"><span class="app">' + esc(app + (app && n.when ? ", " : "") + n.when) + "</span> " + esc(n.text.replace(/^Are you coming (.+)\? Your usual week says yes, but you marked Can't\.$/, "$1: you said Not coming. Your usual week says Coming.").replace("you marked Can't.", "you marked Not coming.")) + '</span><span class="chev" aria-hidden="true">›</span>' : '<span class="grow"><span class="app">' + esc(app) + "</span> " + esc(n.text) + '</span><span class="who">' + esc(n.when) + "</span>") + "</button>";
 }
 function bellPanel() {
   var list = D.myNotices();
