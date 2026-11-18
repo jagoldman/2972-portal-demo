@@ -199,8 +199,9 @@ K.outs = function (items) {
     return '<div class="out' + (i.state ? " " + i.state : "") + '"><dt' + (i.tip ? ' class="abbr" tabindex="0" data-tip="' + esc(i.tip) + '"' : "") + ">" + esc(i.k) + '</dt><dd><b class="num">' + esc(i.v) + "</b>" + (i.u ? " <span>" + esc(i.u) + "</span>" : "") + (i.sub ? "<small>" + esc(i.sub) + "</small>" : "") + "</dd></div>";
   }).join("") + "</dl>";
 };
-// One plain sentence that says whether the design works. state: "ok" | "warn" | "bad" | "info".
-K.verdict = function (state, text) { return '<p class="verdict ' + state + '"><span class="pill ' + state + '">' + ({ ok: "Works", warn: "Check", bad: "Problem", info: "Note" }[state] || "") + "</span> " + esc(text) + "</p>"; };
+// One plain sentence that says whether the design works. state: "ok" | "warn" | "bad" | "info". The "ok" word is
+// "Works on paper": every answer here is a model's estimate. more: a second, quieter line (what to measure or check).
+K.verdict = function (state, text, more) { return '<p class="verdict ' + state + '"><span class="pill ' + state + '">' + ({ ok: "Works on paper", warn: "Check", bad: "Problem", info: "Note" }[state] || "") + "</span> " + esc(text) + "</p>" + (more ? '<p class="vmore">' + esc(more) + "</p>" : ""); };
 // "How this is worked out": the assumptions, in words a student can check. html is trusted (written in the tool file).
 K.notes = function (html, title) { return '<details class="how" data-open="how"><summary>' + esc(title || "How this is worked out") + '</summary><div class="howbody">' + html + "</div></details>"; };
 /* A block of text to copy into robot code or a notebook, with a Copy button. key: unique on the page. */

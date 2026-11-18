@@ -54,7 +54,7 @@ K.tool({
   outs: function (s, r) {
     var faster = r.ratio < 1, rtxt = (faster ? K.fix(1 / r.ratio, 2) + "× faster" : r.ratio === 1 ? "same speed" : K.fix(r.ratio, 2) + "× slower");
     if (s.kind === "gear") {
-      return K.verdict("ok", "Put the shaft centres " + K.fix(r.center, 3) + " in apart" + (s.gextra > 0 ? " (the exact " + K.fix(r.center - s.gextra, 3) + " in plus " + K.fix(s.gextra, 3) + " in so the teeth do not bind)" : "") + ". The driven gear turns the other way, " + rtxt + ".") +
+      return K.verdict("ok", "Put the shaft centres " + K.fix(r.center, 3) + " in apart" + (s.gextra > 0 ? " (the exact " + K.fix(r.center - s.gextra, 3) + " in plus " + K.fix(s.gextra, 3) + " in, an allowance you can change)" : "") + ". The driven gear turns the other way, " + rtxt + ".", "Some small pinions are cut to mesh at a larger gear's spacing. Check the centre distance on the gear maker's page.") +
         K.outs([{ k: "Centre distance", v: K.fix(r.center, 3), u: "in", sub: K.fix(r.center * 25.4, 2) + " mm" },
           { k: "Ratio", v: K.fix(r.ratio, 3), u: ": 1", sub: rtxt, tip: "Driven teeth divided by driving teeth." },
           { k: "Pitch diameters", v: K.fix(r.pd1, 3) + " / " + K.fix(r.pd2, 3), u: "in", tip: "The circles that roll on each other. Their radii add up to the exact centre distance." },
@@ -64,12 +64,12 @@ K.tool({
     var o = r.sel, word = s.kind === "belt" ? o.teeth + "-tooth belt" : o.links + "-link chain", off = o.err, small = Math.min(o.mesh1, o.mesh2);
     var state = small < 6 && s.kind === "belt" ? "warn" : "ok";
     var text = "A " + word + " fits at " + K.fix(o.center, 3) + " in" + (Math.abs(off) < 0.0005 ? ", exactly what you wanted." : ", " + K.fix(Math.abs(off), 3) + " in " + (off > 0 ? "more" : "less") + " than you wanted.") +
-      (state === "warn" ? " Only " + small + " teeth grip the small pulley; aim for six or more, or the belt can skip." : "");
+      (state === "warn" ? " Only " + small + " teeth grip the small pulley. A common rule of thumb is six or more; fewer can skip under load." : "");
     return K.verdict(state, text) + K.outs([
       { k: "Centre distance", v: K.fix(o.center, 3), u: "in", sub: K.fix(o.center * 25.4, 2) + " mm" },
       { k: s.kind === "belt" ? "Belt" : "Chain", v: String(r.count), u: s.kind === "belt" ? "teeth" : "links", sub: K.fix(o.length, 2) + " in long" },
       { k: "Ratio", v: K.fix(r.ratio, 3), u: ": 1", sub: rtxt, tip: "Driven teeth divided by driving teeth." },
-      { k: "Teeth gripped", v: o.mesh1 + " / " + o.mesh2, sub: "driving / driven" + (s.kind === "belt" ? "; six or more is safe" : ""), state: state === "warn" ? "warn" : "", tip: "How many teeth the belt or chain wraps on each wheel. Few teeth on a small pulley is where belts skip." },
+      { k: "Teeth gripped", v: o.mesh1 + " / " + o.mesh2, sub: "driving / driven" + (s.kind === "belt" ? ". Six or more is a rule of thumb; the belt maker rates the load" : ""), state: state === "warn" ? "warn" : "", tip: "How many teeth the belt or chain wraps on each wheel. Few teeth on a small pulley is where belts skip." },
       { k: "Gap between them", v: K.fix(o.gap, 3), u: "in", sub: "between their outer edges", state: o.gap < 0.05 ? "warn" : "", tip: "Clear space between the two wheels' outer edges." }]);
   },
 
@@ -88,10 +88,10 @@ K.tool({
       "<p>Two gears run on their pitch circles. A gear's pitch diameter is its tooth count divided by the DP (or its tooth count times the module, in millimetres), and the centre distance is half the sum of the two pitch diameters.</p>" +
       '<p class="eq">centre = (teeth₁ + teeth₂) ÷ (2 × DP) + extra</p>' +
       "<p>The extra spacing keeps the teeth from binding when the holes are a little off. Small pinions are sometimes cut with a shifted profile and need the spacing of a larger gear; check the part's page.</p>" :
-      "<p>A belt or chain is a loop of fixed length round two circles. Its length is the two straight runs plus the arc it wraps on each wheel:</p>" +
+      "<p>A belt is a loop of fixed length round two circles. Its length is the two straight runs plus the arc it wraps on each pulley:</p>" +
       '<p class="eq">length = 2 × C × cos α + π × (D₁ + D₂) ÷ 2 + α × (D₁ − D₂),  sin α = (D₁ − D₂) ÷ (2 × C)</p>' +
       "<p>C is the centre distance and D the pitch diameters. Belts only come in certain tooth counts and a chain has a whole, even number of links, so only certain distances work. The calculator solves this equation for C for each loop near the distance you asked for.</p>" +
-      (s.kind === "belt" ? "<p>A pulley's pitch diameter is its tooth count times the belt pitch, divided by π. The belt's pitch line runs just outside the pulley's teeth.</p>" : "<p>A sprocket's pitch diameter is the chain pitch divided by sin(180° ÷ teeth), because the chain sits on it as a polygon, not a circle.</p>") +
+      (s.kind === "belt" ? "<p>A pulley's pitch diameter is its tooth count times the belt pitch, divided by π. The belt's pitch line runs just outside the pulley's teeth.</p>" : "<p>A chain is nearly the same, with one difference: on a sprocket it sits as a polygon, link by link, so a full turn takes exactly as many links as the sprocket has teeth, a little less than the circle's length. The straight runs are worked out as for a belt, from pitch diameters of chain pitch ÷ sin(180° ÷ teeth). Two 16-tooth #25 sprockets with 64 links sit exactly 6 in apart.</p>") +
       "<p>Checked against ReCalc: 16 and 24 teeth on HTD 5 mm give 4.915 in with a 70-tooth belt and 5.408 in with 75.</p>");
     return out;
   },
@@ -99,7 +99,7 @@ K.tool({
   draw: function (g, s, r, t) {
     var c = g.c, C = r.center; if (!(C > 0)) { g.text("Nothing to draw yet.", 16, 28, { color: c.mute }); return; }
     var R1 = r.od1 / 2, R2 = r.od2 / 2, big = Math.max(R1, R2), m = big * 0.12 + 0.15;
-    var V = g.view({ x0: -R1 - m, x1: C + R2 + m, y0: -big - m, y1: big + m }, { l: 14, r: 14, t: 28, b: 40 }, "middle");
+    var V = g.view({ x0: -R1 - m, x1: C + R2 + m, y0: -big - m, y1: big + m }, { l: 14, r: 14, t: 28, b: 52 }, "middle");
     g.grid(V, 1, g.w > 520 ? "1 in squares" : "");
     var x1 = V.X(0), x2 = V.X(C), y = V.Y(0), p1 = V.L(r.pd1 / 2), p2 = V.L(r.pd2 / 2);
     var speed = 0.9, a1 = t * speed, a2;               // the driving wheel's angle (radians, clockwise on screen)
@@ -107,6 +107,7 @@ K.tool({
       a2 = Math.PI - Math.PI / s.n2 - a1 * s.n1 / s.n2;
       g.gear(x1, y, p1, s.n1, a1, { fill: c.part }); g.gear(x2, y, p2, s.n2, a2, { fill: c.part2 });
       g.circle(x1, y, p1, { stroke: c.accent, width: 1, dash: [4, 4] }); g.circle(x2, y, p2, { stroke: c.accent, width: 1, dash: [4, 4] });
+      if (g.w > 520) g.text("dashed: pitch circles, which roll on each other", g.w - 12, g.h - 10, { align: "right", color: c.mute, size: 11 });
     } else {
       var al = Math.asin(F.clamp((p1 - p2) / (x2 - x1), -1, 1)), sn = Math.sin(al), cs = Math.cos(al), Tn = (x2 - x1) * cs;
       var arc2 = p2 * (Math.PI - 2 * al), arc1 = p1 * (Math.PI + 2 * al), L = 2 * Tn + arc1 + arc2;
@@ -140,9 +141,16 @@ K.tool({
       }
     }
     // Dimensions and names, as on a drawing.
-    var by = Math.min(V.Y(-big) + 4, g.h - 34);
-    g.line(x1, y, x1, by + 16, { color: c.mute, width: 1, dash: [6, 3, 1, 3] }); g.line(x2, y, x2, by + 16, { color: c.mute, width: 1, dash: [6, 3, 1, 3] });
-    g.dim(x1, by + 16, x2, by + 16, K.fix(C, 3) + " in", 0, { side: "below" });
+    var by = Math.min(V.Y(-big) + 4, g.h - 48);
+    g.line(x1, y, x1, by + 30, { color: c.mute, width: 1, dash: [6, 3, 1, 3] }); g.line(x2, y, x2, by + 30, { color: c.mute, width: 1, dash: [6, 3, 1, 3] });
+    g.dim(x1, by + 30, x2, by + 30, K.fix(C, 3) + " in", 0, { side: "below" });
+    // Name each wheel and show which way it turns.
+    [[x1, "driving", 1], [x2, "driven", s.kind === "gear" ? -1 : 1]].forEach(function (q) {
+      var rr = Math.max(9, Math.min(V.L(big) * 0.5, 20)), a0 = -2.5, a1 = -0.9, tip = q[2] > 0 ? a1 : a0, tx = q[0] + rr * Math.cos(tip), ty2 = y + rr * Math.sin(tip), tang = tip + q[2] * Math.PI / 2;
+      g.arc(q[0], y, rr, a0, a1, { color: c.accent, width: 2 });
+      g.poly([[tx + 6 * Math.cos(tang), ty2 + 6 * Math.sin(tang)], [tx + 4 * Math.cos(tang + 2.4), ty2 + 4 * Math.sin(tang + 2.4)], [tx + 4 * Math.cos(tang - 2.4), ty2 + 4 * Math.sin(tang - 2.4)]], { fill: c.accent, stroke: null });
+      if (g.h > 150) g.text(q[1], q[0] + 6, by + 6, { align: "left", color: c.text2, size: 11, weight: 600, base: "top" });
+    });
     g.text("Driving " + s.n1 + "T, driven " + s.n2 + "T: " + (r.ratio === 1 ? "same speed" : r.ratio > 1 ? K.fix(r.ratio, 2) + "× slower" : K.fix(1 / r.ratio, 2) + "× faster") + (s.kind === "gear" ? ", the other way round" : ""), 12, 18, { weight: 600 });
   }
 });

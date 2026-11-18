@@ -205,3 +205,4 @@ details.cg:not([open]) { padding-bottom: 12px; }
 .tooljump { margin-top: -4px; }
 @media (max-width: 640px) { .tooljump { flex-wrap: nowrap; overflow-x: auto; scrollbar-width: none; margin-inline: calc(-1 * var(--gut)); padding-inline: var(--gut); } .tooljump::-webkit-scrollbar { display: none; } .tooljump .chip { flex: none; } .tooljump { -webkit-mask-image: linear-gradient(to right, #000 calc(100% - 44px), transparent); mask-image: linear-gradient(to right, #000 calc(100% - 44px), transparent); padding-right: 44px; } }
 .ctab th { white-space: normal; vertical-align: bottom; line-height: 1.2; }
+.vmore { font-size: .88rem; color: var(--mute); max-width: 70ch; margin-top: -6px; }
