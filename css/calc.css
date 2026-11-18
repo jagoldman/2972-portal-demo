@@ -206,3 +206,14 @@ details.cg:not([open]) { padding-bottom: 12px; }
 @media (max-width: 640px) { .tooljump { flex-wrap: nowrap; overflow-x: auto; scrollbar-width: none; margin-inline: calc(-1 * var(--gut)); padding-inline: var(--gut); } .tooljump::-webkit-scrollbar { display: none; } .tooljump .chip { flex: none; } .tooljump { -webkit-mask-image: linear-gradient(to right, #000 calc(100% - 44px), transparent); mask-image: linear-gradient(to right, #000 calc(100% - 44px), transparent); padding-right: 44px; } }
 .ctab th { white-space: normal; vertical-align: bottom; line-height: 1.2; }
 .vmore { font-size: .88rem; color: var(--mute); max-width: 70ch; margin-top: -6px; }
+
+/* ---------- Round 5 ---------- */
+/* The inputs column: a line at its foot while more inputs wait below. */
+.benchside.more-b::after { content: "More inputs below. Scroll this column."; position: sticky; bottom: 0; display: block; padding: 7px 14px; font-size: .78rem; font-weight: 600; color: var(--text-2); background: var(--surface-2); border-top: 1px solid var(--line-2); text-align: center; }
+@media (max-width: 900px) { .benchside.more-b::after { content: none; } }
+/* Chart lettering a size up. */
+.ctick, .clabel { font-size: 12.5px; } .cnote { font-size: 12px; }
+/* Tools page: every row's name starts on the same line, whatever the length of its description. */
+.toolgroup .toolrow { align-items: flex-start; padding-block: 10px; }
+.toolgroup .toolrow .ic { margin-top: 1px; }
+@media (max-width: 640px) { .tooljump { flex-wrap: wrap; overflow: visible; margin-inline: 0; padding-inline: 0; -webkit-mask-image: none; mask-image: none; gap: 6px; } .tooljump .chip { min-height: 30px; padding: 2px 10px; font-size: .8rem; } }

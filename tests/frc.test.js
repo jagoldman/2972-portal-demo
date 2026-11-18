@@ -17,6 +17,8 @@ var dsup = F.drive({ motor: "kraken60", n: 1, ratio: 1, eff: 1, supplyA: 30 }), 
 near("supply limit holds", half.supplyA, 30, 1e-6);
 ok("supply limit: stator above supply at low duty", half.statorA > 30, half.statorA);
 near("hold", d40.hold(d40.at(0, 12, 1).torque).statorA, 40, 1e-9);
+near("kG + kS = the volts hold() gives", d40.kG(5) + d40.kS, d40.hold(5).volts, 1e-12);
+near("kS is the free current times the resistance", d40.kS, 2.8 * 12 / 374, 1e-12);
 
 // Battery: the solved voltage agrees with the current it causes, below the limit and at it.
 var db = F.drive({ motor: "kraken60", n: 4, ratio: 6.75, eff: 1, statorA: 60 }), Rb = 0.02;

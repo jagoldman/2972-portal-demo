@@ -10,10 +10,24 @@ function beltOf(s) { return F.BELTS.filter(function (b) { return b.id === s.belt
 function chainOf(s) { return F.CHAINS.filter(function (c) { return c.id === s.chain; })[0] || F.CHAINS[0]; }
 function gearOf(s) { return GEARS.filter(function (g) { return g[0] === s.gear; })[0] || GEARS[0]; }
 function inmm(x) { return K.fix(x, 3) + " in"; }
+/* Gear pairs for a distance you already have. Two gears' centre distance depends only on the SUM of their teeth, so
+   find the sums nearest the wanted distance, then list the pairs of common sizes with each sum. Common sizes:
+   pinions of 8 to 16 teeth and gears of 14 to 84 teeth in steps of 2 (what vendors stock; not a stock check). */
+function common(n) { return (n >= 8 && n <= 16) || (n >= 14 && n <= 84 && n % 2 === 0); }
+function fitGears(size, want, extra) {
+  var per = size.dp ? 1 / (2 * size.dp) : size.module / 25.4 / 2, exact = (want - extra) / per, out = [];
+  [Math.floor(exact), Math.ceil(exact)].filter(function (v, i, a) { return v >= 16 && a.indexOf(v) === i; }).forEach(function (sum) {
+    var c = sum * per + extra, pairs = [];
+    for (var a = 8; a <= sum / 2; a++) if (common(a) && common(sum - a)) pairs.push([a, sum - a]);
+    out.push({ sum: sum, center: c, off: c - want, pairs: pairs });
+  });
+  out.sort(function (x, y) { return Math.abs(x.off) - Math.abs(y.off); });
+  return out;
+}
 
 K.tool({
   id: ID,
-  defaults: { kind: "belt", belt: "htd5", chain: "25", gear: "dp20", n1: 16, n2: 24, target: 5, extra: 0, gextra: 0.003, cextra: 0.018, pick: -1 },
+  defaults: { kind: "belt", belt: "htd5", chain: "25", gear: "dp20", n1: 16, n2: 24, target: 5, extra: 0, gextra: 0.003, cextra: 0.018, pick: -1, gwant: 0 },
   stage: { ratio: 2.1, label: "The two wheels at their centre distance, to scale, with the belt, chain or gear teeth moving." },
   loop: true, autoplay: true,
   onPick: function (key, v, s) { if (key !== "pick") s.pick = -1; },
@@ -23,6 +37,7 @@ K.tool({
     if (s.kind === "gear") {
       var gp = F.gearPair(s.n1, s.n2, gearOf(s)[2], s.gextra);
       r.pd1 = gp.pd1; r.pd2 = gp.pd2; r.od1 = gp.od1; r.od2 = gp.od2; r.center = gp.center; r.size = gearOf(s)[1];
+      if (s.gwant > 0) r.fits = fitGears(gearOf(s)[2], s.gwant, s.gextra);
       return r;
     }
     var res, b;
@@ -44,6 +59,7 @@ K.tool({
     var word = s.kind === "belt" ? "pulley" : s.kind === "chain" ? "sprocket" : "gear";
     var teeth = K.num(ID, "n1", "Driving " + word, { unit: "teeth", min: 8, max: 120, step: 1, slider: true, tip: "The one the motor turns." }) + K.num(ID, "n2", "Driven " + word, { unit: "teeth", min: 8, max: 120, step: 1, slider: true });
     var space = s.kind === "gear" ?
+      K.num(ID, "gwant", "Distance you already have", { unit: "in", min: 0, max: 12, step: 0.001, hint: "Holes already drilled? Type their spacing to list the gear pairs that fit. Leave 0 otherwise.", tip: "The table under the answers lists pairs of common gears whose centre distance is nearest this." }) +
       K.num(ID, "gextra", "Extra spacing", { unit: "in", min: 0, max: 0.02, step: 0.001, hint: "Added so the teeth do not bind (backlash).", tip: "Added to the exact distance so the teeth do not bind. 0.003 in is a common choice for 20 DP gears in a plate cut on a router." }) :
       K.num(ID, "target", "Wanted centre distance", { unit: "in", min: 1, max: 40, step: 0.001, slider: true, tip: "Roughly where you want the two shafts. The calculator finds the real distances a stock belt or a whole number of links gives." }) +
       (s.kind === "belt" ? K.num(ID, "extra", "Extra spacing", { unit: "in", min: -0.02, max: 0.05, step: 0.001, hint: "Added to the exact distance. 0 suits most belts.", tip: "Added to the exact distance. Leave at 0 for a belt on fixed centres unless your pulleys run tight." }) :
@@ -65,7 +81,7 @@ K.tool({
     var state = small < 6 && s.kind === "belt" ? "warn" : "ok";
     var text = "A " + word + " fits at " + K.fix(o.center, 3) + " in" + (Math.abs(off) < 0.0005 ? ", exactly what you wanted." : ", " + K.fix(Math.abs(off), 3) + " in " + (off > 0 ? "more" : "less") + " than you wanted.") +
       (state === "warn" ? " Only " + small + " teeth grip the small pulley. A common rule of thumb is six or more; fewer can skip under load." : "");
-    return K.verdict(state, text) + K.outs([
+    return K.verdict(state, text, Math.abs(off) < 0.0005 ? "" : "With fixed holes, drill them " + K.fix(o.center, 3) + " in apart, not " + K.fix(s.target, 3) + ". To keep your distance, use a tensioner or slotted holes.") + K.outs([
       { k: "Centre distance", v: K.fix(o.center, 3), u: "in", sub: K.fix(o.center * 25.4, 2) + " mm" },
       { k: s.kind === "belt" ? "Belt" : "Chain", v: String(r.count), u: s.kind === "belt" ? "teeth" : "links", sub: K.fix(o.length, 2) + " in long" },
       { k: "Ratio", v: K.fix(r.ratio, 3), u: ": 1", sub: rtxt, tip: "Driven teeth divided by driving teeth." },
@@ -83,6 +99,12 @@ K.tool({
           return '<tr class="' + (on ? "pick" : "") + '"><td>' + n + " " + unit + '</td><td class="r num">' + K.fix(o.center, 3) + ' in</td><td class="r num">' + (o.err >= 0 ? "+" : "−") + K.fix(Math.abs(o.err), 3) + ' in</td><td class="r num">' + o.mesh1 + " / " + o.mesh2 + '</td><td class="r">' + (on ? '<span class="pill ok">In the drawing</span>' : '<button class="btn sm" data-act="spuse" data-v="' + n + '">Use this one</button>') + "</td></tr>";
         }).join("") + "</tbody></table></div>" +
         '<div class="row"><button class="btn sm" data-act="spfind">' + D.ic("search", 16) + " Find it in inventory</button></div></section>";
+    }
+    if (s.kind === "gear" && r.fits) {
+      out += '<section class="ctab"><h2>Gear pairs for ' + K.fix(s.gwant, 3) + ' in between centres</h2>' +
+        (r.fits.length ? '<p class="small mute">A pair\'s spacing depends only on its teeth added together. ' + (Math.abs(r.fits[0].off) < 0.0015 ? "A total of " + r.fits[0].sum + " teeth fits exactly." : "No whole number of teeth fits exactly: " + r.fits.map(function (f) { return f.sum + " teeth is " + K.fix(Math.abs(f.off), 3) + " in " + (f.off > 0 ? "more" : "less"); }).join(", ") + ".") + '</p><div class="scroll"><table><thead><tr><th>Pair</th><th class="r">Ratio</th><th class="r">Centre distance</th><th class="r">Against yours</th><th></th></tr></thead><tbody>' +
+          r.fits.map(function (f) { return f.pairs.slice(0, 7).map(function (p) { var on = p[0] === s.n1 && p[1] === s.n2; return '<tr class="' + (on ? "pick" : "") + '"><td>' + p[0] + " : " + p[1] + '</td><td class="r num">' + K.fix(p[1] / p[0], 2) + ' : 1</td><td class="r num">' + K.fix(f.center, 3) + ' in</td><td class="r num">' + (Math.abs(f.off) < 0.0005 ? "exact" : (f.off > 0 ? "+" : "−") + K.fix(Math.abs(f.off), 3) + " in") + '</td><td class="r">' + (on ? '<span class="pill ok">In the drawing</span>' : '<button class="btn sm" data-act="spgear" data-a="' + p[0] + '" data-b="' + p[1] + '">Use this pair</button>') + "</td></tr>"; }).join(""); }).join("") +
+          "</tbody></table></div>" : '<p class="warnline">That is too close together for two gears of this tooth size.</p>') + "</section>";
     }
     out += K.notes(s.kind === "gear" ?
       "<p>Two gears run on their pitch circles. A gear's pitch diameter is its tooth count divided by the DP (or its tooth count times the module, in millimetres), and the centre distance is half the sum of the two pitch diameters.</p>" +
@@ -123,7 +145,6 @@ K.tool({
       var travel = a1 * p1, n = r.count, pitch = L / n, i, q;
       if (s.kind === "belt") {
         var o1 = V.L(r.od1 / 2), o2 = V.L(r.od2 / 2);
-        g.circle(x1, y, o1 + 2.5, { fill: c.part2, stroke: c.partLine, width: 1 }); g.circle(x2, y, o2 + 2.5, { fill: c.part2, stroke: c.partLine, width: 1 });
         g.circle(x1, y, o1, { fill: c.part, stroke: c.partLine, width: 1 }); g.circle(x2, y, o2, { fill: c.part, stroke: c.partLine, width: 1 });
         [[x1, p1, s.n1, a1], [x2, p2, s.n2, a1 * s.n1 / s.n2]].forEach(function (w) {
           // Three lightening holes show the pulley turning; the belt's teeth show the rest.
@@ -159,6 +180,7 @@ function hub(g, x, y, rp, ang) {
   for (var k = 0; k < 6; k++) hex.push([x + b * Math.cos(ang + k * Math.PI / 3), y + b * Math.sin(ang + k * Math.PI / 3)]);
   g.poly(hex, { fill: g.c.sheet, stroke: g.c.partLine, width: 1 });
 }
+D.acts.spgear = function (b) { var s = K.state(ID); s.n1 = +b.dataset.a; s.n2 = +b.dataset.b; D.render(); };
 D.acts.spuse = function (b) { K.state(ID).pick = +b.dataset.v; D.render(); };
 // A door into Parts: its own inventory search, as the Gear and sprocket finder does.
 D.acts.spfind = function () {

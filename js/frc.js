@@ -48,8 +48,8 @@ var MOTORS = [
   ["kraken60foc", "Kraken X60 (FOC)", 5784, 9.36, 476, 3.5, 1.20],
   ["kraken44", "Kraken X44", 7757, 4.11, 279, 3.2, 0.75],
   ["kraken44foc", "Kraken X44 (FOC)", 7367, 5.01, 329, 3.2, 0.75],
-  ["vortex", "NEO Vortex", 6825, 5.96, 391, 5.4, 1.29],
-  ["vortexrev", "NEO Vortex, REV's own figures", 6784, 3.6, 211, 3.6, 1.29],
+  ["vortex", "NEO Vortex (CTRE's test)", 6825, 5.96, 391, 5.4, 1.29],
+  ["vortexrev", "NEO Vortex (REV's sheet)", 6784, 3.6, 211, 3.6, 1.29],
   ["neo", "NEO", 5906, 4.20, 216, 1.8, 1.19],
   ["neo550", "NEO 550", 11710, 1.08, 111, 1.1, 0.56],
   ["falcon", "Falcon 500", 6380, 4.69, 257, 1.5, 1.25],
@@ -103,6 +103,12 @@ F.drive = function (spec) {
   d.stallTorque = function (V) { return d.at(0, V == null ? 12 : V, 1).torque; };       // N m at the output, with limits
   // Amps per motor and volts needed to hold a steady output torque.
   d.hold = function (torque) { var I = Math.abs(torque) / (n * G * eff * m.kt) + m.freeA; return { statorA: I, volts: I * m.R }; };
+  /* Feedforward, WPILib's way: kG is the volts that balance a steady load, and kS the volts that overcome friction.
+     They are separate numbers. hold() above gives the amps to keep a load from sinking and start it rising, which
+     includes the motor's own friction (its free current); kG leaves that out, and kS is that part alone. A real
+     mechanism's kS is larger (gearbox and bearing friction): measure it. */
+  d.kG = function (torque) { return Math.abs(torque) / (n * G * eff * m.kt) * m.R; };
+  d.kS = m.freeA * m.R;
   // Feedforward estimates for an output inertia J (kg m^2): volts per rad/s and per rad/s^2 at the output.
   d.kV = m.ke * G;
   d.kA = function (J) { return m.R * J / (n * G * eff * m.kt); };

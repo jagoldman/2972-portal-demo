@@ -100,10 +100,12 @@ function labelTables() {
     t.querySelectorAll("tbody tr").forEach(function (tr) { Array.prototype.forEach.call(tr.children, function (td, i) { if (heads[i]) td.setAttribute("data-l", heads[i]); else td.removeAttribute("data-l"); }); });
   });
 }
-function markScroll() { labelTables(); document.querySelectorAll(".bench .scroll, .bench .codeout, .bench .ctable").forEach(function (el) { var wide = el.scrollWidth > el.clientWidth + 3; el.classList.toggle("canscroll", wide); if (wide) edges(el); else el.classList.remove("more-r", "more-l"); }); }
+// The inputs column scrolls inside itself on a laptop. Say so while there is more below.
+function sideCue() { var el = document.querySelector(".benchside"); if (el) el.classList.toggle("more-b", el.scrollHeight - el.scrollTop - el.clientHeight > 6); }
+function markScroll() { labelTables(); sideCue(); document.querySelectorAll(".bench .scroll, .bench .codeout, .bench .ctable").forEach(function (el) { var wide = el.scrollWidth > el.clientWidth + 3; el.classList.toggle("canscroll", wide); if (wide) edges(el); else el.classList.remove("more-r", "more-l"); }); }
 D.after.push(markScroll);
 window.addEventListener("resize", markScroll);
-document.addEventListener("scroll", function (e) { var t = e.target; if (t && t.classList && t.classList.contains("canscroll")) edges(t); }, true);
+document.addEventListener("scroll", function (e) { var t = e.target; if (t && t.classList && t.classList.contains("canscroll")) edges(t); if (t && t.classList && t.classList.contains("benchside")) sideCue(); }, true);
 // The charts and notes: keep any open <details> open across a swap.
 function swapMore(html) { var el = document.getElementById("calc-more"); if (!el) return; D.hideTip && D.hideTip(); el.innerHTML = html; restoreOpen(); }
 function restoreOpen() { var R = rt(D.S.route); document.querySelectorAll("details[data-open]").forEach(function (d) { if (R.open[d.getAttribute("data-open")]) d.open = true; }); }
