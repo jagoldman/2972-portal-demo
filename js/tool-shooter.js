@@ -282,13 +282,13 @@ function burstOuts(s, r) {
   b.shots.forEach(function (x, i) { if (!x.hit && firstMiss < 0) firstMiss = i; });
   var text = b.hits === n ? "All " + n + " go in at " + K.fix(s.brate, 1) + " a second." + (b.best >= 20 ? " In this model it still scores every ball at 20 a second, the fastest rate tried." : b.best ? " It would still score every ball up to about " + K.fix(b.best, 1) + " a second." : "") :
     !b.shots[0].hit ? "The first ball misses, so fix the single shot first (One shot)." :
-    b.hits + " of " + n + " go in. Ball " + (firstMiss + 1) + " is the first to miss: the wheel has not recovered when it arrives." + (b.best ? " Feed no faster than " + K.fix(b.best, 1) + " a second, or add flywheel weight or motor." : " Add flywheel weight or motor.");
-  var tryRate = b.best && b.best < s.brate && b.shots[0].hit ? Math.max(0.5, Math.floor(b.best * 2) / 2) : 0;
+    b.hits + " of " + n + " go in. Ball " + (firstMiss + 1) + " is the first to miss: the wheel has not recovered when it arrives." + (b.best ? " Feed no faster than " + K.fix(Math.floor(b.best * 10) / 10, 1) + " a second, or add flywheel weight or motor." : " Add flywheel weight or motor.");
+  var tryRate = b.best && b.best < s.brate && b.shots[0].hit ? Math.max(0.5, Math.floor(b.best * 10) / 10) : 0;
   return K.verdict(state, text) + (tryRate ? '<div class="row"><button class="btn sm" data-act="shrate" data-v="' + tryRate + '">Try ' + K.fix(tryRate, 1) + " a second</button></div>" : "") + K.outs([
     { k: "Balls that score", v: b.hits + " of " + n, state: state === "ok" ? "" : state },
     { k: "Wheel as the last ball leaves", v: rpmTxt(last.wBefore / RPM), u: "rpm", sub: K.fix((1 - last.wBefore / r.w) * 100, 1) + "% under the set speed" },
     { k: "Last ball leaves at", v: K.fix(last.v / FT, 1), u: "ft/s", sub: "first: " + K.fix(b.shots[0].v / FT, 1) + " ft/s" },
-    { k: "Fastest rate that scores them all", v: b.best == null ? "–" : b.best >= 20 ? "20 or more" : K.fix(b.best, 1), u: "a second", sub: (b.best >= 20 ? "the search stops at 20. " : "") + "The wheel's recovery only: a real feeder may be slower" },
+    { k: "Fastest rate that scores them all", v: b.best == null ? "–" : b.best >= 20 ? "over 20" : K.fix(Math.floor(b.best * 10) / 10, 1), u: "a second", sub: b.best >= 20 ? "The wheel keeps up with any feeder: your feeder sets the rate, not the wheel" : "The wheel's recovery only: a real feeder may be slower" },
     { k: "One ball costs the wheel", v: K.fix(r.shot.drop / (r.w || 1) * 100, 1), u: "%", sub: "and takes " + (r.recov.time === Infinity ? "forever" : K.fix(r.recov.time, 2) + " s") + " to win back" }]);
 }
 function burstMore(s, r) {
@@ -296,7 +296,7 @@ function burstMore(s, r) {
   var worst = Math.min.apply(null, b.shots.map(function (x) { return x.meet ? x.meet.miss / IN : 0; }).concat([-half / IN * 1.6])), short = 0;
   var never = [], land = b.shots.map(function (x, i) { if (!x.meet) { short++; never.push({ x: i + 1, y: worst * 1.12, label: never.length ? "" : "never reached the rim" }); } return [i + 1, x.meet ? x.meet.miss / IN : NaN]; });
   return '<div class="chartrow">' +
-    K.chart({ id: "sh-bw", title: "Wheel speed through the burst (rpm)", x: { label: "seconds", name: "At", unit: "s" }, y: { min: Math.min(Math.min.apply(null, b.w) / RPM, r.aim ? r.rpmLo : 1e9) * 0.97, max: s.rpm * 1.02, unit: "rpm" }, series: [{ name: "Wheel speed", pts: pts, color: 1 }], dots: b.shots.map(function (x, i) { return { x: x.t, y: x.wBefore / RPM, label: i === 0 ? "each dot: a ball leaves" : "" }; }), hlines: r.aim ? [{ y: r.rpmLo, below: true, label: "a ball leaving below this misses" }] : [] }) +
+    K.chart({ id: "sh-bw", title: "Wheel speed through the burst (rpm). A ball that leaves under the dashed line misses", x: { label: "seconds", name: "At", unit: "s" }, y: { min: Math.min(Math.min.apply(null, b.w) / RPM, r.aim ? r.rpmLo : 1e9) * 0.97, max: s.rpm * 1.02, unit: "rpm" }, series: [{ name: "Wheel speed", pts: pts, color: 1 }], dots: b.shots.map(function (x, i) { return { x: x.t, y: x.wBefore / RPM, label: i === 0 ? "each dot: a ball leaves" : "" }; }), hlines: r.aim ? [{ y: r.rpmLo }] : [] }) +
     K.chart({ id: "sh-bl", title: "Where each ball arrives, from the middle (in)" + (short ? ". " + short + (short === 1 ? " ball never reaches" : " balls never reach") + " the rim: marked at the bottom, off the scale" : ""), x: { label: "ball", name: "Ball", min: 1, max: b.shots.length }, y: { unit: "in", min: Math.min(-half / IN * 1.6, Math.min.apply(null, land.map(function (p) { return isFinite(p[1]) ? p[1] : 0; })) * 1.15), max: Math.max(half / IN * 1.6, Math.max.apply(null, land.map(function (p) { return isFinite(p[1]) ? p[1] : 0; })) * 1.15) }, series: [{ name: "Arrives", pts: land, color: 2 }], dots: land.filter(function (p) { return isFinite(p[1]); }).map(function (p) { return { x: p[0], y: p[1] }; }).concat(never), hlines: [{ y: -half / IN, label: "below this: short" }, { y: half / IN, label: "above this: long" }] }) + "</div>";
 }
 function mapOuts(s, r) {
@@ -305,7 +305,8 @@ function mapOuts(s, r) {
   var near = g[0], far = g[g.length - 1], gaps = mp.rows.length - g.length, fast = mp.rows.filter(function (x) { return x.tooFast; }).length;
   var missed = mp.rows.filter(function (x) { return !x.ok; }).map(function (x) { return K.fix(x.d, 1) + " ft"; });
   var text = "Of the " + mp.rows.length + " distances tested, " + K.fix((s.dfar - Math.min(s.dnear, s.dfar - 1)) / (mp.rows.length - 1), 2) + " ft apart, it scores at every tested one from " + K.fix(near.d, 1) + " ft to " + K.fix(far.d, 1) + " ft" + (gaps ? ", and misses at " + (missed.length <= 3 ? missed.join(" and ") : gaps + " others") + (fast ? " (" + fast + " need more speed than the motor has)" : "") : "") + ". The most forgiving spot is " + K.fix(mp.sweet.d, 1) + " ft, where the wheel may be " + K.fix((mp.sweet.hi - mp.sweet.lo) / 2 / mp.sweet.rpm * 100, 1) + "% off either way.";
-  return K.verdict(gaps ? "warn" : "ok", text) + K.outs([
+  var nearOnly = gaps > 0 && mp.rows.slice(gaps).every(function (x) { return x.ok; }) && gaps <= 3;
+  return K.verdict(!gaps || nearOnly ? "ok" : "warn", text, nearOnly ? "Closer than " + K.fix(near.d, 1) + " ft the ball meets the front of the target at this angle." : "") + K.outs([
     { k: "Nearest shot", v: K.fix(near.d, 1), u: "ft", sub: rpmTxt(near.rpm) + " rpm" + (s.hood === "adj" ? " at " + K.fix(near.deg, 0) + "°" : "") },
     { k: "Farthest shot", v: K.fix(far.d, 1), u: "ft", sub: rpmTxt(far.rpm) + " rpm" + (s.hood === "adj" ? " at " + K.fix(far.deg, 0) + "°" : "") },
     { k: "Most forgiving", v: K.fix(mp.sweet.d, 1), u: "ft", sub: "±" + K.fix((mp.sweet.hi - mp.sweet.lo) / 2 / mp.sweet.rpm * 100, 1) + "% wheel speed" },
@@ -337,7 +338,7 @@ function moveOuts(s, r) {
     { k: "Shoot as if from", v: K.fix(L.d / FT, 1), u: "ft", sub: "really " + K.fix(s.dist, 1) + " ft" },
     { k: "Wheel speed", v: rpmTxt(mv.rpm), u: "rpm", sub: "standing still: " + rpmTxt(mv.rpmStill) },
     { k: "In the air", v: K.fix(L.time, 2), u: "s", sub: "the robot moves " + K.fix(Math.hypot(s.vtoward, s.vacross) * L.time, 1) + " ft meanwhile, at a steady speed" },
-    { k: "Miss without the lead", v: K.fix(mv.missNoLead / FT, 1), u: "ft", state: mv.missNoLead > r.target.w / 2 ? "warn" : "" }]);
+    { k: "Miss without the lead", v: K.fix(mv.missNoLead / FT, 1), u: "ft", sub: "the standing shot's " + K.fix(mv.still.time, 2) + " s in the air at this speed", state: mv.missNoLead > r.target.w / 2 ? "warn" : "" }]);
 }
 function notes() {
   return K.notes(
@@ -433,6 +434,11 @@ function closeUp(g, s, r, phase, rpmNow, tShow) {
   g.wheel(W[0], W[1], U.rw * k, ang, {});
   if (phase <= 1) g.ball(ball[0], ball[1], U.rb * k, -kk * r.shot.spin * tShow * p2, {});
   else g.circle(E[0], E[1], U.rb * k, { stroke: c.pieceLine, width: 1.25, dash: [4, 4], fill: null });
+  if (!La.strip && size > 150) {
+    if (!U.dual) g.text("hood, does not move", x0 + 5, y0 + size - 7, { size: 10.5, color: c.mute, halo: false });
+    g.text(phase <= 1 ? "ball" : "ball left here", x0 + 5, y0 + 13, { size: 10.5, color: c.mute, halo: false });
+    g.text(U.dual ? "wheels" : "wheel", W[0], W[1] + U.rw * k + 12 < y0 + size - 16 ? W[1] + U.rw * k + 12 : W[1] - U.rw * k - 5, { size: 10.5, color: c.mute, align: "center", halo: false });
+  }
   // Two arrows to the same scale: the rim's speed where it touches the ball, and the ball's own speed.
   var rim = rpmNow * RPM * U.rw, al = size * 0.42, ct = P([U.rw * Math.cos(a1), U.rw * Math.sin(a1)]), bl = r.shot.v / (rim || 1) * al;
   g.arrow(ct[0], ct[1], ct[0] + u[0] * al, ct[1] + u[1] * al, { color: c.s2, width: 2.5, head: 8 });
@@ -476,7 +482,7 @@ function drawSide(g, s, r, t) {
     g.circle(kx + 7, kyy + 11, 2.2, { fill: c.sheet, stroke: c.text, width: 1.25 }); g.text(g.w > 520 ? "a dot every tenth of a second" : "a dot each 0.1 s", kx + 19, kyy + 15, { size: 11, color: c.text2 });
   }
   if (!burst && s.cd > 0 && !(m && m.wall)) { pathLine(g, V, r.vac, { color: c.ghost, width: 1.25, dash: [5, 5] }); var ve = r.vac[Math.floor(r.vac.length * 0.78)]; if (ve && g.w > 520 && V.X(ve[1]) + 76 < g.w) g.text("with no air", V.X(ve[1]) + 8, V.Y(ve[2]) - 4, { color: c.mute, size: 11 }); }
-  drawTarget(g, V, r, hitState, s.tpreset === "hub26" && V.L(tg.w) > 50 ? "Hub" : "");
+  drawTarget(g, V, r, hitState, s.tpreset === "hub26" && V.L(tg.w) > 50 && !burst ? "Hub" : "");
   drawRobot(g, V, s, r, 0);
   var tNow = t, rpmNow, phase;
   if (burst) {
@@ -491,7 +497,7 @@ function drawSide(g, s, r, t) {
       void i;
     });
     var bl = r.burst.hits + " of " + r.burst.shots.length + " go in", inHub = tg.kind !== "front" && V.L(tg.w * 1.13) > g.textWidth(bl, { weight: 700 }) + 10 && V.L(tg.h) > 90;
-    if (inHub) g.text(bl, V.X(tg.d), V.Y(tg.h * 0.56), { align: "center", weight: 700, color: hitState === "ok" ? c.ok : c.warn, halo: false });
+    if (inHub) g.text(bl, V.X(tg.d), V.Y(tg.h * 0.34), { align: "center", weight: 700, color: hitState === "ok" ? c.ok : c.warn, halo: false });
     else if (g.w < 520 && tg.kind !== "front") g.text(bl, g.w - 10, V.Y(0) + 26, { align: "right", weight: 700, color: hitState === "ok" ? c.ok : c.warn });
     else g.text(bl, V.X(tg.d), V.Y(Math.max(tg.h, tg.kind === "front" ? tg.h + tg.w / 2 : 0)) - 12, { align: "center", weight: 700, color: hitState === "ok" ? c.ok : c.warn });
     K.chartNow("sh-bw", t);
@@ -513,7 +519,7 @@ function drawSide(g, s, r, t) {
     g.circle(hx, hy, 5, { fill: c.surface, stroke: c.accent, width: 2 });
     // Apex, entry and the verdict at the target.
     var ap = r.fl.apex, apOn = m && m.wall ? false : !m || !m.hit || ap[0] < m.x;
-    if (apOn && g.w > 420 && !(flying && Math.hypot(bxs - V.X(ap[0]), bys - V.Y(ap[1])) < 46)) { g.line(V.X(ap[0]) - 5, V.Y(ap[1]), V.X(ap[0]) + 5, V.Y(ap[1]), { color: c.mute, width: 1 }); g.text(K.fix(ap[1] / FT, 1) + " ft up", V.X(ap[0]), V.Y(ap[1]) - 7, { align: "center", color: c.text2, size: 11, weight: 600 }); }
+    if (apOn && g.w > 420 && !(flying && Math.hypot(bxs - V.X(ap[0]), bys - V.Y(ap[1])) < 46)) { g.line(V.X(ap[0]), V.Y(ap[1]) - 4, V.X(ap[0]), V.Y(ap[1]) - 16, { color: c.mute, width: 1 }); g.text("top of the arc, " + K.fix(ap[1] / FT, 1) + " ft up", V.X(ap[0]), V.Y(ap[1]) - 20, { align: "center", color: c.text2, size: 11, weight: 600 }); }
     var tyv = V.Y(tg.kind === "front" ? tg.h + tg.w / 2 + 0.3 : tg.h) - 12, label = !m ? "does not reach" : m.wall ? "hits the front, " + inch(tg.h - m.y) + " under the rim" : m.hit ? "in, " + inch(m.room) + " to spare" : inch(m.miss) + (tg.kind === "top" ? (m.miss < 0 ? " short" : " long") : (m.miss < 0 ? " low" : " high"));
     var lw2 = g.textWidth(label, { weight: 700 });
     if (tg.kind !== "front" && V.L(tg.w * 1.13) > lw2 + 10 && V.L(tg.h) > 90) g.text(label, V.X(tg.d), V.Y(tg.h * 0.56), { align: "center", weight: 700, color: m && m.hit ? c.ok : c.warn, halo: false });
@@ -554,7 +560,8 @@ function drawMap(g, s, r, t) {
   var R0 = Object.assign({}, r, { target: Object.assign({}, r.target, { d: 0 }) });
   drawTarget(g, V, R0, "ok", s.tpreset === "hub26" && V.L(r.target.w) > 50 ? "Hub" : "");
   var lastLab = -1e9;
-  flights.slice().reverse().forEach(function (f) { var fx = V.X(-f.row.d * FT); pathLine(g, V, f.pts, { color: c.ghost, width: 1.25 }, -f.row.d * FT); g.line(fx, V.Y(0), fx, V.Y(0) + 6, { color: c.mute, width: 1 }); if (fx - lastLab > (g.w > 520 ? 44 : 60)) { g.text(K.fix(f.row.d, 0) + " ft", fx, V.Y(0) + 24, { align: "center", color: c.mute, size: 11 }); lastLab = fx; } });
+  flights.slice().reverse().forEach(function (f) { var fx = V.X(-f.row.d * FT); pathLine(g, V, f.pts, { color: c.ghost, width: 1.25 }, -f.row.d * FT); g.line(fx, V.Y(0), fx, V.Y(0) + 6, { color: c.mute, width: 1 }); if (lastLab < -1e8 && g.w > 520) g.text("feet from the target", V.X(0) - 4, V.Y(0) + 38, { align: "right", color: c.mute, size: 11 });
+    if (fx - lastLab > (g.w > 520 ? 44 : 60)) { g.text(K.fix(f.row.d, 0) + " ft", fx, V.Y(0) + 24, { align: "center", color: c.mute, size: 11 }); lastLab = fx; } });
   var sNow = Object.assign({}, s, { deg: degNow });
   drawRobot(g, V, sNow, r, -dnow * FT);
   pathLine(g, V, ptsNow, { color: c.text, width: 2 }, -dnow * FT);
@@ -587,6 +594,7 @@ function drawMove(g, s, r, t) {
   // With the lead: the launcher points off to one side and the ball arrives.
   g.line(V.X(0), V.Y(-d), V.X(0), V.Y(0), { color: c.ok, width: 2 });
   g.line(V.X(0), V.Y(-d), V.X(L.d * Math.cos(aim)), V.Y(-d + L.d * Math.sin(aim)), { color: c.mute, width: 1, dash: [2, 4] });
+  if (Math.abs(L.leadDeg) > 0.3) { var apx = V.X(L.d * Math.cos(aim)), apy = V.Y(-d + L.d * Math.sin(aim)); g.circle(apx, apy, 4, { fill: c.sheet, stroke: c.mute, width: 1.5 }); if (g.w > 520) g.text("aim point", apx + (lead < 0 ? -8 : 8), apy - 8, { align: lead < 0 ? "right" : "left", color: c.mute, size: 11 }); }
   if (Math.abs(L.leadDeg) > 0.3) { var ar = Math.min(64, V.L(d) * 0.3), a0 = -Math.PI / 2, a1 = -aim; g.arc(V.X(0), V.Y(-d), ar, Math.min(a0, a1), Math.max(a0, a1), { color: c.text2, width: 1.25 }); var am = (a0 + a1) / 2; g.text(K.fix(Math.abs(L.leadDeg), 0) + "°", V.X(0) + (ar + 12) * Math.cos(am), V.Y(-d) + (ar + 12) * Math.sin(am), { align: "center", base: "middle", size: 12, weight: 700 }); }
   // The robot, where it is now, and its speed arrow (drag its tip).
   var rx = vx * tr, ry = -d + vy * tr;
