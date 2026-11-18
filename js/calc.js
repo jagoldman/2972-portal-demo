@@ -79,9 +79,26 @@ K.refresh = function (id) {
   if (def.more) swapMore(safe(def.more, s, r));
   if (def.hints && !(r && r.error)) { var h = def.hints(s, r) || {}; Object.keys(h).forEach(function (k) { var el = document.getElementById(k); if (el) el.textContent = h[k]; }); }
   if (def.duration && !def.loop) { var sc = document.getElementById("calc-scrub"), dur = def.duration(s, r); if (sc) sc.max = dur.toFixed(3); if (rt(id).t > dur) rt(id).t = dur; }
+  markScroll();
   K.redraw(id);
 };
 function swap(elId, html) { var el = document.getElementById(elId); if (el) { D.hideTip && D.hideTip(); el.innerHTML = html; } }
+/* A table or code block wider than a phone scrolls sideways inside its own box. Say so: the box fades at the edge
+   that has more, and a line under it tells the person to swipe. Runs after every draw and on scroll and resize. */
+function edges(el) { el.classList.toggle("more-r", el.scrollLeft + el.clientWidth < el.scrollWidth - 3); el.classList.toggle("more-l", el.scrollLeft > 3); }
+/* On a phone a table becomes a list: each row is a block, and each cell carries its column's name in front of it.
+   The names are copied from the table's own header here; css/calc.css does the rest under 640 px. */
+function labelTables() {
+  document.querySelectorAll(".bench table").forEach(function (t) {
+    var heads = Array.prototype.map.call(t.querySelectorAll("thead th"), function (th) { return th.textContent.trim(); });
+    if (!heads.length) return; t.classList.add("stk");
+    t.querySelectorAll("tbody tr").forEach(function (tr) { Array.prototype.forEach.call(tr.children, function (td, i) { if (heads[i]) td.setAttribute("data-l", heads[i]); else td.removeAttribute("data-l"); }); });
+  });
+}
+function markScroll() { labelTables(); document.querySelectorAll(".bench .scroll, .bench .codeout, .bench .ctable").forEach(function (el) { var wide = el.scrollWidth > el.clientWidth + 3; el.classList.toggle("canscroll", wide); if (wide) edges(el); else el.classList.remove("more-r", "more-l"); }); }
+D.after.push(markScroll);
+window.addEventListener("resize", markScroll);
+document.addEventListener("scroll", function (e) { var t = e.target; if (t && t.classList && t.classList.contains("canscroll")) edges(t); }, true);
 // The charts and notes: keep any open <details> open across a swap.
 function swapMore(html) { var el = document.getElementById("calc-more"); if (!el) return; D.hideTip && D.hideTip(); el.innerHTML = html; restoreOpen(); }
 function restoreOpen() { var R = rt(D.S.route); document.querySelectorAll("details[data-open]").forEach(function (d) { if (R.open[d.getAttribute("data-open")]) d.open = true; }); }
@@ -103,8 +120,8 @@ K.num = function (id, key, label, o) {
 };
 // A dropdown. options: [[value, label], ...]
 K.pick = function (id, key, label, options, o) {
-  var v = String(S(id)[key]), fid = "c-" + key;
-  return '<div class="cf"><label for="' + fid + '"' + tipAttr(o) + (o && o.tip ? ' class="abbr"' : "") + ">" + esc(label) + '</label><span class="cfv wide"><select id="' + fid + '" class="inp" data-change="calcpick"' + attr(id, key) + ">" +
+  var v = String(S(id)[key]), fid = "c-" + key, long = options.some(function (p) { return String(p[1]).length > 19; });
+  return '<div class="cf' + (long ? " stack long" : "") + '"><label for="' + fid + '"' + tipAttr(o) + (o && o.tip ? ' class="abbr"' : "") + ">" + esc(label) + '</label><span class="cfv wide"><select id="' + fid + '" class="inp" data-change="calcpick"' + attr(id, key) + ">" +
     options.map(function (p) { return '<option value="' + esc(p[0]) + '"' + (String(p[0]) === v ? " selected" : "") + ">" + esc(p[1]) + "</option>"; }).join("") + "</select></span>" + (o && o.hint ? '<small class="cfh">' + esc(o.hint) + "</small>" : "") + "</div>";
 };
 // A segmented choice, for two to four short options.

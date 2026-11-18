@@ -14,14 +14,14 @@ var IN = F.IN, FT = F.FT, RPM = F.RPM;
 /* ---------- The model ---------- */
 var M = {};
 M.PIECES = {
-  fuel26: { name: "2026 Fuel (5.91 in foam ball)", bd: 5.91, bw: 0.474, bshape: "solid" },
-  cargo22: { name: "2022 Cargo (9.5 in inflated ball)", bd: 9.5, bw: 0.595, bshape: "shell" },
-  cell20: { name: "2020 Power Cell (7 in foam ball)", bd: 7, bw: 0.31, bshape: "solid" },
+  fuel26: { name: "2026 Fuel, 5.91 in foam", bd: 5.91, bw: 0.474, bshape: "solid" },
+  cargo22: { name: "2022 Cargo, 9.5 in inflated", bd: 9.5, bw: 0.595, bshape: "shell" },
+  cell20: { name: "2020 Power Cell, 7 in foam", bd: 7, bw: 0.31, bshape: "solid" },
   custom: { name: "Another ball" }
 };
 M.TARGETS = {
-  hub26: { name: "2026 Hub (opening on top)", tkind: "top", th: 72, tw: 41.7 },
-  port20: { name: "2020 outer port (opening in a wall)", tkind: "front", th: 98.25, tw: 30 },
+  hub26: { name: "2026 Hub, opening on top", tkind: "top", th: 72, tw: 41.7 },
+  port20: { name: "2020 outer port, in a wall", tkind: "front", th: 98.25, tw: 30 },
   custom: { name: "Another target" }
 };
 M.setup = function (s) {
@@ -271,7 +271,7 @@ function burstOuts(s, r) {
     { k: "Balls that score", v: b.hits + " of " + n, state: state === "ok" ? "" : state },
     { k: "Wheel at the last ball", v: rpmTxt(last.wBefore / RPM), u: "rpm", sub: K.fix((1 - last.wBefore / r.w) * 100, 1) + "% under the set speed" },
     { k: "Last ball leaves at", v: K.fix(last.v / FT, 1), u: "ft/s", sub: "first: " + K.fix(b.shots[0].v / FT, 1) + " ft/s" },
-    { k: "Fastest rate that scores them all", v: b.best == null ? "–" : b.best >= 20 ? "20+" : K.fix(b.best, 1), u: "a second" },
+    { k: "Fastest rate that scores them all", v: b.best == null ? "–" : b.best >= 20 ? "20" : K.fix(b.best, 1), u: "a second", sub: b.best >= 20 ? "the fastest rate tried" : "" },
     { k: "One ball costs the wheel", v: K.fix(r.shot.drop / (r.w || 1) * 100, 1), u: "%", sub: "and takes " + (r.recov.time === Infinity ? "forever" : K.fix(r.recov.time, 2) + " s") + " to win back" }]);
 }
 function burstMore(s, r) {
@@ -290,7 +290,7 @@ function mapOuts(s, r) {
     { k: "Nearest shot", v: K.fix(near.d, 1), u: "ft", sub: rpmTxt(near.rpm) + " rpm" + (s.hood === "adj" ? " at " + K.fix(near.deg, 0) + "°" : "") },
     { k: "Farthest shot", v: K.fix(far.d, 1), u: "ft", sub: rpmTxt(far.rpm) + " rpm" + (s.hood === "adj" ? " at " + K.fix(far.deg, 0) + "°" : "") },
     { k: "Most forgiving", v: K.fix(mp.sweet.d, 1), u: "ft", sub: "±" + K.fix((mp.sweet.hi - mp.sweet.lo) / 2 / mp.sweet.rpm * 100, 1) + "% wheel speed" },
-    { k: "Motor's top speed", v: rpmTxt(r.free), u: "rpm", sub: "at the wheel, nothing to push" }]);
+    { k: "Motor's top speed", v: K.n(r.free, 0), u: "rpm", sub: "at the wheel, with nothing to push" }]);
 }
 function mapMore(s, r) {
   var g = r.map.good; if (!g.length) return "";
@@ -311,12 +311,12 @@ function moveOuts(s, r) {
   if (!mv) return K.verdict("bad", "This distance is outside the range that can be scored from. Open Every distance to see the range.");
   if (mv.out) return K.verdict("bad", "At this speed the shot would have to come from a distance this shooter cannot score from. Slow down or move.");
   var L = mv.lead, side = L.leadDeg < -0.05 ? "left" : L.leadDeg > 0.05 ? "right" : "", still = Math.abs(s.vtoward) < 0.01 && Math.abs(s.vacross) < 0.01;
-  var text = still ? "Standing still, aim straight at the target." : "Aim " + (side ? K.fix(Math.abs(L.leadDeg), 1) + "° to the " + side + " of the target" : "straight at it") + " and shoot as if it were " + K.fix(L.d / FT, 1) + " ft away (" + rpmTxt(mv.rpm) + " rpm). Aiming straight at it would miss by " + K.fix(mv.missNoLead / FT, 1) + " ft.";
+  var text = still ? "Standing still, aim straight at the target." : "Aim " + (side ? K.fix(Math.abs(L.leadDeg), 1) + "° to the " + side + " of the target, as the robot faces it," : "straight at it") + " and shoot as if it were " + K.fix(L.d / FT, 1) + " ft away (" + rpmTxt(mv.rpm) + " rpm). Aiming straight at it would miss by " + K.fix(mv.missNoLead / FT, 1) + " ft.";
   return K.verdict(still ? "info" : "ok", text) + K.outs([
     { k: "Turn the aim", v: K.fix(Math.abs(L.leadDeg), 1), u: "°", sub: side ? "to the " + side : "none" },
     { k: "Shoot as if from", v: K.fix(L.d / FT, 1), u: "ft", sub: "really " + K.fix(s.dist, 1) + " ft" },
     { k: "Wheel speed", v: rpmTxt(mv.rpm), u: "rpm", sub: "standing still: " + rpmTxt(mv.rpmStill) },
-    { k: "In the air", v: K.fix(L.time, 2), u: "s", sub: "the robot moves " + K.fix(Math.hypot(s.vtoward, s.vacross) * L.time, 1) + " ft meanwhile" },
+    { k: "In the air", v: K.fix(L.time, 2), u: "s", sub: "the robot moves " + K.fix(Math.hypot(s.vtoward, s.vacross) * L.time, 1) + " ft meanwhile, at a steady speed" },
     { k: "Miss without the lead", v: K.fix(mv.missNoLead / FT, 1), u: "ft", state: mv.missNoLead > r.target.w / 2 ? "warn" : "" }]);
 }
 function notes() {
@@ -413,14 +413,14 @@ function closeUp(g, s, r, phase, rpmNow, tShow) {
   g.rect(x0, y0, size, size, { stroke: c.line2, width: 1, fill: null });
   var ty = y0 + size + 18, small = cw < 170, sz = small ? 11 : 12, lh = small ? 15 : 17;
   function row(label, val, key, col) { if (ty > g.h - 4) return; var lx = x0 + 2; if (key) { g.line(lx, ty - 4, lx + 10, ty - 4, { color: key, width: 2.5, cap: "butt" }); lx += 15; } g.text(label, lx, ty, { size: sz, color: c.mute, halo: false }); g.text(val, cw - 6, ty, { size: sz, weight: 700, align: "right", color: col || c.text, halo: false }); ty += lh; }
-  row("Wheel", rpmTxt(rpmNow) + " rpm", null, rpmNow < s.rpm * 0.995 ? c.warn : null);
+  row(small ? "Wheel now" : "Wheel, now", rpmTxt(rpmNow) + " rpm", null, rpmNow < s.rpm * 0.995 ? c.warn : null);
   row(small ? "Rim" : "Rim speed", K.fix(rim / FT, 1) + " ft/s", c.s2);
   row(small ? "Ball" : "Ball leaves at", K.fix(r.shot.v / FT, 1) + " ft/s", c.s1);
   row("Spin", K.n(Math.abs(r.shot.spin) / RPM, 0) + " rpm");
   // Where the energy the wheel lost went: into the ball's flight, into its spin, and wasted.
   var lin = 0.5 * U.mb * r.shot.v * r.shot.v, rot = 0.5 * U.Ib * r.shot.spin * r.shot.spin, tot = Math.max(r.shot.eWheel, lin + rot, 1e-9), lost = Math.max(0, tot - lin - rot);
   if (ty + lh * 4 + 16 < g.h) {
-    ty += 6; g.text(small ? "Energy it gave up" : "The energy the wheel gave up", x0 + 2, ty, { size: sz, color: c.text2, weight: 600, halo: false }); ty += 8;
+    ty += 6; g.text("Energy the wheel lost", x0 + 2, ty, { size: sz, color: c.text2, weight: 600, halo: false }); ty += 8;
     var bw = cw - 12, xx = x0 + 2, segs = [[lin, c.s1, "flight"], [rot, c.s3, "spin"], [lost, c.surface3, small ? "lost" : "lost as heat"]];
     segs.forEach(function (q, n) { var wseg = q[0] / tot * bw; g.rect(xx, ty, Math.max(0, wseg - (n < 2 ? 2 : 0)), 10, { fill: q[1], stroke: null }); xx += wseg; });
     ty += 26;
@@ -449,9 +449,9 @@ function drawSide(g, s, r, t) {
       var tf = t - sh.t - r.tc; if (t - sh.t >= 0 && t - sh.t < r.tc) phase = (t - sh.t) / r.tc;
       if (tf < 0) return;
       var endT = sh.pc.t[sh.pc.t.length - 1], shown = sh.path.filter(function (p) { return p[0] <= tf; });
-      pathLine(g, V, shown, { color: sh.hit ? c.ok : c.warn, width: tf > endT ? 1.25 : 2 });
+      pathLine(g, V, shown, { color: sh.hit ? c.ok : c.bad, width: tf > endT ? 1.25 : 2 });
       if (tf <= endT) g.ball(V.X(F.interp(sh.pc.t, sh.pc.x, tf)), V.Y(F.interp(sh.pc.t, sh.pc.y, tf)), Math.max(3, V.L(tg.r)), -spinK(r.w) * sh.spin * tf, {});
-      else if (!sh.hit) { var e = sh.path[sh.path.length - 1]; g.circle(V.X(e[1]), V.Y(e[2]), 3, { fill: c.warn, stroke: null }); }
+      else if (!sh.hit) { var e = sh.path[sh.path.length - 1]; g.circle(V.X(e[1]), V.Y(e[2]), 3.5, { fill: c.bad, stroke: null }); }
       void i;
     });
     g.text(r.burst.hits + " of " + r.burst.shots.length + " go in", V.X(tg.d), V.Y(Math.max(tg.h, tg.kind === "front" ? tg.h + tg.w / 2 : 0)) - 12, { align: "center", weight: 700, color: hitState === "ok" ? c.ok : c.warn });
@@ -508,7 +508,8 @@ function drawMap(g, s, r, t) {
   var step = V.k * FT >= 13 ? FT : 5 * FT; g.grid(V, step, g.w > 560 ? (step === FT ? "1 ft squares" : "5 ft squares") : ""); g.ground(V.Y(0), colW(g) + 2, g.w);
   var R0 = Object.assign({}, r, { target: Object.assign({}, r.target, { d: 0 }) });
   drawTarget(g, V, R0, "ok", s.tpreset === "hub26" && V.L(r.target.w) > 50 ? "Hub" : "");
-  flights.forEach(function (f) { pathLine(g, V, f.pts, { color: c.ghost, width: 1.25 }, -f.row.d * FT); g.line(V.X(-f.row.d * FT), V.Y(0), V.X(-f.row.d * FT), V.Y(0) + 6, { color: c.mute, width: 1 }); if (g.w > 520) g.text(K.fix(f.row.d, 0) + " ft", V.X(-f.row.d * FT), V.Y(0) + 24, { align: "center", color: c.mute, size: 11 }); });
+  var lastLab = -1e9;
+  flights.slice().reverse().forEach(function (f) { var fx = V.X(-f.row.d * FT); pathLine(g, V, f.pts, { color: c.ghost, width: 1.25 }, -f.row.d * FT); g.line(fx, V.Y(0), fx, V.Y(0) + 6, { color: c.mute, width: 1 }); if (g.w > 520 && fx - lastLab > 44) { g.text(K.fix(f.row.d, 0) + " ft", fx, V.Y(0) + 24, { align: "center", color: c.mute, size: 11 }); lastLab = fx; } });
   var sNow = Object.assign({}, s, { deg: degNow });
   drawRobot(g, V, sNow, r, -dnow * FT);
   pathLine(g, V, ptsNow, { color: c.text, width: 2 }, -dnow * FT);
@@ -537,18 +538,19 @@ function drawMove(g, s, r, t) {
   var noLead = [vx * mv.still.time, -d + hvS * mv.still.time + vy * mv.still.time];
   g.line(V.X(0), V.Y(-d), V.X(noLead[0]), V.Y(noLead[1]), { color: c.warn, width: 1.5, dash: [5, 5] });
   g.line(V.X(noLead[0]) - 5, V.Y(noLead[1]) - 5, V.X(noLead[0]) + 5, V.Y(noLead[1]) + 5, { color: c.warn, width: 2 }); g.line(V.X(noLead[0]) - 5, V.Y(noLead[1]) + 5, V.X(noLead[0]) + 5, V.Y(noLead[1]) - 5, { color: c.warn, width: 2 });
-  if (Math.hypot(vx, vy) > 0.1) g.text("aimed straight at it", V.X(noLead[0]) + (noLead[0] >= 0 ? 10 : -10), V.Y(noLead[1]) + 4, { align: noLead[0] >= 0 ? "left" : "right", color: c.warn, size: 11, weight: 600 });
+  if (Math.hypot(vx, vy) > 0.1) { var mlab = "aimed straight at it", mleft = V.X(noLead[0]) + 10 + g.textWidth(mlab, { size: 11, weight: 600 }) > g.w - 6; g.text(mlab, V.X(noLead[0]) + (mleft ? -10 : 10), V.Y(noLead[1]) + 4, { align: mleft ? "right" : "left", color: c.warn, size: 11, weight: 600 }); }
   // With the lead: the launcher points off to one side and the ball arrives.
   g.line(V.X(0), V.Y(-d), V.X(0), V.Y(0), { color: c.ok, width: 2 });
   g.line(V.X(0), V.Y(-d), V.X(L.d * Math.cos(aim)), V.Y(-d + L.d * Math.sin(aim)), { color: c.mute, width: 1, dash: [2, 4] });
   if (Math.abs(L.leadDeg) > 0.3) g.text("launcher points here", V.X(L.d * 0.5 * Math.cos(aim)) + (lead < 0 ? -8 : 8), V.Y(-d + L.d * 0.5 * Math.sin(aim)), { align: lead < 0 ? "right" : "left", color: c.mute, size: 11 });
   // The robot, where it is now, and its speed arrow (drag its tip).
   var rx = vx * tr, ry = -d + vy * tr;
-  if (tr > 0.02) robotTop(g, V, 0, -d, aim, c, true);
+  if (tr > 0.02) { robotTop(g, V, 0, -d, aim, c, true); if (Math.hypot(rx, ry + d) * V.k > 70) g.text("started here", V.X(0), V.Y(-d + 0.42) - 6, { align: "center", color: c.mute, size: 11 }); }
   robotTop(g, V, rx, ry, aim, c);
+  g.text("robot", V.X(rx), V.Y(ry - 0.42) + 14, { align: "center", color: c.text2, size: 11, weight: 600 });
   g.arrow(V.X(0), V.Y(-d), V.X(vx * 0.35), V.Y(-d + vy * 0.35), { color: c.accent, width: 2.5, head: 9 });
   g.circle(V.X(vx * 0.35), V.Y(-d + vy * 0.35), 5, { fill: c.surface, stroke: c.accent, width: 2 });
-  g.text("driving " + K.fix(Math.hypot(s.vtoward, s.vacross), 1) + " ft/s", V.X(0), V.Y(-d - 0.42) + 16, { color: c.accent, weight: 700, size: 11, align: "center" });
+  g.text("driving " + K.fix(Math.hypot(s.vtoward, s.vacross), 1) + " ft/s", V.X(0), V.Y(-d - 0.42) + 30, { color: c.accent, weight: 700, size: 11, align: "center" });
   // The two balls.
   var rb = Math.max(3.5, V.L(r.target.r));
   g.ball(V.X(vx * ts), V.Y(-d + (hvS + vy) * ts), rb, 0, { fill: c.sheet, stroke: c.warn });

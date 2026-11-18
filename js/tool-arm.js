@@ -156,7 +156,7 @@ K.tool({
       { k: "Start to end", v: secs(r.timeGo), u: "s", state: r.reached ? "" : "bad" },
       { k: "And back", v: secs(r.timeBack), u: "s" },
       { k: "End speed", v: K.fix(r.tipSpeed / F.FT, 1), u: "ft/s", sub: K.fix(r.tipSpeed, 2) + " m/s", tip: "The fastest the end of the arm moves, either way." },
-      { k: "Peak current", v: K.fix(r.peakA, 0), u: "A", sub: "per motor" },
+      { k: "Peak current", v: K.fix(r.peakA, 0), u: "A", sub: "per motor, briefly, while it speeds up" },
       { k: "Holding, worst angle", v: K.n(hw, hw < 100 ? 1 : 0), u: "A", sub: "per motor, at " + deg(r.worstAngle), state: hw > 0.6 * lim ? "warn" : "", tip: "The current that holds the arm still where gravity pulls hardest in its range: level, if it passes level." },
       { k: "Torque margin", v: isFinite(r.margin) ? K.fix(r.margin, 1) : "no load", u: isFinite(r.margin) ? "×" : "", sub: "gives " + K.n(r.avail * NM_LBIN, 0) + ", needs " + K.n(r.worstTorque * NM_LBIN, 0) + " lb in", state: r.margin < 1 ? "bad" : r.margin < 1.5 ? "warn" : "", tip: "Torque the gearbox gives at the current limit divided by the most gravity asks for in the range. Below 1 it cannot hold; aim for 2 or more so it can also speed up." }
     ]) + K.outs([

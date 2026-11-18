@@ -3,7 +3,11 @@
 
    Where the models come from:
    - Motor figures: free speed, stall torque, stall and free current at 12 V, as listed on ReCalc's motor page
-     (reca.lc/motors, from the makers' test data), read 2026-11-17.
+     (reca.lc/motors), read 2026-11-17 and again 2026-11-18. ReCalc marks most rows "data from CTRE" (CTRE's bench
+     tests, which include other makers' motors) and the NEO 550 "data from REV". CTRE's figures for REV's motors
+     differ from REV's own sheet: REV lists the NEO Vortex at 6,784 rpm, 3.6 N m, 211 A and 3.6 A free
+     (docs.revrobotics.com). Under a current limit what matters is torque per amp: 0.0155 N m/A by CTRE's figures
+     and 0.0174 by REV's, a 12% difference. Both are offered ("NEO Vortex" and "NEO Vortex, REV's own figures").
    - Flywheel shot: "Flywheel Shot Analysis: Correction and Extension", Rafi Pedersen, FRC Team 449, May 2026, which
      builds on Dean Brettle's 2023 analysis (FRC Team 199). No slip at exit, rigid ball. The older model most
      calculators use (Team 846, 2012) gives the wheel too little speed loss.
@@ -44,6 +48,7 @@ var MOTORS = [
   ["kraken44", "Kraken X44", 7757, 4.11, 279, 3.2, 0.75],
   ["kraken44foc", "Kraken X44 (FOC)", 7367, 5.01, 329, 3.2, 0.75],
   ["vortex", "NEO Vortex", 6825, 5.96, 391, 5.4, 1.29],
+  ["vortexrev", "NEO Vortex, REV's own figures", 6784, 3.6, 211, 3.6, 1.29],
   ["neo", "NEO", 5906, 4.20, 216, 1.8, 1.19],
   ["neo550", "NEO 550", 11710, 1.08, 111, 1.1, 0.56],
   ["falcon", "Falcon 500", 6380, 4.69, 257, 1.5, 1.25],

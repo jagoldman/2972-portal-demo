@@ -178,10 +178,10 @@ K.tool({
       { k: "Time to top", v: secs(r.timeUp), u: "s", state: r.reached ? "" : "bad" },
       { k: "Time down", v: secs(r.timeDown), u: "s" },
       { k: "Top speed", v: K.n(vin, 0), u: "in/s", sub: K.fix(r.topV, 2) + " m/s", tip: "The carriage's fastest, up or down." },
-      { k: "Peak current", v: K.fix(r.peakA, 0), u: "A", sub: "per motor", tip: "The stator current in each motor. It sits at the limit while the motors are working hardest." },
+      { k: "Peak current", v: K.fix(r.peakA, 0), u: "A", sub: "per motor, briefly, while it speeds up", tip: "The stator current in each motor. It sits at the limit while the motors are working hardest." },
       { k: "Lowest battery", v: K.fix(Math.max(0, r.minV), 1), u: "V", state: r.minV < 7 ? "bad" : r.minV < 8 ? "warn" : "", tip: "The battery voltage at its lowest during the move, with the resistance in Fine tuning." },
       { k: "Holding at the top", v: K.fix(holdA, 1), u: "A", sub: "per motor, " + K.fix(r.hold.volts, 2) + " V", state: holdA > 0.6 * lim ? "warn" : "", tip: "The current that holds the carriage still at the top. Continuous rigging is heaviest there, with every stage on the rope." },
-      { k: "Heaviest it holds", v: r.maxCarLb > 0 ? lbs(r.maxCarLb) : "none", u: r.maxCarLb > 0 ? "lb" : "", sub: "carriage with its load, at " + lim + " A", tip: "The heaviest carriage this gearbox holds at the top with the motors at the current limit." }
+      { k: "Heaviest it holds", v: r.maxCarLb > 0 ? lbs(r.maxCarLb) : "none", u: r.maxCarLb > 0 ? "lb" : "", sub: "carriage with its load, at " + lim + " A. " + (r.rig === "cascade" ? "Cascade: the rope feels it " + (r.n + 1) + " times over" : "Continuous: the rope feels it once"), tip: "The heaviest carriage this gearbox holds at the top with the motors at the current limit." }
     ]) + K.outs([
       { k: "kG", v: K.fix(r.kG, 3), u: "V", tip: "Volts that hold the carriage against gravity." + (r.rig === "continuous" ? " With continuous rigging it grows as each stage joins; this is the top." : "") },
       { k: "kV", v: K.fix(r.kV, 3), u: "V s/m", tip: "Volts per metre per second of carriage speed." },
@@ -194,7 +194,7 @@ K.tool({
       K.chart({ id: "el-h", title: "Carriage height", x: { label: "time (s)", unit: "s", name: "Time" }, y: { label: "in", unit: "in", min: 0 }, series: [{ name: "Height", pts: r.chH }] }) +
       K.chart({ id: "el-v", title: "Carriage speed", x: { label: "time (s)", unit: "s", name: "Time" }, y: { label: "in/s", unit: "in/s" }, series: [{ name: "Speed", pts: r.chV, color: 3 }] }) + "</div>";
     out += K.chart({ id: "el-a", title: "Current in each motor", x: { label: "time (s)", unit: "s", name: "Time" }, y: { label: "A", unit: "A", min: 0, max: Math.max(s.statorA * 1.15, r.peakA * 1.05, 10) }, series: [{ name: "Current", pts: r.chA, color: 2 }], hlines: [{ y: s.statorA, label: "Limit " + s.statorA + " A" }] });
-    var bestTxt = r.best ? "Fastest at about " + K.fix(r.best[0], 1) + ":1, " + K.fix(r.best[1], 2) + " s to the top." + (r.reached ? " Yours, " + K.fix(s.ratio, 1) + ":1, takes " + K.fix(r.timeUp, 2) + " s." : " Yours, " + K.fix(s.ratio, 1) + ":1, cannot lift it.") : "No reduction from 3:1 to 40:1 lifts this load with these motors.";
+    var bestTxt = r.best ? (r.reached && r.timeUp <= r.best[1] + 0.015 ? "Yours, " + K.fix(s.ratio, 1) + ":1, is as fast as any reduction here: " + K.fix(r.timeUp, 2) + " s to the top." : "Fastest at about " + K.fix(r.best[0], 1) + ":1, " + K.fix(r.best[1], 2) + " s to the top." + (r.reached ? " Yours, " + K.fix(s.ratio, 1) + ":1, takes " + K.fix(r.timeUp, 2) + " s." : " Yours, " + K.fix(s.ratio, 1) + ":1, cannot lift it.")) : "No reduction from 3:1 to 40:1 lifts this load with these motors.";
     var dots = r.reached ? [{ x: s.ratio, y: r.timeUp, label: "yours" }] : [];
     out += '<div class="t-elevator-sweep"><p>' + D.esc(bestTxt) + " A bigger reduction holds with less current but is slower; a smaller one is quicker until the current limit caps the torque.</p>" +
       K.chart({ id: "el-sweep", title: "Time to top for other reductions", x: { label: "reduction (:1)", unit: ": 1", name: "Reduction" }, y: { label: "s", unit: "s", min: 0 }, series: [{ name: "Time to top", pts: r.sweep }], marks: [{ x: s.ratio, label: K.fix(s.ratio, 1) + ":1" }], dots: dots }) + "</div>";

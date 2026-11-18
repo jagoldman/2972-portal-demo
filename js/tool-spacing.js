@@ -44,10 +44,10 @@ K.tool({
     var word = s.kind === "belt" ? "pulley" : s.kind === "chain" ? "sprocket" : "gear";
     var teeth = K.num(ID, "n1", "Driving " + word, { unit: "teeth", min: 8, max: 120, step: 1, slider: true, tip: "The one the motor turns." }) + K.num(ID, "n2", "Driven " + word, { unit: "teeth", min: 8, max: 120, step: 1, slider: true });
     var space = s.kind === "gear" ?
-      K.num(ID, "gextra", "Extra spacing", { unit: "in", min: 0, max: 0.02, step: 0.001, tip: "Added to the exact distance so the teeth do not bind. 0.003 in is a common choice for 20 DP gears in a plate cut on a router." }) :
+      K.num(ID, "gextra", "Extra spacing", { unit: "in", min: 0, max: 0.02, step: 0.001, hint: "Added so the teeth do not bind.", tip: "Added to the exact distance so the teeth do not bind. 0.003 in is a common choice for 20 DP gears in a plate cut on a router." }) :
       K.num(ID, "target", "Wanted centre distance", { unit: "in", min: 1, max: 40, step: 0.001, slider: true, tip: "Roughly where you want the two shafts. The calculator finds the real distances a stock belt or a whole number of links gives." }) +
-      (s.kind === "belt" ? K.num(ID, "extra", "Extra spacing", { unit: "in", min: -0.02, max: 0.05, step: 0.001, tip: "Added to the exact distance. Leave at 0 for a belt on fixed centres unless your pulleys run tight." }) :
-        K.num(ID, "cextra", "Extra spacing", { unit: "in", min: 0, max: 0.06, step: 0.001, tip: "Added to the exact distance so the chain goes on. 0.018 in is a common choice for #25 chain." }));
+      (s.kind === "belt" ? K.num(ID, "extra", "Extra spacing", { unit: "in", min: -0.02, max: 0.05, step: 0.001, hint: "Added to the exact distance. 0 suits most belts.", tip: "Added to the exact distance. Leave at 0 for a belt on fixed centres unless your pulleys run tight." }) :
+        K.num(ID, "cextra", "Extra spacing", { unit: "in", min: 0, max: 0.06, step: 0.001, hint: "Added so the chain goes on.", tip: "Added to the exact distance so the chain goes on. 0.018 in is a common choice for #25 chain." }));
     return K.group(ID, "kind", "Parts", kind + size) + K.group(ID, "teeth", "Teeth", teeth) + K.group(ID, "space", "Spacing", space);
   },
 
@@ -69,8 +69,8 @@ K.tool({
       { k: "Centre distance", v: K.fix(o.center, 3), u: "in", sub: K.fix(o.center * 25.4, 2) + " mm" },
       { k: s.kind === "belt" ? "Belt" : "Chain", v: String(r.count), u: s.kind === "belt" ? "teeth" : "links", sub: K.fix(o.length, 2) + " in long" },
       { k: "Ratio", v: K.fix(r.ratio, 3), u: ": 1", sub: rtxt, tip: "Driven teeth divided by driving teeth." },
-      { k: "Teeth gripped", v: o.mesh1 + " / " + o.mesh2, sub: "driving / driven", state: state === "warn" ? "warn" : "", tip: "How many teeth the belt or chain wraps on each wheel. Few teeth on a small pulley is where belts skip." },
-      { k: "Gap between them", v: K.fix(o.gap, 3), u: "in", state: o.gap < 0.05 ? "warn" : "", tip: "Clear space between the two wheels' outer edges." }]);
+      { k: "Teeth gripped", v: o.mesh1 + " / " + o.mesh2, sub: "driving / driven" + (s.kind === "belt" ? "; six or more is safe" : ""), state: state === "warn" ? "warn" : "", tip: "How many teeth the belt or chain wraps on each wheel. Few teeth on a small pulley is where belts skip." },
+      { k: "Gap between them", v: K.fix(o.gap, 3), u: "in", sub: "between their outer edges", state: o.gap < 0.05 ? "warn" : "", tip: "Clear space between the two wheels' outer edges." }]);
   },
 
   more: function (s, r) {

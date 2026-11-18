@@ -233,7 +233,7 @@ K.tool({
         K.outs([{ k: "Best reduction", v: K.n(b.ratio, 3), u: ": 1", sub: M.trainLabel(b.stages) },
           { k: "Error", v: Math.abs(b.err) < 1e-9 ? "0" : (b.err > 0 ? "+" : "−") + K.fix(Math.abs(b.err) * 100, 2), u: "%", sub: (Math.abs(b.err) < 1e-9 ? "exactly " : "against ") + ratioTxt(s.want) },
           { k: "Stages", v: String(b.stages.length) },
-          { k: "Largest part", v: K.fix(b.d, 2), u: "in", sub: b.t ? b.t + " teeth" : "the planetary ring", tip: "Pitch diameter of the biggest gear, pulley, sprocket or planetary ring in the train." },
+          { k: "Largest part", v: K.fix(b.d, 2), u: "in", sub: b.t ? "pitch diameter, " + b.t + " teeth" : "the planetary ring", tip: "Pitch diameter of the biggest gear, pulley, sprocket or planetary ring in the train." },
           { k: "Output speed", v: K.n(r.t.freeOut, 0), u: "rpm", sub: "with no load" }]);
     }
     var t = r.t, lb = t.torqueOut * M.NM_LBIN, dirTxt = t.dirOut > 0 ? "the same way as the motor" : "the other way to the motor";
@@ -275,7 +275,7 @@ K.tool({
       var where = !st ? "" : st.kind === "planet" ? "same axis" : K.fix(L.C, 3) + " in" + (st.kind === "gear" ? "" : ", " + L.count + (st.kind === "belt" ? "T belt" : " links"));
       rows.push("<tr><td>" + (i === 0 ? "Motor" : i === t.shafts.length - 1 ? "Output" : "Shaft " + (i + 1)) + "</td><td>" + esc(what) + "</td><td>" + esc(where) + '</td><td class="r num">' + (st ? K.fix(t.stages[i - 1].ratio, 3) : "") + '</td><td class="r num">' + K.n(sh.rpm, sh.rpm >= 100 ? 0 : 1) + '</td><td class="r num">' + K.n(sh.torque * M.NM_LBIN, 1) + '</td><td class="r num">' + K.n(sh.torque, 2) + "</td><td>" + (sh.dir > 0 ? "as motor" : "reversed") + "</td></tr>");
     });
-    out += '<section class="ctab"><h2>Speed and torque after each stage</h2><div class="scroll"><table><thead><tr><th>Shaft</th><th>Parts</th><th>Centres</th><th class="r">Ratio</th><th class="r">rpm</th><th class="r">lb in</th><th class="r">N m</th><th>Turns</th></tr></thead><tbody>' + rows.join("") + "</tbody></table></div>" +
+    out += '<section class="ctab"><h2>Speed and torque after each stage</h2><div class="scroll"><table><thead><tr><th>Shaft</th><th>Parts</th><th>Centres</th><th class="r">Ratio</th><th class="r">rpm, no load</th><th class="r">lb in, stalled</th><th class="r">N m, stalled</th><th>Turns</th></tr></thead><tbody>' + rows.join("") + "</tbody></table></div>" +
       '<p class="mute small">Speed is with no load. Torque is with the motor stalled at the ' + (s.statorA > 0 ? s.statorA + " A limit" : "full stall current") + ", after each stage's losses. Belt and chain centres are for the stock loop nearest a 0.75 in gap between the wheels; Belt and chain spacing finds the others.</p></section>";
     var limTxt = s.statorA > 0 ? "With the " + s.statorA + " A limit" : "No limit";
     var c1 = K.chart({ id: "ratio-tq", title: "Output torque against output speed", x: { label: "output speed (rpm)", name: "Speed", unit: "rpm", min: 0 }, y: { label: "torque (lb in)", unit: "lb in", min: 0 },
@@ -497,7 +497,7 @@ function drawTrain(g, s, r, t) {
   });
   var head = ratioTxt(tr.total) + " in " + r.stages.length + (r.stages.length === 1 ? " stage" : " stages"), hw = g.textWidth(head, { weight: 700 });
   g.text(head, 12, 18, { weight: 700 });
-  g.text(", shown " + K.n(tr.shafts[0].rpm / 60 / (SHOW_RPS * spd), 0) + " times slower than real", 12 + hw, 18, { color: c.mute, size: 12 });
+  g.text(", slowed " + K.n(tr.shafts[0].rpm / 60 / (SHOW_RPS * spd), 0) + " times so you can watch it turn", 12 + hw, 18, { color: c.mute, size: 12 });
 }
 function hexBore(g, x, y, rp, ang) {
   var b = Math.max(3, Math.min(rp * 0.3, 9)), hex = [];

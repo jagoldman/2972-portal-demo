@@ -49,7 +49,7 @@ function clean(rows) {
   });
 }
 function vTxt(v) { return K.fix(Math.max(0, v), 1) + " V"; }
-function breakerNote(share) { return share <= 1 ? "carries this all match" : share <= 2 ? "trips if it lasts many seconds" : "can trip within seconds"; }
+function breakerNote(share) { return share <= 1 ? "carries this all match" : share <= 2 ? "trips if it lasts many seconds" : "is far over its rating: see its trip curve"; }
 
 K.tool({
   id: ID,
@@ -65,7 +65,7 @@ K.tool({
     s.rows = clean(s.rows);
     var r = M.power(s.rows, opts(s));
     r.state = r.V < s.brown ? "bad" : (r.margin < 1 || r.tired.V < s.brown) ? "warn" : "ok";
-    // The voltage line for the chart: this battery and a tired one.
+    // The voltage line for the chart: this battery and a worn one.
     var xmax = Math.max(50, r.I * 1.3, Math.min(r.Imax * 1.15, 1000)); r.xmax = xmax;
     r.line = []; r.lineT = [];
     for (var i = 0; i <= 60; i++) { var I = xmax * i / 60; r.line.push([I, Math.max(0, M.volts(s.rest, r.R, I))]); r.lineT.push([I, Math.max(0, M.volts(s.rest, r.tired.R, I))]); }
@@ -84,7 +84,7 @@ K.tool({
     var add = s.rows.length < MAXROWS ? '<div><button class="btn sm" data-act="powadd">' + D.ic("plus", 16) + " Add a row</button></div>" : "";
     return K.group(ID, "rows", "Drawing current at the worst moment", '<p class="mute small">Battery side amps, for each motor. Count only what runs at the same time.</p><div>' + rows + "</div>" + add) +
       K.group(ID, "bat", "Battery", K.num(ID, "rest", "At rest", { unit: "V", min: 10, max: 13.5, step: 0.1, slider: true, tip: "What the battery reads with nothing running. A charged battery reads 12.6 to 13 V." }) +
-        K.num(ID, "rbat", "Inside the battery", { unit: "Ω", min: 0.005, max: 0.05, step: 0.001, slider: true, tip: "The battery's own resistance. A fresh battery is near 0.012 Ω, a tired one 0.025 Ω or more. A battery tester reads it." })) +
+        K.num(ID, "rbat", "Inside the battery", { unit: "Ω", min: 0.005, max: 0.05, step: 0.001, slider: true, tip: "The battery's own resistance. A fresh battery is near 0.012 Ω, a worn one 0.025 Ω or more. A battery tester reads it." })) +
       K.group(ID, "adv", "Fine tuning", K.num(ID, "rwire", "Wiring and connections", { unit: "Ω", min: 0, max: 0.03, step: 0.001, tip: "Main wire, Anderson connector, main breaker and distribution. 0.006 Ω is a tidy robot with 6 AWG." }) +
         K.num(ID, "brown", "Brown-out", { unit: "V", min: 4, max: 10, step: 0.1, tip: "The roboRIO cuts the motor outputs near 6.8 V (roboRIO 1) or a level you set (roboRIO 2)." }) +
         K.num(ID, "main", "Main breaker", { unit: "A", min: 40, max: 200, step: 1, tip: "120 A is the rule for FRC." }), true);
@@ -94,23 +94,23 @@ K.tool({
     var worst = r.rows[r.worst], text;
     if (!r.rows.length || r.I <= 0) return K.verdict("info", "Add what draws current to see the battery sag.");
     if (r.state === "bad") text = "Browns out: " + K.n(r.I, 0) + " A pulls the robot down to " + vTxt(r.V) + ", under the " + K.fix(s.brown, 1) + " V cut-off. Cut " + (worst.name || "the biggest row") + " first (" + K.n(worst.I, 0) + " A); the robot needs " + K.n(r.cut, 0) + " A less in all.";
-    else if (r.state === "warn") text = (r.margin < 1 ? "Close: " + vTxt(r.V) + " is only " + K.fix(r.margin, 1) + " V above brown-out." : "Fine on this battery at " + vTxt(r.V) + ", but a tired one drops to " + vTxt(r.tired.V) + " and browns out.") + " Trim " + (worst.name || "the biggest row") + " (" + K.n(worst.I, 0) + " A) first.";
-    else text = "Holds " + vTxt(r.V) + " with " + K.n(r.I, 0) + " A drawn, " + K.fix(r.margin, 1) + " V above brown-out, and a tired battery still holds " + vTxt(r.tired.V) + ".";
+    else if (r.state === "warn") text = (r.margin < 1 ? "Close: " + vTxt(r.V) + " is only " + K.fix(r.margin, 1) + " V above brown-out." : "Fine on this battery at " + vTxt(r.V) + ", but a worn one drops to " + vTxt(r.tired.V) + " and browns out.") + " Trim " + (worst.name || "the biggest row") + " (" + K.n(worst.I, 0) + " A) first.";
+    else text = "Holds " + vTxt(r.V) + " with " + K.n(r.I, 0) + " A drawn, " + K.fix(r.margin, 1) + " V above brown-out, and a worn battery still holds " + vTxt(r.tired.V) + ".";
     if (r.V <= 0) text += " No battery can give this: it is more than the battery's short-circuit current, " + K.n(s.rest / r.R, 0) + " A, so the numbers past 0 V are not real.";
     if (r.share > 2) text += " The main breaker carries " + K.n(r.share * 100, 0) + "% of its rating here; held for more than a few seconds it can trip.";
     var bs = r.state;
     return K.verdict(bs, text) + K.outs([
       { k: "Total current", v: K.n(r.I, 0), u: "A", sub: r.rows.length + (r.rows.length === 1 ? " row" : " rows") },
-      { k: "Voltage at the robot", v: K.fix(Math.max(0, r.V), 1), u: "V", state: bs === "ok" ? "" : bs, sub: "tired battery: " + vTxt(r.tired.V) },
+      { k: "Voltage at the robot", v: K.fix(Math.max(0, r.V), 1), u: "V", state: bs === "ok" ? "" : bs, sub: "worn battery: " + vTxt(r.tired.V) },
       { k: "Margin to brown-out", v: (r.margin < 0 ? "−" : "") + K.fix(Math.abs(Math.max(0, r.V) - s.brown), 1), u: "V", state: r.margin < 0 ? "bad" : r.margin < 1 ? "warn" : "", sub: (r.marginA >= 0 ? K.n(r.marginA, 0) + " A to spare" : K.n(-r.marginA, 0) + " A too many") + " of " + K.n(r.Imax, 0) + " A; tired: " + K.n(r.tired.Imax, 0) + " A", tip: "Most current before brown-out = (rest volts − brown-out volts) ÷ (battery + wiring resistance)." },
       { k: "Main breaker", v: K.n(r.share * 100, 0), u: "%", state: r.share > 2 ? "bad" : r.share > 1 ? "warn" : "", sub: breakerNote(r.share), tip: "A rule of thumb, not a trip curve: a thermal breaker carries its rating all day and trips after seconds at about twice it." },
-      { k: "Lost as heat", v: K.n(r.heat, 0), u: "W", sub: "tired battery: " + K.n(r.tired.heat, 0) + " W", tip: "Current² × resistance: " + K.n(r.heatBat, 0) + " W in the battery and " + K.n(r.heatWire, 0) + " W in the wiring." }
+      { k: "Lost as heat", v: K.n(r.heat, 0), u: "W", sub: "worn battery: " + K.n(r.tired.heat, 0) + " W", tip: "Current² × resistance: " + K.n(r.heatBat, 0) + " W in the battery and " + K.n(r.heatWire, 0) + " W in the wiring." }
     ]);
   },
 
   more: function (s, r) {
     var out = K.chart({ id: "power-v", title: "Voltage at the robot against total current", x: { label: "total current (A)", name: "Current", unit: "A", min: 0, max: r.xmax }, y: { label: "volts at the robot (V)", unit: "V", min: 0, max: Math.ceil(s.rest + 0.5) },
-      series: [{ name: "This battery (" + K.fix(s.rbat, 3) + " Ω)", pts: r.line, color: 1 }, { name: "Tired battery (" + M.TIRED + " Ω)", pts: r.lineT, color: 2, dash: true }],
+      series: [{ name: "This battery (" + K.fix(s.rbat, 3) + " Ω)", pts: r.line, color: 1 }, { name: "Worn battery (" + M.TIRED + " Ω)", pts: r.lineT, color: 2, dash: true }],
       hlines: [{ y: s.brown, label: "Brown-out " + K.fix(s.brown, 1) + " V" }], marks: r.I > 0 ? [{ x: Math.min(r.I, r.xmax), label: "Now " + K.n(r.I, 0) + " A" }] : [] });
     if (r.rows.length) out += '<section class="ctab"><h2>Where the current goes</h2><div class="scroll"><table><thead><tr><th>Row</th><th class="r">Motors</th><th class="r">Amps each</th><th class="r">Total</th><th class="r">Share</th><th class="r">Of a 40 A breaker</th></tr></thead><tbody>' +
       r.rows.map(function (q, i) { var b = q.a / M.BRANCH; return "<tr" + (i === r.worst && r.state !== "ok" ? ' class="pick"' : "") + "><td>" + esc(q.name || "Row " + (i + 1)) + '</td><td class="r num">' + q.n + '</td><td class="r num">' + K.n(q.a, 1) + ' A</td><td class="r num">' + K.n(q.I, 0) + ' A</td><td class="r num">' + K.n(q.share * 100, 0) + '%</td><td class="r num">' + K.n(b * 100, 0) + "%" + (b > 2 ? ", can trip in seconds" : b > 1 ? ", trips if held" : "") + "</td></tr>"; }).join("") +

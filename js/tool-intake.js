@@ -92,7 +92,7 @@ K.tool({
       { k: "Piece speed", v: fts(r.piece), u: "ft/s", sub: pr, state: r.state === "bad" ? "bad" : "" },
       { k: "Surface to drive speed", v: isFinite(r.surfRatio) ? K.fix(r.surfRatio, 2) : "–", u: "×", sub: "aim for about 2 (rule of thumb)", state: r.state === "ok" ? "ok" : r.state, tip: "Roller surface speed divided by the robot's speed toward the piece." },
       { k: "Time to pass through", v: K.fix(r.time, 2), u: "s", sub: s.travel + " in at the piece speed" },
-      { k: "Grip force", v: K.n(r.force / F.LBF, 1), u: "lbf", sub: "at the roller surface, at " + s.statorA + " A", tip: "The most the roller can pull on the piece before the current limit stops it. The pinch also needs enough squeeze for the roller not to slip." },
+      { k: "Grip force", v: K.n(r.force / F.LBF, 1), u: "lbf", sub: "the most the roller can pull on the piece, at " + s.statorA + " A", tip: "The most the roller can pull on the piece before the current limit stops it. The pinch also needs enough squeeze for the roller not to slip." },
       { k: "Reduction for 2×", v: isFinite(r.ratio2x) ? K.fix(r.ratio2x, 2) : "–", u: ": 1", sub: "surface speed twice the drive speed" }
     ]);
   },

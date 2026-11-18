@@ -246,7 +246,7 @@ K.tool({
     }
     if (wide) g.callout("combined", C[0] - rad, C[1], C[0] - 46, C[1] - 18, { size: 11 });
     if (wide && brk > 0.01 && level) g.text("weight + braking", C[0] + rS[0] + (rS[0] > 0 ? 8 : -8), C[1] + rS[1], { align: rS[0] > 0 ? "left" : "right", base: "middle", color: c.force, size: 11, weight: 600 });
-    var state = L.df <= 0 ? "tips standing still" : sim.piv[fi] >= 3 ? "fallen over" : sim.piv[fi] === 2 ? "leaning on its front bumper, " + K.fix(phi / D2R, 0) + "°" : phi > 0.004 ? "rear wheels up " + K.fix(phi / D2R, 0) + "°" : braking ? "braking " + g2(r.brake) + " g" : sim.stopT > 0 && t >= sim.stopT ? "stopped" : "standing";
+    var state = L.df <= 0 ? "tips standing still" : sim.piv[fi] >= 3 ? "fallen over" : sim.piv[fi] === 2 ? "leaning on its front bumper, " + K.fix(phi / D2R, 0) + "°" : phi > 0.004 ? "rear wheels up " + K.fix(phi / D2R, 0) + "°" : braking ? "braking " + g2(r.brake) + " g" : sim.stopT > 0 && t >= sim.stopT ? "the robot has stopped" : "standing";
     g.text(K.fix(t, 2) + " s", 10, 19, { weight: 700, size: 13 });
     g.text(state, 60, 19, { weight: 600, color: phi > 0.004 || L.df <= 0 ? c.bad : c.text2 });
     K.chartNow("tip-a", t);

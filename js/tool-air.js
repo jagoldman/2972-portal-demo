@@ -115,7 +115,7 @@ K.tool({
   outs: function (s, r) {
     var o = r.o, text, st;
     if (!r.cycles) { st = "info"; text = "No cylinder is used in this match. Add cycles to see the air they need."; }
-    else if (!r.firstShort) { st = "ok"; text = "The tanks last the match" + (o.cfm ? " with the compressor topping up" : "") + ": it uses " + K.n(L(r.used), 2) + " L of free air against " + K.n(L(r.stored), 2) + " L stored above " + o.work + " psi, and ends at " + K.n(r.end, 0) + " psi."; }
+    else if (!r.firstShort) { st = "ok"; text = "With these cycle counts the tanks last the match" + (o.cfm ? " with the compressor topping up" : "") + ": it uses " + K.n(L(r.used), 2) + " L of free air against " + K.n(L(r.stored), 2) + " L stored above " + o.work + " psi, and ends at " + K.n(r.end, 0) + " psi."; }
     else {
       st = "bad"; var f = r.firstShort;
       text = "Pressure falls below " + o.work + " psi at about " + K.n(f.t, 0) + " s (" + clock(f.t) + "), after " + r.fullCycles + " of " + r.cycles + " cycles. " +
@@ -123,7 +123,7 @@ K.tool({
     }
     var share = r.stored > 0 ? r.used / r.stored : Infinity;
     return K.verdict(st, text) + K.outs([
-      { k: "Air used in a match", v: K.n(L(r.used), 2), u: "L", sub: "free air, at " + o.work + " psi", tip: "Free air: the volume it would fill at atmospheric pressure. Each stroke fills its cylinder at working pressure, then lets it out." },
+      { k: "Air used in a match", v: K.n(L(r.used), 2), u: "L", sub: "free air: its volume let out to room pressure", tip: "Free air: the volume it would fill at atmospheric pressure. Each stroke fills its cylinder at working pressure, then lets it out." },
       { k: "Stored above working", v: K.n(L(r.stored), 2), u: "L", sub: "free air in " + o.tanks + " × " + K.n(o.ml, 0) + " mL", tip: "Only the air above working pressure is usable at full force." },
       { k: "Pressure at the end", v: K.n(r.end, 0), u: "psi", state: r.end < o.work - 1e-6 ? "bad" : "", sub: "in the tanks" },
       { k: "Cycles at full force", v: r.fullCycles + " of " + r.cycles, state: r.firstShort ? "bad" : "", sub: "before it falls below " + o.work + " psi" },
@@ -136,7 +136,7 @@ K.tool({
       series: [{ name: "Tank pressure", pts: r.pts, color: 1 }], hlines: [{ y: o.work, label: "Working " + o.work + " psi" }],
       marks: r.firstShort ? [{ x: r.firstShort.t, label: "Below working" }] : [] });
     var strokes = K.chart({ id: "air-s", title: "Pressure each stroke gets", x: { label: "match time, s", name: "At", unit: "s", min: 0, max: o.match }, y: { label: "psi", unit: "psi", min: 0, max: Math.max(o.work * 1.2, 5) },
-      series: r.cyls.map(function (cy, j) { return { name: cy.name, color: j < 3 ? j + 1 : "mute", pts: r.ev.filter(function (e) { return e.i === j; }).map(function (e) { return [e.t, e.p]; }) }; }), hlines: [{ y: o.work, label: "Working " + o.work + " psi" }] });
+      series: r.cyls.map(function (cy, j) { return { name: cy.name, color: j < 3 ? j + 1 : "mute", dash: j % 2 === 1, pts: r.ev.filter(function (e) { return e.i === j; }).map(function (e) { return [e.t, e.p]; }) }; }), hlines: [{ y: o.work, label: "Working " + o.work + " psi" }] });
     var tab = '<section class="ctab"><h2>Cylinders at ' + o.work + ' psi</h2><div class="scroll"><table><thead><tr><th>Cylinder</th><th class="r">Bore × stroke</th><th class="r">Rod</th><th class="r">Cycles</th><th class="r">Air per cycle</th><th class="r">Push</th><th class="r">Pull</th><th class="r">Cycles from full, alone</th></tr></thead><tbody>' +
       r.per.map(function (p) { return "<tr><td>" + esc(p.c.name) + '</td><td class="r num">' + K.fix(p.c.bore, 4).replace(/0+$/, "").replace(/\.$/, "") + " × " + K.n(p.c.stroke, 2) + ' in</td><td class="r num">' + K.fix(p.c.rod, 4).replace(/0+$/, "").replace(/\.$/, "") + ' in</td><td class="r num">' + p.c.cycles + '</td><td class="r num">' + K.n(L(p.cycleAir), 3) + ' L</td><td class="r num">' + K.n(p.push, 1) + ' lbf</td><td class="r num">' + K.n(p.pull, 1) + ' lbf</td><td class="r num">' + (o.stored > o.work ? p.alone : 0) + "</td></tr>"; }).join("") +
       "</tbody></table></div></section>";

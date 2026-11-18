@@ -125,7 +125,7 @@ K.tool({
     return K.verdict(s.P > 0 ? st : "info", text) + K.outs([
       { k: "Deflection", v: inch(r.delta).replace(" in", ""), u: "in", sub: r.big ? "too far for the formula" : K.fix(r.delta * 25.4, r.delta < 0.004 ? 3 : 2) + " mm " + where(s.hold), state: r.big ? "warn" : "" },
       { k: "Bending stress", v: K.n(r.stress, 0), u: "psi", sub: K.n(r.share * 100, 0) + "% of yield, " + K.n(r.stress * 0.00689476, 1) + " MPa", state: st === "ok" ? "" : st, tip: "The highest stress, on the top and bottom faces where the bending moment is largest." },
-      { k: "Safety factor", v: isFinite(r.sf) ? K.fix(r.sf, 1) : "–", sub: "yields at " + K.n(r.Pyield, 0) + " lbf", state: s.P > 0 ? st : "", tip: "How many times this load it takes before it bends for good. 3 or more allows for hits (a rule of thumb)." },
+      { k: "Safety factor", v: isFinite(r.sf) ? K.fix(r.sf, 1) : "–", sub: "yields at " + K.n(r.Pyield, 0) + " lbf. Ideal tube: no holes, joints or hits", state: s.P > 0 ? st : "", tip: "How many times this load it takes before it bends for good. 3 or more allows for hits (a rule of thumb)." },
       { k: "Stiffness", v: K.n(r.stiff), u: "lbf/in", sub: K.n(r.stiff * 4.448222 / 25.4) + " N/mm at the load", tip: "Load for each inch it bends at the load point." },
       { k: "Weight of the piece", v: K.fix(r.weight, 2), u: "lb", sub: K.fix(r.weight * 0.45359237, 3) + " kg, " + K.fix(s.L, 2) + " in long" }]);
   },
@@ -156,9 +156,9 @@ K.tool({
     var c = g.c, W = g.w, H = g.h, narrow = W < 560, sec = r.sec, L = s.L;
     var frac = ease(t / DUR), P = s.P * frac;
     // Two areas: the beam, and the cross-section (at the right, or across the top on a phone).
-    var pan = narrow ? { x: 0, y: 0, w: W, h: Math.min(124, H * 0.36) } : { x: W - F.clamp(W * 0.3, 200, 280), y: 0, w: 0, h: H };
+    var pan = narrow ? { x: 0, y: H - Math.min(124, H * 0.36), w: W, h: Math.min(124, H * 0.36) } : { x: W - F.clamp(W * 0.3, 200, 280), y: 0, w: 0, h: H };
     if (!narrow) pan.w = W - pan.x;
-    var ax0 = 36, ax1 = (narrow ? W : pan.x) - (s.hold === "cant" ? 70 : 36), top = narrow ? pan.h + 8 : 20, bot = H - 38;
+    var ax0 = 36, ax1 = (narrow ? W : pan.x) - (s.hold === "cant" ? 70 : 36), top = 20, bot = (narrow ? pan.y : H) - 38;
     var arrowLen = Math.min(56, (bot - top) * 0.2);
     // One scale for length and depth, so the beam is to scale both ways.
     var k = Math.min((ax1 - ax0) / L, 0.2 * (bot - top) / sec.H), th = Math.max(4, sec.H * k);
@@ -253,11 +253,11 @@ function pin(g, x, y, roll) {
 function section(g, s, r, pan, narrow, kBeam, frac) {
   var c = g.c, sec = r.sec;
   g.rect(pan.x, pan.y, pan.w, pan.h, { fill: c.sheet, stroke: null });
-  if (narrow) g.line(0, pan.h, g.w, pan.h, { color: c.line, width: 1 }); else g.line(pan.x, 0, pan.x, g.h, { color: c.line, width: 1 });
+  if (narrow) g.line(0, pan.y, g.w, pan.y, { color: c.line, width: 1 }); else g.line(pan.x, 0, pan.x, g.h, { color: c.line, width: 1 });
   var boxW = narrow ? Math.min(80, pan.w * 0.24) : pan.w * 0.42, boxH = narrow ? pan.h - 62 : Math.min(pan.h * 0.36, 130);
   var ks = Math.min(boxW / sec.B, boxH / sec.H), cx = narrow ? 52 + Math.min(boxW, sec.B * Math.min(boxW / sec.B, boxH / sec.H)) / 2 : pan.x + 26 + boxW / 2, cy = narrow ? pan.y + 28 + boxH / 2 : pan.y + 50 + boxH / 2;
   var bw = sec.B * ks, bh = sec.H * ks;
-  g.text("Section, " + K.fix(ks / kBeam, ks / kBeam < 10 ? 1 : 0) + "× the beam", narrow ? 12 : pan.x + 12, pan.y + 18, { weight: 600, size: 12 });
+  g.text("Cross-section, enlarged", narrow ? 12 : pan.x + 12, pan.y + 18, { weight: 600, size: 12 });
   if (sec.shape === "round") {
     g.circle(cx, cy, bw / 2, { fill: c.part, stroke: c.partLine, width: 1.25 });
     if (!sec.solid) g.circle(cx, cy, sec.d * ks / 2, { fill: c.sheet, stroke: c.partLine, width: 1.25 });

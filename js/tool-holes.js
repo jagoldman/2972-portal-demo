@@ -116,8 +116,8 @@ K.tool({
         items.push({ k: "Drill", v: r.drill.replace(/ (mm|in)$/, ""), u: / mm$/.test(r.drill) ? "mm" : "", sub: M.isNumLetter(r.drill) ? (/^#/.test(r.drill) ? "number drill" : "letter drill") : / mm$/.test(r.drill) ? "metric drill" : "fractional drill" });
         items.push({ k: "Size", v: r.hole.toFixed(4), u: "in", sub: mm2(r.hole) });
       }
-      if (r.frac) items.push({ k: "Nearest fractional", v: r.frac.name.replace(" in", ""), u: "in", sub: signed(r.frac.in - r.hole) + " in", tip: "The nearest drill in 1/64 in steps, if you do not have the named one. Check that the difference is all right for this hole." });
-      if (r.metric) items.push({ k: "Nearest metric", v: r.metric.mm.toFixed(1), u: "mm", sub: signed(r.metric.in - r.hole) + " in", tip: "The nearest drill in 0.1 mm steps." });
+      if (r.frac) items.push({ k: "Nearest fractional", v: r.frac.name.replace(" in", ""), u: "in", sub: signed(r.frac.in - r.hole) + " in from the named drill", tip: "The nearest drill in 1/64 in steps, if you do not have the named one. Check that the difference is all right for this hole." });
+      if (r.metric) items.push({ k: "Nearest metric", v: r.metric.mm.toFixed(1), u: "mm", sub: signed(r.metric.in - r.hole) + " in from the named drill", tip: "The nearest drill in 0.1 mm steps. A nearest size is not always a good swap: for a tap, bigger means weaker threads." });
       if (r.other) items.push({ k: r.other.name, v: r.other.drill ? r.other.drill.replace(/ mm$/, "") : r.other.hole.toFixed(3), u: r.other.drill ? (/ mm$/.test(r.other.drill) ? "mm" : "") : "in", sub: in4(r.other.hole) });
       if (s.kind === "print") items.push({ k: "Hole you want", v: (r.want * 25.4).toFixed(1), u: "mm", sub: r.screw + " close fit" });
       if (r.major && items.length < 5) items.push({ k: s.kind === "press" ? "Part size" : s.kind === "rivet" ? "Rivet" : "Screw", v: r.major.toFixed(3), u: "in", sub: s.kind === "press" ? "outside diameter" : "nominal diameter, " + mm2(r.major) });
@@ -132,7 +132,7 @@ K.tool({
 
   more: function (s, r) {
     var head, rows, i, out = "";
-    function use(k) { return '<button class="btn sm ghost" data-act="holesuse" data-v="' + k + '">Draw</button>'; }
+    function use(k) { return '<button class="btn sm" data-act="holesuse" data-v="' + k + '">Draw it</button>'; }
     function tr(k, cells) { var on = k === r.i; return '<tr class="' + (on ? "pick" : "") + '">' + cells.map(function (c, j) { return "<td" + (j ? ' class="r num"' : "") + ">" + esc(c) + "</td>"; }).join("") + '<td class="r">' + (on ? '<span class="pill ok">Drawn</span>' : use(k)) + "</td></tr>"; }
     if (s.kind === "tap") {
       head = ["Thread", "Tap drill", "Inches", "mm"];

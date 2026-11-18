@@ -71,13 +71,14 @@ K.tool({
 
   outs: function (s, r) {
     var L = r.list; if (!L.length) return K.verdict("info", "Pick at least one motor.");
-    var lim = s.statorA > 0 ? "under a " + s.statorA + " A limit" : "with no current limit";
+    var lim = "at " + K.fix(s.volts, 1) + " V " + (s.statorA > 0 ? "under a " + s.statorA + " A limit" : "with no current limit");
     var by = L.slice().sort(function (a, b) { return b.peak.power * b.n - a.peak.power * a.n; }), top = by[0], next = by[1];
     var text = top.name + " gives the most power " + lim + ": " + K.n(top.peak.power * top.n, 0) + " W at " + K.n(top.peak.rpm, 0) + " rpm";
     if (next) { var more = top.peak.power * top.n / (next.peak.power * next.n) - 1; text += more < 0.005 ? ", the same as " + next.name + "." : ", " + K.n(more * 100, 0) + "% more than " + next.name + "."; }
     else text += ".";
     var perLb = L.slice().sort(function (a, b) { return b.peak.power / b.m.lb - a.peak.power / a.m.lb; })[0];
     if (L.length > 1 && perLb !== top) text += " Per pound, " + perLb.m.name + " leads.";
+    text += " A mechanism only gets that power if it is geared so the motor runs near that speed.";
     return K.verdict("info", text) +
       K.outs(L.map(function (q) { return { k: q.name, v: K.n(q.peak.power * q.n, 0), u: "W", sub: "peak at " + K.n(q.peak.rpm, 0) + " rpm", tip: "The most mechanical power " + (q.n > 1 ? "these motors give" : "this motor gives") + " " + lim + " at " + K.fix(s.volts, 1) + " V." }; })) +
       K.outs(L.map(function (q) { var T = q.limT * q.n; return { k: "Torque, " + (q.n > 1 ? q.n + " × " : "") + q.m.name, v: K.n(T, 2), u: "N m", sub: K.n(T / (F.LBF * F.IN), 1) + " lb in from a standstill" }; }));
@@ -106,7 +107,7 @@ K.tool({
       ["Peak power per pound", function (q) { return K.n(q.peak.power / q.m.lb, 0) + " W/lb"; }]];
     out += '<section class="ctab"><h2>Side by side at ' + K.fix(s.volts, 1) + " V" + (s.statorA > 0 ? ", " + s.statorA + " A limit" : ", no limit") + '</h2><div class="scroll"><table><thead><tr><th></th>' + L.map(function (q) { return '<th class="r">' + D.esc(q.name) + "</th>"; }).join("") + "</tr></thead><tbody>" +
       rowsT.map(function (row) { return "<tr><td>" + row[0] + "</td>" + L.map(function (q) { return '<td class="r num">' + row[1](q) + "</td>"; }).join("") + "</tr>"; }).join("") + "</tbody></table></div>" +
-      '<p class="mute small">Stall torque and stall current are with no limit, scaled to this voltage. Torque, power and weight are for all the motors in a row together; current is for each one.</p></section>';
+      '<p class="mute small">Figures are the ones ReCalc lists, mostly from bench tests by CTRE. The sheet from REV gives the NEO Vortex less stall torque and more torque per amp: choose the second NEO Vortex in the list to see the difference. Stall torque and stall current are with no limit, scaled to this voltage. Torque, power and weight are for all the motors in a row together; current is for each one.</p></section>';
     out += K.notes("<p>A DC motor's torque falls in a straight line from stall to free speed, and the current it draws falls with it. Power out is torque times speed, so without a limit it peaks at half the free speed. Each motor here is worked out from four figures: free speed, stall torque, stall current and free current at 12 V.</p>" +
       '<p class="eq">current = (volts − speed × kₑ) ÷ R,  torque = kₜ × (current − free current)</p>' +
       '<p class="eq">power = torque × speed,  efficiency = power ÷ (battery volts × battery current)</p>' +

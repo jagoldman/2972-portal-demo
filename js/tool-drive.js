@@ -182,10 +182,10 @@ K.tool({
     if (low < 7 && state !== "bad") { state = "warn"; text += " The battery drops to " + K.fix(low, 1) + " V, " + (low < 6.8 ? "below" : "close to") + " the 6.8 V where the roboRIO cuts the motors (a brownout), so a real robot would not run this fast: lower the current limit or add a supply limit."; }
     function two(a, b, n) { return K.fix(a, n) + " / " + K.fix(b, n); }
     return K.verdict(state, text) + K.outs([
-      { k: "Time to " + d + " ft", v: two(A.time, B.time, 2), u: "s", sub: "A / B", tip: "From a standing start, full power all the way." },
+      { k: "Time to " + d + " ft", v: two(A.time, B.time, Math.abs(A.time - B.time) < 0.05 ? 3 : 2), u: "s", sub: "A / B", tip: "From a standing start, full power all the way." },
       { k: "Speed at the line", v: two(A.vLine / FT, B.vLine / FT, 1), u: "ft/s", sub: two(A.vLine, B.vLine, 2) + " m/s" },
       { k: "Top speed", v: two(A.top / FT, B.top / FT, 1), u: "ft/s", sub: "free speed " + two(A.free / FT, B.free / FT, 1), tip: "Where a long run levels off, with drag and battery sag. Free speed is the catalogue figure: 12 V and no load." },
-      { k: "Wheels slip until", v: (A.slipEnd < 0 ? "no slip" : fts(A.slipV)) + " / " + (B.slipEnd < 0 ? "no slip" : fts(B.slipV)), u: A.slipEnd < 0 && B.slipEnd < 0 ? "" : "ft/s", sub: "launch " + two(A.acc0 / F.G, B.acc0 / F.G, 2) + " g", state: A.slipEnd >= 0 || B.slipEnd >= 0 ? "" : "ok", tip: "While the motors could push harder than the tread grips, the wheels spin on the carpet and grip sets the acceleration." }
+      { k: "Wheels slip until", v: (A.slipEnd < 0 ? "never" : fts(A.slipV)) + " / " + (B.slipEnd < 0 ? "never" : fts(B.slipV)), u: A.slipEnd < 0 && B.slipEnd < 0 ? "" : "ft/s", sub: "launch " + two(A.acc0 / F.G, B.acc0 / F.G, 2) + " g", state: A.slipEnd >= 0 || B.slipEnd >= 0 ? "" : "ok", tip: "While the motors could push harder than the tread grips, the wheels spin on the carpet and grip sets the acceleration." }
     ]);
   },
 

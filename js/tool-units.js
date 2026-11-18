@@ -84,7 +84,7 @@ K.tool({
   outs: function (s, r) {
     var from = r.k.units.filter(function (u) { return u[0] === s.unit; })[0];
     return '<div class="t-units"><h2>' + esc(sig(s.x) + " " + from[1]) + " is</h2>" +
-      K.outs(r.k.units.map(function (u) { return { k: u[3], v: sig(r.conv[u[0]]), u: u[1], state: u[0] === s.unit ? "ok" : "" }; })) + "</div>";
+      K.outs(r.k.units.filter(function (u) { return u[0] !== s.unit; }).map(function (u) { return { k: u[3], v: sig(r.conv[u[0]]), u: u[1] }; })) + "</div>";
   },
 
   more: function (s, r) {
@@ -95,7 +95,7 @@ K.tool({
         { k: "Per motor rotation", v: sig(m.perRot), u: "m", sub: sig(m.perRot / IN) + " in" },
         { k: "Per output turn", v: sig(m.perOut), u: "m", sub: sig(m.perOut / IN) + " in" + (m.rig > 1 ? ", with " + m.rig + "× rigging" : "") },
         { k: "Speed per motor rpm", v: sig(m.perRpm), u: "m/s", sub: sig(m.perRpm / 0.3048) + " ft/s per rpm" },
-        { k: "Largest speed", v: sig(m.max), u: "m/s", sub: sig(m.maxFt) + " ft/s at " + K.n(s.rpm, 0) + " rpm" }];
+        { k: "Largest speed", v: sig(m.max), u: "m/s", sub: sig(m.maxFt) + " ft/s at " + K.n(s.rpm, 0) + " rpm with no load; slower under load" }];
       work = [["Output turn", "π × " + num(s.dia) + " in × 0.0254" + (m.rig > 1 ? " × " + m.rig + " (rigging)" : ""), sig(m.perOut) + " m"],
         ["Per motor rotation", sig(m.perOut) + " m ÷ " + num(s.ratio), sig(m.perRot) + " m"],
         ["Per motor rpm", sig(m.perRot) + " m ÷ 60 s", sig(m.perRpm) + " m/s"],
@@ -114,7 +114,7 @@ K.tool({
       items = [
         { k: "Per motor rotation", v: sig(m.perRotDeg), u: "°", sub: sig(m.perRot) + " rad" },
         { k: "Speed per motor rpm", v: sig(m.perRpm), u: "rad/s", sub: sig(m.perRpm * 180 / Math.PI) + " deg/s per rpm" },
-        { k: "Largest speed", v: sig(m.maxDeg), u: "deg/s", sub: sig(m.max) + " rad/s at " + K.n(s.rpm, 0) + " rpm" },
+        { k: "Largest speed", v: sig(m.maxDeg), u: "deg/s", sub: sig(m.max) + " rad/s at " + K.n(s.rpm, 0) + " rpm with no load; slower under load" },
         { k: "Arm turns", v: sig(m.outRpm), u: "rpm", sub: "at that motor speed" }];
       work = [["Per motor rotation", "360° ÷ " + num(s.ratio), sig(m.perRotDeg) + "°"],
         ["In radians", "2π ÷ " + num(s.ratio), sig(m.perRot) + " rad"],
@@ -129,7 +129,7 @@ K.tool({
         "// At " + num(s.rpm) + " motor rpm, no load\n" +
         "public static final double kArmMaxSpeedRadiansPerSecond = " + java(m.max) + ";";
     }
-    var table = '<section class="ctab"><h2>Worked out</h2><div class="scroll"><table><thead><tr><th>Step</th><th>Sum</th><th class="r">Result</th></tr></thead><tbody>' +
+    var table = '<section class="ctab"><h2>Worked out</h2><div class="scroll"><table><thead><tr><th>Step</th><th>Working</th><th class="r">Result</th></tr></thead><tbody>' +
       work.map(function (w) { return "<tr><td>" + esc(w[0]) + '</td><td class="num">' + esc(w[1]) + '</td><td class="r num">' + esc(w[2]) + "</td></tr>"; }).join("") + "</tbody></table></div></section>";
     var vendors = '<section class="ctab t-units-v"><h2>Vendor settings</h2>' +
       "<p><b>CTRE Phoenix 6, SensorToMechanismRatio: " + esc(java(s.ratio)) + ".</b> It wants sensor rotations per mechanism rotation; with the motor's own encoder that is the reduction. Position then reads in " + (lin ? (s.mk === "wheel" ? "wheel" : "spool") + " rotations; multiply by " + esc(sig(m.perOut)) + " m for metres." : "arm rotations; multiply by 360 for degrees.") + "</p>" +
