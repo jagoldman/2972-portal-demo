@@ -337,7 +337,7 @@ function seasonLine() {
   var ms = D.tasksApi ? D.tasksApi.milestones(12).filter(function (m) { return m.date >= today && m.date < target.date; }) : [];
   var due = {}; ms.forEach(function (m) { (due[m.date] = due[m.date] || []).push(m); });
   var marks = meets.map(function (d) {
-    var cls = "pm" + (d.date === today ? " today" : "") + (d.kind === "build" ? " build" : "") + (due[d.date] ? " due" : "");
+    var cls = "pm" + (d.date === today ? " today" : "") + (d === meets[0] && d.date !== today ? " next" : "") + (d.kind === "build" ? " build" : "") + (due[d.date] ? " due" : "");
     return '<i class="' + cls + '"></i>';
   }).join("");
   var next = ms.slice(0, 3).map(function (m) {
@@ -352,7 +352,7 @@ function seasonLine() {
 function apiWith(api, fns) { return api && fns.every(function (f) { return typeof api[f] === "function"; }) ? api : null; }
 // One row of the Now list: a title and one muted line that open the owning screen, then at most one action.
 function nowRow(o) {
-  return '<div class="li nowrow"><button class="rowlink" data-act="' + (o.act || "goapp") + '"' + (o.v != null ? ' data-v="' + esc(o.v) + '"' : "") + (o.app ? ' data-app="' + o.app + '"' : "") + (o.tab ? ' data-tab="' + o.tab + '"' : "") + '><span class="rt">' + esc(o.title) + "</span>" + (o.line || o.mark ? '<span class="rl">' + (o.mark ? o.mark + " " : "") + (o.line || "") + "</span>" : "") + "</button>" +
+  return '<div class="li nowrow' + (o.first ? " nowfirst" : "") + '"><button class="rowlink" data-act="' + (o.act || "goapp") + '"' + (o.v != null ? ' data-v="' + esc(o.v) + '"' : "") + (o.app ? ' data-app="' + o.app + '"' : "") + (o.tab ? ' data-tab="' + o.tab + '"' : "") + '><span class="rt">' + esc(o.title) + "</span>" + (o.line || o.mark ? '<span class="rl">' + (o.mark ? o.mark + " " : "") + (o.line || "") + "</span>" : "") + "</button>" +
     (o.btn || '<span class="chev" aria-hidden="true">›</span>') + "</div>";
 }
 /* Now: everything that needs this person, most urgent first, each with its own action (rule 3). The actions call the
@@ -364,19 +364,32 @@ function nowRows() {
     if (S.role === "parent" && /^Next event: /.test(r.title)) return;
     if (S.role === "parent" && api && /^Next practice: /.test(r.title) && api.practiceDays(1)[0] && api.practiceDays(1)[0].date === api.TODAYS) r.title = "Practice today";
     // Signing in is the first job at practice, so until it is done it is the page's one main button (hill climb r2).
-    rows.push({ app: r.app, tab: r.tab, title: r.title, line: r.line ? esc(r.line) : "", btn: (r.btn || "").replace('class="btn" data-act="herescan"', 'class="btn primary" data-act="herescan"') }); });
+    var signin = /data-act="herescan"/.test(r.btn || "");
+    rows.push({ app: r.app, tab: r.tab, title: r.title, line: r.line ? esc(r.line) : "", first: signin, btn: (r.btn || "").replace('class="btn" data-act="herescan"', 'class="btn primary" data-act="herescan"') }); });
+  // A parent can settle every practice this week that still needs snacks, each from its own row (hill climb r3).
+  if (S.role === "parent" && api && c && D.calTab("snacks")) {
+    rows = rows.filter(function (r) { return !/needs snacks$/.test(r.title); });
+    var mine = "Ortiz family", n = 0;
+    api.practiceDays(8).forEach(function (e) {
+      if (daysTo(e.date, api.TODAYS) > 6) return;
+      var sn = c.snacks[e.date] || (c.snacks[e.date] = new Array(c.slots).fill(null)), k = sn.indexOf(null);
+      if (k < 0 || sn.indexOf(mine) >= 0) return;
+      var open = sn.filter(function (x) { return !x; }).length;
+      rows.push({ app: "snacks", title: "Snacks needed " + api.fmt(e.date), line: esc(plural(open, "family", "families") + " needed"), btn: '<button class="btn' + (n++ ? "" : " primary") + '" data-act="snack" data-d="' + e.date + '" data-k="' + k + '">Sign up</button>' });
+    });
+  }
   if (staff) {
     if (P && hasTile("parts")) P.needsOk().forEach(function (r) {
-      rows.push({ act: "homereq", v: r.id, title: r.name, line: esc(D.money(r.total) + ", asked by " + r.by) + (r.orderBy ? ', <b class="nowbad">order by ' + esc(api ? api.fmt(r.orderBy) : r.orderBy) + "</b>" : ""),
+      rows.push({ act: "homereq", v: r.id, title: r.name, line: esc(D.money(r.total) + ", asked by " + r.by) + (r.orderBy ? (api && r.orderBy < api.TODAYS ? ', <b class="nowbad">the order was due ' + esc(api.fmt(r.orderBy)) + "</b>" : ", order by " + esc(api ? api.fmt(r.orderBy) : r.orderBy)) : ""),
         mark: r.pri === "blocking" ? '<span class="pill pri bad">Blocking</span>' : r.pri === "high" ? '<span class="pill pri warn">High</span>' : "",
         btn: '<button class="btn' + (r.pri === "blocking" ? " primary" : "") + '" data-act="homeapprove" data-v="' + r.id + '">Approve</button>' });
     });
     if (K && hasTile("skills")) K.requests().forEach(function (q) {
-      rows.push({ app: "skills", tab: "signoff", title: q.student + ": " + q.skill, line: esc("Asks for a sign-off. " + q.where), btn: '<button class="btn" data-act="homesignoff" data-v="' + esc(q.key) + '">Sign off</button>' });
+      rows.push({ app: "skills", tab: "signoff", title: q.student, line: esc("Asks for a sign-off on " + q.skill), btn: '<button class="btn" data-act="homesignoff" data-v="' + esc(q.key) + '">Sign off</button>' });
     });
     // Stuck work comes to the mentors as a row, not only as a notice: nothing waits silently (GROUND_UP.md §1).
     if (apiWith(D.tasksApi, ["stuck", "openTask"]) && hasTile("tasks")) D.tasksApi.stuck().forEach(function (x) {
-      rows.push({ act: "hometask", v: x.id, title: x.title + " is stuck", line: esc((x.who.length ? x.who.join(", ") : "Nobody has it") + ", " + x.project + (x.waitsOn.length ? ". Waits on " + x.waitsOn.join(" and ") : "")), mark: '<span class="pill bad">Blocked</span>' });
+      rows.push({ act: "hometask", v: x.id, title: x.title, line: esc((x.who.length ? x.who.join(", ") : "Nobody has it") + ", " + x.project + (x.waitsOn.length ? ". Waits on " + x.waitsOn.join(" and ") : "")), mark: '<span class="pill bad">Blocked</span>' });
     });
     // What cannot be settled in one tap stays a door, as it was.
     waitingRows().forEach(function (r) {
@@ -410,7 +423,7 @@ function weekRows() {
     if (m.kind === "comp") return;
     if (role !== "parent") { var mn = api.mentorsOn(m.date).length; o.facts.push(mn ? '<span>' + plural(mn, "mentor", "mentors") + " coming</span>" : '<span class="pill warn">No mentors yet</span>'); }
     var sn = api.snacksFor(m.date);
-    if (sn && D.calTab("snacks")) o.facts.push(sn.filled ? "<span>Snacks: " + esc(sn.names.join(" and ")) + "</span>" : '<span class="pill warn">Needs snacks</span>');
+    if (sn && D.calTab("snacks") && (sn.filled || role !== "parent")) o.facts.push(sn.filled ? "<span>Snacks: " + esc(sn.names.join(" and ")) + "</span>" : '<span class="pill warn">Needs snacks</span>');
   });
   api.eventsIn(today, end, ["outreach", "meeting"]).forEach(function (e) { day(e.date).what.push(e.name); });
   if (role !== "parent" && D.tasksApi) D.tasksApi.milestones(12).forEach(function (m) { if (m.date >= today && m.date <= end) day(m.date).facts.push('<span class="wkdue"><i class="snd" style="background:' + esc(m.color) + '"></i>Due: ' + esc(m.name) + "</span>"); });
@@ -430,15 +443,16 @@ function homeGround() {
   var d = new Date(2026, 10, 10); try { if (D.calApi && D.calApi.TODAYS) { var q = D.calApi.TODAYS.split("-"); d = new Date(+q[0], +q[1] - 1, +q[2]); } } catch (e) {}
   var date = d.toLocaleDateString("en-US", { weekday: "long", month: "long", day: "numeric" });
   var now = nowRows(), others = role === "student" ? waitingOnOthers() : [];
-  var mainCol = "";
-  if (role === "student" && S.eventDay && D.myShiftCard) mainCol += D.myShiftCard();
+  var mainCol = "", shift = role === "student" && S.eventDay && !!D.myShiftCard;
+  // On an event day a student's shift is what needs them now, so it leads and no "nothing needs you" sits above it.
+  if (shift) mainCol += '<div class="shiftcard">' + D.myShiftCard() + "</div>";
   if (now.length || !shift) mainCol += '<section class="card nowcard"><h2>Now</h2>' + (now.length ? '<div class="list">' + now.map(nowRow).join("") + "</div>" : '<p class="mute">Nothing needs you right now.</p>') + "</section>";
   if (role === "student" && D.nextUpCard) mainCol += S.eventDay ? '<div class="evcompact">' + D.nextUpCard() + "</div>" : D.nextUpCard();
   // A parent's two questions are the next practice and the next event. The events get their own short list, so the
   // page is not mostly empty on a laptop and "Next event" is not one lonely row (hill climb r2).
   if (role === "parent" && D.calApi) {
     var evs = D.calApi.upcoming(40, ["comp", "outreach", "meeting"]).slice(0, 4);
-    if (evs.length) mainCol += '<section class="card"><h2>Coming up</h2><div class="list week">' + evs.map(function (e) {
+    if (evs.length) mainCol += '<section class="card comingcard"><h2>Coming up</h2><div class="list week">' + evs.map(function (e) {
       var q = e.date.split("-"), dt = new Date(+q[0], +q[1] - 1, +q[2]);
       return '<button class="li wkrow" data-act="goapp" data-app="calendar" aria-label="' + esc(D.calApi.fmt(e.date) + ": " + e.name + ". Open the Calendar") + '"><span class="wkd"><b>' + dt.toLocaleDateString("en-US", { weekday: "short" }) + '</b><span class="num">' + dt.toLocaleDateString("en-US", { month: "short", day: "numeric" }) + '</span></span><span class="grow"><b>' + esc(e.name) + '</b><span class="wkfacts"><span>' + esc(D.calApi.span(e) + (e.where ? ", " + e.where : "")) + "</span></span></span></button>";
     }).join("") + "</div></section>";
@@ -448,14 +462,13 @@ function homeGround() {
     S.activity.slice(0, 4).map(function (a) { return '<div class="li actli"><span class="actapp">' + esc(D.APPNAME[a.app] || "") + '</span><span class="grow"><b>' + esc(a.who) + "</b> " + esc(a.what) + '</span><span class="who">' + esc(a.when) + "</span></div>"; }).join("") + "</div></section>";
   // On an event day the event line takes the season line's place. A student's shift card below already says "you
   // now", so the line leaves that part out for them.
-  var shift = role === "student" && S.eventDay && D.myShiftCard;
   var top = S.eventDay && D.eventLine && role !== "parent" ? D.eventLine(shift ? "schedule" : "") : role === "parent" ? "" : seasonLine();
   return '<div class="content home homeb homec' + (S.eventDay ? " evday" : "") + '"><div class="homehead"><h1>Hi ' + esc(D.me().short) + '.</h1><p class="homedate">' + esc(date) + "</p></div>" + top +
-    '<div class="homecols"><div class="homemain">' + mainCol + (D.guideCard ? D.guideCard() : "") + act + '</div><aside class="homeside">' +
+    '<div class="homecols"><div class="homemain">' + mainCol + act + '</div><aside class="homeside">' +
     '<section class="card wkcard"><h2>This week</h2>' + weekRows() + "</section>" +
     '<section class="card appscard"><h2>Apps</h2><div class="applist">' + main.map(approw).join("") + "</div>" +
     '<div class="homegroups">' + toolsGroup("home") + adminGroup("home", tiles, function (l) { return '<ul class="morelinks">' + l.map(link).join("") + "</ul>"; }) + (more.length ? groupRow("more", "Team links", more.length, "home", '<ul class="morelinks">' + more.map(link).join("") + "</ul>") : "") + "</div></section>" +
-    "</aside></div></div>";
+    (D.guideCard && !S.eventDay ? D.guideCard() : "") + "</aside></div></div>";
 }
 D.views.portal = function () {
   var S = D.S, tiles = D.visibleTiles(), staff = D.isStaff();

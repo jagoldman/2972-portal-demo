@@ -91,7 +91,9 @@ var EVPARTS = [
 function eventLine(here) {
   if (!D.S.comp) return "";
   return '<nav class="evline" aria-label="At the event">' + EVPARTS.filter(function (p) { return p.app !== here; }).map(function (p) {
-    var inner = '<span class="evk">' + p.label + '</span><span class="evv">' + esc(p.text()) + "</span>";
+    // When our match is the one on the field, the part is named "Our match now", so "next" and "now" never sit in one line.
+    var label = p.k === "match" && nextOurs() && nextOurs().q === C().current ? "Our match now" : p.label;
+    var inner = '<span class="evk">' + label + '</span><span class="evv">' + esc(p.text()) + "</span>";
     // A door only for someone who may open that app (a parent may not); otherwise the same words, not a link.
     return D.inGroup(p.app) ? '<a class="evpart" href="' + D.appHref(p.app) + '" data-act="goapp" data-app="' + p.app + '" data-tab="' + p.tab + '">' + inner + "</a>" : '<div class="evpart">' + inner + "</div>";
   }).join("") + "</nav>";
@@ -115,7 +117,7 @@ function evDur(m) { var h = Math.floor(m / 60), mm = m % 60; return (h ? h + " h
 function evMatch() {
   var c = C(), m = nextOurs(); if (!m) return "No more matches today";
   var left = labelMins(m.time) - (START + c.nowSlot * 15);
-  return "Qual " + m.q + ", " + (m.red.indexOf(2972) >= 0 ? "Red" : "Blue") + ", " + m.time + ", " + (m.q === c.current ? "on the field now" : left > 0 ? "in " + evDur(left) : "now");
+  return "Qual " + m.q + ", " + (m.red.indexOf(2972) >= 0 ? "Red" : "Blue") + ", " + m.time + ", " + (m.q === c.current ? "on the field" : left > 0 ? "in " + evDur(left) : "now");
 }
 // "5 of 11 checked, battery B1 at 12.9 V": the Pit's checklists and the battery marked In robot.
 function evRobot() {
@@ -198,7 +200,7 @@ function checklists() {
   var c = C(), total = 0, ticked = 0, m = nextOurs(), red = m.red.indexOf(2972) >= 0;
   c.lists.forEach(function (l) { l.items.forEach(function (i) { total++; if (i.c) ticked++; }); });
   return '<div class="card hero"><div class="row between"><div><p class="eyebrow">Next match · ' + (m.q === c.current ? "on the field now" : (m.q - c.current) + " matches away") + " · scheduled " + m.time + '</p><h2 class="herotitle">Qual ' + m.q + " · " + (red ? "Red" : "Blue") + '</h2><p class="mute">With ' + (red ? m.red : m.blue).filter(function (t) { return t !== 2972; }).join(" and ") + " · against " + (red ? m.blue : m.red).join(", ") + '</p></div><span class="pill ' + (ticked === total ? "ok" : "warn") + '">' + ticked + " of " + total + " checked</span></div>" + '<div class="bar"><i class="ok" style="width:' + D.pct(ticked, total) + '%"></i></div>' +
-    '<div class="row"><button class="btn" data-act="pitarchive">Archive as Qual ' + c.last + '</button><button class="btn" data-act="pitreset">Reset</button></div></div>' +
+    '<div class="row pitmaint"><button class="btn" data-act="pitarchive">Archive as Qual ' + c.last + '</button><button class="btn" data-act="pitreset">Reset</button></div></div>' +
     '<div class="grid2">' + c.lists.map(function (l, li) {
       return '<div class="card"><h2>' + esc(l.name) + "</h2><div>" + l.items.map(function (it, ii) { return '<div class="checkrow"><button class="bigcheck" data-act="pittick" data-l="' + li + '" data-i="' + ii + '" aria-pressed="' + it.c + '" aria-label="' + esc(it.n) + '">' + D.ic("check", 28) + "</button><div><b>" + esc(it.n) + "</b>" + (it.c ? '<div class="who">' + esc(it.by) + " · " + esc(it.at) + "</div>" : "") + '</div><button class="btn sm" data-act="pitissue" data-l="' + li + '" data-i="' + ii + '">Problem</button></div>'; }).join("") + "</div></div>";
     }).join("") + "</div>" + issuesCard();
@@ -280,7 +282,7 @@ function drawField(cv) {
   x.fillStyle = g ? "#24272b" : "#1d2a1f"; x.fillRect(0, 0, w, h);
   x.strokeStyle = "rgba(255,255,255,.5)"; x.lineWidth = 2; x.strokeRect(6, 6, w - 12, h - 12); x.beginPath(); x.moveTo(w / 2, 6); x.lineTo(w / 2, h - 6); x.stroke();
   x.fillStyle = "rgba(220,60,50,.35)"; x.fillRect(6, 6, 70, h - 12); x.fillStyle = "rgba(60,110,220,.35)"; x.fillRect(w - 76, 6, 70, h - 12);
-  x.fillStyle = "rgba(255,255,255,.7)"; x.font = "12px sans-serif"; x.fillText("Red start", 14, 22); x.fillText("Blue start", w - 70, 22);
+  x.fillStyle = "rgba(255,255,255,.7)"; x.font = g ? "600 20px sans-serif" : "12px sans-serif"; x.fillText("Red start", g ? 84 : 14, g ? 30 : 22); x.fillText("Blue start", w - (g ? 178 : 70), g ? 30 : 22);
   [[180, 90], [180, 230], [w - 180, 90], [w - 180, 230]].forEach(function (p) { x.beginPath(); x.arc(p[0], p[1], 18, 0, 7); x.strokeStyle = mark; x.stroke(); });
   x.strokeStyle = pen; x.lineWidth = 4; x.lineCap = "round";
   f.path.forEach(function (stroke) { x.beginPath(); stroke.forEach(function (p, i) { if (i) x.lineTo(p[0], p[1]); else x.moveTo(p[0], p[1]); }); x.stroke(); });

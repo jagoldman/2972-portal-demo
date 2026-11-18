@@ -141,8 +141,6 @@
   /* ============================================================
      Hill climb, round 2 (2026-11-18)
      ============================================================ */
-  /* Until a student has signed in, Sign in is the one filled button; the next task's Done waits its turn. */
-  .homec .homecols:has(.nowrow .btn.primary) .nextup .btn.primary { background: var(--surface); border-color: var(--line-2); color: var(--text); box-shadow: none; }
   /* The chosen theme has a tick as well as a tint. */
   .accountchoice[aria-pressed="true"]::after { content: ""; margin-left: auto; width: 6px; height: 11px; border: solid currentColor; border-width: 0 2px 2px 0; transform: rotate(45deg) translate(-2px, -2px); }
   /* A switch says On or Off in words, not by colour alone. */
@@ -175,4 +173,62 @@
   .doorask:hover { background: none; color: var(--text-2); }
   .doorask .btn { flex: none; }
   .fieldcanvas { background: #24272b; }
+
+  /* ============================================================
+     Hill climb, round 3 (2026-11-18): Sonnet and GPT-6.1 Terra
+     ============================================================ */
+  /* Signing in is step one, so until it is done its row is a block like the next task's. "Done" stays the filled
+     button on the next task, as it is in Tasks. */
+  .nowrow.nowfirst { margin: 4px 0 6px; padding: 10px 14px; border: 0; border-left: 4px solid var(--bumper); background: var(--tint); }
+  .nowrow.nowfirst:hover { background: var(--tint); }
+  .nowrow.nowfirst + .nowrow { border-top: 0; }
+  /* The season line says which mark is today. */
+  .sntrack { height: 40px; align-items: flex-start; padding-top: 6px; }
+  .sntrack .pm { margin-top: 4px; }
+  .sntrack .pm.build { margin-top: 0; }
+  .pm.today::after, .pm.next::after { content: "Today"; position: absolute; left: 0; top: calc(100% + 5px); color: var(--rail-text); font-size: .72rem; font-weight: 600; white-space: nowrap; }
+  .pm.next::after { content: "Next practice"; }
+  .snend { margin-top: 0; }
+  /* The tour is quiet and sits under the apps; it never competes with work that is waiting. */
+  .homec .homeside > .guidecard { display: grid; gap: 6px; margin-top: 0; padding: 14px 0 0; border: 0; border-top: 1px solid var(--line); border-radius: 0; background: none; }
+  .homec .homeside > .guidecard .gnext { flex-wrap: wrap; }
+  .homec .actcard { border-top: 1px solid var(--line); }
+  .homec .shiftcard + .nowcard { border-top: 1px solid var(--line) !important; }
+  @media (max-width: 899px) {
+    .homec .shiftcard { order: 0; }
+    .homec .wkcard { order: 4; }
+    .homec .comingcard { order: 5; }
+    .homec .appscard { order: 6; }
+    .homec .guidecard { order: 7; }
+    .homec .actcard { order: 8; }
+    .homec.evday .homeside { display: contents; }
+    .homec.evday .appscard { order: 1; border-top: 0; }
+    .homec .homeside > .guidecard { padding-bottom: 8px; }
+  }
+
+  /* Shell */
+  .appsmenu .grphead .tcount { display: none; }
+  @media (min-width: 641px) { .appsmenu { width: min(400px, calc(100vw - 16px)); } }
+  .accountmenu [role="group"] { padding-block: 8px; border-block: 1px solid var(--line); }
+  .nli .app { display: block; font-size: .8rem; line-height: 1.3; }
+  .nli.unread::before { width: 10px; height: 10px; margin-top: -5px; left: 5px; }
+  @media (max-width: 640px) {
+    .appsmenu .seg button { min-height: 44px; padding-inline: 16px; }
+    .appsmenu .xbtn { width: 44px; height: 44px; }
+    .tabs.more-r { --fr: 72px; }
+    .topbar .right { margin-left: 2px; }
+    .sktable tr.click td { padding-block: 12px; }
+  }
+
+  /* Calendar */
+  .cnrow b { white-space: normal; overflow: visible; }
+  .month .ev { font-size: .8rem; }
+  /* "Here now" is a filled green dot, so it is not read as an empty tick box. */
+  .ring { width: 9px; height: 9px; border: 0; background: var(--ok); }
+  .mavail .chip:not([aria-pressed="true"]) { color: var(--text-2); }
+
+  /* Pit: archiving and resetting are housekeeping, so they are quiet and sit at the right. */
+  .pitmaint { justify-content: flex-end; }
+  .pitmaint .btn { min-height: 30px; padding-inline: 10px; border-color: transparent; background: none; color: var(--text-2); font-weight: 600; text-decoration: underline; text-underline-offset: 3px; }
+  @media (max-width: 640px) { .pitmaint .btn { min-height: 44px; } }
 }
