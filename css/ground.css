@@ -605,3 +605,47 @@
   /* Skills: the count of machines sits beside its heading. */
   .skmachines > .row.between { justify-content: flex-start; align-items: baseline; gap: 12px; }
 }
+
+/* ---- Hill climb round 13 ---- */
+:root[data-design="c"] {
+  .bellpanel .xbtn { background: none; }
+  /* Before sign-in the next task is its own section: its label is a heading like "Waiting on others". */
+  .homemain > .nowcard:has(.nowfirst) ~ .card.hero.nextup > .eyebrow { margin: 0 0 4px; color: var(--text); font-family: var(--display); font-size: 1.12rem; font-weight: 800; font-stretch: var(--wide); letter-spacing: 0; }
+  .homemain > .nowcard:has(.nowfirst) ~ .card.hero.nextup h2 { font-size: 1.02rem; }
+  @media (max-width: 640px) {
+    /* A sign-off note is one line on a phone, so three requests stay short. */
+    .homec .nowrow:not(.nowtall) .rl:not(:has(> .pill)) { -webkit-line-clamp: 1; }
+    /* On an event day the person's job is the first thing on a phone. */
+    .homec.evday .homehead { position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0); }
+  }
+  .alsq { display: inline-block; width: 9px; height: 9px; margin-right: 7px; border-radius: 2px; vertical-align: baseline; }
+  .alsq.red { background: #c1272d; }
+  .alsq.blue { background: #1d43c0; }
+  /* A count sits beside the heading it counts. */
+  .content .card > .row.between:has(> h2 + .tcount:last-child) { justify-content: flex-start; align-items: baseline; gap: 10px; }
+  /* A phone tab row scrolled past its first tabs fades at the left edge, like the right edge. */
+  .tabs.more-l.snapl { --fl: 26px; }
+  .tabs.more-l.snapl::before { content: none; }
+  .pitafter.pitnow h2 { font-size: inherit; color: var(--text); }
+  /* Who's coming: "Not coming" is a solid dark dot, "No reply" a hollow grey ring. */
+  .pill.ansno { color: var(--text); }
+  .pill.ansno::before { background: var(--text); }
+  /* Account: the bar already names the page. */
+  .acc > h1 { position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0); }
+}
+
+:root[data-design="c"] {
+  .nowrow .nowbud { order: 3; }
+  @media (min-width: 641px) { .trowx { grid-template-columns: 28px minmax(0, 1fr) 96px; } }
+  @media (max-width: 640px) {
+    .evline.evslim .evpart { padding-block: 4px; }
+    .cmp .evline.evslim + .card.hero { margin-top: 8px; padding-block: 10px 12px; }
+  }
+}
+@media (max-width: 640px) {
+  /* A mentor's Approve and Deny are two full-width buttons on a phone, so a thumb cannot hit the wrong one. */
+  :root[data-design="c"] .homec .nowrow.nowtall > .nowbtns { flex-direction: column; }
+  :root[data-design="c"] .homec .nowbtns .btn { width: 100%; }
+  /* Pit: the count of checks has its own line above the bar. */
+  :root[data-design="c"] .cmp .card.hero > .row.between:has(> .pill) { flex-direction: column; align-items: flex-start; gap: 6px; }
+}

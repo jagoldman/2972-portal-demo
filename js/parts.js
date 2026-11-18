@@ -15,7 +15,7 @@ function budgetLeft(id) { var p = P(), b = BUDGETS.filter(function (x) { return 
    check both on a phone. In a list row it is one line with a comma, so the row keeps its shape (hill climb r3). */
 function budgetEffect(r, two) {
   var left = budgetLeft(r.bud); if (left == null) return "";
-  var head = esc(bname(r.bud)) + ": " + money(left) + " left", after = money(left - total(r)) + " after this";
+  var head = esc(bname(r.bud)) + (D.ground() ? " budget: " : ": ") + money(left) + " left", after = money(left - total(r)) + " after this";
   if (!D.ground()) return head + " → " + after;
   return two ? head + '<br><span class="pafter">' + after + "</span>" : head + ", " + after;
 }
@@ -428,7 +428,7 @@ function toOrderView() {
     }
     return '<div class="card"><div><div class="row between nowrap pvh"><h2>' + esc(vn) + '</h2><div class="row nowrap">' + (today.length ? '<span class="pill bad">Place today</span>' : "") + '<b class="num">' + money(sub) + '</b></div></div>' + facts + "</div>" +
       (v.free ? (D.ground() ? '<div class="pship">' + bar + nudge + "</div>" : bar + nudge) : "") +
-      '<div class="list">' + lines.map(function (r) { var ob = orderBy(r); return '<div class="li pline"><span class="grow"><b>' + esc(r.name) + '</b><span class="pmeta">' + (D.ground() ? (ob ? '<b class="pob">' + orderByText(ob) + "</b>" : "") + '<b class="pqty">Qty ' + esc(qtyText(r)) + "</b>, " + [r.sku, bname(r.bud) === r.sub ? "" : bname(r.bud), "for " + r.sub, r.by].filter(Boolean).map(esc).join(", ") : [r.sku, "Qty " + qtyText(r), bname(r.bud), "for " + r.sub, r.by].map(esc).join(" · ") + (ob ? " · order by " + fmt(ob) : "")) + '</span></span><span class="pside"><span class="num">' + money(total(r)) + "</span>" + priPill(r.pri) + "</span></div>"; }).join("") + "</div>" +
+      '<div class="list">' + lines.map(function (r) { var ob = orderBy(r); return '<div class="li pline"><span class="grow"><b>' + esc(r.name) + '</b><span class="pmeta">' + (D.ground() ? (ob ? '<b class="pob">' + orderByText(ob) + "</b>" : "") + '<span class="pl1"><b class="pqty">Qty ' + esc(qtyText(r)) + "</b>, SKU " + esc(r.sku) + '</span><span class="pl2">' + [bname(r.bud) === r.sub ? "" : bname(r.bud), "for " + r.sub, r.by].filter(Boolean).map(esc).join(", ") + "</span>" : [r.sku, "Qty " + qtyText(r), bname(r.bud), "for " + r.sub, r.by].map(esc).join(" · ") + (ob ? " · order by " + fmt(ob) : "")) + '</span></span><span class="pside"><span class="num">' + money(total(r)) + "</span>" + priPill(r.pri) + "</span></div>"; }).join("") + "</div>" +
       '<div class="row"><button class="btn' + (today.length ? " primary" : "") + '" data-act="pmarkordered" data-v="' + esc(vn) + '">' + (D.ground() ? "Mark ordered" : "Mark ordered…") + '</button><button class="btn' + (D.ground() ? " ghost" : "") + '" data-act="pcopy" data-v="' + esc(vn) + '">' + (vn === "Amazon" ? "Open Share-A-Cart" : "Copy list") + "</button></div></div>";
   }).join("") + (two ? "</div></div>" : "");
 }
@@ -660,7 +660,7 @@ D.partsApi = {
      blocking, then the soonest order-by date, then high priority. total is in cents; orderBy is an ISO date or null. */
   needsOk: function () {
     var rank = { blocking: 0, high: 1, normal: 2, nice: 3 };
-    return P().requests.filter(function (r) { return r.status === "needsok"; }).map(function (r) { return { id: r.id, name: r.name, by: r.by, total: total(r), pri: r.pri, orderBy: orderBy(r) }; })
+    return P().requests.filter(function (r) { return r.status === "needsok"; }).map(function (r) { return { id: r.id, name: r.name, by: r.by, total: total(r), pri: r.pri, orderBy: orderBy(r), budget: budgetEffect(r) }; })
       .sort(function (a, b) { return (a.pri === "blocking" ? 0 : 1) - (b.pri === "blocking" ? 0 : 1) || String(a.orderBy || "9").localeCompare(String(b.orderBy || "9")) || rank[a.pri] - rank[b.pri] || a.id - b.id; });
   },
   // Exactly the Approve button: the same function, toast, notice and log. It redraws.

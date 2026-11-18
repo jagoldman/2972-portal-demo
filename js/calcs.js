@@ -281,7 +281,7 @@ def({ id: "calc-gearbox", key: "gearbox", name: "Gearbox", icon: "cgearbox", lin
     var r = readMotor(st, true), stages = [], err = r.err;
     if (!err) st.stages.forEach(function (s, i) { var a = num(s[0]), b = num(s[1]); if (!err && !(inRange(a, 6, 200) && inRange(b, 6, 200))) err = "Stage " + (i + 1) + " needs both tooth counts, from 6 to 200."; stages.push([a, b]); });
     var g = err ? null : M.gearbox(r.m, r.n, stages, r.eff, r.lim), lim = r.lim;
-    var rows = [row("Overall ratio", g ? ratioText(g.ratio) : DASH, "to 1"), row("Output free speed", g ? rpm(g.freeRpm) : DASH, "rpm"), row("Output stall torque", g ? sig(g.stall) : DASH, "N·m"),
+    var rows = [row("Overall ratio", g ? ratioText(g.ratio) : DASH, "to 1"), row("Output free speed", g ? rpm(g.freeRpm) : DASH, "rpm"), row(lim ? "Stall torque with no current limit" : "Output stall torque", g ? sig(g.stall) : DASH, "N·m"),
       row(lim ? "Torque at the " + lim + " A limit" : "Output torque with no limit", g ? sig(lim ? g.limited : g.stall) : DASH, "N·m")];
     // With a current limit, the torque the gearbox can use comes before the stall figure, so it is the one read first.
     if (lim) rows.splice(2, 0, rows.pop());
@@ -309,7 +309,7 @@ def({ id: "calc-drive", key: "drive", name: "Drivetrain", icon: "cdrive", line: 
   inputs: function (st) {
     var picks = '<div class="calcpicks" role="group" aria-label="Common swerve ratios"><span class="calchint">Common swerve ratios:</span>' + SWERVE.map(function (r) { return '<button type="button" class="chip" id="calc-pick-' + r.replace(".", "") + '" data-act="calcpick" data-v="' + r + '" aria-pressed="' + (st.ratio === r) + '">' + r + "</button>"; }).join("") + "</div>";
     return motorFields(st, true) + '<div class="calcwith">' + numField("ratio", "Gear ratio", st.ratio, "to 1", { min: 1, max: 30, step: 0.01 }) + picks + "</div>" +
-      numField("wheel", "Wheel diameter", st.wheel, "in", { min: 1, max: 12, step: 0.25 }) + numField("weight", "Robot weight, with battery and bumpers", st.weight, "lb", { min: 20, max: 200, step: 1 }) +
+      numField("wheel", "Wheel diameter", st.wheel, "in", { min: 1, max: 12, step: 0.25 }) + numField("weight", "Robot weight", st.weight, "lb", { min: 20, max: 200, step: 1, hint: "With battery and bumpers." }) +
       numField("dist", "Distance to cover", st.dist, "ft", { min: 1, max: 60, step: 1 }) + numField("mu", "Wheel grip (friction)", st.mu, "", { min: 0.1, max: 2, step: 0.05, hint: "About 1.1 for tread on carpet." }) + effField(st);
   },
   out: function (st) {

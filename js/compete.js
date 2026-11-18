@@ -116,7 +116,7 @@ D.eventRows = function () {
   var c = C(), rows = [], total = 0, ticked = 0, m = nextOurs();
   c.lists.forEach(function (l) { l.items.forEach(function (i) { total++; if (i.c) ticked++; }); });
   var onField = m && m.q === c.current, after = onField ? c.matches.filter(function (x) { return x.q > m.q && (x.red.indexOf(2972) >= 0 || x.blue.indexOf(2972) >= 0); })[0] : null;
-  if (onField) rows.push({ app: "pit", tab: "check", tall: true, quiet: true, title: "Save the Qual " + m.q + " checklist after the match", line: after ? "Then start the one for Qual " + after.q + ", scheduled " + after.time : "", btn: "Open the Pit" });
+  if (onField) rows.push({ app: "pit", tab: "check", tall: true, quiet: true, title: "Save the Qual " + m.q + " checklist after the match", line: after ? "Then start the checklist for Qual " + after.q + " (match at " + after.time + ")" : "", btn: "Open the Pit" });
   else if (total - ticked > 0) rows.push({ app: "pit", tab: "check", title: "Finish the checklist" + (m ? " before Qual " + m.q : ""), line: (total - ticked) + (total - ticked === 1 ? " check" : " checks") + " left", btn: "Open the checklist" });
   if (c.issues && c.issues.length) rows.push({ app: "pit", tab: "check", title: c.issues.length + (c.issues.length === 1 ? " open issue" : " open issues") + " in the pit", lines: c.issues.slice(0, 3).map(function (i) { return i.n; }) });
   return rows;

@@ -355,7 +355,7 @@ function whosComing(ed, days) {
 function answerLabel(a, student) {
   // Ground up: one style for every answer, a dot and a word.
   if (D.ground() && a && a.st === "coming") return '<span class="pill info anscoming">Coming</span>' + (range(a) ? '<span class="anshours num">' + range(a) + "</span>" : "");
-  if (D.ground() && a && a.st === "cant" && !student) return '<span class="pill">Not coming</span>';
+  if (D.ground() && a && a.st === "cant" && !student) return '<span class="pill ansno">Not coming</span>';
   if (a && a.st === "coming") return '<span class="ans-ok">' + D.ic("check", 13) + " " + (range(a) || "Coming") + "</span>";
   if (a && a.st === "cant" && !student) return '<span class="mute">✕ Not coming</span>';
   return D.ground() ? '<span class="pill noreply">No reply</span>' : '<span class="mute" aria-label="No answer">–</span>';

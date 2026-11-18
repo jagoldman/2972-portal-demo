@@ -321,3 +321,15 @@
   /* The decision on "Needs your OK" has full-size buttons. */
   .pwait > .row .btn, .pwait .btn.pother { min-height: 40px; padding-inline: 14px; }
 }
+
+/* ---- Hill climb round 13 ---- */
+:root[data-design="c"] {
+  .pstep.prare, .pstep.prare.zero { font-weight: 600; color: var(--text-2); }
+  .ppay + .who { font-size: .92rem; color: var(--text-2); }
+}
+
+:root[data-design="c"] {
+  @media (min-width: 900px) { .ptable.gt .pth, .ptable.gt .ptr { grid-template-columns: minmax(0, 2.4fr) minmax(0, .8fr) 6rem 5.5rem minmax(0, .9fr) 10.5rem 5rem 10.5rem; } }
+  .pline .pl1, .pline .pl2 { display: block; }
+}
+@media (max-width: 640px) { :root[data-design="c"] .preqsteps .stages li { min-height: 24px; padding-block: 2px; } :root[data-design="c"] .preqsteps .stages li::before { top: 6px; } :root[data-design="c"] .preqsteps .stages li::after { top: 20px; } }

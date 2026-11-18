@@ -397,7 +397,7 @@ function nowRows() {
   }
   if (staff) {
     if (P && hasTile("parts")) P.needsOk().forEach(function (r) {
-      rows.push({ group: "Needs your OK", act: "homereq", v: r.id, title: r.name, tall: true, line: (r.orderBy && api && r.orderBy < api.TODAYS ? '<b class="nowdue">Order by ' + esc(api.fmt(r.orderBy)) + ", " + plural(daysTo(api.TODAYS, r.orderBy), "day", "days") + " late</b><br>" : "") + esc(D.money(r.total) + ", asked by " + r.by + (whyOf(r.id) ? ": “" + whyOf(r.id) + "”" : "")) + (r.orderBy && !(api && r.orderBy < api.TODAYS) ? ", order by " + esc(api ? api.fmt(r.orderBy) : r.orderBy) : ""),
+      rows.push({ group: "Needs your OK", act: "homereq", v: r.id, title: r.name, tall: true, line: (r.orderBy && api && r.orderBy < api.TODAYS ? '<b class="nowdue">Order by ' + esc(api.fmt(r.orderBy)) + ", " + plural(daysTo(api.TODAYS, r.orderBy), "day", "days") + " late</b><br>" : "") + esc(D.money(r.total) + ", asked by " + r.by + (whyOf(r.id) ? ": “" + whyOf(r.id) + "”" : "")) + (r.orderBy && !(api && r.orderBy < api.TODAYS) ? ", order by " + esc(api ? api.fmt(r.orderBy) : r.orderBy) : "") + (r.budget ? '<span class="rl2 nowbud">' + r.budget + "</span>" : ""),
         mark: r.pri === "blocking" ? '<span class="pill pri bad">Blocking</span>' : r.pri === "high" ? '<span class="pill pri warn">High</span>' : "",
         btn: '<span class="nowbtns"><button class="btn' + (r.pri === "blocking" ? " primary" : "") + '" data-act="homeapprove" data-v="' + r.id + '">Approve</button><button class="btn nowdeny" data-act="pdeny" data-v="' + r.id + '">Deny</button></span>' });
     });
@@ -475,13 +475,13 @@ function homeGround() {
   if (role === "parent") mainCol += week;
   else if (now.length || !shift) mainCol += '<section class="card nowcard"><h2>' + (S.eventDay ? "In the pit" : "Now") + "</h2>" + (now.length ? '<div class="list">' + now.map(function (r, i) {
     // A short label starts each kind of decision, so a mentor's list reads in groups (hill climb r4).
-    var g = r.group || (i && now[i - 1].group ? "Orders and attendance" : "");
+    var g = r.group || (i && now[i - 1].group ? "Parts and practice" : "");
     return (g && (!i || (now[i - 1].group || "") !== (r.group || "")) ? '<h3 class="nowgroup">' + esc(g) + "</h3>" : "") + nowRow(r);
   }).join("") + "</div>" : '<p class="mute">Nothing needs you right now.</p>') + "</section>";
   // At an event the shop task waits: a student in the pit is not sent back to the shop (hill climb r3).
   if (role === "student" && D.nextUpCard && !S.eventDay) mainCol += D.nextUpCard();
   if (S.eventDay && role !== "parent" && D.eventNext) { var nm = D.eventNext(4).filter(function (m) { return !m.now; }).slice(0, 3); if (nm.length) mainCol += '<section class="card nextcard"><h2>Next for us</h2><div class="list week">' + nm.map(function (m) {
-    return '<button class="li wkrow" data-act="goapp" data-app="pit" data-tab="check"><span class="wkd"><b>Qual ' + m.q + '</b><span class="num">' + esc(m.now ? "Now" : m.time) + '</span></span><span class="grow"><b>' + esc(m.colour + " alliance" + (m.now ? ", on the field" : "")) + '</b><span class="wkfacts"><span>With ' + esc(m.withTeams.join(" and ")) + "</span><span>Against " + esc(m.against.join(", ")) + "</span></span></span></button>"; }).join("") + "</div></section>"; }
+    return '<button class="li wkrow" data-act="goapp" data-app="pit" data-tab="check"><span class="wkd"><b>Qual ' + m.q + '</b><span class="num">' + esc(m.now ? "Now" : m.time) + '</span></span><span class="grow"><b><i class="alsq ' + (m.colour === "Red" ? "red" : "blue") + '" aria-hidden="true"></i>' + esc(m.colour + " alliance" + (m.now ? ", on the field" : "")) + '</b><span class="wkfacts"><span>With ' + esc(m.withTeams.join(" and ")) + "</span><span>Against " + esc(m.against.join(", ")) + "</span></span></span></button>"; }).join("") + "</div></section>"; }
   // A parent's two questions are the next practice and the next event. The events get their own short list, so the
   // page is not mostly empty on a laptop and "Next event" is not one lonely row (hill climb r2).
   if (role === "parent" && D.calApi) {
