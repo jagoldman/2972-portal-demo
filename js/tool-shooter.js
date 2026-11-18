@@ -280,7 +280,7 @@ D.acts.shmatch = function () {
 function burstOuts(s, r) {
   var b = r.burst, n = b.shots.length, last = b.shots[n - 1], state = b.hits === n ? "ok" : b.hits * 2 < n ? "bad" : "warn", firstMiss = -1;
   b.shots.forEach(function (x, i) { if (!x.hit && firstMiss < 0) firstMiss = i; });
-  var text = b.hits === n ? "All " + n + " go in at " + K.fix(s.brate, 1) + " a second." + (b.best >= 20 ? " In this model it still scores every ball at 20 a second, the fastest rate tried." : b.best ? " It would still score every ball up to about " + K.fix(b.best, 1) + " a second." : "") :
+  var text = b.hits === n ? "All " + n + " go in at " + K.fix(s.brate, 1) + " a second." + (b.best >= 20 ? " The wheel still scores every ball at 20 a second, the fastest rate tried." : b.best ? " It would still score every ball up to about " + K.fix(b.best, 1) + " a second." : "") :
     !b.shots[0].hit ? "The first ball misses, so fix the single shot first (One shot)." :
     b.hits + " of " + n + (b.hits === 1 ? " goes in" : " go in") + ". Ball " + (firstMiss + 1) + " is the first to miss: the wheel has not recovered when it arrives." + (b.best ? " For these " + n + " balls, feed no faster than " + K.fix(Math.floor(b.best * 10) / 10, 1) + " a second, or add flywheel weight or motor." : " Add flywheel weight or motor.");
   var tryRate = b.best && b.best < s.brate && b.shots[0].hit ? Math.max(0.5, Math.floor(b.best * 10) / 10) : 0;
@@ -288,7 +288,7 @@ function burstOuts(s, r) {
     { k: "Balls that score", v: b.hits + " of " + n, state: state === "ok" ? "" : state },
     { k: "Wheel as the last ball reaches it", v: rpmTxt(last.wBefore / RPM), u: "rpm", sub: (1 - last.wBefore / r.w < 0.0005 ? "back to full speed" : K.fix((1 - Math.round(last.wBefore / RPM / 10) * 10 / (Math.round(r.w / RPM / 10) * 10)) * 100, 1) + "% under the set speed") + "; that ball drops it to " + rpmTxt(last.wAfter / RPM) },
     { k: "Last ball leaves at", v: K.fix(last.v / FT, 1), u: "ft/s", sub: "first: " + K.fix(b.shots[0].v / FT, 1) + " ft/s" },
-    { k: "Fastest rate that scores them all", v: b.best == null ? "–" : b.best >= 20 ? "20+" : K.fix(Math.floor(b.best * 10) / 10, 1), u: "a second", sub: b.best >= 20 ? "the feeder is the limit, not the wheel" : "set by how fast the wheel recovers" },
+    { k: "Fastest rate that scores them all", v: b.best == null ? "–" : b.best >= 20 ? "20+" : K.fix(Math.floor(b.best * 10) / 10, 1), u: "a second", sub: b.best >= 20 ? "no wheel limit found up to 20; check the feeder separately" : "set by how fast the wheel recovers" },
     { k: "One ball costs the wheel", v: K.fix(r.shot.drop / (r.w || 1) * 100, 1), u: "%", sub: "and takes " + (r.recov.time === Infinity ? "forever" : K.fix(r.recov.time, 2) + " s") + " to win back" }]);
 }
 function burstMore(s, r) {
@@ -448,8 +448,9 @@ function closeUp(g, s, r, phase, rpmNow, tShow) {
   if (phase <= 1) g.ball(ball[0], ball[1], U.rb * k, -kk * r.shot.spin * tShow * p2, {});
   else g.circle(E[0], E[1], U.rb * k, { stroke: c.pieceLine, width: 1.25, dash: [4, 4], fill: null });
   if (La.strip) {
-    if (!U.dual) g.text("hood", x0 + size * 0.5, y0 + size - 6, { size: 10, color: c.mute, halo: false });
-    g.text(U.dual ? "wheels" : "wheel", W[0] + U.rw * k + 4, W[1] + 4, { size: 10, color: c.mute, halo: false });
+    if (!U.dual) g.text("hood", x0 + 5, y0 + size - 6, { size: 10, color: c.mute, halo: false });
+    g.text(U.dual ? "wheels" : "wheel", W[0], W[1] + U.rw * k + 11, { size: 10, color: c.mute, align: "center", halo: false });
+    g.text(phase <= 1 ? "ball" : "ball left here", x0 + 4, y0 + 11, { size: 10, color: c.mute, halo: false });
   }
   if (!La.strip && size > 150) {
     if (!U.dual) g.text("fixed hood", x0 + size * 0.46, y0 + size - 7, { size: 10.5, color: c.mute, halo: false });
@@ -469,7 +470,7 @@ function closeUp(g, s, r, phase, rpmNow, tShow) {
   row(r.ballLabel ? r.ballLabel[1] : small ? "Ball" : "Ball leaves at", K.fix(r.shot.v / FT, 1) + " ft/s", c.s1);
   row("Spin", K.n(Math.abs(r.shot.spin) / RPM, 0) + " rpm");
   // Where the energy the wheel lost went: into the ball's flight, into its spin, and wasted.
-  var vin0 = U.sp.vIn || 0, lin = 0.5 * U.mb * (r.shot.v * r.shot.v - vin0 * vin0), rot = 0.5 * U.Ib * r.shot.spin * r.shot.spin, tot = Math.max(r.shot.eWheel, lin + rot, 1e-9), lost = Math.max(0, tot - lin - rot);
+  var vin0 = U.sp.vIn || 0, lin = 0.5 * U.mb * (r.shot.v * r.shot.v - vin0 * vin0), rot = 0.5 * U.Ib * r.shot.spin * r.shot.spin, tot0 = Math.max(r.shot.eWheel, lin + rot, 1e-9), lost = Math.max(0, tot0 - lin - rot), tot = Math.max(1e-9, +K.fix(lin, 1) + +K.fix(rot, 1) + +K.fix(lost, 1));
   if (La.strip) {
     // On a phone: the bar and one line under it.
     var bwS = cw - rx - 6, xs = rx + 2, sg = [[lin, c.s1], [rot, c.s3], [lost, c.surface3]]; ty += 2;
@@ -514,7 +515,7 @@ function drawSide(g, s, r, t) {
       var endT = sh.pc.t[sh.pc.t.length - 1], shown = sh.path.filter(function (p) { return p[0] <= tf; });
       pathLine(g, V, shown, { color: sh.hit ? c.ok : c.bad, width: tf > endT ? (sh.hit ? 2.25 : 1.25) : 2 });
       if (tf <= endT) { var bxN = V.X(F.interp(sh.pc.t, sh.pc.x, tf)), byN = V.Y(F.interp(sh.pc.t, sh.pc.y, tf)), brN = Math.max(3, V.L(tg.r)); g.ball(bxN, byN, brN, -spinK(r.w) * sh.spin * tf, {}); if (tf > 0.06) g.text(String(i + 1), bxN + brN + 3, byN - brN + 2, { size: 10.5, weight: 700, color: sh.hit ? c.ok : c.bad }); }
-      else if (!sh.hit) { var e = sh.path[sh.path.length - 1]; g.circle(V.X(e[1]), V.Y(e[2]), 3.5, { fill: c.bad, stroke: null }); if (allDone && (g.w > 520 || i === firstMissI || i === B.shots.length - 1 || i === Math.round((firstMissI + B.shots.length - 1) / 2))) { var onFloor = e[2] < tg.r * 1.2, ny = V.Y(e[2]) + 4; if (Math.abs(ny - 4 - V.Y(tg.h)) < 9) ny = V.Y(tg.h) + 14; g.text(String(i + 1), V.X(e[1]) + (onFloor ? -8 : 8), onFloor ? V.Y(0) - 6 : ny, { align: onFloor ? "right" : "left", size: 10.5, weight: 700, color: c.bad, halo: !onFloor ? false : true }); } }
+      else if (!sh.hit) { var e = sh.path[sh.path.length - 1]; g.circle(V.X(e[1]), V.Y(e[2]), 3.5, { fill: c.bad, stroke: null }); if (allDone) { var onFloor = e[2] < tg.r * 1.2, ny = V.Y(e[2]) + 4, lft = onFloor || Math.abs(ny - 4 - V.Y(tg.h)) < 9; g.text(String(i + 1), V.X(e[1]) + (lft ? -8 : 8), onFloor ? V.Y(0) - 6 : ny, { align: lft ? "right" : "left", size: 10.5, weight: 700, color: c.bad, halo: lft }); } }
     });
     // While balls are in the air the count is of those that have arrived; a dot marks each one that went in.
     var inSoFar = 0; B.shots.forEach(function (sh) { var tfx = t - sh.t - r.tc, eT = sh.pc.t[sh.pc.t.length - 1]; if (sh.hit && tfx > eT) { inSoFar++; var e2 = sh.path[sh.path.length - 1]; g.circle(V.X(e2[1]), V.Y(e2[2]), 3, { fill: c.ok, stroke: null }); } });
