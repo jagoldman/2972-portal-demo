@@ -219,3 +219,26 @@ drops (Tools, To order) were faults the lead introduced in round 4 and fixed bef
 - **Round 16** had two judges; Sol reached its usage limit near the end of its run. Opus found a real fault on the
   phone agenda (a long snack line ran under its Sign up button), now fixed, and both judges said the Pit's locked
   checks did not look locked; the unticked boxes and their words are greyed while the robot is on the field.
+
+## Where the climb stands (2026-11-18, after round 16)
+
+**Stopped, not passed.** Round 17 could not start: GPT-6.1 Sol's ChatGPT usage limit was reached and its run failed
+at once. The top tier needs Opus and Sol both to pass, so no further round can count until that allowance is back.
+
+Eleven rounds were run at the top tier (6 to 16). The lowest score per area went from 7.6 to 8.6 (round 6) to 8.2 to
+8.9 (round 15, the last round with all three judges). No area has reached 9.5 from all three judges in any round.
+
+| Judge | First top-tier round | Latest round |
+|---|---|---|
+| Opus | 7.9 to 8.7 (round 6) | 8.4 to 9.1 (round 16) |
+| GPT-6.1 Sol | 7.8 to 9.0 (round 6) | 8.8 to 9.4 (round 15) |
+| Grok 4.7 | 7.6 to 8.6 (round 6) | 8.1 to 9.4 (round 16) |
+
+What the rounds were good for: three real faults (a checklist asked for a match already on the field; a button that
+let a student close a task after one step; a long snack line running under its button on a phone), and many
+consistency fixes. What they were not good for: reaching 9.5. Each judge is new every round and remembers nothing,
+so later rounds often asked to undo earlier ones; the judges' settled list grew to 89 items to stop that. Two faults
+were the lead's own, made while fixing (rounds 9 and 13), and were caught by the next round.
+
+To resume: when Sol's allowance is back, shoot a fresh pack (`shots.js`), send it to the three judges with the
+brief, and tally. The round 17 pack was shot from commit `68df5c3`.

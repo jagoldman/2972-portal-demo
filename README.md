@@ -112,6 +112,9 @@ page). Ground up adds content, so its pages are 8.8% shorter than Live in total.
 - **One review per change set, by a different model than the coder.** The four coders were Opus 5.5; the lead
   (Fable 5.2) read each diff and looked at each screen. Home and the Tasks change were written by the lead and have
   had no second review.
+- **Judged by other models.** Ground up went through 16 rounds of blind scoring by other models (`HILL_CLIMB.md`);
+  the top tier's target of 9.5 in every area was not reached (latest: 8.2 to 8.9 with all three judges). After the
+  last round the 240-screen check, the dark-mode check and the maths test were run again: all clean.
 - **Not checked:** a screen reader; a real phone; the guide's ring on every stop (the first stop for a mentor and a
   student was checked against the tabs in the bar).
 - **Known simplifications:** the drivetrain model has no rolling loss, so the robot reaches its free speed (the page
