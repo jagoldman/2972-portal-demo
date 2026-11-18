@@ -90,13 +90,16 @@ var EVPARTS = [
 ];
 function eventLine(here) {
   if (!D.S.comp) return "";
-  return '<nav class="evline" aria-label="At the event">' + EVPARTS.filter(function (p) { return p.app !== here; }).map(function (p) {
+  return '<nav class="evline" aria-label="At the event">' + EVPARTS.filter(function (p) { return p.app !== here; }).map(evPart).join("") + "</nav>";
+}
+function evPart(p) {
+  return (function (p) {
     // When our match is the one on the field, the part is named "Our match now", so "next" and "now" never sit in one line.
     var label = p.k === "match" && nextOurs() && nextOurs().q === C().current ? "Our match now" : p.label;
     var inner = '<span class="evk">' + label + '</span><span class="evv">' + esc(p.text()) + "</span>";
     // A door only for someone who may open that app (a parent may not); otherwise the same words, not a link.
     return D.inGroup(p.app) ? '<a class="evpart" href="' + D.appHref(p.app) + '" data-act="goapp" data-app="' + p.app + '" data-tab="' + p.tab + '">' + inner + "</a>" : '<div class="evpart">' + inner + "</div>";
-  }).join("") + "</nav>";
+  })(p);
 }
 D.eventLine = function (here) { return eventLine(here || ""); };
 // The person whose row the schedule has. Students are Sam Ortiz in the sample data, as on My schedule; a mentor not
@@ -126,6 +129,8 @@ function evRobot() {
   return ticked + " of " + total + " checked" + (inR ? ", battery " + inR.id + (String(inR.v).trim() ? " at " + String(inR.v).trim() + " V" : "") : "");
 }
 function groundLine(here) { return D.ground() ? eventLine(here) : ""; }
+// On Scouting the page's own card is the scout's job now, so the line leaves "you now" out there.
+function groundLineScouting() { return D.ground() ? '<nav class="evline" aria-label="At the event">' + EVPARTS.filter(function (p) { return p.k !== "now"; }).map(evPart).join("") + "</nav>" : ""; }
 
 /* ---------- Schedule ---------- */
 D.views.schedule = function () {
@@ -253,7 +258,7 @@ D.views.scouting = function () {
   if (staff) list.push(["forms", "Forms"]);
   var t = D.tab("scouting", "form"), body = t === "stats" ? stats() : t === "picks" ? picks() : t === "assign" && lead ? assignments() : t === "coverage" && lead ? coverage() : t === "forms" && staff ? forms() : matchForm();
   var isForm = !(t === "stats" || t === "picks" || (t === "assign" && lead) || (t === "coverage" && lead) || (t === "forms" && staff));
-  return D.topbar("Scouting", "", D.tabsFor("scouting", list, "form"), "") + '<div class="content cmp">' + groundLine("scouting") + (isForm && onShiftNow() ? "" : '<p class="mute">Current match: <span class="abbr" tabindex="0" data-tip="Qualification match; the matches before the playoffs.">Qual ' + C().current + "</span></p>") + body + "</div>";
+  return D.topbar("Scouting", "", D.tabsFor("scouting", list, "form"), "") + '<div class="content cmp">' + groundLineScouting() + (isForm && onShiftNow() ? "" : '<p class="mute">Current match: <span class="abbr" tabindex="0" data-tip="Qualification match; the matches before the playoffs.">Qual ' + C().current + "</span></p>") + body + "</div>";
 };
 function onShiftNow() { return D.S.role !== "student" || nowRole("Sam Ortiz") === "scout"; }
 function matchForm() {

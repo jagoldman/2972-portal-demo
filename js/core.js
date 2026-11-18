@@ -233,7 +233,7 @@ function groupRow(id, label, count, place, body, tip) {
     '<span class="grpname">' + esc(label) + '</span><span class="tcount">' + count + '</span><span class="grpchev" aria-hidden="true">' + D.ic("chevron", 16) + "</span></button>" +
     '<div class="grpbody" id="' + bid + '"' + (open ? "" : " hidden") + ">" + body + "</div></div>";
 }
-D.toolRow = function (t) { return '<a class="toolrow" href="#' + t.id + '" data-act="go" data-v="' + t.id + '" data-tip="' + esc(t.tip) + '"><span class="ic">' + D.ic(t.icon, 18) + "</span><span><b>" + esc(t.name) + "</b><small>" + esc(t.line) + "</small></span></a>"; };
+D.toolRow = function (t) { return '<a class="toolrow" href="#' + t.id + '" data-act="go" data-v="' + t.id + '" data-tip="' + esc(t.tip) + '"><span class="ic">' + D.ic(t.icon, 18) + "</span><span><b>" + esc(t.name) + "</b><small>" + esc(t.line) + "</small></span>" + (D.ground() ? '<span class="chev" aria-hidden="true">›</span>' : "") + "</a>"; };
 function toolsGroup(place) {
   var tools = D.visibleTools(); if (!tools.length) return "";
   // Menus are doors: the calculators get one row that opens the Tools page, not a row each.
@@ -328,12 +328,14 @@ function daysTo(s, from) { var a = s.split("-"), b = from.split("-"); return Mat
 /* The season line: the next date that matters (kickoff, then the next competition), counted in days and in practices,
    with one mark for every practice between now and then. A mark with a milestone due on it is a diamond. It is the one
    bold element of this version: it makes "count in practices" (rule 4) something you can see. */
-function seasonLine() {
+function seasonLine(simple) {
   var api = D.calApi; if (!api || !api.meetDays) return "";
   var today = api.TODAYS, k = api.kickoff && api.kickoff(), target = k && k.date > today ? { date: k.date, name: "kickoff", title: "Kickoff" } : null;
   if (!target) { var comp = api.upcoming(1, ["comp"])[0]; if (comp) target = { date: comp.date, name: comp.name, title: comp.name }; }
   if (!target) return "";
   var meets = api.meetDays(today, isoAdd(target.date, -1)), n = meets.length, days = daysTo(target.date, today);
+  // A parent does not count in practices: their line is the date and the days to it, with no marks.
+  if (simple) return '<section class="season simple" aria-label="The season"><p class="snhead"><b class="snnum num">' + days + "</b><span><b>" + (days === 1 ? "day" : "days") + " to " + esc(target.name) + '</b><span class="mute num">' + esc(api.fmt(target.date)) + "</span></span></p></section>";
   var ms = D.tasksApi ? D.tasksApi.milestones(12).filter(function (m) { return m.date >= today && m.date < target.date; }) : [];
   var due = {}; ms.forEach(function (m) { (due[m.date] = due[m.date] || []).push(m); });
   var marks = meets.map(function (d) {
@@ -361,7 +363,8 @@ function nowRows() {
   var S = D.S, rows = [], api = D.calApi, c = S.cal, staff = D.isStaff(), P = apiWith(D.partsApi, ["needsOk", "approve", "open"]), K = apiWith(D.skillsApi, ["requests", "signOff"]);
   practiceRows().forEach(function (r) {
     // A parent's first question is the next practice. When that is today, the row says "today", not the date.
-    if (S.role === "parent" && /^Next event: /.test(r.title)) return;
+    // A parent's practices are the "This week" list, which leads their page, so Now holds only what they can do.
+    if (S.role === "parent" && /^Next (event|practice): /.test(r.title)) return;
     if (S.role === "parent" && api && /^Next practice: /.test(r.title) && api.practiceDays(1)[0] && api.practiceDays(1)[0].date === api.TODAYS) r.title = "Practice today";
     // Signing in is the first job at practice, so until it is done it is the page's one main button (hill climb r2).
     var signin = /data-act="herescan"/.test(r.btn || "");
@@ -446,8 +449,11 @@ function homeGround() {
   var mainCol = "", shift = role === "student" && S.eventDay && !!D.myShiftCard;
   // On an event day a student's shift is what needs them now, so it leads and no "nothing needs you" sits above it.
   if (shift) mainCol += '<div class="shiftcard">' + D.myShiftCard() + "</div>";
-  if (now.length || !shift) mainCol += '<section class="card nowcard"><h2>Now</h2>' + (now.length ? '<div class="list">' + now.map(nowRow).join("") + "</div>" : '<p class="mute">Nothing needs you right now.</p>') + "</section>";
-  if (role === "student" && D.nextUpCard) mainCol += S.eventDay ? '<div class="evcompact">' + D.nextUpCard() + "</div>" : D.nextUpCard();
+  var week = S.eventDay ? "" : '<section class="card wkcard"><h2>This week</h2>' + weekRows() + "</section>";
+  if (role === "parent") { mainCol += week; if (now.length) mainCol += '<section class="card nowcard"><h2>Can you help?</h2><div class="list">' + now.map(nowRow).join("") + "</div></section>"; }
+  else if (now.length || !shift) mainCol += '<section class="card nowcard"><h2>Now</h2>' + (now.length ? '<div class="list">' + now.map(nowRow).join("") + "</div>" : '<p class="mute">Nothing needs you right now.</p>') + "</section>";
+  // At an event the shop task waits: a student in the pit is not sent back to the shop (hill climb r3).
+  if (role === "student" && D.nextUpCard && !S.eventDay) mainCol += D.nextUpCard();
   // A parent's two questions are the next practice and the next event. The events get their own short list, so the
   // page is not mostly empty on a laptop and "Next event" is not one lonely row (hill climb r2).
   if (role === "parent" && D.calApi) {
@@ -462,10 +468,10 @@ function homeGround() {
     S.activity.slice(0, 4).map(function (a) { return '<div class="li actli"><span class="actapp">' + esc(D.APPNAME[a.app] || "") + '</span><span class="grow"><b>' + esc(a.who) + "</b> " + esc(a.what) + '</span><span class="who">' + esc(a.when) + "</span></div>"; }).join("") + "</div></section>";
   // On an event day the event line takes the season line's place. A student's shift card below already says "you
   // now", so the line leaves that part out for them.
-  var top = S.eventDay && D.eventLine && role !== "parent" ? D.eventLine(shift ? "schedule" : "") : role === "parent" ? "" : seasonLine();
-  return '<div class="content home homeb homec' + (S.eventDay ? " evday" : "") + '"><div class="homehead"><h1>Hi ' + esc(D.me().short) + '.</h1><p class="homedate">' + esc(date) + "</p></div>" + top +
+  var top = S.eventDay && D.eventLine && role !== "parent" ? D.eventLine(shift ? "schedule" : "") : seasonLine(role === "parent");
+  return '<div class="content home homeb homec' + (S.eventDay ? " evday" : "") + (role === "parent" ? " parent" : "") + '"><div class="homehead"><h1>Hi ' + esc(D.me().short) + '.</h1><p class="homedate">' + esc(date) + "</p></div>" + top +
     '<div class="homecols"><div class="homemain">' + mainCol + act + '</div><aside class="homeside">' +
-    '<section class="card wkcard"><h2>This week</h2>' + weekRows() + "</section>" +
+    (role === "parent" ? "" : week) +
     '<section class="card appscard"><h2>Apps</h2><div class="applist">' + main.map(approw).join("") + "</div>" +
     '<div class="homegroups">' + toolsGroup("home") + adminGroup("home", tiles, function (l) { return '<ul class="morelinks">' + l.map(link).join("") + "</ul>"; }) + (more.length ? groupRow("more", "Team links", more.length, "home", '<ul class="morelinks">' + more.map(link).join("") + "</ul>") : "") + "</div></section>" +
     (D.guideCard && !S.eventDay ? D.guideCard() : "") + "</aside></div></div>";

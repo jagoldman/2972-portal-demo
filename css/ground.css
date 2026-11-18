@@ -231,4 +231,26 @@
   .pitmaint { justify-content: flex-end; }
   .pitmaint .btn { min-height: 30px; padding-inline: 10px; border-color: transparent; background: none; color: var(--text-2); font-weight: 600; text-decoration: underline; text-underline-offset: 3px; }
   @media (max-width: 640px) { .pitmaint .btn { min-height: 44px; } }
+
+  /* Round 3, third judge (Grok 4.6) */
+  .season.simple { grid-template-columns: minmax(0, 1fr); padding-block: 10px; }
+  .homec.parent .homemain > .wkcard { border-top: 0; }
+  .homec.parent .nowcard { border-top: 1px solid var(--line) !important; }
+  .homec .homeside > .appscard:first-child { border-top: 0; }
+  @media (max-width: 899px) { .homec.parent .wkcard { order: 0; } }
+  .toolrow .chev { margin-left: auto; }
+  /* A snack row with a button folds under its words when the row is narrow, so the button is never cut off. */
+  .doorask { flex-wrap: wrap; height: auto; padding-block: 4px; }
+  .doorask .dtxt { flex: 1 1 10rem; }
+  /* A count beside a heading is a small grey pill, as it is in Skills. */
+  .tgrp .who { display: inline-block; min-width: 18px; margin-left: 4px; padding: 0 6px; border-radius: 6px; background: var(--surface-3); color: var(--text-2); font-size: .72rem; font-weight: 700; line-height: 18px; text-align: center; }
+  @media (min-width: 641px) { .cmp .choice { max-width: 420px; } }
+  @media (max-width: 640px) {
+    .appitem { gap: 8px; }
+    .appitem b { font-size: .88rem; }
+    /* "Nobody has these yet": the date sits under the title and the button keeps the right side. */
+    .li.tkr { display: grid; grid-template-columns: minmax(0, 1fr) auto; gap: 0 12px; align-items: center; }
+    .li.tkr .due { grid-column: 1; grid-row: 2; text-align: left; }
+    .li.tkr .btn { grid-column: 2; grid-row: 1 / span 2; }
+  }
 }

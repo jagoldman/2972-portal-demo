@@ -148,7 +148,7 @@ D.views.calendar = function () {
     body = calendarTab();
     right = staff ? '<button class="btn primary sm" data-act="calnew" aria-label="New event">' + D.ic("plus", 16) + '<span>New<span class="hide-sm"> event</span></span></button>' : '<button class="btn sm" data-act="calical">Subscribe<span class="hide-sm"> on my phone</span></button>';
   }
-  var row = tabs.length > 1 ? D.tabsFor("calapp", tabs.map(function (t) { return [t.id, t.name]; }), "calendar") : "";
+  var row = tabs.length > 1 ? D.tabsFor("calapp", tabs.map(function (t) { return [t.id, D.ground() && t.id === "calendar" ? "Events" : t.name]; }), "calendar") : "";
   return D.topbar("Calendar", "", row, right) + '<div class="content">' + body + "</div>";
 };
 
