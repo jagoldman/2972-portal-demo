@@ -179,7 +179,7 @@ function demobar() {
   return '<div class="demobar"><b>Demo</b><span>sample data</span>' +
     '<span class="seg" role="group" aria-label="View as">' + roles + "</span>" +
     '<label><input type="checkbox" id="evday" data-change="eventday"' + (S.eventDay ? " checked" : "") + "> Event day</label>" +
-    '<span class="seg" role="group" aria-label="Design">' + ["8.1", "8.2"].map(function (v) { return '<button data-act="design" data-v="' + v + '" aria-pressed="' + (D.design() === v) + '">Design ' + v + "</button>"; }).join("") + "</span>" +
+    '<span class="seg" role="group" aria-label="Design">' + [["live", "Live"], ["a", "A Baseline"], ["b", "B Ideal"]].map(function (v) { return '<button data-act="design" data-v="' + v[0] + '" aria-pressed="' + (D.design() === v[0]) + '">' + v[1] + "</button>"; }).join("") + "</span>" +
     '<span class="spacer"></span><button class="linkbtn" data-act="reset">Reset</button></div>';
 }
 /* One navy app bar on every app: Apps button, 2972 badge, the app's name; Competition chip, bell and account at the right.
@@ -257,7 +257,7 @@ function banner() {
 /* ---------- Home ---------- */
 function hasTile(id) { return D.visibleTiles().some(function (t) { return t.id === id; }); }
 function todayRow(o) {
-  return '<div class="li todayrow"><button class="rowlink" data-act="goapp" data-app="' + o.app + '"' + (o.tab ? ' data-tab="' + o.tab + '"' : "") + '><span class="rt">' + esc(o.title) + "</span>" + (o.line ? '<span class="rl">' + esc(o.line) + "</span>" : "") + (o.count ? '<span class="tcount warn">' + o.count + "</span>" : "") + '<span class="chev" aria-hidden="true">›</span></button>' + (o.btn || "") + "</div>";
+  return '<div class="li todayrow"><button class="rowlink" data-act="goapp" data-app="' + o.app + '"' + (o.tab ? ' data-tab="' + o.tab + '"' : "") + '><span class="rt">' + esc(o.title) + "</span>" + (o.line ? '<span class="rl">' + esc(o.line) + "</span>" : "") + (o.count && !(D.ideal() && /^\d/.test(o.title)) ? '<span class="tcount warn">' + o.count + "</span>" : "") + '<span class="chev" aria-hidden="true">›</span></button>' + (o.btn || "") + "</div>";
 }
 function plural(n, one, many) { return n + " " + (n === 1 ? one : many); }
 // What waits on a mentor or admin. Counts come from the sample data in D.S; a missing piece just hides its row.
@@ -314,6 +314,16 @@ D.views.portal = function () {
   if (S.role === "student" && D.nextUpCard) cards += S.eventDay ? '<div class="evcompact">' + D.nextUpCard() + "</div>" : D.nextUpCard();
   var act = S.role === "parent" ? "" : '<section class="card"><h2>Recent activity</h2><div class="list">' +
     S.activity.slice(0, 5).map(function (a) { return '<div class="li actli"><span class="actapp">' + esc(D.APPNAME[a.app] || "") + '</span><span class="grow"><b>' + esc(a.who) + "</b> " + esc(a.what) + '</span><span class="who">' + esc(a.when) + "</span></div>"; }).join("") + "</div></section>";
+  /* Version B: what needs you is the wide left column; the apps and the activity are a narrow right column, so both
+     are on screen without scrolling. Apps are one-line rows (name, then what it is for), not tiles. */
+  if (D.ideal()) {
+    var approw = function (t) { return '<a class="approw" href="' + D.appHref(t.id) + '" target="_blank" rel="noopener noreferrer" aria-label="' + esc(t.name) + ' (opens in a new tab)"><span class="ic">' + D.ic(t.icon, 18) + "</span><b>" + esc(t.name) + (t.ext ? " ↗" : "") + "</b><small>" + esc(SHORT[t.id] || t.desc) + "</small></a>"; };
+    return '<div class="content home homeb"><div class="homehead"><h1>Hi ' + esc(D.me().short) + '.</h1><p class="homedate">' + esc(date) + "</p></div>" + (D.guideCard ? D.guideCard() : "") +
+      '<div class="homecols"><div class="homemain">' + (cards || '<section class="card"><h2>Today</h2><p class="mute">Nothing needs you today.</p></section>') + '</div><aside class="homeside">' +
+      '<section class="card"><h2>Apps</h2><div class="applist">' + main.map(approw).join("") + "</div>" +
+      '<div class="homegroups">' + toolsGroup("home") + adminGroup("home", tiles, function (l) { return '<ul class="morelinks">' + l.map(link).join("") + "</ul>"; }) + (more.length ? groupRow("more", "More", more.length, "home", '<ul class="morelinks">' + more.map(link).join("") + "</ul>") : "") + "</div></section>" +
+      act + "</aside></div></div>";
+  }
   return '<div class="content home"><div class="homehead"><p class="homedate">' + esc(date) + "</p><h1>Hi " + esc(D.me().short) + ".</h1></div>" + (D.guideCard ? D.guideCard() : "") + cards +
     '<section class="stack"><h2 style="margin-bottom:10px">Apps</h2><div class="apptiles">' + main.map(tile).join("") + "</div>" +
     '<div class="homegroups">' + toolsGroup("home") +
@@ -361,6 +371,21 @@ D.render = function () {
   D.after.forEach(function (f) { try { f(); } catch (e) { if (window.console) console.error(e); } });
   if (activeId) { var el = document.getElementById(activeId); if (el && (el.tagName === "INPUT" || el.tagName === "TEXTAREA")) { el.focus(); try { if (selStart != null) el.setSelectionRange(selStart, selStart); } catch (e) {} } }
 };
+/* Version B, wide screens: the app's tab row is drawn inside the black app bar (css/ideal.css pulls it up). The row
+   must start after the app's name and stop before the bell, and both of those change width, so they are measured here
+   and handed to the stylesheet as --bar-l and --bar-r. Nothing in the page's structure moves. */
+function barSlots() {
+  var bar = document.querySelector(".appbar"), root = document.documentElement;
+  if (!bar || !D.ideal()) { root.style.removeProperty("--bar-l"); root.style.removeProperty("--bar-r"); return; }
+  var name = bar.querySelector(".appname"), grow = bar.querySelector(".grow"), b = bar.getBoundingClientRect();
+  if (!name || !grow) return;
+  root.style.setProperty("--bar-l", Math.round(name.getBoundingClientRect().right - b.left + 14) + "px");
+  root.style.setProperty("--bar-r", Math.round(b.right - grow.getBoundingClientRect().right + 6) + "px");
+}
+D.after.unshift(barSlots);
+window.addEventListener("resize", barSlots);
+// The app's name gets wider when the typeface arrives, so measure again then.
+if (document.fonts) { if (document.fonts.ready) document.fonts.ready.then(barSlots); if (document.fonts.addEventListener) document.fonts.addEventListener("loadingdone", barSlots); }
 // Keep the active tab in view when the tab row scrolls sideways, and fade the row at an edge that has more tabs.
 function tabFade(row) {
   row.classList.toggle("more-l", row.scrollLeft > 4);
@@ -391,11 +416,14 @@ A.role = function (b) {
   D.render();
 };
 D.changes.eventday = function (el) { D.S.eventDay = el.checked; D.render(); };
-/* Demo only: switch between the 8.1 look and the 8.2 proposal (css/design82.css). Every 8.2 rule is under
-   :root[data-design="8.2"], so taking the attribute away brings 8.1 back. The choice is kept in this browser. */
-D.design = function () { return document.documentElement.getAttribute("data-design") === "8.2" ? "8.2" : "8.1"; };
-D.setDesign = function (v) { if (v === "8.2") document.documentElement.setAttribute("data-design", "8.2"); else document.documentElement.removeAttribute("data-design"); };
-A.design = function (b) { D.setDesign(b.dataset.v); try { localStorage.setItem("2972-demo-design", b.dataset.v); } catch (e) {} D.render(); };
+/* Demo only: three versions of the apps (design 8.3 proposal). "live" is the apps as they are today. "a" is the same
+   layouts in the new look (css/look.css). "b" is the ideal version: the new look, css/ideal.css and the layout changes
+   the js files make where D.ideal() is true. The choice is kept in this browser. */
+var DESIGNS = { live: 1, a: 1, b: 1 };
+D.design = function () { var v = document.documentElement.getAttribute("data-design"); return DESIGNS[v] ? v : "live"; };
+D.ideal = function () { return D.design() === "b"; };
+D.setDesign = function (v) { if (v === "a" || v === "b") document.documentElement.setAttribute("data-design", v); else document.documentElement.removeAttribute("data-design"); };
+A.design = function (b) { D.setDesign(b.dataset.v); try { localStorage.setItem("2972-demo-design83", b.dataset.v); } catch (e) {} D.render(); };
 A.reset = function () { D.saved = {}; try { localStorage.removeItem(SAVE_KEY); } catch (e) {} D.reset(); D.toast("Demo reset: sample data and saved choices."); D.render(); };
 A.go = function (b) { D.go(b.dataset.v); };
 A.tab = function (b) { D.S.tabs[b.dataset.app] = b.dataset.v; D.S.drawer = null; D.render(); };
@@ -498,5 +526,5 @@ document.addEventListener("focusout", function (e) {
 });
 function routeFromHash() { var h = location.hash.slice(1); return h && (D.views[h] || D.tile(h) || D.ROUTE_TAB[h]) ? h : null; }
 window.addEventListener("hashchange", function () { var h = routeFromHash(), was = D.S.tabs.calapp; if (!h) return; h = D.landing(h); if (h !== D.S.route || was !== D.S.tabs.calapp) { D.S.route = h; D.S.drawer = null; D.S.modal = null; D.render(); } });
-D.boot = function () { D.reset(); var params = new URLSearchParams(location.search); var dz = params.get("design"); if (dz !== "8.1" && dz !== "8.2") { try { dz = localStorage.getItem("2972-demo-design"); } catch (e) { dz = null; } } D.setDesign(dz === "8.1" ? "8.1" : "8.2"); if (Object.prototype.hasOwnProperty.call(D.ROLES, params.get("role"))) D.S.role = params.get("role"); if (params.get("mode") === "competition") D.S.mode = "competition"; var h = routeFromHash(); if (h) { if (params.get("tab")) D.S.tabs[h] = params.get("tab"); D.S.route = D.landing(h); } D.render(); };
+D.boot = function () { D.reset(); var params = new URLSearchParams(location.search); var dz = params.get("design"); if (!DESIGNS[dz]) { try { dz = localStorage.getItem("2972-demo-design83"); } catch (e) { dz = null; } } D.setDesign(DESIGNS[dz] ? dz : "b"); if (Object.prototype.hasOwnProperty.call(D.ROLES, params.get("role"))) D.S.role = params.get("role"); if (params.get("mode") === "competition") D.S.mode = "competition"; var h = routeFromHash(); if (h) { if (params.get("tab")) D.S.tabs[h] = params.get("tab"); D.S.route = D.landing(h); } D.render(); };
 })();

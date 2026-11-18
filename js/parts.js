@@ -152,6 +152,14 @@ function requests() {
   var filters = '<div class="pfilters"><label class="pf-show"><span>Show</span><select class="inp" data-change="pfiltersel">' + groups.map(function (x) { return '<option value="' + x[0] + '"' + (p.filter === x[0] ? " selected" : "") + ">" + x[1] + " (" + gcount(x) + ")</option>"; }).join("") + "</select></label>" +
     '<label class="pf-mine"><button class="toggle" data-act="pmine" aria-pressed="' + p.mine + '" aria-label="Only my requests"></button><span>Only mine</span></label>' +
     '<input id="p-q" class="inp pf-q" data-input="pq" placeholder="Search parts" value="' + esc(p.q) + '" aria-label="Search requests"></div>';
+  /* Version B: one row per request with the facts in columns, so vendors, costs and dates line up and can be read
+     down the page. On a phone the same cells fold into a title line and one line of facts (css/ideal.css). */
+  if (D.ideal() && p.filter !== "wish") {
+    var lab = function (t) { return '<span class="pl">' + t + " </span>"; };
+    return '<div class="card">' + filters + (rows.length ? '<div class="ptable"><div class="pth" aria-hidden="true"><span>Part</span><span>Vendor</span><span>Quantity</span><span class="r">Cost</span><span>Asked by</span><span>Need by</span><span>Priority</span><span>Status</span></div>' + rows.map(function (r) {
+      return '<button class="ptr" data-act="preq" data-v="' + r.id + '"><b class="pn">' + esc(r.name) + '</b><span class="pfacts"><span class="pv">' + esc(r.vendor) + '</span><span class="pq num">' + lab("Qty") + esc(qtyText(r)) + '</span><span class="pc num r">' + money(total(r)) + '</span><span class="pb">' + esc(r.by) + '</span><span class="pd num">' + (r.need ? lab("Need by") + fmt(r.need) : '<span class="vh">No date</span>') + '</span></span><span class="pp">' + priPill(r.pri) + '</span><span class="ps">' + statusPill(r.status) + "</span></button>";
+    }).join("") + "</div>" : '<div class="empty">Nothing here.</div>') + "</div>";
+  }
   return '<div class="card">' + filters + '<div class="list">' + (p.filter === "wish" ? wishList() : rows.length ? rows.map(function (r) {
     var meta = [r.vendor, "Qty " + qtyText(r), money(total(r)), r.by].concat(r.need ? ["need by " + fmt(r.need)] : []).map(esc).join(" · ");
     return '<button class="li click prow" data-act="preq" data-v="' + r.id + '"><span class="grow"><b>' + esc(r.name) + '</b><span class="pmeta">' + meta + '</span></span><span class="pside">' + statusPill(r.status) + priPill(r.pri) + "</span></button>";

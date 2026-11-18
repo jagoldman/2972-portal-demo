@@ -1,0 +1,177 @@
+/* Design 8.3, version B ("Ideal"): the same apps, features and words as version A, laid out to waste less space.
+   Loaded last, after css/look.css. Every rule sits under :root[data-design="b"], so versions Live and A never see it.
+   The few places where the page's content changes (Home, the Parts request table, Tasks' "After that", Skills'
+   overview rows, the Calendar's "Coming up" column) are in the js files, behind D.ideal().
+
+   What it changes:
+   1. One bar. On a wide screen the app's tabs and its one button sit in the black app bar, not in a second row.
+   2. One sheet. A page is one white sheet on the grey floor. Sections are divided by a line and a heading, not drawn
+      as separate boxes, and on a phone the sheet runs edge to edge, so text gets the width the boxes used.
+   3. Tighter rows. With a mouse: 14 px text, 40 px rows, 34 px buttons. On a phone nothing you tap is under 44 px.
+   4. Facts in columns. Lists whose rows carry the same facts (part requests) are tables on a wide screen. */
+
+:root[data-design="b"] {
+  --bar: 48px; --maxw: 1240px; --sheet-x: 16px;
+}
+@media (min-width: 641px) { :root[data-design="b"] { --sheet-x: 24px; } }
+
+:root[data-design="b"] {
+  /* ============================================================
+     1. One bar
+     ============================================================ */
+  .appbar { gap: 6px; }
+  .appbar .appname { max-width: 15rem; }
+  @media (min-width: 641px) { .topbar { min-height: 44px; } .tab { min-height: 44px; } }
+  .tab[aria-pressed="true"] { border-bottom-color: var(--text); }
+  .pagehead { padding-top: 16px; background: var(--surface); }
+  .pagehead + .content { padding-top: 6px; }
+
+  @media (min-width: 1024px) {
+    .main > .topbar { order: -1; position: sticky; top: 0; z-index: 41; height: var(--bar); min-height: 0; margin: calc(-1 * var(--bar)) var(--bar-r, 120px) 0 var(--bar-l, 240px); padding: 0; gap: 10px; background: none; border: 0; color: var(--rail-text); }
+    .main > .topbar::before { content: ""; flex: none; width: 1px; height: 20px; margin-right: 2px; background: rgba(255,255,255,.3); }
+    .menu-scrim ~ .main > .topbar { pointer-events: none; }
+    .main > .topbar .tab { min-height: var(--bar); margin-bottom: 0; padding-inline: 11px; color: var(--rail-mute); border-bottom-width: 3px; }
+    .main > .topbar .tab:hover { color: #fff; }
+    .main > .topbar .tab[aria-pressed="true"] { color: #fff; border-bottom-color: #fff; }
+    .main > .topbar .tcount { background: rgba(255,255,255,.18); color: #fff; }
+    .main > .topbar .tcount.warn { background: #f0b43c; color: #000; }
+    .main > .topbar :focus-visible { outline-color: #fff; }
+    .main > .topbar .right .btn { min-height: 32px; background: none; color: #fff; border-color: rgba(255,255,255,.42); }
+    .main > .topbar .right .btn:hover { background: var(--rail-2); }
+    .main > .topbar .right .btn.primary { background: var(--bumper); border-color: rgba(255,255,255,.3); }
+    .main > .topbar .right .btn.primary:hover { background: var(--bumper-2); }
+  }
+
+  /* ============================================================
+     2. One sheet
+     ============================================================ */
+  .content { background: var(--surface); gap: 0; padding-block: 0 56px; padding-left: max(var(--sheet-x), env(safe-area-inset-left, 0px)); padding-right: max(var(--sheet-x), env(safe-area-inset-right, 0px)); flex: 1 0 auto; }
+  /* The sheet reaches the bottom of the window on a short page, without making the page any taller. */
+  #root { display: flex; flex-direction: column; min-height: 100vh; }
+  .main { flex: 1 0 auto; }
+  .content > * { margin-block: 14px 0; }
+  .content > .card { margin-block: 0; padding: 16px 0 18px; border: 0; border-top: 1px solid var(--line); border-radius: 0; background: none; }
+  .content > .card:first-child, .content > .pagehead + .card { border-top: 0; }
+  .content > .card.hero, .evcompact .card.hero { margin-block: 16px 2px; padding: 14px 16px 16px; border: 0; border-left: 4px solid var(--bumper); background: var(--tint); }
+  .content > .card.hero + .card { border-top: 0; }
+  .content > .card.flat { padding-inline: 14px; border-top: 0; margin-top: 14px; background: var(--surface-2); }
+  .content > .grid2, .content > .grid3, .content > .grid4, .content > .side { margin-top: 16px; }
+  @media (min-width: 1241px) { .content, .pagehead { border-inline: 1px solid var(--line); } }
+  h2 { font-size: 1rem; }
+  .card { gap: 10px; }
+  /* Account is one narrow column: its sections are divided by lines too. */
+  .acc { gap: 0; }
+  .acc > .card { padding: 16px 0 18px; border: 0; border-top: 1px solid var(--line); border-radius: 0; background: none; }
+  .acc > .card:first-child { border-top: 0; }
+
+  /* ============================================================
+     3. Tighter rows (mouse and trackpad only; phones keep 44 px)
+     ============================================================ */
+  @media (min-width: 641px) {
+    body { font-size: 14px; }
+    .li { min-height: 40px; padding-block: 5px; }
+    .btn { min-height: 34px; padding-inline: 12px; }
+    .btn.sm { min-height: 30px; padding-inline: 10px; }
+    .field input, .field select, .field textarea, .inp { min-height: 36px; padding-block: 6px; }
+    .chip { min-height: 30px; }
+    th, td { padding-block: 6px; }
+    .trowx { min-height: 42px; padding-block: 5px; }
+    .rowlink { min-height: 36px; }
+    .todayrow { padding-block: 3px; }
+    .toolrow { min-height: 40px; }
+    .grphead { min-height: 38px; }
+    .month .day { min-height: 82px; }
+    .xbtn { width: 32px; height: 32px; }
+    .appsbtn, .iconbtn { width: 36px; height: 36px; }
+    .appbar .acct, .appbar .appsbtn, .appbar .brand { min-width: 36px; min-height: 36px; }
+  }
+  .li .grow br + .who, .li .who { line-height: 1.3; }
+
+  /* ============================================================
+     4. Home: what needs you at the left, the apps and the activity at the right
+     ============================================================ */
+  .homeb { gap: 0; }
+  .homeb .homehead { display: flex; align-items: baseline; flex-wrap: wrap; gap: 2px 14px; margin-top: 18px; }
+  .homeb .homehead h1 { font-size: 1.3rem; }
+  .homeb .homedate { font-size: .92rem; }
+  .homecols { display: grid; grid-template-columns: minmax(0, 1fr); margin-top: 0; }
+  .homecols .card { padding: 16px 0 18px; border: 0; border-top: 1px solid var(--line); border-radius: 0; background: none; }
+  .homecols .card.hero { margin-block: 14px 4px; padding: 14px 16px 16px; border: 0; border-left: 4px solid var(--bumper); background: var(--tint); }
+  .homemain > .card:first-child, .homemain > .evcompact:first-child .card { border-top: 0; }
+  .homeb .guidecard { margin-top: 14px; padding: 8px 12px; border: 1px solid var(--line); border-radius: var(--r); background: var(--surface-2); }
+  .homeb .guidecard .gprogress { display: none; }
+  .applist { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 0 8px; }
+  .approw { display: flex; align-items: center; gap: 10px; min-height: 44px; min-width: 0; padding: 4px; border-radius: var(--r); color: inherit; text-decoration: none; }
+  .approw:hover { background: var(--surface-2); }
+  .approw .ic { flex: none; display: grid; place-items: center; width: 22px; color: var(--text); }
+  .approw b { flex: none; font-weight: 650; }
+  .approw small { display: none; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; color: var(--mute); font-size: .88rem; }
+  .homeb .homegroups { margin-top: 6px; border-bottom: 0; }
+  .homeb .actli { display: grid; grid-template-columns: minmax(0, 1fr) auto; gap: 0 10px; align-items: baseline; padding-block: 7px; }
+  .homeb .actli .grow { grid-column: 1 / -1; grid-row: 1; }
+  .homeb .actli .actapp { grid-column: 1; grid-row: 2; width: auto; font-size: .82rem; }
+  .homeb .actli .who { grid-column: 2; grid-row: 2; }
+  @media (min-width: 900px) {
+    .homecols { grid-template-columns: minmax(0, 1fr) minmax(280px, 340px); column-gap: 32px; }
+    .homeside { border-left: 1px solid var(--line); padding-left: 32px; min-height: 60vh; }
+    .homeside > .card:first-child { border-top: 0; }
+    .applist { grid-template-columns: minmax(0, 1fr); }
+    .approw { min-height: 36px; }
+    .approw small { display: block; }
+    .homeb .guidecard { display: flex; align-items: center; gap: 8px 20px; }
+    .homeb .guidecard .gnext { flex: 1; }
+  }
+
+  /* ============================================================
+     5. Parts: requests in columns
+     ============================================================ */
+  .ptable { display: grid; margin-inline: -4px; }
+  .pth, .ptr { display: grid; grid-template-columns: minmax(0, 2.3fr) minmax(0, 1fr) 7.5rem 5.5rem minmax(0, 1fr) 6.5rem 5rem 9.5rem; column-gap: 14px; align-items: center; padding: 0 4px; }
+  .pth { min-height: 30px; color: var(--mute); font-size: .82rem; font-weight: 600; border-bottom: 1px solid var(--line-2); }
+  .ptr { width: 100%; min-height: 40px; border: 0; border-bottom: 1px solid var(--line); border-radius: 0; background: none; color: inherit; font: inherit; text-align: left; }
+  .ptr:hover { background: var(--surface-2); }
+  .ptr > *, .pfacts > * { min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  .ptr .pn { font-weight: 650; }
+  .ptr .pv, .ptr .pq, .ptr .pb, .ptr .pd { color: var(--text-2); }
+  .ptable .r { text-align: right; }
+  .ptr .pl { position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0); white-space: nowrap; }
+  .pfacts { display: contents; }
+  @media (max-width: 899px) {
+    .pth { display: none; }
+    .ptr { grid-template-columns: minmax(0, 1fr) auto; column-gap: 12px; row-gap: 2px; padding: 9px 4px; min-height: 52px; align-items: start; }
+    .ptr > *, .pfacts > * { white-space: normal; }
+    .ptr .pn { grid-column: 1; grid-row: 1; }
+    .ptr .ps { grid-column: 2; grid-row: 1; justify-self: end; }
+    .ptr .pp { grid-column: 2; grid-row: 2; justify-self: end; }
+    .ptr .pfacts { display: flex; flex-wrap: wrap; gap: 0 14px; grid-column: 1; grid-row: 2; font-size: .88rem; color: var(--mute); }
+    .ptr .pfacts > * { color: inherit; text-align: left; }
+    .ptr .pl { position: static; width: auto; height: auto; clip: auto; }
+  }
+  .pfilters { gap: 8px 14px; }
+
+  /* ============================================================
+     6. Tasks, Skills, Calendar
+     ============================================================ */
+  .tmain .topbar { min-height: 48px; }
+  .tmain .content { border-inline: 0; }
+  .tsk { flex: 1 0 auto; }
+  .tmain { background: var(--surface); }
+  .tside { padding-top: 10px; }
+  @media (min-width: 1000px) {
+    .content.skills { grid-template-columns: repeat(2, minmax(0, 1fr)); column-gap: 32px; }
+    .content.skills > * { grid-column: 1 / -1; }
+    .content.skills > .skhalf { grid-column: auto; border-top: 0; }
+    .content.skills > .skhalf + .skhalf { border-left: 1px solid var(--line); padding-left: 32px; margin-left: -16px; }
+  }
+  .calsplit { display: grid; grid-template-columns: minmax(0, 1fr); }
+  .calsplit > .card { padding: 16px 0 18px; border: 0; border-radius: 0; background: none; }
+  .calnext { display: none; }
+  .cnrow { flex-wrap: nowrap; align-items: baseline; gap: 12px; padding-inline: 4px; font: inherit; color: inherit; }
+  .cnrow .cnd { flex: none; width: 6.4rem; color: var(--text-2); font-size: .88rem; }
+  .cnrow .grow { min-width: 0; display: grid; }
+  .cnrow b { font-weight: 650; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  @media (min-width: 1100px) {
+    .calsplit { grid-template-columns: minmax(0, 1fr) 300px; column-gap: 28px; }
+    .calnext { display: grid; border-left: 1px solid var(--line) !important; padding-left: 28px !important; }
+  }
+}

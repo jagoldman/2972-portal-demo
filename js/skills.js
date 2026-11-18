@@ -428,7 +428,7 @@ function nextUp(name) {
   return out;
 }
 function skillRow(x, word, kind) {
-  return '<button class="li" data-act="skmine" data-v="' + x.s.id + '"><span class="grow"><b>' + esc(x.s.name) + '</b><br><span class="who">' + esc(x.t.name) + " › " + esc(x.c.name) + '</span></span><span class="pill ' + kind + '">' + word + '</span><span class="chev" aria-hidden="true">›</span></button>';
+  return '<button class="li" data-act="skmine" data-v="' + x.s.id + '"><span class="grow"><b>' + esc(x.s.name) + '</b><br><span class="who">' + esc(x.t.name) + " › " + esc(x.c.name) + "</span></span>" + (D.ideal() ? "" : '<span class="pill ' + kind + '">' + word + "</span>") + '<span class="chev" aria-hidden="true">›</span></button>';
 }
 function treeRows(P, staff) {
   return TREES.map(function (t) {
@@ -448,9 +448,9 @@ function overview() {
   var S = D.S, P = S.sk.prog, staff = D.isStaff(), html = "";
   if (!staff) {
     var me = D.me().name, n = nextUp(me), cap = readyAll ? n.ready.length : 5;
-    html += '<div class="card"><div class="row between"><h2>Ready to start</h2>' + (n.ready.length ? '<span class="tcount">' + n.ready.length + "</span>" : "") + "</div>" +
+    html += '<div class="card skhalf"><div class="row between"><h2>Ready to start</h2>' + (n.ready.length ? '<span class="tcount">' + n.ready.length + "</span>" : "") + "</div>" +
       (n.ready.length ? '<div class="list">' + n.ready.slice(0, cap).map(function (x) { return skillRow(x, "Ready", "info"); }).join("") + "</div>" + (n.ready.length > 5 ? '<div><button class="btn ghost" data-act="skreadyall">' + (readyAll ? "Show fewer" : "Show all " + n.ready.length) + "</button></div>" : "") : '<p class="mute">Nothing new is open. Finish what you started.</p>') + "</div>";
-    html += '<div class="card"><div class="row between"><h2>In progress</h2>' + (n.prog.length ? '<span class="tcount">' + n.prog.length + "</span>" : "") + "</div>" +
+    html += '<div class="card skhalf"><div class="row between"><h2>In progress</h2>' + (n.prog.length ? '<span class="tcount">' + n.prog.length + "</span>" : "") + "</div>" +
       (n.prog.length ? '<div class="list">' + n.prog.map(function (x) { return skillRow(x, "In progress", "warn"); }).join("") + "</div>" : '<p class="mute">Nothing in progress. Pick a skill above to start.</p>') + "</div>";
     if (n.wait.length) html += '<div class="card"><div class="row between"><h2>Waiting for sign-off</h2><span class="tcount">' + n.wait.length + '</span></div><div class="list">' + n.wait.map(function (x) { return skillRow(x, "Waiting for a mentor", "info"); }).join("") + "</div></div>";
   }

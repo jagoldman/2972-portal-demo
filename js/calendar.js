@@ -173,9 +173,13 @@ function month() {
     cells += '<div class="day' + (d.getMonth() !== m ? " other" : "") + (s === TODAYS ? " today" : "") + '"><span class="d">' + d.getDate() + "</span>" + evs.slice(0, 3).map(evBtn).join("") + (evs.length > 3 ? '<span class="who">+' + (evs.length - 3) + " more</span>" : "") + "</div>";
   }
   var title = first.toLocaleDateString("en-US", { month: "long", year: "numeric" });
-  return '<div class="card"><div class="row mnav"><button class="btn sm" data-act="calmonth" data-v="-1" aria-label="Previous month" data-tip="Go back one month.">←</button><h2>' + title + '</h2><button class="btn sm" data-act="calmonth" data-v="1" aria-label="Next month" data-tip="Go forward one month.">→</button><button class="btn ghost sm" data-act="caltoday">Today</button></div>' +
+  /* Version B: on a wide screen the next events are listed beside the month, so the two views do not need a switch. */
+  var next = D.ideal() ? '<div class="card calnext"><h2>Coming up</h2><div class="list">' + upcoming(7).map(function (e) {
+    return '<button class="li cnrow" data-act="calev" data-v="' + e.id + '"><span class="num cnd">' + fmt(e.date, { weekday: "short", month: "short", day: "numeric" }) + '</span><span class="grow"><b>' + esc(e.name) + '</b><span class="who">' + span(e) + "</span></span></button>";
+  }).join("") + "</div></div>" : "";
+  return (next ? '<div class="calsplit">' : "") + '<div class="card"><div class="row mnav"><button class="btn sm" data-act="calmonth" data-v="-1" aria-label="Previous month" data-tip="Go back one month.">←</button><h2>' + title + '</h2><button class="btn sm" data-act="calmonth" data-v="1" aria-label="Next month" data-tip="Go forward one month.">→</button><button class="btn ghost sm" data-act="caltoday">Today</button></div>' +
     '<div class="month">' + WD.map(function (x) { return '<div class="dh">' + x + "</div>"; }).join("") + cells + "</div>" +
-    '<div class="legend">' + Object.keys(KIND).map(function (k) { return '<span class="' + KIND[k][1] + '"><i class="kd"></i>' + KIND[k][0] + "</span>"; }).join("") + "</div></div>";
+    '<div class="legend">' + Object.keys(KIND).map(function (k) { return '<span class="' + KIND[k][1] + '"><i class="kd"></i>' + KIND[k][0] + "</span>"; }).join("") + "</div></div>" + (next ? next + "</div>" : "");
 }
 function isPractice(e) { return e.kind === "practice" || e.kind === "build"; }
 /* A practice day's two short lines. They are doors to the Attendance and Snacks tabs, not controls. */

@@ -178,11 +178,13 @@ function compactRow(x) {
   return '<div class="trowx' + (st ? "" : " nost") + '">' + rowCheck(x) + '<div class="tt"><button class="ttitle" data-act="topen" data-v="' + x.id + '">' + esc(x.title) + '</button><div class="tsub">' + esc(proj(x.p).name) + "</div></div>" +
     st + dueTxt(x) + "</div>";
 }
+// The task to do next: the first one you can actually work on (not blocked and not waiting on anything).
+function nextOf(mine) { return mine.filter(function (x) { return x.st !== "blocked" && !blockedBy(x).length; })[0] || mine.filter(function (x) { return x.st !== "blocked"; })[0] || mine[0]; }
 // The Next up card: shared by My tasks and the portal home.
 function nextUp() {
   var mine = T().list.filter(function (x) { return x.who.indexOf(me()) >= 0 && x.st !== "done"; }).sort(function (a, b) { return (a.due || "9") < (b.due || "9") ? -1 : 1; });
   // Next up is the first task you can actually work on: not blocked and not waiting on anything.
-  var next = mine.filter(function (x) { return x.st !== "blocked" && !blockedBy(x).length; })[0] || mine.filter(function (x) { return x.st !== "blocked"; })[0] || mine[0];
+  var next = nextOf(mine);
   var skipped = next ? mine.filter(function (x) { return x !== next && (x.due || "9") < (next.due || "9"); })[0] : null;
   if (!next) return '<div class="card hero nextup"><h2>Nothing assigned to you</h2><p class="mute">Take something nobody has yet.</p></div>';
   var bn = blockedBy(next), steps = next.check.filter(function (c) { return c[1]; }).length;
@@ -197,8 +199,11 @@ function my() {
   var mine = T().list.filter(function (x) { return x.who.indexOf(me()) >= 0 && x.st !== "done"; }).sort(function (a, b) { return (a.due || "9") < (b.due || "9") ? -1 : 1; });
   var buckets = [["Overdue", function (x) { return x.due && days(x.due) < 0; }], ["Today", function (x) { return x.due && days(x.due) === 0; }], ["This week", function (x) { return x.due && days(x.due) > 0 && days(x.due) <= 6; }], ["Later", function (x) { return x.due && days(x.due) > 6; }], ["No date", function (x) { return !x.due; }]];
   var open = T().list.filter(function (x) { return !x.who.length && x.st !== "done"; });
+  // Version B: the card above already shows the next task, so the list under it holds only the others.
+  var ideal = D.ideal(), all = mine.length;
+  if (ideal) { var nx = nextOf(mine); mine = mine.filter(function (x) { return x !== nx; }); }
   var groups = buckets.map(function (b) { var xs = mine.filter(b[1]); return xs.length ? '<h3 class="tgrp">' + b[0] + ' <span class="who">' + xs.length + "</span></h3><div>" + xs.map(compactRow).join("") + "</div>" : ""; }).join("");
-  return nextUp() + '<div class="card"><h2>Assigned to me</h2>' + (groups || '<p class="mute">Nothing assigned to you.</p>') + "</div>" +
+  return nextUp() + (ideal ? (groups ? '<div class="card"><h2>After that</h2>' + groups + "</div>" : all ? "" : "") : '<div class="card"><h2>Assigned to me</h2>' + (groups || '<p class="mute">Nothing assigned to you.</p>') + "</div>") +
     (open.length ? '<div class="card"><h2>Nobody has these yet</h2><div class="list">' + open.map(function (x) { return '<div class="li tkr"><span class="grow"><b>' + esc(x.title) + '</b><br><span class="who">' + esc(proj(x.p).name) + " › " + esc(x.sub) + "</span></span>" + dueTxt(x) + '<button class="btn sm" data-act="ttake" data-v="' + x.id + '">I\'ll take it</button></div>'; }).join("") + "</div></div>" : "");
 }
 function weekEvent(x) {

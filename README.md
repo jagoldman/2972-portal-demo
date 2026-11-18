@@ -40,21 +40,48 @@ Open `index.html` in a browser. Nothing to install.
 - The names, numbers and schedules are made up.
 - Ideas come from [Gearbox](https://frcgearbox.com) by FRC Team 1648, reimplemented from scratch. No Gearbox code or content is copied.
 
-## Design 8.2, a proposal (branch `design-8.2`, 2026-11-16)
+## Design 8.3, a proposal in two versions (branch `design-8.3`, 2026-11-17)
 
-A second look for every app, made on the user's request to move away from the generated style: flag black and white,
-arena grey, the blue of the robot's bumpers as the one accent, banner lettering (Big Shoulders) for titles and big
-numbers, Libre Franklin for text, square panels and padded controls. It matches the public-site proposal in
-`../public-redesign-demo/v8.2/` (its README has the reasons).
+The demo strip has **Live | A Baseline | B Ideal**. `?design=live`, `?design=a` or `?design=b` in the address does the
+same, and the choice is kept in this browser. Not approved, not in the real apps.
 
-- **Compare the two:** the demo strip has **Design 8.1 | Design 8.2**. `?design=8.1` or `?design=8.2` in the address
-  does the same. The choice is kept in this browser.
-- **One file:** `css/design82.css`, loaded last. Every rule is under `:root[data-design="8.2"]`; no other stylesheet
-  is changed, and with the switch on 8.1 every screen is as it was. `js/core.js` gained only the switch; `index.html`
-  gained the two fonts and the stylesheet.
-- **Same rules as before, one colour swapped:** bumper blue is used where gold was (the one main button, the active
-  tab, today) and where the link blue was. Layouts, words and behaviour are untouched.
-- **Not approved, not in the real apps, not reviewed by a second model.** Checked by the designer in screenshots:
-  19 screens, light and dark, 1280 px and 390 px, no JavaScript errors and no sideways scroll.
-- **Left for a second pass:** the Projector's own colours for task states, the scouting field drawing, the tool
-  drawings, and each app's finer spacing still use 8.1 values.
+- **Live** is the apps as they are today (8.1.6). Nothing in it is changed.
+- **A Baseline** is today's apps in a new look. Every layout, control, word and behaviour is the same as Live.
+  One file: `css/look.css`, every rule under `:root[data-design]`.
+- **B Ideal** is version A plus a tighter layout. Same features, same data. `css/ideal.css`, every rule under
+  `:root[data-design="b"]`, and five places in the js files behind `D.ideal()`.
+
+### The look (A and B)
+- **Colour** is kept from design 8.2: flag black and white, arena grey, and the blue of the robot's bumpers as the one
+  accent (the main button, today, links). The app bar is black.
+- **Type** is new. The owner found 8.2's banner lettering (Big Shoulders) tall and wasteful of space. Both versions use
+  one family, Archivo: normal width for text, 12% wider for headings. Headings are smaller than in Live (page title
+  22 px, not 25.6 px) and still read as headings because they are wide and heavy. No page is taller than it is in Live.
+- **Shape**: 8 px corners on things you press, 4 px on things that hold content.
+
+### What version B changes
+| Change | Where | Why |
+|---|---|---|
+| The app's tabs and its one button sit in the black bar (1024 px and wider) | every app with tabs | One row of chrome, not two: 48 px back on every screen. |
+| A page is one white sheet; sections are divided by a line and a heading | every page | Fewer boxes. On a phone the text gets the 32 px the box edges used. |
+| 14 px text, 40 px rows, 34 px buttons with a mouse; 44 px on a phone | every page | More rows on a laptop without making anything hard to tap. |
+| Home is two columns: what needs you, then apps and activity | Home | Everything is on screen at 1280 x 800 without scrolling. |
+| Apps are one-line rows (name, then what it is for) | Home | Four rows take 144 px; the tiles took a full row each. |
+| "Waiting on you" rows do not repeat their number in a badge | Home | The sentence already starts with the number. |
+| Requests are a table: part, vendor, quantity, cost, asked by, need by, priority, status | Parts | The facts line up, so a mentor reads down a column. Folds to two lines on a phone. |
+| The next task is not listed a second time under its own card | Tasks, My tasks | It was on screen twice. |
+| "Ready to start" and "In progress" sit side by side; rows do not repeat the heading as a status word | Skills, Overview | Both lists are visible at once. |
+| "Coming up" is listed beside the month (1100 px and wider) | Calendar | The next events are visible without switching to Agenda. |
+
+Measured on the 61 desktop screens of the demo (1280 px wide): version A's pages are 1% shorter than Live in total and
+none is taller; version B's are 11.8% shorter in total and none is taller. Home for a mentor goes from 1,355 px to
+950 px, the student's Skills overview from 1,763 px to 1,142 px.
+
+### Checked, and not checked
+- Checked by the designer: 183 screens (every app, every tab, five roles; 1280, 820 and 390 px) in each of the three
+  versions, with no JavaScript errors and no sideways scroll. Dark mode looked at on Home and Parts only.
+- Not reviewed by a second model. Not tested with a screen reader. The guide's ring was not re-tested against the
+  tabs in the bar.
+- Left as they are in Live: the Projector's task-state colours, the scouting field drawing, the tool drawings.
+- Design 8.2 (Big Shoulders and Libre Franklin) is still on branch `design-8.2`; this branch starts from it and
+  replaces its stylesheet.
