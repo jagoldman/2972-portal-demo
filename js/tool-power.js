@@ -27,14 +27,14 @@ M.power = function (rows, o) {
    are kept for twice the rating and more. */
 M.breakerNote = function (share) {
   return share <= 1 ? "of its rating: it carries this all match" : share <= 1.5 ? "above its rating: check the breaker's trip curve for how long it holds this" :
-    share <= 2 ? "a short peak is normal; held for a long time it can trip" : "a short peak is normal; held for a few seconds it trips";
+    share <= 2 ? "a short peak is normal; held for a long time it can trip" : "a short peak is normal; held for a few seconds it may trip";
 };
 // The same for a branch breaker, as a short tail to its row in the table ("" at or under its rating).
 M.branchNote = function (b) { return b > 2 ? ", can trip in seconds" : b > 1.5 ? ", can trip if held" : b > 1 ? ", above its rating" : ""; };
 /* The action sentence for the largest row: what it draws of the total and which number to lower. */
 M.lever = function (row, I) {
   var name = row.name || "The biggest row";
-  return name + " is the largest draw (" + Math.round(row.I) + " A of " + Math.round(I) + " A): lowering its " + (Math.round(row.a * 10) / 10) + " A limit helps most.";
+  return name + " is the largest draw (" + Math.round(row.I) + " A of " + Math.round(I) + " A): cutting what each of its motors draws from the battery (" + (Math.round(row.a * 10) / 10) + " A here) helps most. A supply current limit in the motor controller does that.";
 };
 // The voltage at the robot for a total current I (A) through resistance R (ohm).
 M.volts = function (rest, R, I) { return rest - I * R; };

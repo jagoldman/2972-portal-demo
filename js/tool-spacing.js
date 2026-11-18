@@ -59,7 +59,7 @@ K.tool({
     var word = s.kind === "belt" ? "pulley" : s.kind === "chain" ? "sprocket" : "gear";
     var teeth = K.num(ID, "n1", "Driving " + word, { unit: "teeth", min: 8, max: 120, step: 1, slider: true, tip: "The one the motor turns." }) + K.num(ID, "n2", "Driven " + word, { unit: "teeth", min: 8, max: 120, step: 1, slider: true });
     var space = s.kind === "gear" ?
-      K.num(ID, "gwant", "Distance you already have", { unit: "in", min: 0, max: 12, step: 0.001, hint: "Holes already drilled? Type their spacing to list the gear pairs that fit. Leave 0 otherwise.", tip: "The table under the answers lists pairs of common gears whose centre distance is nearest this." }) +
+      K.num(ID, "gwant", "Distance you already have", { unit: "in", min: 0, max: 12, step: 0.001, hint: "Holes already drilled? Type their spacing to see which gear pairs mesh there, and how much slack each has. Leave 0 otherwise.", tip: "The table under the answers lists pairs of common gears whose centre distance is nearest this." }) +
       K.num(ID, "gextra", "Extra spacing", { unit: "in", min: 0, max: 0.02, step: 0.001, hint: "Added so the teeth do not bind (backlash).", tip: "Added to the exact distance so the teeth do not bind. 0.003 in is a common choice for 20 DP gears in a plate cut on a router." }) :
       K.num(ID, "target", "Wanted centre distance", { unit: "in", min: 1, max: 40, step: 0.001, slider: true, tip: "Roughly where you want the two shafts. The calculator finds the real distances a stock belt or a whole number of links gives." }) +
       (s.kind === "belt" ? K.num(ID, "extra", "Extra spacing", { unit: "in", min: -0.02, max: 0.05, step: 0.001, hint: "Added to the exact distance. 0 suits most belts.", tip: "Added to the exact distance. Leave at 0 for a belt on fixed centres unless your pulleys run tight." }) :
@@ -81,12 +81,12 @@ K.tool({
     var state = small < 6 && s.kind === "belt" ? "warn" : "ok";
     var text = "A " + word + " fits at " + K.fix(o.center, 3) + " in" + (Math.abs(off) < 0.0005 ? ", exactly what you wanted." : ", " + K.fix(Math.abs(off), 3) + " in " + (off > 0 ? "more" : "less") + " than you wanted.") +
       (state === "warn" ? " Only " + small + " teeth grip the small pulley. A common rule of thumb is six or more; fewer can skip under load." : "");
-    return K.verdict(state, text, Math.abs(off) < 0.0005 ? "" : "With fixed holes, drill them " + K.fix(o.center, 3) + " in apart, not " + K.fix(s.target, 3) + ". To keep your distance, use a tensioner or slotted holes.") + K.outs([
+    return K.verdict(state, text, Math.abs(off) < 0.0005 ? "" : "With fixed holes, drill them " + K.fix(o.center, 3) + " in apart, not " + K.fix(s.target, 3) + "." + (off < 0 ? " This loop is too short to reach " + K.fix(s.target, 3) + " in. To keep that distance, take the next longer one in the table and use a tensioner to take up its slack." : " To keep " + K.fix(s.target, 3) + " in with this loop, add a tensioner to take up the slack.")) + K.outs([
       { k: "Centre distance", v: K.fix(o.center, 3), u: "in", sub: K.fix(o.center * 25.4, 2) + " mm" },
       { k: s.kind === "belt" ? "Belt" : "Chain", v: String(r.count), u: s.kind === "belt" ? "teeth" : "links", sub: K.fix(o.length, 2) + " in long" },
       { k: "Ratio", v: K.fix(r.ratio, 3), u: ": 1", sub: rtxt, tip: "Driven teeth divided by driving teeth." },
       { k: "Teeth gripped", v: o.mesh1 + " / " + o.mesh2, sub: "driving / driven" + (s.kind === "belt" ? ". Six or more is a rule of thumb; the belt maker rates the load" : ""), state: state === "warn" ? "warn" : "", tip: "How many teeth the belt or chain wraps on each wheel. Few teeth on a small pulley is where belts skip." },
-      { k: "Gap between them", v: K.fix(o.gap, 3), u: "in", sub: "between their outer edges", state: o.gap < 0.05 ? "warn" : "", tip: "Clear space between the two wheels' outer edges." }]);
+      { k: "Gap between them", v: K.fix(o.gap, 3), u: "in", sub: "between their outer edges, about: flanges and hubs vary by maker", state: o.gap < 0.05 ? "warn" : "", tip: "Clear space between the two wheels' outer edges." }]);
   },
 
   more: function (s, r) {
@@ -101,9 +101,15 @@ K.tool({
         '<div class="row"><button class="btn sm" data-act="spfind">' + D.ic("search", 16) + " Find it in inventory</button></div></section>";
     }
     if (s.kind === "gear" && r.fits) {
-      out += '<section class="ctab"><h2>Gear pairs for ' + K.fix(s.gwant, 3) + ' in between centres</h2>' +
-        (r.fits.length ? '<p class="small mute">A pair\'s spacing depends only on its teeth added together. ' + (Math.abs(r.fits[0].off) < 0.0015 ? "A total of " + r.fits[0].sum + " teeth fits exactly." : "No whole number of teeth fits exactly: " + r.fits.map(function (f) { return f.sum + " teeth is " + K.fix(Math.abs(f.off), 3) + " in " + (f.off > 0 ? "more" : "less"); }).join(", ") + ".") + '</p><div class="scroll"><table><thead><tr><th>Pair</th><th class="r">Ratio</th><th class="r">Centre distance</th><th class="r">Against yours</th><th></th></tr></thead><tbody>' +
-          r.fits.map(function (f) { return f.pairs.slice(0, 7).map(function (p) { var on = p[0] === s.n1 && p[1] === s.n2; return '<tr class="' + (on ? "pick" : "") + '"><td>' + p[0] + " : " + p[1] + '</td><td class="r num">' + K.fix(p[1] / p[0], 2) + ' : 1</td><td class="r num">' + K.fix(f.center, 3) + ' in</td><td class="r num">' + (Math.abs(f.off) < 0.0005 ? "exact" : (f.off > 0 ? "+" : "−") + K.fix(Math.abs(f.off), 3) + " in") + '</td><td class="r">' + (on ? '<span class="pill ok">In the drawing</span>' : '<button class="btn sm" data-act="spgear" data-a="' + p[0] + '" data-b="' + p[1] + '">Use this pair</button>') + "</td></tr>"; }).join(""); }).join("") +
+      // With holes already drilled the question is how each total sits AT that spacing: its slack is the hole
+      // spacing minus the exact meshing distance. A few thousandths is right; none may bind; too much rattles.
+      var per = gearOf(s)[2].dp ? 1 / (2 * gearOf(s)[2].dp) : gearOf(s)[2].module / 25.4 / 2;
+      function slackOf(f) { return s.gwant - f.sum * per; }
+      function how(sl) { return sl < -0.0005 ? ["bad", "will not go on"] : sl < 0.0015 ? ["warn", "no slack: may bind"] : sl <= 0.008 ? ["ok", "fits"] : ["warn", "loose"]; }
+      var okSum = r.fits.filter(function (f) { return how(slackOf(f))[0] === "ok"; })[0];
+      out += '<section class="ctab"><h2>Gear pairs for holes ' + K.fix(s.gwant, 3) + ' in apart</h2>' +
+        (r.fits.length ? '<p class="small mute">A pair\'s exact meshing distance depends only on its teeth added together. The slack is your hole spacing minus that distance: about 0.002 to 0.008 in is right for 20 DP. ' + (okSum ? "A total of " + okSum.sum + " teeth fits." : "No total of whole teeth fits these holes well: " + r.fits.map(function (f) { return f.sum + " teeth leaves " + K.fix(slackOf(f), 3) + " in"; }).join(", ") + ". Move a hole, or use slots.") + ' Pairs with a pinion under 14 teeth need the maker\'s own spacing.</p><div class="scroll"><table><thead><tr><th>Pair</th><th class="r">Ratio</th><th class="r">Exact meshing distance</th><th class="r">Slack at your holes</th><th>At your holes</th><th></th></tr></thead><tbody>' +
+          r.fits.map(function (f) { var sl = slackOf(f), hw = how(sl); return f.pairs.filter(function (p) { return p[0] >= 10; }).slice(0, 6).map(function (p) { var on = p[0] === s.n1 && p[1] === s.n2; return '<tr class="' + (on ? "pick" : "") + '"><td>' + p[0] + " : " + p[1] + (p[0] < 14 ? " (small pinion)" : "") + '</td><td class="r num">' + K.fix(p[1] / p[0], 2) + ' : 1</td><td class="r num">' + K.fix(f.sum * per, 3) + ' in</td><td class="r num">' + (sl < 0 ? "−" : "") + K.fix(Math.abs(sl), 3) + ' in</td><td><span class="pill ' + hw[0] + '">' + hw[1] + '</span></td><td class="r">' + (on ? "In the drawing" : '<button class="btn sm" data-act="spgear" data-a="' + p[0] + '" data-b="' + p[1] + '">Draw this pair</button>') + "</td></tr>"; }).join(""); }).join("") +
           "</tbody></table></div>" : '<p class="warnline">That is too close together for two gears of this tooth size.</p>') + "</section>";
     }
     out += K.notes(s.kind === "gear" ?

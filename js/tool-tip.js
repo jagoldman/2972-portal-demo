@@ -157,7 +157,7 @@ K.tool({
     else if (r.kind === "front") { st = "bad"; text = "It tips over forward standing still" + on + ", because its weight acts " + K.fix(off - s.wb / 2, 1) + " in ahead of the front wheels: move weight back or lengthen the wheelbase."; }
     else if (r.tips) {
       // One sentence: what happens and what to change. The detail of the stop goes in the quieter second line.
-      st = "bad"; text = "Braking at " + g2(r.brake) + " g tips it forward (it tips at " + g2(L.tipBrake) + " g): " +
+      st = "bad"; text = "Braking at " + g2(r.brake) + " g lifts the rear wheels (they lift from " + g2(L.tipBrake) + " g): " +
         (limit ? "keep the mechanism's centre of gravity below " + K.fix(r.hFor, 0) + " in while driving hard, with some margin, or move weight back." : "move weight back or lower it.");
       more = (sim.fell ? "From " + s.v0 + " ft/s this model predicts it falls over onto its front." : sim.bumper ? "From " + s.v0 + " ft/s this model predicts the rear lifts until the front bumper hits the floor (" + deg(sim.maxPhi) + "°), then drops back." : sim.lifted ? "From " + s.v0 + " ft/s the rear lifts to " + deg(sim.maxPhi) + "° and drops back." : "") +
         (sim.lifted ? " A real bumper can bounce or crush, so near the edge it could go either way." : "");

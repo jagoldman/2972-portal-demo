@@ -374,8 +374,8 @@ K.tool({
     var showRes = r.win && (t >= tw || !K.playing(ID)), msg = "";
     if (showRes) {
       var W = r.win === "A" ? r.A : r.B, Lo = r.win === "A" ? r.B : r.A, ln2 = r.win === "A" ? "B" : "A", mg = M.margin(r.A.time, r.B.time);
-      msg = (t < tw ? "At the finish: " : "") + (!Lo.reached ? r.win + " finishes; " + ln2 + " cannot get there" : mg.tie ? "a dead heat" : (mg.dp === 3 ? "too close to call, " + r.win + " by " : r.win + " wins by ") + K.fix(mg.gap, mg.dp) + " s" + (narrow ? "" : "; " + ln2 + " is " + K.fix(d - ft(M.at(Lo.sim, "x", tw)), 1) + " ft back"));
-      if (phone) msg = (t < tw ? "At the finish: " : "") + (!Lo.reached ? ln2 + " never gets there" : mg.tie ? "a dead heat" : r.win + " by " + K.fix(mg.gap, mg.dp) + " s");
+      msg = (t < tw ? "Predicted finish: " : "") + (!Lo.reached ? r.win + " finishes; " + ln2 + " cannot get there" : mg.tie ? "a dead heat" : (mg.dp === 3 ? "too close to call, " + r.win + " by " : r.win + " wins by ") + K.fix(mg.gap, mg.dp) + " s" + (narrow ? "" : "; " + ln2 + " is " + K.fix(d - ft(M.at(Lo.sim, "x", tw)), 1) + " ft back"));
+      if (phone) msg = (t < tw ? "Predicted: " : "") + (!Lo.reached ? ln2 + " never gets there" : mg.tie ? "a dead heat" : r.win + " by " + K.fix(mg.gap, mg.dp) + " s");
       msg = msg.charAt(0).toUpperCase() + msg.slice(1);
     }
     if (phone) {

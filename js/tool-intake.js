@@ -234,9 +234,9 @@ function draw(g, s, r, t) {
   g.text(K.fix(t, 3) + " s", hx, hy, { weight: 700, size: 13 });
   g.text(status, hx + 62, hy, { color: jam && t >= r.tc ? c.bad : inside ? c.ok : c.text2, weight: 600, size: phone ? 11 : 12 });
   var ry = hy + 20;
-  if (vd > 0.5) { g.arrow(hx, ry, hx + aL(vd), ry, { color: c.s1, width: 2 }); g.text("robot " + K.fix(vd / 12, 1) + " ft/s", hx + aL(vd) + 6, ry, { base: "middle", weight: 600, color: c.text, size: phone ? 11 : 12 }); }
+  if (vd > 0.5) { g.arrow(hx, ry, hx + aL(vd), ry, { color: c.s1, width: 2 }); g.text("robot, over the floor " + K.fix(vd / 12, 1) + " ft/s", hx + aL(vd) + 6, ry, { base: "middle", weight: 600, color: c.text, size: phone ? 11 : 12 }); }
   // The piece's speed, in the same key: its arrow on the drawing has the same colour.
-  if (!jam && vp > 0) { var py2 = ry + 20, pc = r.state === "warn" ? c.warn : c.ok; g.arrow(hx, py2, hx + aL(vp), py2, { color: pc, width: 2.5 }); g.text("piece " + K.fix(vp / 12, 1) + " ft/s" + (phone ? "" : both ? ", the roller's full surface speed" : ", half the roller's surface speed"), hx + aL(vp) + 6, py2, { base: "middle", weight: 600, color: pc, size: phone ? 11 : 12 }); }
+  if (!jam && vp > 0) { var py2 = ry + 20, pc = r.state === "warn" ? c.warn : c.ok; g.arrow(hx, py2, hx + aL(vp), py2, { color: pc, width: 2.5 }); g.text("piece, into the robot " + K.fix(vp / 12, 1) + " ft/s" + (phone ? "" : both ? ": the roller's full surface speed" : ": half the roller's surface speed"), hx + aL(vp) + 6, py2, { base: "middle", weight: 600, color: pc, size: phone ? 11 : 12 }); }
   // The piece's speed: an arrow ahead of it, along its path, and its label.
   var bx = V.X(bp[0]), by = V.Y(bp[1]), Rpx = V.L(Rb), col = r.state === "bad" ? c.bad : r.state === "warn" ? c.warn : c.ok;
   if (d < 0) {

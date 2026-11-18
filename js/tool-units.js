@@ -83,7 +83,7 @@ function mechOf(s, r) {
       "public static final double k" + P + "MetersPerMotorRotation = " + java(m.perRot) + ";\n" +
       "public static final double k" + P + "MetersPerSecondPerMotorRpm = " + java(m.perRpm) + ";\n" +
       "// At " + num(s.rpm) + " motor rpm, the speed entered on the page\n" +
-      "public static final double k" + P + "MaxSpeedMetersPerSecond = " + java(m.max) + ";";
+      "public static final double k" + P + "SpeedAtEnteredRpmMetersPerSecond = " + java(m.max) + ";";
   } else {
     o.sent = "One motor turn swings the arm " + sig(m.perRotDeg) + "°. At the " + K.n(s.rpm, 0) + " rpm you entered it turns " + sig(m.maxDeg) + "° per second (" + sig(m.outRpm) + " rpm).";
     o.items = [
@@ -102,7 +102,7 @@ function mechOf(s, r) {
       "public static final double kArmDegreesPerMotorRotation = " + java(m.perRotDeg) + ";\n" +
       "public static final double kArmRadiansPerSecondPerMotorRpm = " + java(m.perRpm) + ";\n" +
       "// At " + num(s.rpm) + " motor rpm, the speed entered on the page\n" +
-      "public static final double kArmMaxSpeedRadiansPerSecond = " + java(m.max) + ";";
+      "public static final double kArmSpeedAtEnteredRpmRadiansPerSecond = " + java(m.max) + ";";
   }
   return o;
 }
@@ -246,7 +246,7 @@ function drawUnits(g, s, r) {
     var ya = ry - 16, yc = ry - 54;
     g.arrow(cxs, ya, V.X(C), ya, { color: c.s1, width: 2.5, head: 8 });
 
-    labelAt(g, (two ? "rope: " : "rope and carriage: ") + sig(C) + " in per " + word + " turn", cxs, ya - 8, c.text);
+    labelAt(g, (two ? "rope: " : "rope, and the carriage at 1× rigging: ") + sig(C) + " in per " + word + " turn", cxs, ya - 8, c.text);
     if (two) {
       g.arrow(cxs, yc, V.X(Cr), yc, { color: c.s3, width: 2.5, head: 8 });
       labelAt(g, "carriage: " + sig(Cr) + " in, " + rig + "× the rope", cxs, yc - 8, c.text);
