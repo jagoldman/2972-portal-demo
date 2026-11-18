@@ -135,4 +135,38 @@
     .preqsteps .stages li::after { top: 22px; left: 5px; right: auto; width: 2px; height: calc(100% - 14px); }
     .preqsteps .stages small { white-space: normal; }
   }
+
+  /* ---------- Hill climb, round 3 ---------- */
+  /* 1. The requests list is grouped by step. Each group has one heading row: the step, whose move it is (said once,
+     here, not on every row), and the count. */
+  .ptable.gt .ptg { display: flex; align-items: center; gap: 8px; min-height: 40px; margin: 0; padding: 14px 4px 6px; border-bottom: 1px solid var(--line-2); color: var(--text); font-size: 1rem; font-weight: 650; }
+  .ptable.gt .pth + .ptg { padding-top: 10px; }
+  .ptable.gt .ptg .tcount { margin: 0; }
+  .ptable.gt .ptgm { color: var(--mute); font-weight: 450; }
+  /* 2. "Your move" is the reader's own job, not a link: the text colour at weight 650, never the link blue. */
+  .ptable.gt .ptgm.mine, .ptable.gt .move.mine, .preqsteps .move.mine { color: var(--text); font-weight: 650; }
+  /* 4. The order number on its own line, under the steps. */
+  .pordno { margin: 0; color: var(--text-2); }
+  /* 5. The panel's choices sit right under the steps. */
+  .pacts { gap: 8px; }
+  /* 6. "Needs your OK": the priority and the buttons follow the text instead of sitting at the far edge. */
+  .pwait .grow { flex: 0 1 34rem; }
+  .pwait .pill.pri { flex: none; }
+  /* 7. Vendor heading: the order cutoff first, in the text colour; a short free-shipping bar beside its sentence. */
+  .pcut { margin: 2px 0 0; color: var(--text); font-weight: 650; }
+  .pship { display: flex; flex-wrap: wrap; align-items: center; gap: 6px 12px; }
+  .pship .bar { flex: 0 0 240px; max-width: 100%; }
+  @media (max-width: 899px) {
+    /* 9. In a folded row the facts are separated by commas, so the quantity, the cost and the name never run together. */
+    .ptable.gt .pfacts { column-gap: 6px; }
+    .ptable.gt .pfacts > span:not(:last-child)::after { content: ","; }
+    .ptable.gt .pfacts > .pb:has(+ .pnd)::after { content: none; }
+  }
+  @media (max-width: 640px) {
+    /* 5. On a phone the main button takes the whole row and the others share the row under it. */
+    .drawer .pacts > .btn { flex: 1 1 0; min-height: 44px; }
+    .drawer .pacts > .btn.primary { flex: 1 1 100%; }
+    .pwait .grow { flex: 1 1 100%; }
+    .pship .bar { flex-basis: 100%; }
+  }
 }

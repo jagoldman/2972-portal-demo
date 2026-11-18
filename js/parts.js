@@ -11,8 +11,14 @@ function addDays(s, n) { var d = parse(s); return iso(new Date(d.getFullYear(), 
 var LIMIT = 25000;
 // What a budget has left after spent and approved-but-not-ordered requests.
 function budgetLeft(id) { var p = P(), b = BUDGETS.filter(function (x) { return x.id === id; })[0]; if (!b) return null; return b.budget - (p.spent[id] || 0) - p.requests.filter(function (r) { return r.status === "toorder" && r.bud === id; }).reduce(function (a, r) { return a + total(r); }, 0); }
-// Ground up puts "left now" and "left after this" on two lines, so a mentor can check both on a phone.
-function budgetEffect(r) { var left = budgetLeft(r.bud); return left == null ? "" : esc(bname(r.bud)) + ": " + money(left) + " left" + (D.ground() ? '<br><span class="pafter">' : " → ") + money(left - total(r)) + " after this" + (D.ground() ? "</span>" : ""); }
+/* Ground up puts "left now" and "left after this" on two lines in the request panel (two = true), so a mentor can
+   check both on a phone. In a list row it is one line with a comma, so the row keeps its shape (hill climb r3). */
+function budgetEffect(r, two) {
+  var left = budgetLeft(r.bud); if (left == null) return "";
+  var head = esc(bname(r.bud)) + ": " + money(left) + " left", after = money(left - total(r)) + " after this";
+  if (!D.ground()) return head + " → " + after;
+  return two ? head + '<br><span class="pafter">' + after + "</span>" : head + ", " + after;
+}
 var VURL = { REV: "https://www.revrobotics.com", WCP: "https://wcproducts.com", AndyMark: "https://www.andymark.com", "McMaster-Carr": "https://www.mcmaster.com", "The Thrifty Bot": "https://www.thethriftybot.com", CTRE: "https://store.ctr-electronics.com", Amazon: "https://www.amazon.com" };
 var PRI = { blocking: ["Blocking", "bad"], high: ["High", "warn"], normal: ["Normal", ""], nice: ["Nice to have", ""] };
 var STATUS = { needsok: ["Needs mentor OK", "warn"], toorder: ["To order", ""], ordered: ["Ordered", "info"], arrived: ["Arrived", "ok"], putaway: ["Put away", "ok"], denied: ["Denied", "bad"], cancelled: ["Cancelled", ""] };
@@ -125,7 +131,10 @@ D.views.parts = function () {
   var toOrder = P().requests.filter(function (r) { return r.status === "toorder"; }).length;
   var arrN = P().orders.reduce(function (a, o) { return a + o.lines.filter(function (l) { return !l.done; }).length; }, 0);
   var list = [["requests", "Requests"]];
-  if (staff) list.push(needOK ? ["toorder", "To order", "", String(toOrder + needOK)] : ["toorder", "To order", toOrder ? String(toOrder) : ""]);
+  // Ground up keeps the two counts apart, so the tab agrees with the "To order" step: the plain count is what to
+  // order, and the amber one is what waits for an OK first (hill climb r3).
+  if (staff && D.ground()) list.push(["toorder", "To order", toOrder ? String(toOrder) : "", needOK ? needOK + " to OK" : ""]);
+  else if (staff) list.push(needOK ? ["toorder", "To order", "", String(toOrder + needOK)] : ["toorder", "To order", toOrder ? String(toOrder) : ""]);
   list.push(["arriving", "Arriving", arrN ? String(arrN) : ""], ["inventory", "Inventory"], ["budget", "Budget"]);
   if (staff) list.push(["vendors", "Vendors"]);
   // "new" is not a tab: the request form is its own screen, opened by the gold button (and by Tasks and Inventory).
@@ -137,8 +146,9 @@ D.views.parts = function () {
   else if (t === "budget") body = budget();
   else if (t === "vendors" && staff) body = vendorsView();
   else body = requests();
-  // Ground up: when the search finds nothing, "Request it" under it is the one main button, so this one turns plain.
-  var asking = D.ground() && body.indexOf('class="pnone pnothing"') >= 0;
+  // Ground up: when the search gives its own main button ("Request it", or "Take" for the one part the shop has),
+  // that is the one filled button, so this one turns plain. The search marks that button with the class "pmain".
+  var asking = D.ground() && body.indexOf(" pmain") >= 0;
   var right = t === "new" ? "" : '<button class="btn' + (asking ? "" : " primary") + ' sm" data-act="tab" data-app="parts" data-v="new" aria-label="Request a part">' + D.ic("plus", 16) + '<span>Request<span class="hide-sm"> a part</span></span></button>';
   return D.topbar("Parts & Inventory", "", D.tabsFor("parts", list, "requests"), right) + '<div class="content">' + body + "</div>";
 };
@@ -180,16 +190,20 @@ function findBox(q, reqHits) {
     '<input id="p-q" class="inp" type="search" data-input="pq" placeholder="What do you need?" value="' + esc(P().q) + '" autocomplete="off"></div>';
   if (!q) return html;
   if (shop.length) {
+    // "Take" is the one filled button when the shop has exactly one part like it (hill climb r3). With several, none
+    // is the obvious one, so every Take stays plain.
+    var homeK = function (i) { return i.stock.map(function (st) { return st.place.indexOf("bot") < 0; }).indexOf(true); };
+    var takers = shop.slice(0, 5).filter(function (i) { return homeK(i) >= 0; }).length;
     html += '<section class="pshop" aria-label="In the shop"><h3>In the shop <span class="tcount">' + shop.length + '</span></h3><div class="list">' + shop.slice(0, 5).map(function (i) {
-      var home = i.stock.filter(function (s) { return s.place.indexOf("bot") < 0; }), k = i.stock.map(function (st) { return st.place.indexOf("bot") < 0; }).indexOf(true);
+      var home = i.stock.filter(function (s) { return s.place.indexOf("bot") < 0; }), k = homeK(i);
       return '<div class="li pshopi"><span class="grow"><b>' + esc(i.name) + '</b><span class="pmeta">' + (home.map(function (s) { return esc(s.place); }).join(", ") || "Only on robots") + "</span></span>" +
         '<span class="pinst num">' + inStore(i) + (i.unit === "each" ? "" : " " + esc(i.unit)) + " in store" + (isLow(i) ? ' <span class="pill warn">Low</span>' : "") + "</span>" +
-        (k >= 0 ? '<button class="btn sm" data-act="ptake" data-v="' + i.id + '" data-k="' + k + '" aria-label="Take ' + esc(i.name) + '">Take</button>' : '<span class="pnotake" aria-hidden="true"></span>') + "</div>";
+        (k >= 0 ? '<button class="btn sm' + (takers === 1 ? " primary pmain" : "") + '" data-act="ptake" data-v="' + i.id + '" data-k="' + k + '" aria-label="Take ' + esc(i.name) + '">Take</button>' : '<span class="pnotake" aria-hidden="true"></span>') + "</div>";
     }).join("") + '</div><div class="row pshopact"><button class="btn ghost" data-act="pinvopen">Open Inventory</button><button class="btn" data-act="pask" data-v="more">Request more</button></div></section>';
   } else if (reqHits) {
     html += '<div class="row pnone"><p>Nothing like “' + esc(q) + '” is in the shop.</p><button class="btn" data-act="pask">Request it</button></div>';
   } else {
-    html += '<div class="pnone pnothing"><p>Nothing like “' + esc(q) + '” is in the shop or on order.</p><p class="who">Try a shorter name or the part number.</p><div><button class="btn primary" data-act="pask">Request “' + esc(q.length > 24 ? q.slice(0, 23) + "…" : q) + '”</button></div></div>';
+    html += '<div class="pnone pnothing"><p>Nothing like “' + esc(q) + '” is in the shop or on order.</p><p>Try a shorter name or the part number.</p><div><button class="btn primary pmain" data-act="pask">Request “' + esc(q.length > 24 ? q.slice(0, 23) + "…" : q) + '”</button></div></div>';
   }
   return html;
 }
@@ -197,7 +211,8 @@ function findBox(q, reqHits) {
    where it can; the order itself fills in who placed it and when it arrived for requests older than their history. */
 function whoWhen(h, sep) { return h ? h.who + (sep || ", ") + (h.when === "Just now" ? "just now" : h.when) : ""; }
 // Under a step, who and when go on two lines (the stylesheet keeps the line break), so a narrow column reads cleanly.
-function stepSub(h) { return whoWhen(h, "\n"); }
+// The comma keeps them apart on a phone, where the steps run down the panel and the two share one line.
+function stepSub(h) { return whoWhen(h, ",\n"); }
 function reqSteps(r) {
   var find = function (rx) { return r.hist.filter(function (h) { return rx.test(h.what); }).slice(-1)[0]; };
   if (r.status === "denied" || r.status === "cancelled") {
@@ -205,18 +220,21 @@ function reqSteps(r) {
     var said = [end ? "by " + whoWhen(end) + "." : "", r.denied ? "“" + r.denied + "”" : ""].filter(Boolean).join(" ");
     return '<p class="pstop">' + statusPill(r.status) + (said ? "<span>" + esc(said) + "</span>" : "") + "</p>";
   }
-  var cur = { needsok: 1, toorder: 2, ordered: 3, arrived: 4, putaway: 5 }[r.status] || 0, o = orderOf(r);
+  /* "Now" marks the step the request has reached, the same word as its status: an ordered request has Asked and
+     Approved done and Ordered now. A request that is put away has all five done (hill climb r3). */
+  var cur = { needsok: 0, toorder: 1, ordered: 2, arrived: 3, putaway: 5 }[r.status] || 0, o = orderOf(r);
   var asked = find(/^requested it/), ok = find(/approved it$/), ord = find(/^ordered it/), inn = find(/^checked in/);
-  var okSub = ok ? stepSub(ok) : cur > 1 && total(r) <= LIMIT ? "No OK needed" : "";
-  var ordSub = ord ? stepSub(ord) : cur > 2 && o ? stepSub({ who: o.placedBy, when: o.placed }) : "";
-  var arrSub = inn ? stepSub(inn) : cur > 3 && o && o.arrived ? fmt(o.arrived).replace(/^\w+, /, "") : cur === 3 ? etaText(r) : "";
+  var okSub = ok ? stepSub(ok) : cur > 0 && total(r) <= LIMIT ? "No approval needed" : "";
+  var ordSub = ord ? stepSub(ord) : cur > 1 && o ? stepSub({ who: o.placedBy, when: o.placed }) : "";
+  // "Arrives about <date>" stays under Arrived, the step it is about.
+  var arrSub = inn ? stepSub(inn) : cur > 2 && o && o.arrived ? fmt(o.arrived).replace(/^\w+, /, "") : r.status === "ordered" ? etaText(r) : "";
   var line = o && o.lines ? o.lines.filter(function (l) { return l.name === r.name || l.rid === r.id; })[0] : null;
-  var putSub = cur > 4 ? (inn ? (/ to (.+)$/.exec(inn.what) || [])[1] || "" : line && line.loc ? line.loc : "") : "";
-  // The step it is on is named for what is being waited for ("Arriving"), so the mark and the word agree (hill climb r2).
-  var names = ["Asked", "OK'd", "Ordered", "Arrived", "Put away"], NOW = { 1: "Needs OK", 2: "To order", 3: "Arriving", 4: "To put away" };
-  if (NOW[cur]) names[cur] = NOW[cur];
-  var now = moveHtml(r), steps = D.stages([[names[0], stepSub(asked)], [names[1], okSub], [names[2], ordSub], [names[3], arrSub], [names[4], putSub]], cur, "Where this request is");
-  return '<div class="preqsteps">' + steps + (now || r.order ? '<div class="row pnow">' + (r.status === "ordered" ? "" : now) + (r.order ? '<span class="who">Order #' + r.order + "</span>" : "") + "</div>" : "") + "</div>";
+  var putSub = cur > 3 ? (inn ? (/ to (.+)$/.exec(inn.what) || [])[1] || "" : line && line.loc ? line.loc : "") : "";
+  var now = moveHtml(r), steps = D.stages([["Asked", stepSub(asked)], ["Approved", okSub], ["Ordered", ordSub], ["Arrived", arrSub], ["Put away", putSub]], cur, "Where this request is");
+  // The arrival date is already under Arrived, so an ordered request has no second line saying it. The order number
+  // has its own labelled line.
+  var move = r.status === "ordered" ? "" : now;
+  return '<div class="preqsteps">' + steps + (move ? '<div class="row pnow">' + move + "</div>" : "") + (r.order ? '<p class="pordno">Order #' + r.order + "</p>" : "") + "</div>";
 }
 // The steps of the flow, each a filter with its count; the rarely used views sit in one small "More" select.
 function flowRow(groups, gcount) {
@@ -234,7 +252,8 @@ function flowRow(groups, gcount) {
 function requests() {
   var p = P(), me = D.me().name;
   var groups = [["open", "Open", ["needsok", "toorder", "ordered"]], ["needsok", "Needs mentor OK", ["needsok"]], ["toorder", "To order", ["toorder"]], ["ordered", "Ordered", ["ordered"]], ["done", "Arrived", ["arrived", "putaway"]], ["closed", "Denied or cancelled", ["denied", "cancelled"]], ["all", "All", Object.keys(STATUS)], ["wish", "Wishlist", []]];
-  function gcount(x) { return x[0] === "wish" ? (p.wish || []).length : p.requests.filter(function (r) { return x[2].indexOf(r.status) >= 0; }).length; }
+  // In Ground up the counts on the steps follow the search and "Only mine", so they always agree with the list under them.
+  function gcount(x) { return x[0] === "wish" ? (p.wish || []).length : p.requests.filter(function (r) { return x[2].indexOf(r.status) >= 0 && (!D.ground() || ((!p.mine || r.by === D.me().name) && (!p.q.trim() || matches(reqText(r), p.q.trim())))); }).length; }
   var g = groups.filter(function (x) { return x[0] === p.filter; })[0];
   var q = p.q.toLowerCase(), ground = D.ground(), gq = p.q.trim();
   var rows = p.requests.filter(function (r) { return g[2].indexOf(r.status) >= 0 && (!p.mine || r.by === me) && (ground ? !gq || matches(reqText(r), gq) : !q || (r.name + r.sku + r.vendor + r.by + r.sub).toLowerCase().indexOf(q) >= 0); });
@@ -246,10 +265,26 @@ function requests() {
   if (ground) {
     var anyReq = !!gq && p.requests.some(function (r) { return matches(reqText(r), gq); }), none = !!gq && !anyReq && !shopMatches(gq).length;
     var labG = function (t) { return '<span class="pl">' + t + " </span>"; };
-    var table = p.filter === "wish" ? '<div class="list">' + wishList() + "</div>" : none ? "" : rows.length ? '<div class="ptable gt"><div class="pth" aria-hidden="true"><span>Part</span><span>Vendor</span><span>Quantity</span><span class="r">Cost</span><span>Asked by</span><span>Need by</span><span>Priority</span><span>Status</span></div>' + rows.map(function (r) {
-      return '<button class="ptr" data-act="preq" data-v="' + r.id + '"><b class="pn">' + esc(r.name) + '</b><span class="pfacts"><span class="pv">' + esc(r.vendor) + '</span><span class="pq num">' + labG("Qty") + esc(qtyText(r)) + '</span><span class="pc num r">' + money(total(r)) + '</span><span class="pb">' + esc(r.by) + '</span><span class="pd num">' + (r.need ? labG("Need by") + needCell(r) : '<span class="vh">No date</span>') + '</span></span><span class="pp">' + priPill(r.pri) + '</span><span class="ps">' + statusPill(r.status) + moveHtml(r) + "</span></button>";
-    }).join("") + "</div>" : '<div class="empty">' + (gq ? "No requests like “" + esc(gq) + "” here. Try All open or More." : "Nothing here.") + "</div>";
-    return '<div class="card preqs">' + findBox(gq, anyReq) + (none ? "" : '<h3 class="preqh">Requests</h3>' + flowRow(groups, gcount)) + table + "</div>";
+    // One row. Needs OK and To order rows leave whose move it is to their group's heading, which says it once.
+    var rowG = function (r) {
+      var mv = r.status === "needsok" || r.status === "toorder" ? "" : moveHtml(r);
+      return '<button class="ptr" data-act="preq" data-v="' + r.id + '"><b class="pn">' + esc(r.name) + '</b><span class="pfacts"><span class="pv">' + esc(r.vendor) + '</span><span class="pq num">' + labG("Qty") + esc(qtyText(r)) + '</span><span class="pc num r">' + money(total(r)) + '</span><span class="pb">' + esc(r.by) + '</span><span class="pd num' + (r.need ? "" : " pnd") + '">' + (r.need ? labG("Need by") + needCell(r) : '<span class="vh">No date</span>') + '</span></span><span class="pp">' + priPill(r.pri) + '</span><span class="ps">' + statusPill(r.status) + mv + "</span></button>";
+    };
+    /* Hill climb r3: the rows go in the order of the flow, each step under one heading row with its name, its count
+       and whose move it is, said once. Inside a step the rows keep the urgency order above. */
+    var staffG = D.isStaff(), FLOW = [
+      ["needsok", "Needs OK", ["needsok"], staffG ? "your move" : "waiting on a mentor"],
+      ["toorder", "To order", ["toorder"], staffG ? "your move" : "waiting on a mentor to order"],
+      ["ordered", "Ordered", ["ordered"], ""], ["done", "Arrived", ["arrived", "putaway"], ""],
+      ["closed", "Denied or cancelled", ["denied", "cancelled"], ""]];
+    var grouped = FLOW.map(function (f) {
+      var inG = rows.filter(function (r) { return f[2].indexOf(r.status) >= 0; });
+      if (!inG.length) return "";
+      return '<h4 class="ptg"><span class="ptgn">' + f[1] + (f[3] ? '<span class="' + (staffG ? "ptgm mine" : "ptgm") + '">, ' + f[3] + "</span>" : "") + '</span><span class="tcount">' + inG.length + "</span></h4>" + inG.map(rowG).join("");
+    }).join("");
+    var table = p.filter === "wish" ? '<div class="list">' + wishList() + "</div>" : none ? "" : rows.length ? '<div class="ptable gt"><div class="pth" aria-hidden="true"><span>Part</span><span>Vendor</span><span>Quantity</span><span class="r">Cost</span><span>Asked by</span><span>Need by</span><span>Priority</span><span>Status</span></div>' + grouped + "</div>" : '<div class="empty">' + (gq ? "No requests like “" + esc(gq) + "” here. Try All open or More." : "Nothing here.") + "</div>";
+    // While a search is showing, the list under the shop's answer is what has already been asked for.
+    return '<div class="card preqs">' + findBox(gq, anyReq) + (none ? "" : '<h3 class="preqh">' + (gq ? "Already requested" : "Requests") + "</h3>" + flowRow(groups, gcount)) + table + "</div>";
   }
   var filters = '<div class="pfilters"><label class="pf-show"><span>Show</span><select class="inp" data-change="pfiltersel">' + groups.map(function (x) { return '<option value="' + x[0] + '"' + (p.filter === x[0] ? " selected" : "") + ">" + x[1] + " (" + gcount(x) + ")</option>"; }).join("") + "</select></label>" +
     '<label class="pf-mine"><button class="toggle" data-act="pmine" aria-pressed="' + p.mine + '" aria-label="Only my requests"></button><span>Only mine</span></label>' +
@@ -271,11 +306,20 @@ D.drawers.preq = function (d) {
   var r = reqById(d.id), staff = D.isStaff(), mine = r.by === D.me().name, ob = orderBy(r);
   var acts = [];
   if (staff && r.status === "needsok") acts.push('<button class="btn primary" data-act="papprove" data-v="' + r.id + '">Approve</button>', '<button class="btn" data-act="pdeny" data-v="' + r.id + '">Deny…</button>', '<button class="btn" data-act="preplace" data-v="' + r.id + '">Replace item…</button>');
-  if (r.status === "ordered") acts.push('<button class="btn" data-act="tab" data-app="parts" data-v="arriving">Check it in on Arriving</button>');
-  var cancel = mine && !staff && (r.status === "needsok" || r.status === "toorder") ? '<div><button class="btn ghost danger" data-act="pcancel" data-v="' + r.id + '">Withdraw my request</button></div>' : "";
-  var rows = [["Vendor", esc(r.vendor)], ["SKU", '<span class="mono">' + esc(r.sku) + "</span>"], ["Quantity", qtyText(r)], ["Price", money(r.price) + " each · " + money(total(r)) + " total"], ["Budget", r.status === "needsok" ? budgetEffect(r) : esc(bname(r.bud))], ["Priority", PRI[r.pri][0]], ["Need by", (D.ground() && r.need ? esc(needText(r)) : fmt(r.need)) + (ob && !(D.ground() && r.status !== "needsok" && r.status !== "toorder") ? '<br><b class="pbad">Order by ' + fmt(ob) + "</b>" : "")], ["For", esc(r.sub) + (r.task ? " · task “" + esc(r.task) + "”" : "")], ["Asked by", esc(r.by)]];
+  if (r.status === "ordered") acts.push('<button class="btn" data-act="tab" data-app="parts" data-v="arriving">' + (D.ground() ? "Check it in" : "Check it in on Arriving") + "</button>");
+  var cancelBtn = mine && !staff && (r.status === "needsok" || r.status === "toorder") ? '<button class="btn ghost danger" data-act="pcancel" data-v="' + r.id + '">Withdraw my request</button>' : "", cancel = cancelBtn ? "<div>" + cancelBtn + "</div>" : "";
+  var rows = [["Vendor", esc(r.vendor)], ["SKU", '<span class="mono">' + esc(r.sku) + "</span>"], ["Quantity", qtyText(r)], ["Price", money(r.price) + " each · " + money(total(r)) + " total"], ["Budget", r.status === "needsok" ? budgetEffect(r, true) : esc(bname(r.bud))], ["Priority", PRI[r.pri][0]], ["Need by", (D.ground() && r.need ? esc(needText(r)) : fmt(r.need)) + (ob && !(D.ground() && r.status !== "needsok" && r.status !== "toorder") ? '<br><b class="pbad">Order by ' + fmt(ob) + "</b>" : "")], ["For", esc(r.sub) + (r.task ? " · task “" + esc(r.task) + "”" : "")], ["Asked by", esc(r.by)]];
   // Ground up: the panel opens with the steps of the flow and whose move it is, in place of the status word.
   var top = D.ground() ? reqSteps(r) : '<div class="row">' + statusPill(r.status) + (r.order ? '<span class="who">Order #' + r.order + "</span>" : "") + "</div>";
+  /* Ground up: the choices come straight after the steps and whose move it is, before the quote and the facts, so a
+     mentor settles it without scrolling (hill climb r3). On a phone the main button is full width. */
+  if (D.ground()) {
+    var gacts = acts.length || cancelBtn ? '<div class="row pacts">' + acts.join("") + cancelBtn + "</div>" : "";
+    return D.drawerHead("Request #" + r.id, r.name) + top + gacts +
+      (r.why ? '<p class="mute">“' + esc(r.why) + "”</p>" : "") +
+      '<dl class="pkv">' + rows.map(function (x) { return "<dt>" + x[0] + "</dt><dd>" + x[1] + "</dd>"; }).join("") + "</dl>" +
+      '<div><p class="flabel">History</p><div class="list">' + r.hist.slice().reverse().map(function (h) { return '<div class="li"><span class="grow"><b>' + esc(h.who) + "</b> " + esc(h.what) + '</span><span class="who">' + esc(h.when) + "</span></div>"; }).join("") + "</div></div>";
+  }
   return D.drawerHead("Request #" + r.id, r.name) + top +
     (r.why ? '<p class="mute">“' + esc(r.why) + "”</p>" : "") + (r.denied && !D.ground() ? '<p class="pbad">Denied: ' + esc(r.denied) + "</p>" : "") +
     '<dl class="pkv">' + rows.map(function (x) { return "<dt>" + x[0] + "</dt><dd>" + x[1] + "</dd>"; }).join("") + "</dl>" +
@@ -336,7 +380,8 @@ function toOrderView() {
   var html = waiting.length ? '<div class="card hero"><h2>Needs your OK</h2><div class="list">' + waiting.map(function (r) {
     var ob = orderBy(r);
     return '<div class="li pwait"><span class="grow"><b>' + esc(r.name) + '</b><span class="pmeta">' + [r.vendor, "Qty " + qtyText(r), money(total(r)), r.by].map(esc).join(" · ") + "</span>" +
-      '<span class="pmeta">' + budgetEffect(r) + (ob ? ' · <b class="pbad">order by ' + fmt(ob) + "</b>" : "") + "</span>" + (r.why ? '<span class="pmeta">“' + esc(r.why) + "”</span>" : "") + "</span>" + priPill(r.pri) +
+      // Ground up: the budget on one line with a comma, and the order-by date on its own line (hill climb r3).
+      (D.ground() ? '<span class="pmeta">' + budgetEffect(r) + "</span>" + (ob ? '<span class="pmeta"><b class="pbad">Order by ' + fmt(ob) + "</b></span>" : "") : '<span class="pmeta">' + budgetEffect(r) + (ob ? ' · <b class="pbad">order by ' + fmt(ob) + "</b>" : "") + "</span>") + (r.why ? '<span class="pmeta">“' + esc(r.why) + "”</span>" : "") + "</span>" + priPill(r.pri) +
       '<span class="row nowrap"><button class="btn' + (D.ground() ? " primary" : "") + '" data-act="papprove" data-v="' + r.id + '">Approve</button><button class="btn ghost" data-act="pdeny" data-v="' + r.id + '">Deny…</button></span></div>';
   }).join("") + "</div></div>" : "";
   var vs = Object.keys(byV).sort(function (a, b) { return byV[b].some(placeToday) - byV[a].some(placeToday); });
@@ -346,8 +391,17 @@ function toOrderView() {
     var nudge = v.free ? (sub >= v.free ? '<span class="small pok">Free shipping</span>' : '<span class="small"><b>' + money(v.free - sub) + "</b> more for free shipping</span>") : "";
     var tips = [];
     if (v.cutoff) tips.push("Order cutoff " + v.cutoff); if (v.taxfree) tips.push("Tax-exempt here"); v.credits.forEach(function (c) { tips.push(c.label + (c.bal ? ": " + money(c.bal) : "") + (c.code ? " (" + c.code + ")" : "")); }); if (v.pay) tips.push("Pay with " + v.pay);
-    return '<div class="card"><div><div class="row between nowrap pvh"><h2>' + esc(vn) + '</h2><div class="row nowrap">' + (today.length ? '<span class="pill bad">Place today</span>' : "") + '<b class="num">' + money(sub) + '</b></div></div><p class="who">' + esc(tips.join(" · ")) + (VURL[vn] ? ' · <a class="vlink" href="' + VURL[vn] + '" target="_blank" rel="noopener noreferrer">Open ' + esc(vn) + " ↗</a>" : "") + "</p></div>" +
-      (v.free ? '<div class="bar"><i' + (sub >= v.free ? ' class="ok"' : "") + ' style="width:' + Math.min(100, D.pct(sub, v.free)) + '%"></i></div>' + nudge : "") +
+    var facts = '<p class="who">' + esc(tips.join(" · ")) + (VURL[vn] ? ' · <a class="vlink" href="' + VURL[vn] + '" target="_blank" rel="noopener noreferrer">Open ' + esc(vn) + " ↗</a>" : "") + "</p>";
+    var bar = v.free ? '<div class="bar"><i' + (sub >= v.free ? ' class="ok"' : "") + ' style="width:' + Math.min(100, D.pct(sub, v.free)) + '%"></i></div>' : "";
+    /* Ground up: the order cutoff is the fact that matters on the day, so it comes first in the text colour; the
+       other facts follow in one muted line. The free-shipping bar is short and sits beside its sentence. */
+    if (D.ground()) {
+      // One sentence after the cutoff, so every fact but the first starts in lower case ("Tax-exempt here, pay with ...").
+      var rest = tips.filter(function (x) { return x.indexOf("Order cutoff") !== 0; }).map(function (x, k) { return k ? x.charAt(0).toLowerCase() + x.slice(1) : x; });
+      facts = (v.cutoff ? '<p class="pcut">Order cutoff ' + esc(v.cutoff) + "</p>" : "") + (rest.length || VURL[vn] ? '<p class="who">' + esc(rest.join(", ")) + (VURL[vn] ? (rest.length ? ", " : "") + '<a class="vlink" href="' + VURL[vn] + '" target="_blank" rel="noopener noreferrer">Open ' + esc(vn) + "</a>" : "") + "</p>" : "");
+    }
+    return '<div class="card"><div><div class="row between nowrap pvh"><h2>' + esc(vn) + '</h2><div class="row nowrap">' + (today.length ? '<span class="pill bad">Place today</span>' : "") + '<b class="num">' + money(sub) + '</b></div></div>' + facts + "</div>" +
+      (v.free ? (D.ground() ? '<div class="pship">' + bar + nudge + "</div>" : bar + nudge) : "") +
       '<div class="list">' + lines.map(function (r) { var ob = orderBy(r); return '<div class="li pline"><span class="grow"><b>' + esc(r.name) + '</b><span class="pmeta">' + [r.sku, "Qty " + qtyText(r), bname(r.bud), "for " + r.sub, r.by].map(esc).join(" · ") + (ob ? " · order by " + fmt(ob) : "") + '</span></span><span class="pside"><span class="num">' + money(total(r)) + "</span>" + priPill(r.pri) + "</span></div>"; }).join("") + "</div>" +
       '<div class="row"><button class="btn' + (today.length ? " primary" : "") + '" data-act="pmarkordered" data-v="' + esc(vn) + '">Mark ordered…</button><button class="btn' + (D.ground() ? " ghost" : "") + '" data-act="pcopy" data-v="' + esc(vn) + '">' + (vn === "Amazon" ? "Open Share-A-Cart" : "Copy list") + "</button></div></div>";
   }).join("");
