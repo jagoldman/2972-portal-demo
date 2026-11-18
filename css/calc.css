@@ -163,11 +163,13 @@ details.cg:not([open]) { padding-bottom: 12px; }
 .toolsearch .inp { max-width: 360px; }
 .toolgroup { display: grid; gap: 2px; }
 .toolgroup > h2 { font-size: .85rem; color: var(--mute); font-weight: 600; padding: 0 8px 2px; }
-/* The cards share each row's width, so a group of two or five leaves no empty column. */
-.toolgroup .toollist { display: flex; flex-wrap: wrap; gap: 0 12px; background: var(--surface); border: 1px solid var(--line); border-radius: var(--r); padding: 6px; }
-.toolgroup .toollist .toolrow { flex: 1 1 280px; }
-/* Four cards sit two and two, not three and one. */
-.toolgroup .toollist:has(> .toolrow:nth-child(4):last-child) .toolrow { flex-basis: 40%; }
+/* One grid for every group: three cards to a row, so a second row sits under the first. A group of two or four
+   sits two to a row. On a phone, one to a row. */
+.toolgroup .toollist { display: grid; grid-template-columns: repeat(6, minmax(0, 1fr)); gap: 0 12px; background: var(--surface); border: 1px solid var(--line); border-radius: var(--r); padding: 6px; }
+.toolgroup .toollist .toolrow { grid-column: span 2; }
+.toolgroup .toollist:has(> .toolrow:nth-child(2):last-child) .toolrow, .toolgroup .toollist:has(> .toolrow:nth-child(4):last-child) .toolrow { grid-column: span 3; }
+@media (max-width: 760px) { .toolgroup .toollist .toolrow, .toolgroup .toollist:has(> .toolrow:nth-child(2):last-child) .toolrow, .toolgroup .toollist:has(> .toolrow:nth-child(4):last-child) .toolrow { grid-column: 1 / -1; } }
+.toolnote { margin: 0 0 4px; padding: 0 8px; }
 .toolgroup .toollist .toolrow + .toolrow { border-top: 0; border-radius: 10px; }
 .codebox { display: grid; gap: 6px; justify-items: start; }
 .codebox .codeout { justify-self: stretch; }
@@ -223,7 +225,7 @@ details.cg:not([open]) { padding-bottom: 12px; }
 .toolquick .tqa b { display: block; font-weight: 600; line-height: 1.2; } .toolquick .tqa small { display: block; font-weight: 500; font-size: .74rem; color: var(--mute); line-height: 1.2; }
 .toolquick .tqa { min-height: 46px; }
 /* On a phone the three sit in one row, each as tall as a thumb, so the first tools stay on the first screen. */
-@media (max-width: 640px) { .toolquick { display: grid; grid-template-columns: minmax(0, 1fr); gap: 6px; } .toolquick .tql { padding-left: 4px; } .toolquick .tqa { min-height: 44px; padding: 4px 12px 4px 10px; } .toolquick .tqa > span { display: flex; flex: 1; align-items: baseline; justify-content: space-between; gap: 10px; min-width: 0; } .toolquick .tqa b { font-size: .92rem; white-space: nowrap; } .toolquick .tqa small { font-size: .76rem; text-align: right; } }
+@media (max-width: 640px) { .toolquick { display: grid; grid-template-columns: minmax(0, 1fr); gap: 6px; } .toolquick .tql { padding-left: 4px; } .toolquick .tqa { min-height: 48px; padding: 6px 12px 6px 10px; } .toolquick .tqa b { font-size: .92rem; } .toolquick .tqa small { font-size: .76rem; } }
 .tooltag { display: inline-block; margin-left: 6px; padding: 0 7px; border-radius: 999px; background: var(--surface-2); color: var(--text-2); font-size: .72rem; font-weight: 600; vertical-align: 1px; }
 .how { scroll-margin-top: calc(var(--bar) + 12px); }
 .toolgroup:focus { outline: none; }

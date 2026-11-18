@@ -53,13 +53,13 @@ function toolList() {
   // First, the three a student opens with a part in hand. They are also in their own groups below.
   var quick = q ? [] : ["tool-holes", "tool-units", "tool-spacing"].map(D.tool).filter(function (t) { return t && tools.indexOf(t) >= 0; });
   // They are short links worded as the question, not a second set of cards: every tool has one card, in its group.
-  var ask = { "tool-holes": "Drill and tap sizes", "tool-units": "Convert a unit", "tool-spacing": "Belt and gear centres" };
+  var ask = { "tool-holes": "Drill and tap sizes", "tool-units": "Convert a unit", "tool-spacing": "Belt, chain and gear centres" };
   return (quick.length ? '<nav class="toolquick" id="tg-quick" aria-label="Quick answers at the bench"><span class="tql">Quick answers at the bench</span>' + quick.map(function (t) { return '<a class="tqa" href="#' + t.id + '" data-act="go" data-v="' + t.id + '">' + D.ic(t.icon, 16) + "<span><b>" + ask[t.id] + "</b><small>" + esc(t.name) + "</small></span></a>"; }).join("") + "</nav>" : "") +
     // On a phone, links that jump to each group. They come after the quick answers, which a student wants first.
     (q ? "" : '<nav class="tooljump chips" aria-label="Jump to a group"><span class="tjl">Jump to</span>' + D.TOOL_GROUPS.filter(function (g) { return tools.some(function (t) { return t.group === g[0]; }); }).map(function (g) { return '<button class="chip" data-act="tooljump" data-v="' + g[0] + '">' + esc(g[1]) + "</button>"; }).join("") + "</nav>") +
     D.TOOL_GROUPS.map(function (g) {
     var rows = tools.filter(function (t) { return t.group === g[0]; }); if (!rows.length) return "";
-    return '<section class="toolgroup" id="tg-' + g[0] + '" tabindex="-1"><h2>' + esc(g[1]) + '</h2><div class="toollist">' + rows.map(D.toolRow).join("") + "</div></section>";
+    return '<section class="toolgroup" id="tg-' + g[0] + '" tabindex="-1"><h2>' + esc(g[1]) + "</h2>" + (g[0] === "photo" ? '<p class="small mute toolnote">These two start from a photo you take, not from numbers you type.</p>' : "") + '<div class="toollist">' + rows.map(D.toolRow).join("") + "</div></section>";
   }).join("");
 }
 D.views.tools = function () {
