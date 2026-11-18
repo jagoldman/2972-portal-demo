@@ -229,6 +229,7 @@ function tickFmt(v, step) { var dp = step >= 1 ? 0 : Math.min(4, Math.ceil(-Math
 /* A line chart. o: { id (unique on the page), title, x: { label, min, max }, y: { label, min, max },
      series: [{ name, pts: [[x, y], ...], color: 1 | 2 | 3 | "mute", dash: true }],
      (the y label is written above the top of the axis, the x label under its right-hand end)
+     y.ticks: [values] puts the y ticks where the tool says, not at round numbers.
      note: one quiet line under the title (what a dashed line means, for example), so the title stays short.
      marks: [{ x, label }] (upright reference lines), hlines: [{ y, label, side: "left", below: true }] (level reference
      lines; the label sits at the right end above the line unless side or below say otherwise),
@@ -247,6 +248,8 @@ K.chart = function (o) {
   if (!(o.y && o.y.max != null)) y1 = Math.max(y1, ty.list[ty.list.length - 1] + (ty.list[ty.list.length - 1] < y1 - 1e-9 ? ty.step : 0));
   if (!(o.y && o.y.min != null) && y0 < 0) y0 = Math.min(y0, ty.list[0] - (ty.list[0] > y0 + 1e-9 ? ty.step : 0));
   ty = ticks(y0, y1, 4);
+  // y.ticks: the tool's own tick values (a working pressure, a limit), in place of round ones.
+  if (o.y && o.y.ticks) ty = { list: o.y.ticks.filter(function (v, i, arr) { return v >= y0 - 1e-9 && v <= y1 + 1e-9 && arr.indexOf(v) === i; }), step: ty.step };
   function X(x) { return pl + (x - x0) / (x1 - x0) * (W - pl - pr); } function Y(y) { return H - pb - (y - y0) / (y1 - y0) * (H - pt - pb); }
   var g = "";
   (o.bands || []).forEach(function (b) { var a = X(Math.max(x0, b.x0)), c = X(Math.min(x1, b.x1)); if (c > a) g += '<rect class="cband" x="' + a.toFixed(1) + '" y="' + pt + '" width="' + (c - a).toFixed(1) + '" height="' + (H - pt - pb) + '"/>' + (b.label ? '<text class="cnote" x="' + ((a + c) / 2).toFixed(1) + '" y="' + (pt + 12) + '" text-anchor="middle">' + esc(b.label) + "</text>" : ""); });
