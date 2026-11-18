@@ -29,6 +29,8 @@ K.result = function (id) { return CACHE[id]; };
      duration(s, r) -> seconds (optional; with it the stage gets Play, a speed switch and a scrubber),
      loop: true (the drawing runs until paused: t just keeps counting, and there is no scrubber),
      autoplay: true (starts playing when the page opens, unless the person asked for reduced motion),
+     rest(s, r) -> seconds (the frame to show when the animation is not playing, for a person who asked for
+       reduced motion and for anyone who has not pressed Play; default: the last frame),
      speed: 0.25 (the playback speed it starts at: 1, 0.25 or 0.05),
      tabs: [[value, label], ...] (a row of views above the drawing; the choice is the state key "view"),
      playLabel: "Fire" (or a function of s), hints(s, r) -> { elementId: text } (small derived lines inside the controls),
@@ -67,6 +69,8 @@ function page(def) {
     '<div class="benchside" data-area="side" data-keepscroll="calcside">' + safe(def.controls, s, r) + "</div>" +
     '<div class="benchmore" data-area="more" id="calc-more">' + (def.more ? safe(def.more, s, r) : "") + "</div></div>";
 }
+// The frame a drawing rests on when it is not played: the tool's own choice (rest), else the end of the animation.
+function restOf(def, s, r) { var d = durOf(def, s, r), q = null; if (def.rest && !(r && r.error)) { try { q = def.rest(s, r); } catch (e) { q = null; } } return q != null && isFinite(q) ? Math.max(0, Math.min(d, q)) : d; }
 function durOf(def, s, r) { if (!def.duration || def.loop || (r && r.error)) return 0; try { var d = def.duration(s, r); return isFinite(d) && d > 0 ? d : 0; } catch (e) { return 0; } }
 function safe(fn, s, r) { if (r && r.error) return '<p class="warnline">This calculator hit a problem: ' + esc(r.error) + "</p>"; try { return fn(s, r) || ""; } catch (e) { if (window.console) console.error(e); return '<p class="warnline">This part could not be drawn.</p>'; } }
 function label(def) { var l = def.playLabel; return (typeof l === "function" ? l(S(def.id)) : l) || "Play"; }
@@ -220,7 +224,8 @@ function tickFmt(v, step) { var dp = step >= 1 ? 0 : Math.min(4, Math.ceil(-Math
 /* A line chart. o: { id (unique on the page), title, x: { label, min, max }, y: { label, min, max },
      series: [{ name, pts: [[x, y], ...], color: 1 | 2 | 3 | "mute", dash: true }],
      (the y label is written above the top of the axis, the x label under its right-hand end)
-     marks: [{ x, label }] (upright reference lines), hlines: [{ y, label }] (level reference lines),
+     marks: [{ x, label }] (upright reference lines), hlines: [{ y, label, side: "left", below: true }] (level reference
+     lines; the label sits at the right end above the line unless side or below say otherwise),
      bands: [{ x0, x1, label }] (a shaded range of x), dots: [{ x, y, label }], h (height, default 190), table: false }
    One y axis only: two measures on different scales are two charts. Hover or arrow keys read out every series. */
 K.chart = function (o) {
@@ -244,7 +249,7 @@ K.chart = function (o) {
   g += '<line class="caxis" x1="' + pl + '" x2="' + (W - pr) + '" y1="' + Y(Math.max(y0, 0)).toFixed(1) + '" y2="' + Y(Math.max(y0, 0)).toFixed(1) + '"/>';
   if (o.x && o.x.label) g += '<text class="clabel" x="' + (W - pr) + '" y="' + (H - 4) + '" text-anchor="end">' + esc(o.x.label) + "</text>";
   if (o.y && o.y.label) g += '<text class="clabel" x="4" y="11">' + esc(o.y.label) + "</text>";
-  (o.hlines || []).forEach(function (h) { if (h.y < y0 || h.y > y1) return; g += '<line class="cmark" x1="' + pl + '" x2="' + (W - pr) + '" y1="' + Y(h.y).toFixed(1) + '" y2="' + Y(h.y).toFixed(1) + '"/>' + (h.label ? '<text class="cnote" x="' + (W - pr - 2) + '" y="' + (Y(h.y) - 4).toFixed(1) + '" text-anchor="end">' + esc(h.label) + "</text>" : ""); });
+  (o.hlines || []).forEach(function (h) { if (h.y < y0 || h.y > y1) return; g += '<line class="cmark" x1="' + pl + '" x2="' + (W - pr) + '" y1="' + Y(h.y).toFixed(1) + '" y2="' + Y(h.y).toFixed(1) + '"/>' + (h.label ? '<text class="cnote" x="' + (h.side === "left" ? pl + 3 : W - pr - 2) + '" y="' + (Y(h.y) + (h.below ? 12 : -4)).toFixed(1) + '" text-anchor="' + (h.side === "left" ? "start" : "end") + '">' + esc(h.label) + "</text>" : ""); });
   (o.marks || []).forEach(function (m) { if (m.x < x0 || m.x > x1) return; g += '<line class="cmark" x1="' + X(m.x).toFixed(1) + '" x2="' + X(m.x).toFixed(1) + '" y1="' + pt + '" y2="' + (H - pb) + '"/>' + (m.label ? '<text class="cnote" x="' + (X(m.x) + (X(m.x) > W - 110 ? -4 : 4)).toFixed(1) + '" y="' + (pt + 10) + '"' + (X(m.x) > W - 110 ? ' text-anchor="end"' : "") + ">" + esc(m.label) + "</text>" : ""); });
   series.forEach(function (s, i) {
     var d = "", pen = false;
@@ -434,7 +439,7 @@ function mount() {
   if (window.ResizeObserver) { cur.ro = new ResizeObserver(function () { if (size(cv)) K.redraw(id); }); cur.ro.observe(cv.parentNode); }
   if (def.hints) { var hh = def.hints(S(id), CACHE[id]) || {}; Object.keys(hh).forEach(function (k) { var el = document.getElementById(k); if (el) el.textContent = hh[k]; }); }
   if (def.autoplay && !R.played && !K.reduced() && (def.duration || def.loop)) { R.played = true; R.t = 0; play(id); }
-  else if (def.duration && !def.loop && !R.played) { R.played = true; R.t = durOf(def, S(id), CACHE[id]); }
+  else if (def.duration && !def.loop && !R.played) { R.played = true; R.t = restOf(def, S(id), CACHE[id]); }
   K.redraw(id);
   if (R.playing && !cur.raf) loop();
   var pb = document.getElementById("calc-play"); if (pb) pb.textContent = R.playing ? "Pause" : label(def);

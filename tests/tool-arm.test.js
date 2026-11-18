@@ -60,5 +60,31 @@ Object.keys(ends).forEach(function (k) { ends[k].forEach(function (v) {
 }); });
 ok("extremes: no NaN, no throw", !bad.length, bad.join("; "));
 
+// Finding 4 (Sol review): no inertia floor. The default arm at 250:1 starts at the acceleration its real inertia gives,
+// (torque at the 40 A limit - gravity at -60 degrees) / J = about 109 rad/s^2 (the floor made it 59).
+var r250 = M.compute(Object.assign({}, s, { ratio: 250 }));
+near("250:1 starts at 109 rad/s^2", r250.go.a[0], 109.2, 0.5);
+near("250:1 start: (gives - gravity) / J", r250.go.a[0], (r250.avail - r250.arm.torque(-60 * DEG)) / r250.arm.J, 1e-6);
+near("kA uses the same inertia", r250.kA, M.driveOf(Object.assign({}, s, { ratio: 250 })).kA(r250.arm.J), 1e-12);
+ok("250:1 swings out and back", r250.reached && r250.backOk, r250.timeGo);
+ok("no inertia floor left", M.minJ === undefined);
+// A very light arm still swings (F.move picks its own steps); one with no weight at all says so.
+var light = M.compute(Object.assign({}, s, { len: 4, armLb: 0, loadLb: 0.01, ratio: 250, motors: 8 }));
+ok("very light arm reaches", light.reached && light.backOk && light.timeGo > 0, light.timeGo);
+ok("weightless arm is flagged", M.compute(Object.assign({}, s, { armLb: 0, loadLb: 0 })).empty === true);
+
+// Finding 8 (Sol review): a failed return names the torque that really resists it.
+// Start level, end at -60, 20:1, no counterbalance: going back up, gravity needs 196 cos(angle) lb in against 114 the
+// gearbox gives, so it stalls on the way back at -arccos(114 / 196) = -54 degrees. Gravity, not a counterbalance.
+var down = M.compute(Object.assign({}, s, { start: 0, end: -60, ratio: 20 }));
+ok("down then back: reaches the end", down.reached);
+ok("down then back: fails on the return", !down.backOk);
+ok("the return is held back by gravity", down.backWhy === "gravity", down.backWhy);
+near("return stall angle by hand", down.stallBack, -Math.acos(down.avail / down.arm.tau0), 0.3 * DEG);
+// A counterbalance of 2000 lb in against 196 of weight: going back down, the counterbalance is what resists.
+var strong = M.compute(Object.assign({}, s, { cb: 2000 }));
+ok("strong counterbalance: the counterbalance resists the return", strong.reached && !strong.backOk && strong.backWhy === "counterbalance", strong.backWhy);
+ok("a stall going out under gravity says gravity", heavy.goWhy === "gravity", heavy.goWhy);
+
 console.log(fails ? fails + " of " + n + " checks failed" : "all " + n + " checks passed");
 process.exit(fails ? 1 : 0);

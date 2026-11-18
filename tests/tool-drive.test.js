@@ -50,6 +50,31 @@ cr.forEach(function (c) { near("crossing times equal at " + c.d.toFixed(2) + " m
 var weak = M.sprint({ drive: F.drive({ motor: "neo550", n: 1, ratio: 1, eff: 0.9, statorA: 5 }), m: m, r: r, grip: 1.1 * m * F.G, drag: 6 * F.LBF, V0: 12.3, Rb: 0.02, tmax: 2 });
 ok("weak drive never goes backward", Math.min.apply(null, weak.v) >= 0);
 
+// Finding 5 (Sol review): top speed is where push equals drag, not wherever an 8 s run has got to.
+// A 200 lb robot on a 10 A limit is still speeding up after 8 s (1.4 ft/s in its last second).
+var slow = M.lane({ motor: "kraken60", n: 4, ratio: 6.75, eff: 0.9, statorA: 10, m: 200 * F.LB, r: r, grip: 1.1 * 200 * F.LB * F.G, drag: 6 * F.LBF, V0: 12.3, Rb: 0.02, dist: 15 * F.FT });
+var so = { drive: slow.drive, m: 200 * F.LB, r: r, grip: 1.1 * 200 * F.LB * F.G, drag: 6 * F.LBF, V0: 12.3, Rb: 0.02 };
+near("top speed: push = drag there", M.force(so, slow.top).net, 0, 0.01);
+ok("top speed above what 8 s reached", slow.top > slow.sim.v[slow.sim.v.length - 1] + 0.3, slow.top + " vs " + slow.sim.v[slow.sim.v.length - 1]);
+ok("just under top speed it still speeds up, just over it slows", M.force(so, slow.top - 0.01).net > 0 && M.force(so, slow.top + 0.01).net < 0);
+// The default lane already levels off in 8 s, so the two agree there.
+near("default: bisection = levelled-off run", A.top, A.sim.v[A.sim.v.length - 1], 1e-4);
+// Hand check with no drag and no sag: top = free speed at 12.3 V less the free current, (12.3 - 2.8 R) / ke / G x r.
+var km = F.motor("kraken60"), hand = (12.3 - km.freeA * km.R) / km.ke / 6.75 * r;
+near("no drag, no sag: top by hand", top.top, hand, hand * 1e-3);
+// The sentence after the winner speaks only to the distance searched, not "any longer run".
+var lt = M.leadText([], 15 * F.FT, 60 * F.FT, "B");
+ok("lead sentence names the distance searched", /up to 60 ft/.test(lt) && !/any longer/.test(lt), lt);
+ok("a crossing past the sprint is named", M.leadText([{ d: 20 * F.FT, ahead: "A" }], 15 * F.FT, 60 * F.FT, "B") === "A is ahead after 20 ft.");
+
+// Finding 10 (Sol review): back-EMF takes the push away sooner on the larger reduction. At the same robot speed the
+// 8.14:1 motors spin faster than the 6.12:1 ones, so with no current limit and no sag a bigger share of their stall
+// push is gone. The notes must say "larger".
+function share(G, v) { var d = F.drive({ motor: "kraken60", n: 4, ratio: G, eff: 0.9 }), o = { drive: d, m: m, r: r, grip: 1e9, drag: 0, V0: 12.3, Rb: 0 }; return M.force(o, v).push / M.force(o, 0).push; }
+ok("larger reduction keeps less of its push at 10 ft/s", share(8.14, 10 * F.FT) < share(6.12, 10 * F.FT), share(8.14, 10 * F.FT) + " vs " + share(6.12, 10 * F.FT));
+var src = require("fs").readFileSync(require("path").join(__dirname, "../js/tool-drive.js"), "utf8");
+ok("notes: sooner on the larger reduction", /sooner on the larger reduction/.test(src) && !/sooner on the smaller reduction/.test(src));
+
 console.log(fails ? fails + " of " + n + " checks failed" : "all " + n + " checks passed");
 console.log("default race: A " + A.time.toFixed(3) + " s, B " + B.time.toFixed(3) + " s; top " + (A.top / F.FT).toFixed(2) + " / " + (B.top / F.FT).toFixed(2) + " ft/s; slip until " + (A.slipV / F.FT).toFixed(2) + " / " + (B.slipV / F.FT).toFixed(2) + " ft/s; min V " + A.minV.toFixed(2) + "; crossings (ft) " + cr.map(function (c) { return (c.d / F.FT).toFixed(1) + c.ahead; }).join(" "));
 if (fails) process.exit(1);

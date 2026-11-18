@@ -203,3 +203,5 @@ details.cg:not([open]) { padding-bottom: 12px; }
 .toolgroup { scroll-margin-top: calc(var(--bar) + 12px); }
 .toolgroup:focus { outline: none; }
 .tooljump { margin-top: -4px; }
+@media (max-width: 640px) { .tooljump { flex-wrap: nowrap; overflow-x: auto; scrollbar-width: none; margin-inline: calc(-1 * var(--gut)); padding-inline: var(--gut); } .tooljump::-webkit-scrollbar { display: none; } .tooljump .chip { flex: none; } }
+.ctab th { white-space: normal; vertical-align: bottom; line-height: 1.2; }

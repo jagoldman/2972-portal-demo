@@ -366,6 +366,7 @@ function loopPath(x1, x2, y, p1, p2) {
 function drawTrain(g, s, r, t) {
   var c = g.c;
   if (!r.stages || !r.stages.length) { g.text(s.mode === "find" ? "No train found to draw." : "Add a stage to see the train.", 16, 28, { color: c.mute }); return; }
+  if (r.stages.length > 1 && g.w > 640) g.text("Stage " + r.stages.length + " is in front, in its own plane.", 12, g.h - 10, { color: c.mute, size: 11 });
   var Lo = r.layout, sh = Lo.shafts, tr = r.t, n = sh.length, last = sh[n - 1], i;
   var outR = s.out !== "none" && r.dia ? r.dia / 2 : 0, outFront = outR && outR < last.r;    // a small roller or spool sits in front of the last gear
   var x0 = Infinity, x1 = -Infinity, big = 0;
@@ -419,6 +420,9 @@ function drawTrain(g, s, r, t) {
   r.stages.forEach(function (st, i) {
     var info = Lo.stages[i], xa = X(sh[i]), xb = X(sh[i + 1]), fill = i % 2 ? c.part2 : c.part, a = th[i];
     if (st.kind === "gear") {
+      // A later stage sits in front of the one before it: a flat shadow under its gears shows the layering, so
+      // overlapping gears do not read as teeth running through each other.
+      if (i > 0) { g.ctx.globalAlpha = 0.2; [[xa, info.pa], [xb, info.pb]].forEach(function (q) { g.circle(q[0] + 3, Y + 4, V.L(q[1] / 2) * 1.06 + 2, { fill: c.text, stroke: null }); }); g.ctx.globalAlpha = 1; }
       g.gear(xa, Y, V.L(info.pa / 2), st.a, a, { fill: fill });
       g.gear(xb, Y, V.L(info.pb / 2), st.b, th[i + 1], { fill: fill });
     } else if (st.kind === "planet") {

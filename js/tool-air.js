@@ -24,9 +24,9 @@ M.forces = function (c, psig) { var A = M.area(c.bore), a = M.area(Math.min(c.ro
 M.use = function (P, Vt, vol, work) {
   var pa = P + M.ATM, wa = work + M.ATM, after = pa - vol * wa / Vt;
   if (after >= wa) return { tank: after - M.ATM, cyl: work };
-  // The tanks cannot hold working pressure through this stroke: tank and cylinder share what is left.
-  var eq = (pa * Vt + M.ATM * vol) / (Vt + vol);
-  if (eq - M.ATM >= work) return { tank: Math.max(after, wa) - M.ATM, cyl: work };
+  // The tanks cannot hold working pressure through this stroke: the regulator is wide open and the tank's air spreads
+  // into tank and cylinder together (Boyle's law, absolute pressures). Always below working pressure here.
+  var eq = pa * Vt / (Vt + vol);
   return { tank: eq - M.ATM, cyl: eq - M.ATM };
 };
 // The strokes of a match, cycles spread evenly; each cycle is out, then back half a window later. win in seconds.
@@ -64,10 +64,19 @@ M.sim = function (o) {
   var cycles = ev.length / 2;
   return { Vt: Vt, ev: ev, pts: pts, end: P, used: used, stored: Vt * (o.stored - o.work) / M.ATM, firstShort: firstShort, fullCycles: full, cycles: cycles, rate: rate };
 };
-// The fewest tanks of this size that keep working pressure all match (null if more than 60).
+// The fewest tanks of this size that keep working pressure all match: null if it needs more than M.MAXT (the search
+// stops there), Infinity if no number will do (stored no higher than working pressure).
+M.MAXT = 60;
 M.tanksNeeded = function (o) {
-  for (var n = 1; n <= 60; n++) if (!M.sim(Object.assign({}, o, { tanks: n })).firstShort) return n;
+  if (o.stored <= o.work && o.cyls.some(function (c) { return Math.round(c.cycles) > 0; })) return Infinity;
+  for (var n = 1; n <= M.MAXT; n++) if (!M.sim(Object.assign({}, o, { tanks: n })).firstShort) return n;
   return null;
+};
+// The sentence after a shortfall: how many tanks it would take, given need (from M.tanksNeeded) and the tanks now.
+M.needText = function (need, have, cfm) {
+  if (need === Infinity) return "More tanks will not fix it: the tanks are stored no higher than the working pressure, so raise the stored pressure or lower the working pressure.";
+  if (need == null) return "It needs more than " + M.MAXT + " tanks of this size: use smaller or fewer cylinders, fewer cycles" + (cfm ? "." : ", or a compressor on the robot.");
+  return "It would take " + need + " tanks of this size (" + (need - have) + " more)" + (cfm ? "." : ", or a compressor on the robot.");
 };
 
 if (typeof module !== "undefined" && module.exports) { module.exports = M; return; }
@@ -119,7 +128,7 @@ K.tool({
     else {
       st = "bad"; var f = r.firstShort;
       text = "Pressure falls below " + o.work + " psi at about " + K.n(f.t, 0) + " s (" + clock(f.t) + "), after " + r.fullCycles + " of " + r.cycles + " cycles. " +
-        (r.need ? "It would take " + r.need + " tanks of this size (" + (r.need - o.tanks) + " more)" + (o.cfm ? "." : ", or a compressor on the robot.") : "More tanks will not fix it: use smaller or fewer cylinders, or a compressor.");
+        M.needText(r.need, o.tanks, o.cfm);
     }
     var share = r.stored > 0 ? r.used / r.stored : Infinity;
     return K.verdict(st, text) + K.outs([
@@ -127,7 +136,7 @@ K.tool({
       { k: "Stored above working", v: K.n(L(r.stored), 2), u: "L", sub: "free air the tanks give up falling from " + o.stored + " to " + o.work + " psi", tip: "Only the air above working pressure is usable at full force." },
       { k: "Pressure at the end", v: K.n(r.end, 0), u: "psi", state: r.end < o.work - 1e-6 ? "bad" : "", sub: "in the tanks" },
       { k: "Cycles at full force", v: r.fullCycles + " of " + r.cycles, state: r.firstShort ? "bad" : "", sub: "before it falls below " + o.work + " psi" },
-      { k: r.firstShort ? "Tanks it would take" : "Share of stored air", v: r.firstShort ? (r.need ? String(r.need) : "over 60") : K.n(share * 100, 0) + "%", state: r.firstShort ? "bad" : share > 0.8 ? "warn" : "", sub: r.firstShort ? "of " + K.n(o.ml, 0) + " mL" + (o.cfm ? ", with the compressor" : "") : "of what is stored above " + o.work + " psi" }]);
+      { k: r.firstShort ? "Tanks it would take" : "Share of stored air", v: r.firstShort ? (r.need === Infinity ? "none will do" : r.need ? String(r.need) : "over " + M.MAXT) : K.n(share * 100, 0) + "%", state: r.firstShort ? "bad" : share > 0.8 ? "warn" : "", sub: r.firstShort ? "of " + K.n(o.ml, 0) + " mL" + (o.cfm ? ", with the compressor" : "") : "of what is stored above " + o.work + " psi" }]);
   },
 
   more: function (s, r) {
@@ -146,6 +155,7 @@ K.tool({
       '<p class="eq">free air = volume × (working psi + 14.7) ÷ 14.7</p>' +
       '<p class="eq">stored above working = tank volume × (stored psi − working psi) ÷ 14.7</p>' +
       '<p class="eq">tank after a stroke: (P + 14.7) → (P + 14.7) − stroke volume × (working + 14.7) ÷ tank volume</p>' +
+      '<p class="eq">once that would fall under working: (P + 14.7) → (P + 14.7) × tank volume ÷ (tank volume + stroke volume)</p>' +
       '<p class="eq">push = working psi × bore area;  pull = working psi × (bore area − rod area)</p>' +
       "<p>Each cylinder's cycles are spread evenly through the match, out and then back a moment later. Once a stroke would pull the tanks under working pressure, the regulator is wide open: the tank and the cylinder share what is left, so that stroke and every one after it gets less pressure and less force.</p>" +
       "<p>The compressor's flow is taken as free air per minute, the same all the time, running whenever the tanks are under the stored pressure. A real compressor gives less as the pressure rises, so read its chart at your working pressure. It is also left out that the air cools as it expands in a quick stroke (which uses a little more), and the tubing and fittings, which hold some air too. Treat the answer as a close estimate and keep a margin.</p>" +

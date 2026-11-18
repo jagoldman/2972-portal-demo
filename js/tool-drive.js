@@ -22,17 +22,31 @@ M.battery = function (dr, w, V0, Rb) {
    driven wheels can push before they spin), drag (N of rolling drag), V0, Rb, tmax (s), dist (m, stop there; omit to
    run for tmax), dt }. Returns arrays t, x, v, a (SI), amps (stator, per motor), volts, slip (true while the motors
    could push harder than the wheels grip), and dist, time (to dist, or Infinity). */
+/* The forces at speed v (m/s), the same for the sprint and for top speed: the motors' push with the battery solved,
+   capped by grip, less rolling drag. Returns { net (N), push, slip, V, q (the motor's answer) }. */
+M.force = function (o, v) {
+  var dr = o.drive, V0 = o.V0 == null ? 12.3 : o.V0, Rb = o.Rb == null ? 0.02 : o.Rb;
+  var w = v / o.r, V = M.battery(dr, w, V0, Rb), q = dr.at(w, V, 1), push = q.torque / o.r;
+  var slip = push > o.grip, f = slip ? o.grip : push;
+  // Rolling drag only once it rolls (eased in over the first 5 cm/s), so a weak drive creeps rather than reverses.
+  return { net: f - (o.drag || 0) * F.clamp(v / 0.05, 0, 1), push: push, slip: slip, V: V, q: q };
+};
+/* Top speed (m/s): the speed where the push has fallen to the drag, by bisection on M.force. Above the free speed at
+   the battery's resting voltage the motors push back, so the answer lies between 0 and that. */
+M.topSpeed = function (o) {
+  var lo = 0, hi = o.drive.freeSpeed(o.V0 == null ? 12.3 : o.V0) * o.r * 1.01 + 1e-6;
+  if (M.force(o, hi).net > 0) return hi;
+  for (var i = 0; i < 60; i++) { var mid = (lo + hi) / 2; if (M.force(o, mid).net > 0) lo = mid; else hi = mid; }
+  return (lo + hi) / 2;
+};
 M.sprint = function (o) {
-  var dr = o.drive, dt = o.dt || 0.002, tmax = o.tmax || 8, V0 = o.V0 == null ? 12.3 : o.V0, Rb = o.Rb == null ? 0.02 : o.Rb;
+  var dt = o.dt || 0.002, tmax = o.tmax || 8;
   var out = { t: [], x: [], v: [], a: [], amps: [], volts: [], slip: [], time: Infinity };
   var t = 0, x = 0, v = 0;
   while (t <= tmax + 1e-9) {
-    var w = v / o.r, V = M.battery(dr, w, V0, Rb), q = dr.at(w, V, 1), push = q.torque / o.r;
-    var slip = push > o.grip, f = slip ? o.grip : push;
-    // Rolling drag only once it rolls (eased in over the first 5 cm/s), so a weak drive creeps rather than reverses.
-    var drag = (o.drag || 0) * F.clamp(v / 0.05, 0, 1), a = (f - drag) / o.m;
+    var fo = M.force(o, v), a = fo.net / o.m;
     if (v <= 0 && a < 0) a = 0;
-    out.t.push(t); out.x.push(x); out.v.push(v); out.a.push(a); out.amps.push(Math.abs(q.statorA)); out.volts.push(V); out.slip.push(slip);
+    out.t.push(t); out.x.push(x); out.v.push(v); out.a.push(a); out.amps.push(Math.abs(fo.q.statorA)); out.volts.push(fo.V); out.slip.push(fo.slip);
     if (o.dist != null && x >= o.dist) break;
     v += a * dt; x += v * dt; t += dt;
   }
@@ -52,7 +66,8 @@ M.lane = function (o) {
   L.reached = isFinite(L.time);
   var tEnd = L.reached ? L.time : sim.t[sim.t.length - 1], i, n = sim.t.length;
   L.vLine = L.reached ? M.at(sim, "v", L.time) : NaN;
-  L.top = sim.v[n - 1];                                   // where an 8 s run has levelled off
+  L.top = M.topSpeed({ drive: dr, m: o.m, r: o.r, grip: o.grip, drag: o.drag, V0: o.V0, Rb: o.Rb });   // push = drag
+  L.sampleTop = sim.v[n - 1];                             // how fast the 8 s run got (it may still be speeding up)
   L.free = dr.freeSpeed(12) * o.r;                        // the catalogue figure: 12 V, no load
   L.acc0 = sim.a[0];
   L.peakA = 0; L.minV = Infinity;
@@ -65,6 +80,14 @@ M.lane = function (o) {
   L.push = dr.at(0, M.battery(dr, 0, o.V0, o.Rb), 1).torque / o.r;
   L.grip = o.grip;
   return L;
+};
+/* The sentence after the winner: where the lead changes, or that it does not, but only as far as the crossings were
+   searched (searched, m). cross from M.crossings, dist (m) the sprint, wn the winner's letter. */
+M.leadText = function (cross, dist, searched, wn) {
+  var after = cross.filter(function (c) { return c.d > dist; }), before = cross.filter(function (c) { return c.d <= dist; });
+  if (after.length) return after[0].ahead + " is ahead after " + Math.round(after[0].d / F.FT) + " ft.";
+  if (before.length) return wn + " is behind at first and takes the lead at " + Math.round(before[before.length - 1].d / F.FT) + " ft.";
+  return wn + " stays ahead on any run up to " + Math.floor(searched / F.FT) + " ft, as far as this looks.";
 };
 /* Where the lead changes: distances (m) at which the two time-over-distance curves cross, from 0 to xmax. */
 M.crossings = function (simA, simB, xmax, step) {
@@ -120,7 +143,7 @@ K.tool({
     var A = M.lane(Object.assign({}, base, { ratio: s.ratioA })), B = M.lane(Object.assign({}, base, { ratio: s.ratioB }));
     A.name = laneName(s, "A"); B.name = laneName(s, "B");
     var xmax = Math.min(A.sim.x[A.sim.x.length - 1], B.sim.x[B.sim.x.length - 1]);
-    var r0 = { A: A, B: B, dist: dist, grip: grip, m: m, r: r, cross: M.crossings(A.sim, B.sim, Math.min(xmax, 120 * FT)) };
+    var searched = Math.min(xmax, 120 * FT), r0 = { A: A, B: B, dist: dist, grip: grip, m: m, r: r, searched: searched, cross: M.crossings(A.sim, B.sim, searched) };
     // Time over this distance for other reductions.
     var lo = Math.min(4, s.ratioA, s.ratioB), hi = Math.max(10, s.ratioA, s.ratioB), sweep = [], best = null;
     for (var i = 0; i <= 48; i++) {
@@ -173,10 +196,7 @@ K.tool({
       text = Lo.time - W.time < 0.05 ? "Too close to call over " + d + " ft: " + wn + " is ahead by " + K.fix(Lo.time - W.time, 3) + " s (about " + K.fix(back, 1) + " ft), less than a driver's reaction." : wn + " gets to " + d + " ft first, " + K.fix(Lo.time - W.time, 2) + " s ahead of " + ln + " (about " + K.fix(back, 1) + " ft).";
     }
     if (Lo.reached && Math.abs(A.time - B.time) >= 0.005) {
-      var after = r.cross.filter(function (c) { return c.d > r.dist; }), before = r.cross.filter(function (c) { return c.d <= r.dist; });
-      if (after.length) text += " " + after[0].ahead + " is ahead after " + Math.round(ft(after[0].d)) + " ft.";
-      else if (before.length) text += " " + wn + " is behind at first and takes the lead at " + Math.round(ft(before[before.length - 1].d)) + " ft.";
-      else text += " " + wn + " stays ahead over any longer run too.";
+      text += " " + M.leadText(r.cross, r.dist, r.searched, wn);
     }
     var low = Math.min(A.minV, B.minV);
     if (low < 7 && state !== "bad") { state = "warn"; text += " The battery drops to " + K.fix(low, 1) + " V, " + (low < 6.8 ? "below" : "close to") + " the 6.8 V where the roboRIO cuts the motors (a brownout), so a real robot would not run this fast: lower the current limit or add a supply limit."; }
@@ -184,7 +204,7 @@ K.tool({
     return K.verdict(state, text) + K.outs([
       { k: "Time to " + d + " ft", v: two(A.time, B.time, Math.abs(A.time - B.time) < 0.05 ? 3 : 2), u: "s", sub: "A / B", tip: "From a standing start, full power all the way." },
       { k: "Speed at the line", v: two(A.vLine / FT, B.vLine / FT, 1), u: "ft/s", sub: two(A.vLine, B.vLine, 2) + " m/s" },
-      { k: "Top speed", v: two(A.top / FT, B.top / FT, 1), u: "ft/s", sub: "free speed " + two(A.free / FT, B.free / FT, 1), tip: "Where a long run levels off, with drag and battery sag. Free speed is the catalogue figure: 12 V and no load." },
+      { k: "Top speed", v: two(A.top / FT, B.top / FT, 1), u: "ft/s", sub: "free speed " + two(A.free / FT, B.free / FT, 1), tip: "The speed where the motors' push has fallen to the rolling drag, with battery sag. Free speed is the catalogue figure: 12 V and no load." },
       { k: "Wheels slip until", v: (A.slipEnd < 0 ? "never" : fts(A.slipV)) + " / " + (B.slipEnd < 0 ? "never" : fts(B.slipV)), u: A.slipEnd < 0 && B.slipEnd < 0 ? "" : "ft/s", sub: "launch " + two(A.acc0 / F.G, B.acc0 / F.G, 2) + " g", state: A.slipEnd >= 0 || B.slipEnd >= 0 ? "" : "ok", tip: "While the motors could push harder than the tread grips, the wheels spin on the carpet and grip sets the acceleration." }
     ]);
   },
@@ -200,7 +220,7 @@ K.tool({
       ["Reduction", both(function (L, k) { return esc(K.fix(L.ratio, 2) + ":1 (" + L.name + ")"); })],
       ["Time over " + sd + " ft", both(function (L, k) { return bold(L, k, L.reached ? K.fix(L.time, 2) + " s" : "Not in 8 s"); })],
       ["Speed at the line", both(function (L) { return fts(L.vLine) + " ft/s (" + K.fix(L.vLine, 2) + " m/s)"; })],
-      ["Top speed", both(function (L) { return fts(L.top) + " ft/s (" + K.fix(L.top, 2) + " m/s)"; }), "Where an 8 s run levels off."],
+      ["Top speed", both(function (L) { return fts(L.top) + " ft/s (" + K.fix(L.top, 2) + " m/s)"; }), "Where the push has fallen to the rolling drag."],
       ["Free speed", both(function (L) { return fts(L.free) + " ft/s (" + K.fix(L.free, 2) + " m/s)"; }), "Motor free speed at 12 V through the reduction, with no load. No robot reaches it."],
       ["Launch acceleration", both(function (L) { return K.fix(L.acc0 / FT, 1) + " ft/s² (" + K.fix(L.acc0 / F.G, 2) + " g)"; })],
       ["Wheels slip", both(slipTxt), "Grip-limited: the motors could push harder than the tread holds."],
@@ -230,8 +250,8 @@ K.tool({
         '<p class="eq">acceleration = (smaller of push and grip − rolling drag) ÷ mass</p>' +
         '<p class="eq">grip = wheel grip × weight on the driven wheels</p>' +
         '<p class="eq">battery voltage = battery at rest − resistance × current drawn</p>' +
-        "<p>Off the line, either the current limit or the tread sets the push. If the motors could push harder than the tread grips, the wheels spin and grip sets the acceleration, so two gearings that both slip start the same. If the current limit is reached first, the bigger reduction pushes harder. As the robot speeds up, back-EMF takes the push away, sooner on the smaller reduction. So a lower-geared robot is quicker off the line and a higher-geared one faster at the top: which wins depends on the distance.</p>" +
-        "<p>Top speed is where an 8 s run levels off: the motors' push has fallen to the rolling drag. Free speed is the motor's free speed through the reduction at 12 V with no load; it is a catalogue figure no robot reaches.</p>" +
+        "<p>Off the line, either the current limit or the tread sets the push. If the motors could push harder than the tread grips, the wheels spin and grip sets the acceleration, so two gearings that both slip start the same. If the current limit is reached first, the bigger reduction pushes harder. As the robot speeds up, back-EMF takes the push away, sooner on the larger reduction (its motors spin faster at the same robot speed, so they make more back-EMF). So a lower-geared robot is quicker off the line and a higher-geared one faster at the top: which wins depends on the distance.</p>" +
+        "<p>Top speed is the speed where the motors' push has fallen to the rolling drag, found directly from the same forces the race uses, so it does not depend on how long a run lasts. Free speed is the motor's free speed through the reduction at 12 V with no load; it is a catalogue figure no robot reaches.</p>" +
         "<p>Left out: turning, the robot's own spinning parts (which add a little to its inertia), carpet that varies, tread that wears, the motor heating up over a match, and supply current limits. The battery voltage is solved in each step from the current it gives; a real battery sags more as it discharges. Wheel grip and rolling drag are rules of thumb: measure your own tread if you can (pull the robot with a spring scale until the wheels skid).</p>" +
         "<p>Motor figures from ReCalc's motor page. Swerve ratios from SDS and REV's published module sheets, as listed in the dropdown; check yours.</p>");
   },

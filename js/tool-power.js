@@ -22,6 +22,15 @@ M.power = function (rows, o) {
   list.forEach(function (r, i) { r.share = I > 0 ? r.I / I : 0; if (worst < 0 || r.I > list[worst].I) worst = i; });
   return Object.assign(now, { I: I, rows: list, share: I / o.main, worst: worst, cut: Math.max(0, I - now.Imax), tired: tired });
 };
+/* What a share of a breaker's rating (1 = its rating) means, in words. A thermal breaker's trip time depends on its
+   own curve and how warm it is, so up to 150% this only says it is above its rating; the firm words about tripping
+   are kept for twice the rating and more. */
+M.breakerNote = function (share) {
+  return share <= 1 ? "of its rating: it carries this all match" : share <= 1.5 ? "above its rating: check the breaker's trip curve for how long it holds this" :
+    share <= 2 ? "a short peak is normal; held for a long time it can trip" : "a short peak is normal; held for a few seconds it trips";
+};
+// The same for a branch breaker, as a short tail to its row in the table ("" at or under its rating).
+M.branchNote = function (b) { return b > 2 ? ", can trip in seconds" : b > 1.5 ? ", can trip if held" : b > 1 ? ", above its rating" : ""; };
 // The voltage at the robot for a total current I (A) through resistance R (ohm).
 M.volts = function (rest, R, I) { return rest - I * R; };
 
@@ -49,14 +58,14 @@ function clean(rows) {
   });
 }
 function vTxt(v) { return K.fix(Math.max(0, v), 1) + " V"; }
-function breakerNote(share) { return share <= 1 ? "of its rating: it carries this all match" : share <= 2 ? "a short peak is normal; held for many seconds it trips" : "a short peak is normal; held for a few seconds it trips"; }
+var breakerNote = M.breakerNote;
 
 K.tool({
   id: ID,
   defaults: {
     // The lead's choice of rows (2026-11-18): a hard moment that lands just above brown-out, so the page opens on a
     // close call to look into, not on a failure.
-    rows: [{ name: "Drive", n: 4, a: 40 }, { name: "Shooter", n: 2, a: 25 }, { name: "Intake", n: 1, a: 20 }, { name: "Elevator, holding", n: 2, a: 10 }, { name: "Everything else", n: 1, a: 8 }],
+    rows: [{ name: "Drive", n: 4, a: 40 }, { name: "Shooter", n: 2, a: 25 }, { name: "Intake", n: 1, a: 20 }, { name: "Elevator hold", n: 2, a: 10 }, { name: "Everything else", n: 1, a: 8 }],
     rest: 12.5, rbat: 0.015, rwire: 0.006, brown: 6.8, main: 120
   },
   stage: { ratio: 2, narrow: 0.95, label: "A one-line power diagram: the battery, the main breaker and one branch per row, each wire as thick as its current, over a gauge of the voltage at the robot." },
@@ -113,7 +122,7 @@ K.tool({
       series: [{ name: "This battery (" + K.fix(s.rbat, 3) + " Ω)", pts: r.line, color: 1 }, { name: "Worn battery (" + M.TIRED + " Ω)", pts: r.lineT, color: 2, dash: true }],
       hlines: [{ y: s.brown, label: "Brown-out " + K.fix(s.brown, 1) + " V" }], marks: r.I > 0 ? [{ x: Math.min(r.I, r.xmax), label: "Now " + K.n(r.I, 0) + " A" }] : [] });
     if (r.rows.length) out += '<section class="ctab"><h2>Where the current goes</h2><div class="scroll"><table><thead><tr><th>Row</th><th class="r">Motors</th><th class="r">Amps each</th><th class="r">Total</th><th class="r">Share</th><th class="r">Of a 40 A breaker</th></tr></thead><tbody>' +
-      r.rows.map(function (q, i) { var b = q.a / M.BRANCH; return "<tr" + (i === r.worst && r.state !== "ok" ? ' class="pick"' : "") + "><td>" + esc(q.name || "Row " + (i + 1)) + '</td><td class="r num">' + q.n + '</td><td class="r num">' + K.n(q.a, 1) + ' A</td><td class="r num">' + K.n(q.I, 0) + ' A</td><td class="r num">' + K.n(q.share * 100, 0) + '%</td><td class="r num">' + K.n(b * 100, 0) + "%" + (b > 2 ? ", can trip in seconds" : b > 1 ? ", trips if held" : "") + "</td></tr>"; }).join("") +
+      r.rows.map(function (q, i) { var b = q.a / M.BRANCH; return "<tr" + (i === r.worst && r.state !== "ok" ? ' class="pick"' : "") + "><td>" + esc(q.name || "Row " + (i + 1)) + '</td><td class="r num">' + q.n + '</td><td class="r num">' + K.n(q.a, 1) + ' A</td><td class="r num">' + K.n(q.I, 0) + ' A</td><td class="r num">' + K.n(q.share * 100, 0) + '%</td><td class="r num">' + K.n(b * 100, 0) + "%" + M.branchNote(b) + "</td></tr>"; }).join("") +
       "</tbody></table></div><p class=\"mute small\">Each motor has its own 40 A branch breaker. Like the main breaker it carries its rating all day and trips after seconds at about twice that, so a short peak over 40 A is normal.</p></section>";
     out += K.notes("<p>A battery behaves like a perfect voltage source with a small resistor inside it. Everything the robot draws flows through that resistor and through the wiring, and each ohm costs volts:</p>" +
       '<p class="eq">volts at the robot = rest volts − total current × (battery + wiring resistance)</p>' +

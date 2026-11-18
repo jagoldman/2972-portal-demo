@@ -35,24 +35,16 @@ function setup(s) {
   var L = Math.max(0.5, s.len) * F.IN;
   return M.arm({ L: L, ma: Math.max(0, s.armLb) * F.LB, rc: F.clamp(s.comPct, 0, 100) / 100 * L, ml: Math.max(0, s.loadLb) * F.LB, cb: s.cb * F.LBF * F.IN });
 }
-// See tool-elevator.js: a short, quick move can stop a few 2 ms steps early, so run it again with finer steps.
-function settle(go, x0, goal) {
-  var o = go(0.002), d = [0.0005, 0.0002];
-  for (var i = 0; i < d.length && !o.reached && Math.abs(o.x[o.x.length - 1] - x0) > 0.85 * Math.abs(goal - x0); i++) o = go(d[i]);
-  return o;
-}
-/* The smallest inertia the 2 ms simulation stays steady with: the arm's speed may settle on the motor's no faster
-   than over about 4 ms. Only a nearly weightless arm meets this floor. */
-M.minJ = function (dr) { var m = dr.motor; return 0.004 * dr.n * dr.ratio * dr.ratio * dr.eff * m.kt * m.ke / m.R; };
+// The arm's real inertia: F.move picks a fine enough time step for a light arm behind a big reduction, and retries a
+// short move with finer steps by itself. The feedforward kA below uses the same inertia.
 function swing(arm, dr, s, a0, a1) {
-  var J = Math.max(arm.J, M.minJ(dr));
-  return settle(function (dt) { return F.move({ drive: dr, J: J, x0: a0, goal: a1, ext: function (th) { return -arm.torque(th); }, V: s.vbat, Rbat: s.rbat, tmax: 12, dt: dt }); }, a0, a1);
+  return F.move({ drive: dr, J: arm.J, x0: a0, goal: a1, ext: function (th) { return -arm.torque(th); }, V: s.vbat, Rbat: s.rbat, tmax: 12 });
 }
 function thin(T, Y, n) { var out = [], k = Math.max(1, Math.ceil(T.length / n)); for (var i = 0; i < T.length; i += k) out.push([T[i], Y[i]]); var L = T.length - 1; if (L >= 0 && out[out.length - 1][0] !== T[L]) out.push([T[L], Y[L]]); return out; }
 
 M.compute = function (s) {
   var arm = setup(s), dr = M.driveOf(s), a0 = s.start * DEG, a1 = s.end * DEG, V0 = s.vbat, L = Math.max(0.5, s.len) * F.IN;
-  var r = { arm: arm, L: L, a0: a0, a1: a1 };
+  var r = { arm: arm, L: L, a0: a0, a1: a1, empty: !(arm.J > 0) };   // no weight at all: nothing to simulate
   r.avail = dr.at(0, V0, 1).torque;
   var lo = Math.min(a0, a1), hi = Math.max(a0, a1);
   r.worstAngle = M.worst(lo, hi); r.worstTorque = Math.abs(arm.torque(r.worstAngle));
@@ -64,6 +56,12 @@ M.compute = function (s) {
   r.backOk = !r.back || r.back.reached;
   r.stallGo = r.reached ? null : M.stallAngle(arm, a0, a1, r.avail);
   r.stallBack = r.backOk ? null : M.stallAngle(arm, a1, a0, r.avail);
+  /* What stops a failed move: the torque that pushes against it ("gravity" or "counterbalance": the counterbalance
+     only wins where it is stronger than the weight, tau0 < 0), full reverse not stopping it at the goal ("overshoot"),
+     or the time running out ("slow"). */
+  function why(stall, sim) { return stall != null ? (arm.tau0 >= 0 ? "gravity" : "counterbalance") : sim && sim.cannotStop ? "overshoot" : "slow"; }
+  r.goWhy = r.reached ? null : why(r.stallGo, r.go);
+  r.backWhy = r.backOk ? null : why(r.stallBack, r.back);
   if (r.stallGo != null) { r.peakAngle = M.worst(Math.min(r.stallGo, a1), Math.max(r.stallGo, a1)); r.peakNeed = Math.abs(arm.torque(r.peakAngle)); }
   // Timeline: out, half a second holding at the end, back.
   var T = [], X = [], W = [], A = [], B = [], Q = [], segs = [];
@@ -128,6 +126,8 @@ K.tool({
   autoplay: true, speed: 0.25,
   compute: M.compute,
   duration: function (s, r) { return r && isFinite(r.duration) ? r.duration : 1; },
+  // At rest the drawing shows the arm holding at its end angle.
+  rest: function (s, r) { return r && r.reached && isFinite(r.tGo) ? r.tGo + 0.25 : null; },
   hints: function (s, r) { return { "h-arm-com": "The combined centre of mass of arm and load is " + K.fix(r.arm.com / F.IN, 1) + " in from the pivot." }; },
 
   controls: function () {
@@ -146,10 +146,11 @@ K.tool({
 
   outs: function (s, r) {
     var lim = s.statorA, v, hw = r.holdWorst.statorA;
-    if (r.minV < 7) v = K.verdict("bad", "Browns out: the battery " + (r.minV > 0 ? "drops to " + K.fix(r.minV, 1) + " V" : "collapses") + " on the swing, below the 6.8 V where the roboRIO starts shedding power. Lower the current limit or use a bigger reduction.");
+    if (r.empty) v = K.verdict("info", "The arm and its load weigh nothing here, so there is nothing to swing. Give the arm a weight or a load.");
+    else if (r.minV < 7) v = K.verdict("bad", "Browns out: the battery " + (r.minV > 0 ? "drops to " + K.fix(r.minV, 1) + " V" : "collapses") + " on the swing, below the 6.8 V where the roboRIO starts shedding power. Lower the current limit or use a bigger reduction.");
     else if (!r.reached) {
-      v = K.verdict("bad", stallWords(s, r) + " Use a bigger reduction, more motors, a higher limit or a counterbalance.");
-    } else if (!r.backOk) v = K.verdict("bad", "Cannot swing back past " + deg(r.stallBack != null ? r.stallBack : r.a1) + ": the counterbalance is stronger than the arm is heavy and the gearbox cannot overcome it.");
+      v = K.verdict("bad", stallWords(s, r) + (r.goWhy === "counterbalance" ? " Use a weaker counterbalance, a bigger reduction or a higher limit." : " Use a bigger reduction, more motors, a higher limit or a counterbalance."));
+    } else if (!r.backOk) v = K.verdict("bad", backWords(s, r));
     else if (hw > 0.6 * lim) v = K.verdict("warn", "Holds with little to spare: at " + deg(r.worstAngle) + " holding takes " + K.fix(hw, 0) + " A of the " + lim + " A limit, so the motor heats up if it waits there. Use a bigger reduction or a counterbalance.");
     else v = K.verdict("ok", "Swings from " + deg(r.a0) + " to " + deg(r.a1) + " in " + secs(r.timeGo) + " s and holds with " + K.fix(hw, 0) + " A of the " + lim + " A limit at its heaviest angle, " + deg(r.worstAngle) + ".");
     return v + K.outs([
@@ -185,11 +186,10 @@ K.tool({
       "<p>r<sub>arm</sub> is how far out the arm's own weight sits and L the pivot to the end. The curved arrows at the pivot in the drawing show this torque and the motor's, to the same scale.</p>" +
       "<p>To speed the arm up, the motor also has to turn its inertia about the pivot. The arm counts as a plain bar whose middle is at r<sub>arm</sub> (exact when its weight sits half way) and the load as a point at the end:</p>" +
       '<p class="eq">inertia = m<sub>arm</sub> × 4/3 × r<sub>arm</sub>² + m<sub>load</sub> × L²</p>' +
-      "<p>The simulation drives the motor at full voltage up to the current limit, then reverses it to stop exactly on the end angle, 2 ms at a time, using the motor's torque at its speed and the battery's sag. Then it does the same back to the start. The holding current is worst at the angle in the range nearest level.</p>" +
+      "<p>The simulation drives the motor at full voltage up to the current limit, then reverses it to stop exactly on the end angle, in steps of 2 ms (finer for a light arm behind a big reduction), using the motor's torque at its speed and the battery's sag. Then it does the same back to the start. The holding current is worst at the angle in the range nearest level.</p>" +
       '<p class="eq">torque at the arm = motor torque × reduction × motors × efficiency</p>' +
       "<p><b>Torque margin</b> is the torque the gearbox gives at the current limit divided by the most gravity asks for. At 1 the arm barely holds and cannot speed up. 2 or more is a common rule of thumb, not a law.</p>" +
       "<p><b>Feedforward.</b> kG is the voltage that holds the arm level (the holding current times the motor's resistance); in code multiply it by cos(angle). kV comes from the motor's back-EMF and kA from the inertia, both at the arm's shaft in radians. Tune them on the robot: friction (kS) is not modelled.</p>" +
-      "<p>A nearly weightless arm is given a small floor on its inertia so the 2 ms steps stay steady; it makes no difference to a real arm.</p>" +
       "<p><b>Left out.</b> Friction beyond the efficiency figure, backlash, a belt or chain stretching, a gas spring's force changing with length, and the motor controller's response time.</p>");
     return out;
   },
@@ -245,14 +245,22 @@ function turn(g, x, y, rad, a0, sweep, color, width) {
 // Why it stalls, in one or two sentences: where, what gravity needs, what the gearbox gives.
 function stallWords(s, r) {
   if (r.stallGo == null) return "It stops at " + deg(r.stuckAt) + " before reaching " + deg(r.a1) + ".";
-  var txt = "Cannot lift past " + deg(r.stallGo) + ": from there gravity needs more than the " + K.n(r.avail * NM_LBIN, 0) + " lb in the gearbox gives at " + s.statorA + " A, up to " + K.n(r.peakNeed * NM_LBIN, 0) + " lb in at " + deg(r.peakAngle) + ".";
+  var cb = r.goWhy === "counterbalance", txt = (cb ? "Cannot swing past " : "Cannot lift past ") + deg(r.stallGo) + ": from there " + (cb ? "the counterbalance pushes back with" : "gravity needs") + " more than the " + K.n(r.avail * NM_LBIN, 0) + " lb in the gearbox gives at " + s.statorA + " A, up to " + K.n(r.peakNeed * NM_LBIN, 0) + " lb in at " + deg(r.peakAngle) + ".";
   if (Math.abs(r.stuckAt - r.stallGo) > 3 * DEG) txt += " It coasts on to " + deg(r.stuckAt) + ", then falls back.";
   return txt;
+}
+// Why the swing back fails, named by the torque that really resists it.
+function backWords(s, r) {
+  var gives = K.n(r.avail * NM_LBIN, 0) + " lb in the gearbox gives at " + s.statorA + " A";
+  if (r.backWhy === "gravity") return "Cannot swing back past " + deg(r.stallBack) + ": from there gravity needs more than the " + gives + ". Use a bigger reduction, more motors, a higher limit or a counterbalance.";
+  if (r.backWhy === "counterbalance") return "Cannot swing back past " + deg(r.stallBack) + ": the counterbalance is stronger than the arm is heavy, and from there it pushes harder than the " + gives + ". Use a weaker counterbalance.";
+  if (r.backWhy === "overshoot") return "Cannot stop on " + deg(r.a0) + " on the way back: gravity carries it past even with the motor in full reverse. Use a bigger reduction or a lower speed.";
+  return "Does not get back to " + deg(r.a0) + " in 12 s. Use a smaller reduction or a higher limit.";
 }
 // The drawing's shorter version.
 function stallMsg(s, r) {
   if (r.stallGo == null) return "Stops at " + deg(r.stuckAt) + ".";
-  return "Stalls past " + deg(r.stallGo) + ": gravity needs up to " + K.n(r.peakNeed * NM_LBIN, 0) + " lb in, the gearbox gives " + K.n(r.avail * NM_LBIN, 0) + ".";
+  return "Stalls past " + deg(r.stallGo) + ": " + (r.goWhy === "counterbalance" ? "the counterbalance pushes back with" : "gravity needs") + " up to " + K.n(r.peakNeed * NM_LBIN, 0) + " lb in, the gearbox gives " + K.n(r.avail * NM_LBIN, 0) + ".";
 }
 function hudHeight(g, s, r, w) { return 22 + 17 + 34 + 44 + (r.reached ? 14 : 15 * wrap(g, stallMsg(s, r), w, { size: 12, weight: 600 }).length); }
 function draw(g, s, r, t) {

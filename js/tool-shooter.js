@@ -242,7 +242,7 @@ K.tool({
     for (var i = 0; i <= 20; i++) { var rp = s.rpm * (0.85 + 0.3 * i / 20), sv = F.shot(Object.assign({}, U.sp, { w: rp * RPM })).v, mm = F.meet(M.flight(U, sv, { dt: 0.005 }).pts, r.target); sens.push([rp, mm ? mm.miss / IN : NaN]); }
     var charts = '<div class="chartrow">' +
       K.chart({ id: "sh-w", title: "Wheel speed through one shot (rpm)", x: { label: "seconds", name: "At", unit: "s" }, y: { min: Math.min(r.shot.wAfter / RPM, r.aim ? r.rpmLo : 1e9) * 0.96, max: s.rpm * 1.02, unit: "rpm" }, series: [{ name: "Wheel speed", pts: w, color: 1 }], hlines: r.aim && r.rpmLo > r.shot.wAfter / RPM * 0.9 ? [{ y: r.rpmLo, label: "slowest that scores" }] : [] }) +
-      K.chart({ id: "sh-s", title: (s.tkind === "top" ? "Long or short" : "High or low") + " of the middle as wheel speed changes (in)", x: { label: "wheel rpm", name: "At", unit: "rpm" }, y: { unit: "in", min: -Math.max(half / IN * 1.8, 20), max: Math.max(half / IN * 1.8, 20) }, series: [{ name: "Where it arrives", pts: sens, color: 2 }], hlines: [{ y: half / IN, label: s.tkind === "top" ? "above this: too long" : "above this: too high" }, { y: -half / IN, label: s.tkind === "top" ? "below this: too short" : "below this: too low" }], marks: [{ x: s.rpm, label: "now" }] }) + "</div>";
+      K.chart({ id: "sh-s", title: (s.tkind === "top" ? "Long or short" : "High or low") + " of the middle as wheel speed changes (in)", x: { label: "wheel rpm", name: "At", unit: "rpm" }, y: { unit: "in", min: -Math.max(half / IN * 1.8, 20), max: Math.max(half / IN * 1.8, 20) }, series: [{ name: "Where it arrives", pts: sens, color: 2 }], hlines: [{ y: half / IN, side: "left", label: s.tkind === "top" ? "above this: too long" : "above this: too high" }, { y: -half / IN, below: true, label: s.tkind === "top" ? "below this: too short" : "below this: too low" }], marks: [{ x: s.rpm, label: "now" }] }) + "</div>";
     return charts + notes();
   },
 
@@ -428,7 +428,7 @@ function closeUp(g, s, r, phase, rpmNow, tShow) {
   g.rect(x0, y0, size, size, { stroke: c.line2, width: 1, fill: null });
   var ty = y0 + size + 18, small = cw < 170, sz = small ? 11 : 12, lh = small ? 15 : 17;
   function row(label, val, key, col) { if (ty > g.h - 4) return; var lx = x0 + 2; if (key) { g.line(lx, ty - 4, lx + 10, ty - 4, { color: key, width: 2.5, cap: "butt" }); lx += 15; } g.text(label, lx, ty, { size: sz, color: c.mute, halo: false }); g.text(val, cw - 6, ty, { size: sz, weight: 700, align: "right", color: col || c.text, halo: false }); ty += lh; }
-  row(small ? "Wheel now" : "Wheel, now", rpmTxt(rpmNow) + " rpm", null, rpmNow < s.rpm * 0.995 ? c.warn : null);
+  row(small ? "Wheel" : "Wheel, now", rpmTxt(rpmNow) + " rpm", null, rpmNow < s.rpm * 0.995 ? c.warn : null);
   row(small ? "Rim" : "Rim speed", K.fix(rim / FT, 1) + " ft/s", c.s2);
   row(small ? "Ball" : "Ball leaves at", K.fix(r.shot.v / FT, 1) + " ft/s", c.s1);
   row("Spin", K.n(Math.abs(r.shot.spin) / RPM, 0) + " rpm");
@@ -493,7 +493,7 @@ function drawSide(g, s, r, t) {
     var tyv = V.Y(tg.kind === "front" ? tg.h + tg.w / 2 + 0.3 : tg.h) - 12, label = !m ? "does not reach" : m.wall ? "hits the front, " + inch(tg.h - m.y) + " under the rim" : m.hit ? "in, " + inch(m.room) + " to spare" : inch(m.miss) + (tg.kind === "top" ? (m.miss < 0 ? " short" : " long") : (m.miss < 0 ? " low" : " high"));
     var lw2 = g.textWidth(label, { weight: 700 });
     if (tg.kind !== "front" && V.L(tg.w * 1.13) > lw2 + 10 && V.L(tg.h) > 90) g.text(label, V.X(tg.d), V.Y(tg.h * 0.56), { align: "center", weight: 700, color: m && m.hit ? c.ok : c.warn, halo: false });
-    else g.text(label, Math.min(V.X(tg.d), g.w - 8 - lw2 / 2), Math.max(14, tyv), { align: "center", weight: 700, color: m && m.hit ? c.ok : c.warn });
+    else { if (g.w < 520 && m && m.hit) { label = "in, " + inch(m.room) + " spare"; lw2 = g.textWidth(label, { weight: 700 }); } g.text(label, Math.min(V.X(tg.d), g.w - 8 - lw2 / 2), Math.max(14, tyv - (tg.kind === "front" ? 0 : 6)), { align: "center", weight: 700, color: m && m.hit ? c.ok : c.warn }); }
     K.chartNow("sh-w", t <= r.tc + (r.recov.time < Infinity ? r.recov.time : 1) + 0.25 ? t : null);
   }
   // Distance along the floor.

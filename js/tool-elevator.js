@@ -38,21 +38,12 @@ function setup(s) {
   var mod = M.model({ n: n, rig: s.rig, mc: Math.max(0.01, s.carLb) * F.LB, ms: Math.max(0, s.stageLb) * F.LB, travel: Math.max(0.01, s.travel) * F.IN, g: g, spring: s.spring * F.LBF });
   return { n: n, g: g, mod: mod, r: Math.max(0.05, s.spool) / 2 * F.IN };
 }
+// The lift's real mass at the rope: F.move picks a fine enough time step for a light load behind a big reduction, and
+// retries a short move with finer steps by itself. The feedforward kA below uses the same mass.
 function lift(st, dr, s, x0, goal, dt) {
   var mod = st.mod;
-  // The smallest mass the 2 ms simulation stays steady with (see M.minJ in tool-arm.js); only a nearly weightless lift meets it.
-  var m = dr.motor, mMin = 0.004 * dr.n * dr.ratio * dr.ratio * dr.eff * m.kt * m.ke / m.R / (st.r * st.r);
-  function mass(x) { return Math.max(mod.mass(x), mMin); }
-  function go(d) { return F.moveLinear({ drive: dr, m: mass, r: st.r, x0: x0, goal: goal, force: function (x) { return -mod.load(x); }, V: s.vbat, Rbat: s.rbat, tmax: 20, dt: d }); }
-  return M.settle(go, x0, goal, dt);
+  return F.moveLinear({ drive: dr, m: mod.mass, r: st.r, x0: x0, goal: goal, force: function (x) { return -mod.load(x); }, V: s.vbat, Rbat: s.rbat, tmax: 20, dt: dt });
 }
-/* F.move counts a move as arrived when it stops within 3% of the goal. A short, quick move can stop a few steps
-   early at 2 ms a step, so when a move stops close to the goal (not stalled part way) run it again with finer steps. */
-M.settle = function (go, x0, goal, dt) {
-  var o = go(dt || 0.002), d = [0.0005, 0.0002];
-  for (var i = 0; i < d.length && !o.reached && Math.abs(o.x[o.x.length - 1] - x0) > 0.85 * Math.abs(goal - x0); i++) o = go(d[i]);
-  return o;
-};
 // Keep about n points of a long simulation for a chart.
 function thin(T, Y, n) { var out = [], k = Math.max(1, Math.ceil(T.length / n)); for (var i = 0; i < T.length; i += k) out.push([T[i], Y[i]]); var L = T.length - 1; if (L >= 0 && out[out.length - 1][0] !== T[L]) out.push([T[L], Y[L]]); return out; }
 
@@ -106,9 +97,14 @@ M.compute = function (s) {
   // Feedforward for the carriage, in metres: volts = kS + kG + kV v + kA a.
   r.kG = (r.holdLoad < 0 ? -1 : 1) * r.hold.volts;
   r.kV = dr.kV / (rS * mod.gain);
+  // Continuous rigging: kG and kA change as each stage joins, so both are given per section (the carriage alone, then
+  // with each stage). The single kG and kA are the last section's, with every stage moving.
   r.kA = dr.kA(mod.mass(top) * rS * rS) / (rS * mod.gain);
   r.mPerRot = 2 * Math.PI * rS * mod.gain / dr.ratio;
-  if (r.rig === "continuous") { r.kGs = []; for (i = 0; i <= n; i++) r.kGs.push((mod.load((i + 0.5) * mod.seg) < 0 ? -1 : 1) * dr.hold(mod.load((i + 0.5) * mod.seg) * rS).volts); }
+  if (r.rig === "continuous") {
+    r.kGs = []; r.kAs = [];
+    for (i = 0; i <= n; i++) { var xm = (i + 0.5) * mod.seg; r.kGs.push((mod.load(xm) < 0 ? -1 : 1) * dr.hold(mod.load(xm) * rS).volts); r.kAs.push(dr.kA(mod.mass(xm) * rS * rS) / (rS * mod.gain)); }
+  }
   // Charts, in inches.
   var gain = mod.gain;
   // Thinned a stretch at a time, so the jump from moving to holding stays sharp.
@@ -118,6 +114,11 @@ M.compute = function (s) {
   r.chA = chart(A);
   // Time to top for other reductions.
   var lo = Math.min(3, s.ratio), hi = Math.max(40, s.ratio), N = 60, best = null;
+  /* A very light lift behind a big reduction needs F.move's finer steps (as small as 0.02 ms), which costs time on
+     every keystroke. Estimate the steps the sweep would take and, past a budget, use fewer reductions (never under 15). */
+  var Jr = Math.min(mod.mass(0), mod.mass(top)) * rS * rS, cost = 0;
+  for (i = 0; i <= N; i++) { var dG = M.driveOf(s, lo + (hi - lo) * i / N), sl = dG.n * dG.ratio * dG.ratio * dG.eff * dG.motor.kt * dG.motor.ke / dG.motor.R; cost += sl > 0 ? Math.max(1, 0.003 / Math.max(Jr / sl / 3, 2e-5)) : 1; }
+  if (cost > 4 * (N + 1)) N = Math.max(15, Math.floor(N * 4 * (N + 1) / cost));
   r.sweep = [];
   for (i = 0; i <= N; i++) {
     var G = lo + (hi - lo) * i / N, sim = lift(st, M.driveOf(s, G), s, 0, top, 0.003);
@@ -142,10 +143,14 @@ K.tool({
   autoplay: true, speed: 0.25,
   compute: M.compute,
   duration: function (s, r) { return r && isFinite(r.duration) ? r.duration : 1; },
+  // At rest the drawing shows the lift holding at the top, the pose the answers are about.
+  rest: function (s, r) { return r && r.reached && isFinite(r.tUp) ? r.tUp + 0.25 : null; },
   hints: function (s, r) {
     var seg = s.travel / r.n, txt;
-    if (r.rig === "cascade") { txt = "Cascade: all " + (r.n + 1) + " parts rise at once, so " + K.fix(s.travel / (r.n + 1), 1) + " in of rope lifts the carriage " + K.fix(s.travel, 1) + " in. The carriage goes " + (r.n + 1) + " times as far as the rope, so the rope must pull " + (r.n + 1) + " times as hard. "; for (var k = 1; k <= r.n; k++) txt += "Stage " + k + " rises " + K.fix(k * s.travel / (r.n + 1), 1) + " in. "; }
-    else txt = "Continuous: one rope lifts one part at a time, the lightest first. Each of the " + (r.n + 1) + " parts rises " + K.fix(s.travel / (r.n + 1), 1) + " in in turn, so " + K.fix(s.travel, 1) + " in of rope lifts the carriage " + K.fix(s.travel, 1) + " in. The rope pulls about a third as hard as cascade would and moves three times as far.".replace("a third", r.n === 1 ? "half" : r.n === 2 ? "a third" : "a quarter").replace("three times", r.n === 1 ? "twice" : r.n === 2 ? "three times" : "four times");
+    var n1 = r.n + 1, sumK = 0, kk; for (kk = 1; kk <= r.n; kk++) sumK += kk;
+    var pullCas = n1 * s.carLb + sumK * s.stageLb, pullCon = s.carLb + r.n * s.stageLb;     // lb of rope pull to hold it at the top
+    if (r.rig === "cascade") txt = "Cascade: all " + n1 + " parts rise at once, so " + K.fix(s.travel / n1, 1) + " in of rope lifts the carriage " + K.fix(s.travel, 1) + " in. The price is pull: the rope holds " + K.n(pullCas, 0) + " lb (the carriage " + n1 + " times over, plus the stages). Continuous would hold " + K.n(pullCon, 0) + " lb.";
+    else txt = "Continuous: one rope lifts one part at a time, the lightest first, so " + K.fix(s.travel, 1) + " in of rope lifts the carriage " + K.fix(s.travel, 1) + " in. The pull is small: " + K.n(s.carLb, 0) + " lb while only the carriage moves, " + K.n(pullCon, 0) + " lb at the top with every stage hanging on it. Cascade would hold " + K.n(pullCas, 0) + " lb.";
     return { "h-el-travel": txt.trim() };
   },
 
@@ -183,9 +188,9 @@ K.tool({
       { k: "Holding at the top", v: K.fix(holdA, 1), u: "A", sub: "per motor, " + K.fix(r.hold.volts, 2) + " V", state: holdA > 0.6 * lim ? "warn" : "", tip: "The current that holds the carriage still at the top. Continuous rigging is heaviest there, with every stage on the rope." },
       { k: "Heaviest it holds", v: r.maxCarLb > 0 ? lbs(r.maxCarLb) : "none", u: r.maxCarLb > 0 ? "lb" : "", sub: "carriage with its load, at " + lim + " A. " + (r.rig === "cascade" ? "Cascade: the rope feels it " + (r.n + 1) + " times over" : "Continuous: the rope feels it once"), tip: "The heaviest carriage this gearbox holds at the top with the motors at the current limit." }
     ]) + K.outs([
-      { k: "kG", v: K.fix(r.kG, 3), u: "V", tip: "Volts that hold the carriage against gravity." + (r.rig === "continuous" ? " With continuous rigging it grows as each stage joins; this is the top." : "") },
+      { k: r.rig === "continuous" ? "kG, last section" : "kG", v: K.fix(r.kG, 3), u: "V", tip: "Volts that hold the carriage against gravity." + (r.rig === "continuous" ? " With continuous rigging it grows as each stage joins; this is the last section, with every stage moving. The code below gives every section's." : "") },
       { k: "kV", v: K.fix(r.kV, 3), u: "V s/m", tip: "Volts per metre per second of carriage speed." },
-      { k: "kA", v: K.fix(r.kA, 4), u: "V s²/m", tip: "Volts per metre per second squared of carriage acceleration." }
+      { k: r.rig === "continuous" ? "kA, last section" : "kA", v: K.fix(r.kA, 4), u: "V s²/m", tip: "Volts per metre per second squared of carriage acceleration." + (r.rig === "continuous" ? " With continuous rigging it grows as each stage joins; this is the last section, with every stage moving. The code below gives every section's." : "") }
     ]);
   },
 
@@ -199,11 +204,13 @@ K.tool({
     out += '<div class="t-elevator-sweep"><p>' + D.esc(bestTxt) + " A bigger reduction holds with less current but is slower; a smaller one is quicker until the current limit caps the torque.</p>" +
       K.chart({ id: "el-sweep", title: "Time to top for other reductions", x: { label: "reduction (:1)", unit: ": 1", name: "Reduction" }, y: { label: "s", unit: "s", min: 0 }, series: [{ name: "Time to top", pts: r.sweep }], marks: [{ x: s.ratio, label: K.fix(s.ratio, 1) + ":1" }], dots: dots }) + "</div>";
     var code = "// Elevator feedforward, carriage position in metres (" + r.n + " moving " + (r.n > 1 ? "stages" : "stage") + ", " + r.rig + ")\n" +
-      "public static final double kG = " + K.fix(r.kG, 3) + "; // volts\n" +
+      "public static final double kG = " + K.fix(r.kG, 3) + "; // volts" + (r.kGs ? ", last section" : "") + "\n" +
       "public static final double kV = " + K.fix(r.kV, 3) + "; // volts per (m/s)\n" +
-      "public static final double kA = " + K.fix(r.kA, 4) + "; // volts per (m/s^2)\n" +
+      "public static final double kA = " + K.fix(r.kA, 4) + "; // volts per (m/s^2)" + (r.kAs ? ", last section" : "") + "\n" +
       "public static final double kMetersPerMotorRotation = " + K.fix(r.mPerRot, 5) + ";" +
-      (r.kGs ? "\n// Continuous rigging: kG while the carriage alone moves, then as each stage joins: " + r.kGs.map(function (x) { return K.fix(x, 3); }).join(", ") : "");
+      (r.kGs ? "\n// Continuous rigging: each section, the carriage alone first, then as each stage joins\n" +
+        "public static final double[] kGBySection = { " + r.kGs.map(function (x) { return K.fix(x, 3); }).join(", ") + " }; // volts\n" +
+        "public static final double[] kABySection = { " + r.kAs.map(function (x) { return K.fix(x, 4); }).join(", ") + " }; // volts per (m/s^2)" : "");
     out += '<section class="ctab"><h2>For robot code</h2>' + K.code("el-ff", code, "Copy the constants") + "</section>";
     var n = r.n, sk = "", sk2 = "";
     for (var k = 1; k <= n; k++) { var mk = "m<sub>" + k + "</sub>"; sk += (k > 1 ? " + " : "") + (k > 1 ? k + " " : "") + mk; sk2 += (k > 1 ? " + " : "") + (k > 1 ? k * k + " " : "") + mk; }
@@ -216,10 +223,10 @@ K.tool({
       "<p><b>Continuous.</b> One rope is laced over the top of every stage and under the bottom of the next. The rope only lifts the carriage; the carriage picks up the stage it rides in when it reaches that stage's hard stop, and so on down. So the carriage moves first, then each stage joins, and the load on the rope steps up each time:</p>" +
       '<p class="eq">rope force = g × (m<sub>c</sub> + the stages already moving), rope travel = carriage travel</p>' +
       "<p>The total work to reach the top is the same for both riggings. Cascade pulls harder over a shorter rope; continuous pulls more gently at first over a longer one.</p>" +
-      "<p><b>Motion.</b> The simulation drives the motors at full voltage up to the current limit, then reverses them to stop exactly at the top, 2 ms at a time. Each step uses the motor's torque at its speed (from the motor's stall torque, free speed and resistance), the battery's sag (its resistance times the current drawn), gravity and the mass above. It does the same on the way down.</p>" +
+      "<p><b>Motion.</b> The simulation drives the motors at full voltage up to the current limit, then reverses them to stop exactly at the top, in steps of 2 ms (finer for a light lift behind a big reduction). Each step uses the motor's torque at its speed (from the motor's stall torque, free speed and resistance), the battery's sag (its resistance times the current drawn), gravity and the mass above. It does the same on the way down.</p>" +
       '<p class="eq">rope tension = motor torque × reduction × motors × efficiency ÷ spool radius</p>' +
       "<p>Tilt multiplies gravity by cos(tilt). A constant-force spring counts as taking that much weight off the carriage.</p>" +
-      "<p><b>Feedforward.</b> kG is the voltage that holds still against gravity: the holding current times the motor's resistance. kV comes from the motor's back-EMF and kA from the mass the motor feels, both turned into metres of carriage travel. Tune them on the robot: friction (kS) is not modelled.</p>" +
+      "<p><b>Feedforward.</b> kG is the voltage that holds still against gravity: the holding current times the motor's resistance. kV comes from the motor's back-EMF and kA from the mass the motor feels, both turned into metres of carriage travel. With continuous rigging the load and the mass step up as each stage joins, so kG and kA are given for each section; the single figures are the last section's. Tune them on the robot: friction (kS) is not modelled.</p>" +
       "<p><b>Left out.</b> Friction in the bearings beyond the efficiency figure, rope stretch, the time a motor controller takes to respond, and the jolt as each continuous stage hits its hard stop. A real robot is a little slower than this.</p>");
     return out;
   },

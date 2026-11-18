@@ -52,5 +52,27 @@ ok("thick wall becomes solid", M.section({ shape: "rect", a: 1, b: 1, t: 0.6 }, 
 var z = M.beam({ sec: sec, mat: al, L: 30, P: 0, hold: "cant" });
 ok("no load: no NaN", z.delta === 0 && z.stress === 0 && z.sf === Infinity && isFinite(z.Pyield));
 
+// Finding 11 (Sol review): which face is squeezed follows the sign of the bending moment at the most-stressed point.
+// Held at one end: M = -P L at the wall (hogging), so the top is stretched. Resting on both ends: +P L / 4 in the
+// middle (sagging), top squeezed. Held at both ends: +P L / 8 in the middle and -P L / 8 at the supports, so the faces
+// swap, where M = P (4u - L) / 8 = 0: a quarter of the way in.
+var fC = M.faces("cant", 25, 30), fS = M.faces("simple", 25, 30), fF = M.faces("fixed", 25, 30);
+ok("held at one end: top stretched at the wall", fC.x === 0 && fC.moment === -750 && !fC.topSqueezed && !fC.swap);
+ok("resting on both ends: top squeezed in the middle", fS.moment === 25 * 30 / 4 && fS.topSqueezed && !fS.swap);
+ok("held at both ends: top squeezed in the middle, faces swap", fF.moment === 25 * 30 / 8 && fF.topSqueezed && fF.swap);
+near("held at both ends: hogs at the supports", M.moment("fixed", 25, 30, 0), -25 * 30 / 8, 1e-12);
+near("held at both ends: no moment a quarter in", M.moment("fixed", 25, 30, 7.5), 0, 1e-12);
+ok("no load: the way it would bend", M.faces("simple", 0, 30).topSqueezed && !M.faces("cant", 0, 30).topSqueezed);
+
+// Finding 12 (Sol review): "four times stiffer" upright is a solid bar's figure. The default 2x1 tube with a 1/16 wall:
+// 0.186015 / 0.061991 = 3.0. A solid 2x1 bar: (1 x 8) / (2 x 1) = 4 exactly.
+near("2x1x1/16 tube: 3.0 times stiffer tall", M.tallRatio(M.sectionSpec("r2x1_16")), 0.186015 / 0.061991, 1e-4);
+ok("2x1x1/16 tube: rounds to 3.0", M.tallRatio(M.sectionSpec("r2x1_16")).toFixed(1) === "3.0");
+near("solid 2x1 bar: 4 times", M.tallRatio({ shape: "bar", a: 2, b: 1 }), 4, 1e-12);
+near("square tube: the same either way", M.tallRatio(M.sectionSpec("r1x1_8")), 1, 1e-12);
+var bsrc = require("fs").readFileSync(require("path").join(__dirname, "../js/tool-beam.js"), "utf8");
+ok("notes no longer say four times stiffer", !/four times stiffer/.test(bsrc));
+ok("notes no longer tie the faces to the hold alone", !/the other way round for a beam held at one end/.test(bsrc));
+
 console.log(fails ? fails + " of " + n + " checks failed" : "all " + n + " checks passed");
 process.exit(fails ? 1 : 0);

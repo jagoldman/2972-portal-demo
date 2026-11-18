@@ -59,6 +59,25 @@ ok("too weak stalls", !weak.reached && weak.needRatio > 1, weak.needRatio);
 // A short travel still arrives (finer steps for quick moves).
 ok("6 in of travel arrives", M.compute(Object.assign({}, base, { travel: 6 })).reached);
 
+// Finding 4 (Sol review): no mass floor. The default (2 stages, cascade) at 40:1 with 6 in of travel is a light load
+// behind a big reduction: with its real mass it takes about 0.152 s up (the floor made it 0.172 s).
+var short40 = M.compute(Object.assign({}, base, { stages: 2, ratio: 40, travel: 6 }));
+near("40:1, 6 in: 0.152 s up", short40.timeUp, 0.152, 0.002);
+ok("no mass floor or re-run helper left", M.settle === undefined);
+// The simulation's mass is the feedforward's: the first step's acceleration is (pull at the limit - weight) / mass.
+var m40 = short40.mod.mass(0), pull = short40.avail / short40.rS;
+near("starts at (pull - load) / mass", short40.up.acc[0], (pull - short40.mod.load(0)) / m40, 1e-6);
+near("kA from that same mass", short40.kA, M.driveOf(Object.assign({}, base, { ratio: 40 })).kA(m40 * short40.rS * short40.rS) / (short40.rS * short40.gain), 1e-12);
+
+// Finding 6 (Sol review): continuous rigging gives kA for each section, as it does kG; the single kA is the last one.
+var cont = M.compute(Object.assign({}, base, { stages: 2, rig: "continuous" })), dc = M.driveOf(base), rr = cont.rS;
+ok("continuous: kA per section", Array.isArray(cont.kAs) && cont.kAs.length === 3, cont.kAs);
+// By hand: the carriage alone, then with one stage, then two: kA = R m r / (n G eff kt).
+[14, 19, 24].forEach(function (lb, i) { near("continuous kA, section " + (i + 1), cont.kAs[i], dc.kA(lb * F.LB * rr * rr) / rr, 1e-12); });
+near("the single kA is the last section's", cont.kA, cont.kAs[2], 1e-15);
+ok("each section's kA grows", cont.kAs[0] < cont.kAs[1] && cont.kAs[1] < cont.kAs[2]);
+ok("cascade has one kA", M.compute(Object.assign({}, base, { stages: 2 })).kAs === undefined);
+
 // Every slider and field at its ends: nothing throws and the answers are numbers or Infinity, never NaN.
 var ends = { stages: [1, 3], rig: ["cascade", "continuous"], travel: [6, 100], carLb: [0.5, 60], stageLb: [0, 25], motors: [1, 8], ratio: [0.05, 50], statorA: [5, 200], eff: [30, 100], spool: [0.25, 4], tilt: [0, 80], spring: [0, 80], vbat: [10, 13.5], rbat: [0, 0.1] };
 var bad = [];

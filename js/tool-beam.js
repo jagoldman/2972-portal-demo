@@ -56,6 +56,16 @@ M.moment = function (hold, P, L, x) {
   var u = Math.min(x, L - x);
   return hold === "simple" ? P * u / 2 : P * (4 * u - L) / 8;
 };
+/* Which face is squeezed, from the sign of the bending moment at the most-stressed point x (the wall for a beam held
+   at one end, the middle otherwise; held at both ends the supports are as stressed as the middle). Sagging (moment > 0)
+   squeezes the top and stretches the bottom; hogging the reverse. swap: the sign changes along the beam (held at both
+   ends: it hogs near the supports and sags in the middle, changing a quarter of the way in). */
+M.faces = function (hold, P, L) {
+  var x = hold === "cant" ? 0 : L / 2, m = M.moment(hold, P || 1, L, x);   // with no load, the way it would bend
+  return { x: x, moment: P ? m : 0, topSqueezed: m > 0, swap: hold === "fixed" };
+};
+// How many times stiffer (and stronger in bending, for the same stress) the section is the tall way than the flat way.
+M.tallRatio = function (spec) { return M.section(spec, "tall").I / M.section(spec, "flat").I; };
 // The textbook maxima: deflection = P L^3 / (k EI), moment = P L / m.
 M.COEF = { cant: { d: 3, m: 1 }, simple: { d: 48, m: 4 }, fixed: { d: 192, m: 8 } };
 
@@ -140,13 +150,13 @@ K.tool({
       "<p>The beam is treated as a straight, even beam that bends a little (Euler-Bernoulli beam theory). Three numbers decide it: how stiff the material is (E), how the section's material is spread away from its middle (the second moment of area, I) and the length.</p>" +
       '<p class="eq">I (rectangle tube) = (B × H³ − (B − 2t) × (H − 2t)³) ÷ 12</p>' +
       '<p class="eq">I (round tube) = π × (D⁴ − d⁴) ÷ 64</p>' +
-      "<p>H is the side in line with the load, so a 2x1 tube is four times stiffer the tall way. The standard formulas for one load:</p>" +
+      "<p>H is the side in line with the load, so " + (symmetric(s) ? "a square or round section is as stiff either way" : "this section is " + K.fix(M.tallRatio(specOf(s)), 1) + " times stiffer the tall way than the flat way") + ". The standard formulas for one load:</p>" +
       '<p class="eq">held at one end, load at the free end: deflection = P L³ ÷ (3 E I), moment = P L</p>' +
       '<p class="eq">resting on both ends, load in the middle: deflection = P L³ ÷ (48 E I), moment = P L ÷ 4</p>' +
       '<p class="eq">held at both ends, load in the middle: deflection = P L³ ÷ (192 E I), moment = P L ÷ 8</p>' +
       '<p class="eq">stress = M c ÷ I, c = H ÷ 2;  safety factor = yield ÷ stress;  weight = area × length × density</p>' +
       "<p>For this beam: I = " + K.fix(r.I, 4) + " in⁴, E = " + K.n(r.mat.E, 0) + " psi, moment = " + K.n(r.Mmax, 0) + " lbf in, deflection = " + K.n(s.P, 1) + " × " + K.n(s.L, 2) + "³ ÷ (" + k.d + " × E × I) = " + K.fix(r.delta, 4) + " in.</p>" +
-      "<p>Above the neutral axis the material is squeezed and below it stretched (the other way round for a beam held at one end). The stress is largest on the outer faces, which is why a tall, thin-walled tube does so much with so little metal.</p>" +
+      "<p>Which face is squeezed depends on which way the beam bends at that place, the sign of the bending moment there. Where it sags, the top is squeezed and the bottom stretched; where it curves the other way, the reverse. A beam held at one end curves the other way all along, so its top is stretched. A beam resting on both ends sags all along. A beam held at both ends sags in the middle and curves the other way near its supports, so the faces swap a quarter of the way in from each end. The stress is largest on the outer faces, which is why a tall, thin-walled tube does so much with so little metal.</p>" +
       "<p>What it leaves out: holes and lightening pockets (they cut I and raise the stress next to them), thin walls crumpling or buckling before the material yields, the beam's own weight, fatigue from many small loads, and impact. A robot hit can be many times the static load, so a safety factor of 3 or more is a common rule of thumb. When the beam bends more than about a tenth of its length the formulas become less accurate.</p>" +
       "<p>The drawing bends the beam along the true deflection curve, made larger by the stated factor when the real bend is too small to see. The colour shows each part's own stress against yield: the plain part colour above a safety factor of 3, toward the warning colour by 1, and the problem colour where it yields.</p>" +
       "<p>Material figures: 6061-T6 E 10.0 million psi, yield 35,000 psi; polycarbonate E 345,000 psi, yield 9,000 psi; 4130 steel E 29.7 million psi, yield 63,000 psi.</p>");
@@ -272,7 +282,7 @@ function section(g, s, r, pan, narrow, kBeam, frac) {
   g.dim(cx - bw / 2 - 12, cy + bh / 2, cx - bw / 2 - 12, cy - bh / 2, frac2(sec.H) + " in", 0, { side: "left", size: 11 });
   // The stress across the depth: zero on the neutral axis, largest at the faces, against yield.
   var lim = narrow ? 30 : 38, sx = cx + bw / 2 + 16 + lim, share = r.share * frac, wv = lim * Math.min(share, 1.15);
-  var topSq = s.hold !== "cant";            // which face is squeezed where the moment is largest
+  var fc = M.faces(s.hold, s.P, s.L), topSq = fc.topSqueezed;   // from the moment's sign at the most-stressed point
   g.line(sx, cy - bh / 2, sx, cy + bh / 2, { color: c.text2, width: 1 });
   [-1, 1].forEach(function (sg) { g.line(sx + sg * lim, cy - bh / 2 - 4, sx + sg * lim, cy + bh / 2 + 4, { color: c.bad, width: 1, dash: [3, 3] }); });
   if (wv > 0.5) {
@@ -280,14 +290,18 @@ function section(g, s, r, pan, narrow, kBeam, frac) {
     g.poly([[sx, cy], [sx + d * wv, cy - bh / 2], [sx, cy - bh / 2]], { fill: col, stroke: null });
     g.poly([[sx, cy], [sx - d * wv, cy + bh / 2], [sx, cy + bh / 2]], { fill: col, stroke: null });
   }
-  var lab = narrow ? sx + lim + 10 : pan.x + 12, ly = narrow ? pan.y + 40 : cy + bh / 2 + 44;
-  g.text("At the most-stressed point. Neutral axis: no stress", lab, ly, { color: c.accent, size: 11, weight: 600 });
-  g.text("Top " + (topSq ? "squeezed" : "stretched") + ", bottom " + (topSq ? "stretched" : "squeezed"), lab, ly + 16, { color: c.text2, size: 11 });
-  g.text(K.n(r.stress * frac, 0) + " psi, " + K.n(share * 100, 0) + "% of yield", lab, ly + 32, { color: share >= 1 ? c.bad : c.text2, size: 11, weight: 600 });
-  if (!narrow) {
-    g.text("Red dashes: yield, " + K.n(r.mat.yld, 0) + " psi", lab, ly + 48, { color: c.mute, size: 11 });
-    if (!sec.solid) g.text("Wall " + frac2(sec.t) + " in", lab, ly + 64, { color: c.mute, size: 11 });
-  }
+  var lab = narrow ? sx + lim + 10 : pan.x + 12, ly = narrow ? pan.y + 26 : cy + bh / 2 + 44, maxW = (narrow ? g.w : pan.x + pan.w) - lab - 8;
+  var faces = fc.swap ? (topSq ? "Top squeezed in the middle, stretched at the ends" : "Top stretched in the middle, squeezed at the ends") : "Top " + (topSq ? "squeezed" : "stretched") + ", bottom " + (topSq ? "stretched" : "squeezed");
+  var rows = [["At the most-stressed point. Neutral axis: no stress", { color: c.accent, size: 11, weight: 600 }], [faces, { color: c.text2, size: 11 }],
+    [K.n(r.stress * frac, 0) + " psi, " + K.n(share * 100, 0) + "% of yield", { color: share >= 1 ? c.bad : c.text2, size: 11, weight: 600 }]];
+  if (!narrow) { rows.push(["Red dashes: yield, " + K.n(r.mat.yld, 0) + " psi", { color: c.mute, size: 11 }]); if (!sec.solid) rows.push(["Wall " + frac2(sec.t) + " in", { color: c.mute, size: 11 }]); }
+  // Each label wrapped to the room beside the section, so nothing runs off a phone's edge.
+  var y = ly, lh = narrow ? 14 : 16;
+  rows.forEach(function (row) {
+    var words = row[0].split(" "), line = "";
+    words.forEach(function (w) { var tryL = line ? line + " " + w : w; if (line && g.textWidth(tryL, row[1]) > maxW) { g.text(line, lab, y, row[1]); y += lh; line = w; } else line = tryL; });
+    if (line) { g.text(line, lab, y, row[1]); y += lh; }
+  });
 }
 // 0.0625 -> "1/16"; other numbers as decimals.
 function frac2(x) {

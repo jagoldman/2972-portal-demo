@@ -47,5 +47,29 @@ ok("compressor ends higher", rc.end > rb.end, rc.end + " vs " + rb.end);
 var r0 = M.sim(Object.assign({}, o, { cyls: [] }));
 ok("no cylinders", r0.used === 0 && r0.end === 120 && !r0.firstShort && r0.cycles === 0);
 
+
+// Finding 2 (Sol review): below working pressure the tank's air spreads into tank and cylinder (absolute pressures).
+// 100 in^3 at 67 psig (81.7 psia), one 10 in^3 stroke regulated to 60: 81.7 x 100 / 110 = 74.273 psia = 59.573 psig.
+// (The old step returned 60 and 60: it made air.)
+var lo = M.use(67, 100, 10, 60);
+near("low step: tank equilibrium", lo.tank, 81.7 * 100 / 110 - 14.7, 1e-9);
+near("low step: 59.573 psig", lo.tank, 59.573, 1e-3);
+ok("low step: cylinder gets the same, under working", lo.cyl === lo.tank && lo.cyl < 60);
+// Air is kept: tank air before = tank + cylinder air after (absolute pressure x volume).
+near("low step keeps the air", (lo.tank + 14.7) * 110, 81.7 * 100, 1e-9);
+// It joins the regulated formula where they meet: exactly enough for one stroke gives working pressure either way.
+var edge = 74.7 * (1 + 10 / 100) - 14.7;
+near("the two cases meet", M.use(edge, 100, 10, 60).tank, 60, 1e-9);
+near("just past the edge", M.use(edge - 1e-6, 100, 10, 60).tank, 60, 1e-5);
+
+// Finding 7 (Sol review): reaching the search cap is not "more tanks will not fix it".
+var huge = { tanks: 1, ml: 50, stored: 120, work: 60, cfm: 0, match: 160, cyls: [{ bore: 4, stroke: 36, rod: 1, cycles: 200 }] };
+ok("cap reached: null", M.tanksNeeded(huge) === null);
+ok("cap reached: says more than 60", /more than 60 tanks/.test(M.needText(M.tanksNeeded(huge), 1, 0)) && !/will not/.test(M.needText(null, 1, 0)), M.needText(null, 1, 0));
+// Stored no higher than working: no number of tanks will do, and it says why.
+var under = { tanks: 1, ml: 574, stored: 40, work: 60, cfm: 0, match: 160, cyls: [{ bore: 1, stroke: 4, rod: 0.3, cycles: 2 }] };
+ok("stored under working: Infinity", M.tanksNeeded(under) === Infinity);
+ok("stored under working: will not fix it", /will not fix/.test(M.needText(Infinity, 1, 0)));
+ok("a number: how many more", M.needText(5, 2, 0) === "It would take 5 tanks of this size (3 more), or a compressor on the robot.", M.needText(5, 2, 0));
 console.log(fails ? fails + " of " + n + " checks failed" : "all " + n + " checks passed");
 process.exit(fails ? 1 : 0);
