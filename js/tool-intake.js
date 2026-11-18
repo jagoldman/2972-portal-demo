@@ -76,7 +76,7 @@ function place(label, yv, xr, ymax, lines, avoid) {
     var b = box(o);
     if (avoid.some(function (q) { return b[0] < q[2] && b[2] > q[0] && b[1] < q[3] && b[3] > q[1]; })) return false;
     return !lines.some(function (pts) { for (var i = 1; i < pts.length; i++) { var a = pts[i - 1], c = pts[i]; if (!isFinite(a[1]) || !isFinite(c[1])) continue;
-      for (var k = 0; k <= 4; k++) { var px = X(a[0] + (c[0] - a[0]) * k / 4), py = Yy(a[1] + (c[1] - a[1]) * k / 4); if (px >= b[0] - 2 && px <= b[2] + 2 && py >= b[1] - 2 && py <= b[3] + 2) return true; } } return false; });
+      for (var k = 0; k <= 4; k++) { var px = X(a[0] + (c[0] - a[0]) * k / 4), py = Yy(a[1] + (c[1] - a[1]) * k / 4); if (px >= b[0] - 3 && px <= b[2] + 3 && py >= b[1] - 5 && py <= b[3] + 5) return true; } } return false; });
   }
   var pick = tries.filter(clear)[0] || tries[0];
   avoid.push(box(pick));
@@ -128,12 +128,12 @@ K.tool({
        that gives the margin this page asks for. The caution goes in the second line. */
     var pct = Math.round((r.pieceRatio - 1) * 100), mine = "Yours, " + K.fix(s.ratio, 2) + ":1, ";
     if (vd <= 0.05) text = "The robot is standing still, so the piece comes in at " + fts(r.piece) + " ft/s at the roller's no-load speed.";
-    else if (r.state === "ok") text = mine + "pulls the piece in " + pct + "% faster than the floor brings it at no-load speed; " + rg + ":1 or lower keeps the 10% margin, this page's rule.";
-    else if (pct >= 0) text = mine + "pulls the piece in only " + pct + "% faster than the floor brings it at no-load speed; " + rg + ":1 or lower gives the 10% margin, this page's rule.";
-    else text = mine + "pulls the piece in " + (-pct) + "% slower than the floor brings it, so the robot shoves it along; " + rg + ":1 or lower gives the 10% margin, this page's rule.";
-    var more = "Once it grips, the roller slows by an amount this page cannot know, which can use up " + (pct > 0 ? "a " + pct + "% margin" : "any margin") + ". Test with a real piece how hard it must be squeezed.";
+    else if (r.state === "ok") text = mine + "pulls the piece in " + pct + "% faster than the floor brings it at no-load speed; " + rg + ":1 or lower keeps a 10% margin.";
+    else if (pct >= 0) text = mine + "pulls the piece in only " + pct + "% faster than the floor brings it at no-load speed; " + rg + ":1 or lower gives a 10% margin.";
+    else text = mine + "pulls the piece in " + (-pct) + "% slower than the floor brings it, so the robot shoves it along; " + rg + ":1 or lower gives a 10% margin.";
+    var more = "Once it grips, the roller slows by an amount this page cannot know, which can use up the margin. Test with a real piece how hard it must be squeezed.";
     return K.verdict(r.state, text, more) + K.outs([
-      { k: "Belt surface speed", v: fts(r.surface), u: "ft/s", sub: "at " + K.fix(s.V, 1) + " V, no load: " + K.fix(r.surface, 2) + " m/s, " + K.n(r.rpm, 0) + " rpm", tip: "Roller radius times roller speed, at the battery voltage in Fine tuning with no load. The roller slows as it grips a piece." },
+      { k: "Belt surface speed", v: fts(r.surface), u: "ft/s", sub: "at " + K.fix(s.V, 1) + " V, no load: " + K.fix(r.surface, 2) + " m/s", tip: "Roller radius times roller speed, at the battery voltage in Fine tuning with no load: the roller turns at " + K.n(r.rpm, 0) + " rpm. It slows as it grips a piece." },
       { k: "Piece speed", v: fts(r.piece), u: "ft/s", sub: plate ? "half the belt's surface speed, against a plate" : "the belt's full surface speed, driven both sides", tip: "How fast the piece moves along its path. How this is worked out says which speeds are compared.", state: r.state === "bad" ? "bad" : r.state === "warn" ? "warn" : "" },
       { k: "Surface to drive speed", v: isFinite(r.surfRatio) ? sr : "–", u: "×", sub: "good from " + tg + ": this page's rule", state: r.state, tip: "Belt surface speed divided by the robot's speed toward the piece. This page's rule, not an input: the piece should come in at least 10% faster than the floor brings it, and the surface should run at least twice the drive speed (a common rule of thumb). Against a plate the piece moves at half the surface speed, so that takes 2.2." },
       { k: "Time to pass through", v: K.fix(r.time, 2), u: "s", sub: "ideal: " + s.travel + " in at the piece speed" },
@@ -144,23 +144,34 @@ K.tool({
   more: function (s, r) {
     var vd = r.vd, hi = Math.max(10, s.ratio * 1.5, isFinite(r.ratioGood) ? r.ratioGood * 1.3 : 0), lo = 1;
     var ymax = Math.max(2.6 * vd / FT, r.surface / FT * 1.15, 5);
-    function cut(v) { return v <= ymax ? v : NaN; }      // points above the chart's top are left out, not drawn outside it
+    // Curves stop below the top of the chart, where the upright mark's name sits.
+    function cut(v) { return v <= ymax * 0.86 ? v : NaN; }      // points above the chart's top are left out, not drawn outside it
     function at(G, dia) { return M.speeds({ drive: F.drive({ motor: s.motor, n: s.motors, ratio: G, eff: s.eff / 100, statorA: s.statorA }), V: s.V, rollerR: dia * IN / 2, contact: s.contact, driveV: vd, travel: s.travel * IN }); }
     var pts = [], surf = [], dp = [], ds = [], i, q;
     for (i = 0; i <= 80; i++) { var G = lo + (hi - lo) * i / 80; q = at(G, s.roller); pts.push([G, cut(q.piece / FT)]); surf.push([G, cut(q.surface / FT)]); }
     for (i = 0; i <= 60; i++) { var dia = 0.5 + 3.5 * i / 60; q = at(s.ratio, dia); dp.push([dia, cut(q.piece / FT)]); ds.push([dia, cut(q.surface / FT)]); }
     var y = { label: "ft/s", unit: "ft/s", min: 0, max: ymax };
-    // One name per level line, clear of the curves, of the other name, and of the dot that marks yours (8 units round it).
-    function hl(xr, lines, dx, dy) {
+    /* The level lines: the drive speed, and the pass line, the piece speed this page asks for (10% over the drive
+       speed against a plate; twice the drive speed between two driven surfaces). An upright mark where the piece's
+       curve crosses the pass line: the largest reduction, or the smallest roller, that passes. Level lines are drawn
+       dotted (the belt's curve is dashed). */
+    var passV = r.target * M.factor(s.contact) * vd, passName = "pass line: " + K.fix(passV / vd, 1) + "× drive, " + K.fix(passV / FT, 1) + " ft/s";
+    var dGood = r.piece > 0 ? s.roller * passV / r.piece : NaN;
+    function hl(xr, lines, dx, dy, mx) {
       if (!(vd > 0.05)) return [];
-      var X = 46 + (dx - xr[0]) / (xr[1] - xr[0]) * 420, Yd = 156 - dy / ymax * 132, avoid = [[X - 8, Yd - 8, X + 8, Yd + 8]];
-      return [place("drive speed", vd / FT, xr, ymax, lines, avoid), place("2 × drive speed", 2 * vd / FT, xr, ymax, lines, avoid)];
+      var X = function (x) { return 46 + (x - xr[0]) / (xr[1] - xr[0]) * 420; }, Yd = 156 - dy / ymax * 132, avoid = [[X(dx) - 8, Yd - 8, X(dx) + 8, Yd + 8]];
+      if (isFinite(mx) && mx >= xr[0] && mx <= xr[1]) avoid.push([X(mx) - 4, 24, X(mx) + 4, 156], [X(mx), 24, X(mx) + 60, 40]);
+      return [place(passName, passV / FT, xr, ymax, lines, avoid)];
     }
+    function dotted(html) { return html.replace(/<line class="cmark" x1="46" x2="466"/g, '<line class="cmark" style="stroke-dasharray:1.5 3" x1="46" x2="466"'); }
+    var note = vd > 0.05 ? "The dot is yours. Dotted: the pass line, the piece speed this page asks for. The upright mark is where the piece meets it." : "The dot is yours.";
+    var rMark = isFinite(r.ratioGood) && r.ratioGood >= lo && r.ratioGood <= hi && vd > 0.05 ? [{ x: r.ratioGood, label: K.fix(r.ratioGood, 2) + ":1" }] : [];
+    var dMark = isFinite(dGood) && dGood >= 0.5 && dGood <= 4 && vd > 0.05 ? [{ x: dGood, label: K.fix(dGood, 2) + " in" }] : [];
     var chart = '<div class="chartrow">' +
-      K.chart({ id: "int-r", title: "Speeds for other reductions", x: { label: "reduction (: 1)", name: "Reduction", min: lo, max: hi }, y: y,
-        series: [{ name: "Piece", pts: pts, color: 1 }, { name: "Belt surface", pts: surf, color: 2, dash: true }], hlines: hl([lo, hi], [pts, surf], s.ratio, r.piece / FT), dots: [{ x: s.ratio, y: r.piece / FT }], note: "The dot is yours. Dashed level lines: the drive speed and twice it."  }) +
-      K.chart({ id: "int-d", title: "Speeds for other roller diameters", x: { label: "roller diameter (in)", name: "Diameter", unit: "in", min: 0.5, max: 4 }, y: y,
-        series: [{ name: "Piece", pts: dp, color: 1 }, { name: "Belt surface", pts: ds, color: 2, dash: true }], hlines: hl([0.5, 4], [dp, ds], s.roller, r.piece / FT), dots: s.roller <= 4 ? [{ x: s.roller, y: r.piece / FT }] : [], note: "The dot is yours. Dashed level lines: the drive speed and twice it."  }) + "</div>";
+      dotted(K.chart({ id: "int-r", title: "Speeds for other reductions", note: note, x: { label: "reduction (: 1)", name: "Reduction", min: lo, max: hi }, y: y,
+        series: [{ name: "Piece", pts: pts, color: 3 }, { name: "Belt surface", pts: surf, color: 1, dash: true }], hlines: hl([lo, hi], [pts, surf], s.ratio, r.piece / FT, r.ratioGood), marks: rMark, dots: [{ x: s.ratio, y: r.piece / FT }] })) +
+      dotted(K.chart({ id: "int-d", title: "Speeds for other roller diameters", note: note, x: { label: "roller diameter (in)", name: "Diameter", unit: "in", min: 0.5, max: 4 }, y: y,
+        series: [{ name: "Piece", pts: dp, color: 3 }, { name: "Belt surface", pts: ds, color: 1, dash: true }], hlines: hl([0.5, 4], [dp, ds], s.roller, r.piece / FT, dGood), marks: dMark, dots: s.roller <= 4 ? [{ x: s.roller, y: r.piece / FT }] : [] })) + "</div>";
     return chart + K.notes(
       "<p>The roller turns at about its free speed until it grips a piece, so its surface moves at:</p>" +
       "<p>The free speed here is at the battery voltage in Fine tuning, 12 V unless you change it, with no load. Other tools on this site use a rested 12.3 V battery; at 12.3 V the roller would run 2.5% faster. The roller slows as soon as it grips a piece, so every speed on this page is the most it could be.</p>" +
@@ -227,7 +238,7 @@ function draw(g, s, r, t) {
   g.rect(V.X(mountX - post / 2), V.Y(G.Cr[1] + post / 2), pw, V.Y(4) - V.Y(G.Cr[1] + post / 2), { fill: c.part2, stroke: c.partLine, width: 1 });
   g.rect(V.X(mountX - post / 2), V.Y(G.Cr[1] + post / 2), V.X(G.Cr[0]) - V.X(mountX - post / 2), pw, { fill: c.part2, stroke: c.partLine, width: 1 });
   g.rect(V.X(-3.5), V.Y(G.bTop), V.L(3.5), V.L(G.bTop - 1.5), { fill: c.s1, stroke: null, radius: V.L(0.8) });
-  if (!phone) g.text("bumper", V.X(-1.75), V.Y(1.5) + 14, { align: "center", color: c.mute, size: 11 });
+  g.text("bumper", V.X(-1.75), V.Y(1.5) + 14, { align: "center", color: c.mute, size: 11 });
   // The plate: a curved lip about the roller's centre, then the straight ramp. With both sides driven it is a belt.
   var pl = [], i, a, Cp = P(G.C);
   for (i = 0; i <= 16; i++) { a = -Math.PI / 2 - G.TH * i / 16; pl.push(P([G.C[0] + G.Rp * Math.cos(a), G.C[1] + G.Rp * Math.sin(a)])); }
@@ -260,21 +271,22 @@ function draw(g, s, r, t) {
   g.poly(loop.map(P), { stroke: c.text, width: bt, close: true });
   // Arrow on the roller's rim: which way its surface moves (clockwise here, so its underside moves into the robot).
   var rimR = V.L(Rr) + 6;
-  rimArrow(g, Cp[0], Cp[1], rimR, -1.25, -0.1, c.accent);
+  rimArrow(g, Cp[0], Cp[1], rimR, -1.25, -0.1, c.s1);
   // The clock and what is happening, at the top left. (The speed buttons say when it plays slowed.)
   // Every speed arrow is to one scale (length in proportion to speed), so the belt's is exactly twice the piece's.
-  var sv = r.surface / IN, vmax = Math.max(vd, vp, sv, 1), aL = function (v) { return Math.max(12, (phone ? 80 : 124) * v / vmax); };
+  var sv = r.surface / IN, vmax = Math.max(vd, vp, sv, 1), aL = function (v) { return Math.max(12, (phone ? 80 : 92) * v / vmax); };
   var hx = 10, hy = 18;
   var status = t < r.tc ? "driving onto the piece" : jam ? "the piece is shoved before it is taken in" : inside ? "in, " + K.fix(r.time, 2) + " s after the roller touched it" : d < Rb * 0.6 ? "first touch: the roller has it" : "in the pinch: belt on top, " + (both ? "belt" : "plate") + " underneath";
   g.text(K.fix(t, 3) + " s", hx, hy, { weight: 700, size: 13 });
   g.text(status, hx + 62, hy, { color: jam && t >= r.tc ? c.bad : inside ? c.ok : c.text2, weight: 600, size: phone ? 11 : 12 });
   // The one caption: what the speeds are measured against.
   if (vd > 0.05) g.text(phone ? "Speeds relative to the robot; the floor comes at " + K.fix(vd / 12, 1) + " ft/s" : "Speeds are relative to the robot. The floor comes at the robot at the drive speed, " + K.fix(vd / 12, 1) + " ft/s.", hx, hy + 22, { size: 11, weight: 600, color: c.text2, base: "middle" });
-  var ks = phone ? 11 : 12, used = [];
+  var ks = phone ? 11 : 12, used = [], pieceArrow = null, beltArrow = null;
   function free(x0, y0, x1, y1) { return !used.some(function (b) { return x0 < b[2] && x1 > b[0] && y0 < b[3] && y1 > b[1]; }); }
   function put(str, x, y, o) { var w = g.textWidth(str, o), x0 = o.align === "right" ? x - w : x; used.push([x0 - 3, y - 9, x0 + w + 3, y + 9]); g.text(str, x, y, Object.assign({ base: "middle" }, o)); }
   // The piece's speed: an arrow ahead of it, along its path, and its number beside the piece.
-  var bx = V.X(bp[0]), by = V.Y(bp[1]), Rpx = V.L(Rb), col = r.state === "bad" ? c.bad : r.state === "warn" ? c.warn : c.ok;
+  // One colour for each speed, the same as in the charts: the piece green, the belt blue.
+  var bx = V.X(bp[0]), by = V.Y(bp[1]), Rpx = V.L(Rb), col = c.s3, BLUE = c.s1;
   if (d < 0) {
     if (vd > 0.05) put("piece, still on the floor", bx, by - Rpx - 10, { align: "center", color: c.text2, weight: 600, size: phone ? 11 : 12 });
   } else if (jam) {
@@ -288,38 +300,92 @@ function draw(g, s, r, t) {
     // Kept clear of the post that carries the intake (the arrow points at it when the piece is fast).
     var postR = V.X(mountX + post / 2) + 10; if (dir[0] < -0.1) L1 = Math.max(12, Math.min(L1, (sx - postR) / -dir[0]));
     g.arrow(sx, sy, sx + dir[0] * L1, sy - dir[1] * L1, { color: col, width: 3, head: 10 });
-    /* Its number runs along the path, just on the plate's side of the arrow, inside the channel the piece moves in,
-       so it touches neither the belt, the plate nor the ghost of the first touch. */
-    /* Two short lines (the speed, and "half the belt" against a plate), so they end well before the post ahead. On the
-       ramp they sit on the plate's side of the arrow; on the curved lip (the plate is close there) on the open side. */
-    var pdw = d <= G.Larc ? (function () { var vx = bp[0] - G.C[0], vy = bp[1] - G.C[1], vl = Math.hypot(vx, vy) || 1; return [vx / vl, vy / vl]; })() : G.r1;
-    var ang = Math.atan2(-dir[1], dir[0]) + Math.PI, plines = ["piece " + K.fix(vp / 12, 1) + " ft/s"].concat(both ? [] : ["half the belt"]);
-    plines.forEach(function (ln, j) { var sd = d <= G.Larc ? -1 : 1, off = sd * (sd > 0 ? 10 + 11 * j : 17 + 12 * (plines.length - 1 - j)), tax = sx + pdw[0] * off, tay = sy - pdw[1] * off; g.ctx.save(); g.ctx.translate(tax, tay); g.ctx.rotate(ang); g.text(ln, 0, 0, { size: 11, weight: 700, color: col, align: "right", base: "middle" }); g.ctx.restore(); });
+    pieceArrow = [sx, sy, sx + dir[0] * L1, sy - dir[1] * L1];
     /* The pinch, on the ramp: the belt's surface above the piece moves at the roller's surface speed (an arrow just
        under the belt, ahead of the piece, twice as long as the piece's), and the plate under it does not move. */
     if (d > G.Larc) {
       var nT = [-G.r1[0], G.r1[1]], bsx = bx + nT[0] * (Rpx - 4) + dir[0] * (Rpx * 0.5), bsy = by + nT[1] * (Rpx - 4) - dir[1] * (Rpx * 0.5), BL = aL(sv);
-      g.arrow(bsx, bsy, bsx + dir[0] * BL, bsy - dir[1] * BL, { color: c.accent, width: 3, head: 10 });
+      g.arrow(bsx, bsy, bsx + dir[0] * BL, bsy - dir[1] * BL, { color: BLUE, width: 3, head: 10 });
+      beltArrow = [bsx, bsy, bsx + dir[0] * BL, bsy - dir[1] * BL];
       // Its number above the belt, over the pinch, joined to the arrow by a thin line.
-      var up = (Rpx + V.L(2 * Rr) + 16), lx = bx + nT[0] * up, ly = by + nT[1] * up, bt2 = (phone ? "belt " : "belt surface ") + K.fix(sv / 12, 1) + " ft/s";
+      var up = (Rpx + V.L(2 * Rr) + (phone ? 34 : 16)), lx = bx + nT[0] * up, ly = by + nT[1] * up, bt2 = (phone ? "belt " : "belt surface ") + K.fix(sv / 12, 1) + " ft/s";
       // The leader runs from the label to the belt's outer edge, not across the belt.
       var edge = Rpx + V.L(2 * Rr) + 2, ex = bx + nT[0] * edge + dir[0] * BL * 0.5, ey = by + nT[1] * edge - dir[1] * BL * 0.5;
-      g.line(ex, ey, lx, ly + 6, { color: c.accent, width: 1 });
-      put(bt2, Math.min(lx, g.w - g.textWidth(bt2, { size: ks, weight: 700 }) - 6), ly, { size: ks, weight: 700, color: c.accent });
-      /* The plate's speed, written along the plate's underside, starting just right of the bumper and running down the
-         ramp: the open space under the ramp, where the piece never goes. A lower belt moves at the surface speed. */
-      // Two short lines, so they end before the ghost of the first touch.
-      var plt = both ? ["lower belt", K.fix(sv / 12, 1) + " ft/s"] : ["plate: 0 ft/s", "(fixed)"], plw = g.textWidth(plt[0], { size: 11, weight: 700 });
-      var xs = V.ux(V.X(0) + 26), kp = (G.P1[0] - xs) / Math.cos(G.TH), pp = P([G.P1[0] + G.u[0] * kp, G.P1[1] + G.u[1] * kp]);
-      var ptx = pp[0] + G.r1[0] * 12, pty = pp[1] - G.r1[1] * 12;
-      if (ptx + plw * Math.cos(G.TH) < Ep[0] - V.L(Rb) - 4 && pty + plw * Math.sin(G.TH) + 13 < fy - 4) { g.ctx.save(); g.ctx.translate(ptx, pty); g.ctx.rotate(G.TH); plt.forEach(function (ln, j) { g.text(ln, 0, 13 * j, { size: 11, weight: 700, color: c.text2, base: "middle" }); }); g.ctx.restore(); }
+      // On a phone the name sits up and to the left of its leader, clear of the roller at the belt's end.
+      var bw2 = g.textWidth(bt2, { size: ks, weight: 700 }), blx = Math.min(lx, g.w - bw2 - 6), bly = ly;
+      g.line(ex, ey, blx + 4, bly + 6, { color: BLUE, width: 1 });
+      put(bt2, blx, bly, { size: ks, weight: 700, color: BLUE });
     }
   }
   // The roller's surface speed by its rim arrow, while the pinch is not shown (before the piece is on the ramp).
   if (!(d > G.Larc && !inside && !jam)) {
     var rl = (phone ? "belt " : "belt surface ") + K.fix(r.surface / FT, 1) + " ft/s", rlw = g.textWidth(rl, { size: 12, weight: 600 });
     var rlx = Math.min(Cp[0] + rimR + 10, g.w - rlw - 6), rly = Cp[1] - rimR - 4;
-    if (free(rlx - 3, rly - 9, rlx + rlw + 3, rly + 9)) put(rl, rlx, rly, { size: 12, weight: 600, color: c.accent });
+    // Beside the rim arrow; on a phone, where the roller is near the edge, on two short lines.
+    if (phone && rlx < Cp[0] + rimR + 6) { put("belt", Cp[0] + rimR + 6, rly - 13, { size: 11, weight: 700, color: BLUE }); put(K.fix(r.surface / FT, 1) + " ft/s", Cp[0] + rimR + 6, rly, { size: 11, weight: 700, color: BLUE }); }
+    else if (free(rlx - 3, rly - 9, rlx + rlw + 3, rly + 9)) put(rl, rlx, rly, { size: 12, weight: 600, color: BLUE });
+  }
+  /* Level labels. Each is a box that must clear the ball, the arrows, the belt, the plate and every label already
+     placed. A box of width w, height h, its top-left corner at (x, y), is tried at a list of places; the first clear
+     one is used. */
+  // The plate's height at screen x: the straight ramp, then the curved lip about the roller's centre, then the floor.
+  function plateY(x) { var xw = V.ux(x); if (xw <= G.P1[0]) return V.Y(G.P1[1] + Math.tan(G.TH) * (G.P1[0] - xw)); var dx = xw - G.C[0]; return Math.abs(dx) < G.Rp ? V.Y(G.C[1] - Math.sqrt(G.Rp * G.Rp - dx * dx)) : V.Y(0); }
+  function beltY(x) { var bxw = V.ux(x), k = (G.C[0] + G.r1[0] * Rr - bxw) / Math.cos(G.TH); return V.Y(G.C[1] + G.r1[1] * Rr + Math.sin(G.TH) * k); }
+  function segHit(sg, x0, y0, x1, y1) { if (!sg) return false; for (var q = 0; q <= 10; q++) { var px = sg[0] + (sg[2] - sg[0]) * q / 10, py = sg[1] + (sg[3] - sg[1]) * q / 10; if (px > x0 - 5 && px < x1 + 5 && py > y0 - 5 && py < y1 + 5) return true; } return false; }
+  function clear(x0, y0, w, h) {
+    var x1 = x0 + w, y1 = y0 + h;
+    if (x0 < 4 || x1 > g.w - 4 || y0 < 30 || y1 > fy - 2) return false;
+    if (!free(x0, y0, x1, y1)) return false;
+    var cx = Math.max(x0, Math.min(bx, x1)), cy = Math.max(y0, Math.min(by, y1)); if (Math.hypot(cx - bx, cy - by) < Rpx + 4) return false;
+    if (segHit(pieceArrow, x0, y0, x1, y1) || segHit(beltArrow, x0, y0, x1, y1)) return false;
+    // Above the plate and below the belt's lower run (the channel), or below the plate: not across either line.
+    var pl = Math.min(plateY(x0), plateY(x1)), ph = Math.max(plateY(x0), plateY(x1)), bl = Math.max(beltY(x0), beltY(x1));
+    var inChannel = y0 > bl + 3 && y1 < pl - 3, under = y0 > ph + 2;
+    // Clear of the ghost of the first touch too.
+    if (firstShown) { var gx = Math.max(x0, Math.min(Ep[0], x1)), gy = Math.max(y0, Math.min(Ep[1], y1)); if (Math.hypot(gx - Ep[0], gy - Ep[1]) < V.L(Rb) + 3) return false; }
+    if (x0 < V.X(mountX + post / 2) + 4) return false;
+    return inChannel || under && x0 > V.X(0) + 4;
+  }
+  function label(lines, color, places) {
+    var o = { size: 11, weight: 700 }, w = Math.max.apply(null, lines.map(function (t) { return g.textWidth(t, o); })) + 4, h = 12 * lines.length + 1;
+    for (var q = 0; q < places.length; q++) {
+      /* A place is [x, y, how x is read: "c" centre or "l" left, how y is read]: y "chan" puts the box in the middle of
+         the channel between the belt and the plate at that x; "under" puts it just under the plate. */
+      var x0 = places[q][0] - (places[q][2] === "c" ? w / 2 : places[q][2] === "r" ? w : 0), y0;
+      if (places[q][3] === "chan") y0 = (Math.max(beltY(x0), beltY(x0 + w)) + Math.min(plateY(x0), plateY(x0 + w))) / 2 - h / 2;
+      else if (places[q][3] === "under") y0 = Math.max(plateY(x0), plateY(x0 + w)) + 3;
+      else if (places[q][3] === "high") y0 = Math.max(beltY(x0), beltY(x0 + w)) + 4;
+      else if (places[q][3] === "low" && pieceArrow) { var sl = (pieceArrow[3] - pieceArrow[1]) / ((pieceArrow[2] - pieceArrow[0]) || 1e-9), ay = function (x) { return pieceArrow[1] + (x - pieceArrow[0]) * sl; }; y0 = Math.max(ay(x0), ay(x0 + w)) + 4; }
+      else y0 = places[q][1] - (places[q][3] === "c" ? h / 2 : 0);
+      if (clear(x0, y0, w, h)) { lines.forEach(function (t, j) { g.text(t, x0 + 2, y0 + 6 + 12 * j, Object.assign({ color: color, base: "middle" }, o)); }); used.push([x0 - 2, y0 - 2, x0 + w + 2, y0 + h + 2]); return [x0, y0, w, h]; }
+    }
+    return null;
+  }
+  // The piece's speed, level, in the channel ahead of its arrow (or behind the piece, or under the ramp).
+  if (pieceArrow) {
+    var ux = -Math.cos(G.TH), uy = -Math.sin(G.TH), pl2 = ["piece " + K.fix(vp / 12, 1) + " ft/s"].concat(both ? [] : ["half the belt"]), cands = [];
+    for (var kq = 0; kq < 24; kq++) cands.push([pieceArrow[2] + ux * (10 + 8 * kq), 0, "c", "chan"]);
+    // Under the arrow, between it and the plate, beside the piece.
+    for (kq = 0; kq < 24; kq++) cands.push([pieceArrow[0] + ux * (8 * kq) - 60, 0, "l", "low"]);
+    // Between the arrow and the belt above it.
+    for (kq = 0; kq < 24; kq++) cands.push([pieceArrow[0] + ux * (8 * kq) - 30, 0, "l", "high"]);
+    for (kq = 0; kq < 12; kq++) cands.push([bx - ux * (Rpx + 30 + 9 * kq), 0, "c", "chan"]);
+    // If the full words find no clear place (the channel is short on a wide drawing), the same in fewer letters.
+    if (!label(pl2, col, cands)) label(both ? ["piece", K.fix(vp / 12, 1) + " ft/s"] : ["piece, half:", K.fix(vp / 12, 1) + " ft/s"], col, cands);
+  }
+  /* The plate, named in every frame (still or playing): under the ramp, level, in the open space right of the bumper,
+     with a short leader up to the plate. */
+  if (!jam) {
+    var pt2 = both ? ["lower belt,", K.fix(sv / 12, 1) + " ft/s"] : ["fixed plate,", "0 ft/s"], pc = [], xq;
+    for (xq = V.X(0) + 6; xq < Ep[0]; xq += 5) pc.push([xq, 0, "l", "under"]);
+    var bxp = label(pt2, c.text2, pc);
+    if (bxp) { var lxp = bxp[0] + 6; g.line(lxp, bxp[1] - 1, lxp, plateY(lxp) + 2, { color: c.text2, width: 1 }); }
+    else {
+      // The piece is passing over that spot: the name goes just under the floor, with its leader up to the plate.
+      var fx0 = V.X(0) + 10, ft2 = pt2.join(" ");
+      g.text(ft2, fx0, fy + 16, { size: 11, weight: 700, color: c.text2 });
+      g.line(fx0 + 6, fy + 5, fx0 + 6, plateY(fx0 + 6) + 2, { color: c.text2, width: 1 });
+    }
   }
   // The first touch: under the floor beneath the ghost, the two speeds compared there.
   if (vd > 0.05 && d >= -1e-9 || firstShown && vd > 0.05) {
@@ -330,8 +396,8 @@ function draw(g, s, r, t) {
      first touch, pointing at the robot, with its speed. */
   if (vd > 0.05) {
     var flab = "floor " + K.fix(vd / 12, 1) + " ft/s", fL = aL(vd), fyy = fy + 32, fx = Math.min(Ep[0], g.w - 16 - g.textWidth(flab, { size: ks, weight: 700 }));
-    g.arrow(fx + 2, fyy, fx + 2 - fL, fyy, { color: c.s1, width: 3, head: 10 });
-    g.text(flab, fx + 10, fyy, { size: ks, weight: 700, color: c.s1, base: "middle" });
+    g.arrow(fx + 2, fyy, fx + 2 - fL, fyy, { color: c.text2, width: 3, head: 10 });
+    g.text(flab, fx + 10, fyy, { size: ks, weight: 700, color: c.text2, base: "middle" });
   }
 }
 })(typeof window !== "undefined" ? window : this);
