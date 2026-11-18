@@ -8,9 +8,11 @@ Every judge in a tier must score every area at the tier's target. Fixes are made
 |---|---|---|---|---|
 | 1 | 1 (7.5) | Haiku, GPT-6 Luna | 7.0 to 8.7 | 10 of 16 areas under 7.5 |
 | 2 | 1 (7.5) | Haiku, GPT-6 Luna | 7.5 to 8.5 | passed |
-| 3 | 2 (8.5) | Sonnet, GPT-6.1 Terra | 7.0 to 8.6 | 16 of 16 areas under 8.5 from at least one judge |
+| 3 | 2 (8.5) | Sonnet, GPT-6.1 Terra, Grok 4.6 | 6.7 to 8.7 | 16 of 16 areas under 8.5 from at least one judge |
+| 4 | 2 (8.5) | Sonnet, GPT-6.1 Terra, Grok 4.6 | with the judges | |
 
 Grok 4.5 was thrown out in rounds 1 and 2: asked to copy exact text from three screenshots, it invented it.
+Grok 4.6 copied the text correctly in round 3 and counts.
 
 ## Round 3 fixes for coders (binding; the common rules of GROUND_UP_BUILD.md apply)
 

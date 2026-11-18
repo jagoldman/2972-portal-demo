@@ -13,8 +13,14 @@ D.inits.push(function (S) {
 var CHOICES = [["bell", "Bell only", false, false], ["email", "Bell and email", false, true], ["discord", "Bell and Discord", true, false], ["both", "Bell, Discord and email", true, true]];
 function choiceOf(p, linked) { var d = p.discord && linked; return CHOICES.filter(function (c) { return c[2] === d && c[3] === p.email; })[0]; }
 function appSummary(ap, linked) { var names = KINDS.map(function (k) { return choiceOf(ap[k[0]], linked)[1]; }); if (names.every(function (n) { return n === names[0]; })) return names[0]; if (!D.ground()) return "Mixed";
-  // Ground up names the channels (hill climb r2: "Mixed" did not say what was on).
-  var uniq = names.filter(function (n, i) { return names.indexOf(n) === i; }); return uniq.length === 2 ? uniq[0] + " for some, " + uniq[1].charAt(0).toLowerCase() + uniq[1].slice(1) + " for others" : "Different for each kind"; }
+  /* Ground up counts the kinds that also go to Discord and to email (hill climb r3: a sentence that named the
+     channels repeated on every row and said little). The bell is always on, so it is not counted. A channel that
+     every kind uses comes first, as "for all". */
+  var n = KINDS.length, d = 0, e = 0;
+  KINDS.forEach(function (k) { var c = choiceOf(ap[k[0]], linked); if (c[2]) d++; if (c[3]) e++; });
+  var parts = [["Discord", d], ["email", e]].filter(function (x) { return x[1] > 0; }).sort(function (a, b) { return (b[1] === n) - (a[1] === n); });
+  var text = parts.map(function (x, i) { return x[0] + " for " + (x[1] === n ? "all" : x[1] + (i === parts.length - 1 ? " of " + n : "")); }).join(", ");
+  return text.charAt(0).toUpperCase() + text.slice(1); }
 function Acc() { return D.S.account; }
 D.views.account = function () {
   var a = Acc(), apps = APPS.filter(function (id) { return D.inGroup(id); });

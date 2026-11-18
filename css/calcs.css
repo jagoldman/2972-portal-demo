@@ -121,3 +121,14 @@
 .calchow summary::-webkit-details-marker { display: none; }
 .calchow summary::after { content: "+"; margin-left: auto; width: 24px; text-align: center; font-size: 1.2rem; font-weight: 500; color: var(--mute); }
 .calchow[open] summary::after { content: "\2212"; }
+
+/* ---------- Hill climb, round 3 ---------- */
+/* The answer stays in view: on a wide screen the results column sticks under the app bar while the inputs scroll. */
+@media (min-width: 760px) {
+  .calccols:not(.one) > .calcout { position: sticky; top: calc(var(--bar) + 12px); }
+}
+/* On a phone the drawing and the charts are drawn at about 390 px for a 400-unit box, so their text is set to
+   16 units (about 15 px) to be read at arm's length. */
+@media (max-width: 640px) {
+  .calcchart text, .calcdraw text { font-size: 16px; }
+}

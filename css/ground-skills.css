@@ -1,5 +1,5 @@
 /* Design 8.3, Ground up ("c"): Skills. Every rule sits under :root[data-design="c"]. See GROUND_UP.md §4, Skills.
-   What it adds: the student's "Machines you can use" rows, the order of the two Overview lists, the "Waiting on a
+   What it adds: the student's "Your machines" rows, the order of the two Overview lists, the "Waiting on a
    mentor" line, and the "Find a student" box on the Permissions tab. */
 
 :root[data-design="c"] {
@@ -8,12 +8,16 @@
      column on a phone, two on a tablet and three on a laptop. The columns are fixed at each width, so the first row
      of each column can drop its top line. */
   .skmachs { grid-template-columns: minmax(0, 1fr); column-gap: 24px; }
-  .skmach { display: grid; grid-template-columns: minmax(0, 1fr) auto; align-items: baseline; gap: 2px 12px; width: 100%; min-width: 0; padding: 8px 4px; border: 0; border-top: 1px solid var(--line); background: none; color: var(--text); font: inherit; text-align: left; }
+  .skmach { display: grid; grid-template-columns: minmax(0, 1fr) auto auto; align-items: baseline; gap: 2px 12px; width: 100%; min-width: 0; padding: 8px 4px; border: 0; border-top: 1px solid var(--line); background: none; color: var(--text); font: inherit; text-align: left; }
   .skmach:first-child { border-top: 0; }
   .skmach .skmn { min-width: 0; font-weight: 650; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
   .skmach .pill { justify-self: end; }
-  .skmach .skml { grid-column: 1 / -1; min-width: 0; font-size: .86rem; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  .skmach .skml { grid-column: 1 / 3; min-width: 0; font-size: .86rem; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
   .skmach:focus-visible { outline: 2px solid var(--accent); outline-offset: -2px; }
+  /* The chevron says the row is a door (hill climb r3). It sits at the right, centred on both lines. */
+  .skmach .chev { grid-column: 3; grid-row: 1 / span 2; align-self: center; margin-left: 0; }
+  .skmach.noline { align-items: center; }
+  .skmach.noline .chev { grid-row: 1; }
   @media (min-width: 641px) {
     .skmachs { grid-template-columns: repeat(2, minmax(0, 1fr)); }
     .skmach:nth-child(2) { border-top: 0; }
@@ -46,4 +50,24 @@
   @media (max-width: 640px) {
     .sktable:not(.skperms) :is(th, td):nth-child(n+2):nth-last-child(n+4) { display: none; }
   }
+
+  /* ---------- Hill climb, round 3 ---------- */
+  /* Group sign-off: a student who cannot be picked keeps the tick box's space, so the names line up. */
+  .skpickno { width: 44px; height: 40px; }
+  .skpicknone { margin: 0; color: var(--text); }
+  .skpick.nobox { grid-template-columns: minmax(0, 1fr) auto; }
+  /* Students table: the trees' full names head the columns, two lines at most. */
+  .sktable:not(.skperms) th.sktreeh { white-space: normal; vertical-align: bottom; min-width: 6.5em; max-width: 9em; line-height: 1.25; }
+  .sktable:not(.skperms) thead th { vertical-align: bottom; }
+  @media (max-width: 640px) {
+    .sktable:not(.skperms) tbody td { height: 44px; }
+    /* Skill trees on a phone keep a short bar beside the percentage, so the number has something to read against. */
+    .sktree .skpct { width: 112px; }
+    .sktree .skpct .bar { display: flex; flex: 0 0 64px; }
+  }
+
+  /* Everyone's progress: one quiet row that opens the table (the lead, hill climb r3). */
+  .skeveryone .grphead { padding-inline: 4px; min-height: 44px; }
+  .skeveryone .grpname { font-family: var(--display); font-stretch: var(--wide); font-weight: 700; font-size: 1rem; color: var(--text); }
+  .skeveryone #sk-everyone { display: grid; gap: 8px; padding-top: 4px; }
 }

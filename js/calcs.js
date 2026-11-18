@@ -55,14 +55,17 @@ var M = D.calcMath = {
   drive: function (m, n, ratio, wheelIn, weightLb, lim, mu, distFt, eff) {
     var r = wheelIn / 2 * IN, mass = weightLb * LB, grip = mu * mass * G, dist = distFt * FT;
     var push = n * M.torque(m, 0, lim) * ratio * eff / r;
-    var x = 0, v = 0, t = 0, dt = 0.005, trace = [[0, 0]], k = 0;
+    var free = m.free / 60 / ratio * Math.PI * wheelIn / 12;
+    // atFree: the distance (ft) where the speed first comes within 0.05 ft/s of free speed, or null if it never does.
+    var x = 0, v = 0, t = 0, dt = 0.005, trace = [[0, 0]], k = 0, atFree = null;
     while (t < 10 - 1e-9 && x < dist) {
       var f = Math.min(n * M.torque(m, v / r * ratio, lim) * ratio * eff / r, grip);
       v += f / mass * dt; x += v * dt; t += dt; k++;
+      if (atFree === null && free - v / FT < 0.05) atFree = x / FT;
       if (k % 10 === 0) trace.push([t, v / FT]);
     }
     if (k % 10) trace.push([t, v / FT]);
-    return { free: m.free / 60 / ratio * Math.PI * wheelIn / 12, slip: push > grip, push: push, grip: grip, reached: x >= dist, time: x >= dist ? t : null, speed: v / FT, trace: trace };
+    return { free: free, slip: push > grip, push: push, grip: grip, reached: x >= dist, time: x >= dist ? t : null, speed: v / FT, atFree: atFree, trace: trace };
   },
 
   /* Belts and chain. Straight spans use the pitch radii; each pulley or sprocket adds its wrapped share of teeth
@@ -315,8 +318,11 @@ def({ id: "calc-drive", key: "drive", name: "Drivetrain", icon: "cdrive", line: 
     if (!err && !inRange(dist, 0.5, 100)) err = "Type a distance between 0.5 and 100 ft.";
     if (!err && !inRange(mu, 0.05, 3)) err = "Type a wheel grip between 0.05 and 3.";
     var d = err ? null : M.drive(r.m, r.n, ratio, wheel, wt, r.lim, mu, dist, r.eff);
-    var rows = [row("Free speed", d ? fx(d.free, 1) : DASH, "ft/s"), row("Speed after " + (ok(dist) ? dist : DASH) + " ft", d && d.reached ? fx(d.speed, 1) : DASH, "ft/s"), row("Time to cover it", d && d.reached ? fx(d.time, 2) : DASH, "s"),
-      '<div><dt>Wheels at the start</dt><dd>' + (d ? (d.slip ? '<span class="pill warn">Slip</span>' : '<span class="pill ok">Grip</span>') : DASH) + "</dd></div>"];
+    /* When the robot is at free speed before the distance is up, "speed after 15 ft" would only repeat the free
+       speed, so the row says where free speed was reached instead (hill climb r3). */
+    var atFree = d && d.reached && d.atFree !== null;
+    var rows = [row("Free speed", d ? fx(d.free, 1) : DASH, "ft/s"), atFree ? row("Free speed reached", "after " + fx(d.atFree, 1), "ft") : row("Speed after " + (ok(dist) ? dist : DASH) + " ft", d && d.reached ? fx(d.speed, 1) : DASH, "ft/s"), row("Time to cover it", d && d.reached ? fx(d.time, 2) : DASH, "s"),
+      '<div><dt>Wheels at the start</dt><dd>' + (d ? (d.slip ? '<span class="pill warn">Wheels slip</span>' : '<span class="pill ok">Grip holds</span>') : DASH) + "</dd></div>"];
     var html = results(rows);
     if (d) {
       var tr = d.trace, last = tr[tr.length - 1], ymax = Math.max(d.free, last[1]) * 1.08;
@@ -551,7 +557,7 @@ def({ id: "calc-motors", key: "motors", name: "Motors", icon: "cmotor", line: "W
     var html = results([row(esc(a.name) + ", peak power", rpm(pa), "W")].concat(same ? [] : [row(esc(b.name) + ", peak power", rpm(pb), "W")]), "Peak power of the two motors");
     var top = a.ts >= b.ts ? a : b, other = top === a ? b : a;
     html += chart({ title: same ? "Torque against speed for the " + a.name : "Torque against speed for the " + top.name + " and the " + other.name, ylab: "Torque, N·m", xlab: "Speed, rpm", xmax: Math.max(a.free, b.free), ymax: top.ts * 1.05,
-      series: [{ pts: motorCurve(top), label: top.name, lab: [top.free * 0.12, top.ts * 0.88, "start"] }].concat(same ? [] : [{ pts: motorCurve(other), label: other.name, lab: [other.free * 0.5, other.ts * 0.5, "start", 20] }]) });
+      series: [{ pts: motorCurve(top), label: top.name, lab: [top.free * 0.12, top.ts * 0.88, "start"] }].concat(same ? [] : [{ pts: motorCurve(other), label: other.name, lab: [other.free * 0.5, other.ts * 0.5, "end", 20] }]) });
     var ans = same ? "Pick two different motors to compare them." :
       "The " + (pa >= pb ? a : b).name + " has " + fx(Math.max(pa, pb) / Math.min(pa, pb), 1) + " times the peak power of the " + (pa >= pb ? b : a).name + " (" + rpm(Math.max(pa, pb)) + " W against " + rpm(Math.min(pa, pb)) + " W).";
     return { ans: esc(ans), bad: false, html: html, wide: motorTable(st) };

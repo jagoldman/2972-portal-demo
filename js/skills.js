@@ -462,7 +462,13 @@ function overview() {
     Object.keys(P[st]).forEach(function (k) { if (P[st][k].s === "progress") prog++; });
     return '<tr class="click" data-act="skstudent" data-v="' + esc(st) + '"><td><b>' + esc(st) + "</b>" + (st === "Sam Ortiz" && S.role === "student" ? ' <span class="who">(you)</span>' : "") + "</td>" + cells + '<td class="num">' + d + '</td><td class="num">' + prog + '</td><td class="num">' + D.pct(d, all) + "%</td></tr>";
   }).join("");
-  html += '<div class="card"><div class="row between"><h2>Students</h2><span class="who">Tap a row to open their trees.</span></div><div class="tablewrap" data-keepscroll="skstudents"><table class="sktable"><thead><tr><th>Student</th>' + TREES.map(function (t) { return "<th" + (t.name !== t.tag ? ' data-tip="' + esc(t.name) + '"' : "") + ">" + t.tag + "</th>"; }).join("") + "<th>Done</th><th>Started</th><th>Overall</th></tr></thead><tbody>" + rows + "</tbody></table></div></div>";
+  /* Ground up: a student's overview is about their own machines and skills. Everyone's numbers are one press away,
+     closed until asked for, so the page does not end on a comparison table (hill climb r3). Mentors see it open. */
+  if (D.ground() && !staff) {
+    var open = !!S.sk.everyone;
+    html += '<div class="card skeveryone"><button class="grphead" data-act="skeveryone" aria-expanded="' + open + '" aria-controls="sk-everyone"><span class="grpname">Everyone\'s progress</span><span class="grpchev" aria-hidden="true">' + D.ic("chevron", 16) + '</span></button><div id="sk-everyone"' + (open ? "" : " hidden") + '><p class="who">Tap a row to open their trees.</p><div class="tablewrap" data-keepscroll="skstudents"><table class="sktable"><thead><tr><th>Student</th>' + TREES.map(function (t) { return D.ground() ? '<th class="sktreeh">' + esc(t.name) + "</th>" : "<th" + (t.name !== t.tag ? ' data-tip="' + esc(t.name) + '"' : "") + ">" + t.tag + "</th>"; }).join("") + "<th>Done</th><th>Started</th><th>Overall</th></tr></thead><tbody>" + rows + "</tbody></table></div></div></div>";
+  } else
+  html += '<div class="card"><div class="row between"><h2>Students</h2><span class="who">Tap a row to open their trees.</span></div><div class="tablewrap" data-keepscroll="skstudents"><table class="sktable"><thead><tr><th>Student</th>' + TREES.map(function (t) { return D.ground() ? '<th class="sktreeh">' + esc(t.name) + "</th>" : "<th" + (t.name !== t.tag ? ' data-tip="' + esc(t.name) + '"' : "") + ">" + t.tag + "</th>"; }).join("") + "<th>Done</th><th>Started</th><th>Overall</th></tr></thead><tbody>" + rows + "</tbody></table></div></div>";
   return html;
 }
 /* ---------- Ground up (GROUND_UP.md §4, Skills) ----------
@@ -500,12 +506,12 @@ function machineRow(m, name) {
     var asked = D.S.sk.requests.some(function (r) { return r.st === name && r.id === m.next.s.id; });
     line = (asked ? "Asked for sign-off: " : "Next: ") + m.next.s.name;
   } else line = "Open the qualification";
-  return '<button class="li skmach" data-act="skmine" data-v="' + open + '"><b class="skmn">' + esc(m.tool.name) + "</b>" + permitPill(m.state) + '<span class="who skml">' + esc(line) + "</span></button>";
+  return '<button class="li skmach" data-act="skmine" data-v="' + open + '"><b class="skmn">' + esc(m.tool.name) + "</b>" + permitPill(m.state) + '<span class="who skml">' + esc(line) + '</span><span class="chev" aria-hidden="true">›</span></button>';
 }
 function groundStudent(me) {
   var n = nextUp(me), cap = readyAll ? n.ready.length : 3, html = "";
   var mach = myMachines(me), cleared = mach.filter(function (m) { return m.state === "yes"; }).length;
-  html += '<div class="card skmachines"><div class="row between"><h2>Machines you can use</h2><span class="who">' + cleared + " of " + mach.length + ' cleared</span></div>' +
+  html += '<div class="card skmachines"><div class="row between"><h2>Your machines</h2><span class="who">' + cleared + " of " + mach.length + ' cleared</span></div>' +
     '<p class="who">Cleared: a mentor signed off your test and your demonstration.</p>' +
     '<div class="list skmachs">' + mach.map(function (m) { return machineRow(m, me); }).join("") + "</div></div>";
   html += '<div class="card skhalf"><div class="row between"><h2>Finish what you started</h2>' + (n.prog.length ? '<span class="tcount">' + n.prog.length + "</span>" : "") + "</div>" +
@@ -560,8 +566,11 @@ function permitsView() {
     var st = list[0];
     tapWhat = "a machine";
     body = '<div><h3>' + esc(st) + '</h3><div class="list skmachs">' + PERMITS.map(function (tool) {
-      var state = permitState(P[st], tool);
-      return '<button class="li skmach" data-act="skpermit" data-st="' + esc(st) + '" data-cat="' + tool.cat + '" data-skill="' + tool.skill + '"><b class="skmn">' + esc(tool.name) + "</b>" + permitPill(state) + '<span class="who skml">' + esc(tipFor(state, P[st][tool.skill])) + "</span></button>";
+      var state = permitState(P[st], tool), rec = P[st][tool.skill];
+      /* A line only where it adds something: who signed off and when, or that training has started. "Not yet"
+         already says the rest, so a not-started row has no line (hill climb r3). */
+      var line = state === "yes" ? "Signed off by " + rec.by + ", " + rec.at : state === "training" ? "Started. May not use it alone yet." : "";
+      return '<button class="li skmach' + (line ? "" : " noline") + '" data-act="skpermit" data-st="' + esc(st) + '" data-cat="' + tool.cat + '" data-skill="' + tool.skill + '"><b class="skmn">' + esc(tool.name) + "</b>" + permitPill(state) + (line ? '<span class="who skml">' + esc(line) + "</span>" : "") + '<span class="chev" aria-hidden="true">›</span></button>';
     }).join("") + "</div></div>";
   } else body = table;
   return '<div class="card"><div><h2>Who can use which machine</h2><p class="who">Cleared means the written test and the demonstration are signed off. Tap ' + tapWhat + ' to open that skill.</p></div>' + find + body + "</div>";
@@ -658,18 +667,37 @@ D.drawers.skill = function (d) {
 };
 function signoffView() {
   var S = D.S, b = S.sk.bulk, s = BYID[b.id];
+  /* Ground up: until a mentor picks a skill, the group list opens on the skill most students can be signed off on,
+     so the screen never opens on a list where nobody can be picked (hill climb r3). */
+  if (D.ground() && !b.chosen) {
+    var best = null, bestN = 0;
+    TREES.forEach(function (t) { t.cats.forEach(function (c) { c.skills.forEach(function (x) {
+      var n = STUDENTS.filter(function (st) { var k = skillStatus(st, S.sk.prog[st], t, c, x); return k !== "complete" && k !== "locked"; }).length;
+      if (n > bestN) { bestN = n; best = x; }
+    }); }); });
+    b.chosen = true; if (best && best.id !== b.id) { b.id = best.id; b.picks = {}; s = best; }
+  }
   var opts = TREES.map(function (t) { return '<optgroup label="' + esc(t.name) + '">' + t.cats.map(function (c) { return c.skills.map(function (x) { return '<option value="' + x.id + '"' + (x.id === b.id ? " selected" : "") + ">" + esc(c.name + " › " + x.name) + "</option>"; }).join(""); }).join("") + "</optgroup>"; }).join("");
-  var people = STUDENTS.map(function (st) {
-    var p = S.sk.prog[st], t = tree(s.tree), c = cat(t, s.cat), stt = skillStatus(st, p, t, c, s);
-    var can = stt !== "complete" && stt !== "locked";
-    return '<div class="skpick"><button class="bigcheck sm" data-act="skbulkpick" data-v="' + esc(st) + '" aria-pressed="' + !!b.picks[st] + '"' + (can ? "" : " disabled") + ' aria-label="Pick ' + esc(st) + '">' + D.ic("check", 22) + "</button><b>" + esc(st) + '</b><span class="pill ' + (stt === "complete" ? "ok" : stt === "locked" ? "" : "info") + '">' + ({ complete: D.ground() ? "Signed off" : "Done", locked: D.ground() ? "Not open yet" : "Locked", requested: "Asked", progress: "In progress", available: "Available" })[stt] + "</span></div>";
+  var g = D.ground(), t0 = tree(s.tree), c0 = cat(t0, s.cat);
+  var states = STUDENTS.map(function (st) { return skillStatus(st, S.sk.prog[st], t0, c0, s); });
+  var pickable = states.filter(function (x) { return x !== "complete" && x !== "locked"; }).length;
+  var people = STUDENTS.map(function (st, i) {
+    var stt = states[i], can = stt !== "complete" && stt !== "locked";
+    /* Ground up: a student who cannot be picked gets no tick box, so an empty box always means "you may tick this"
+       (hill climb r3). The space stays while anyone can be picked, so the names line up; when nobody can, the
+       rows drop it. */
+    if (g && !can && !pickable) return '<div class="skpick nobox"><b>' + esc(st) + '</b><span class="pill ' + (stt === "complete" ? "ok" : "") + '">' + (stt === "complete" ? "Signed off" : "Not open yet") + "</span></div>";
+    var box = g && !can ? '<span class="skpickno" aria-hidden="true"></span>' : '<button class="bigcheck sm" data-act="skbulkpick" data-v="' + esc(st) + '" aria-pressed="' + !!b.picks[st] + '"' + (can ? "" : " disabled") + ' aria-label="Pick ' + esc(st) + '">' + D.ic("check", 22) + "</button>";
+    return '<div class="skpick">' + box + "<b>" + esc(st) + '</b><span class="pill ' + (stt === "complete" ? "ok" : stt === "locked" ? "" : "info") + '">' + ({ complete: g ? "Signed off" : "Done", locked: g ? "Not open yet" : "Locked", requested: "Asked", progress: "In progress", available: "Available" })[stt] + "</span></div>";
   }).join("");
+  var nobody = g && !pickable ? '<p class="skpicknone">Nobody can be signed off on this skill: everyone has it or it is not open to them yet.</p>' : "";
   var n = Object.keys(b.picks).filter(function (k) { return b.picks[k]; }).length;
   var queue = S.sk.requests.length ? S.sk.requests.map(function (r, i) {
     var x = BYID[r.id];
-    return '<div class="li skq"><span class="grow"><b>' + esc(r.st) + "</b> asks for <b>" + esc(x.name) + '</b><br><span class="who">' + esc(tree(x.tree).name) + " › " + esc(cat(tree(x.tree), x.cat).name) + (r.note ? " · “" + esc(r.note) + "”" : "") + '</span></span><span class="skqa"><button class="btn" data-act="skqok" data-i="' + i + '">Sign off</button><button class="btn ghost" data-act="skqno" data-i="' + i + '">Not yet</button></span></div>';
+    return '<div class="li skq"><span class="grow"><b>' + esc(r.st) + "</b> asks for <b>" + esc(x.name) + '</b><br><span class="who">' + esc(tree(x.tree).name) + " › " + esc(cat(tree(x.tree), x.cat).name) + (r.note ? " · “" + esc(r.note) + "”" : "") + '</span></span><span class="skqa"><button class="btn" data-act="skqok" data-i="' + i + '">Sign off</button><button class="btn ghost" data-act="skqno" data-i="' + i + '">' + (D.ground() ? "Send back" : "Not yet") + "</button></span></div>";
   }).join("") : '<p class="mute">No one is waiting for a sign-off.</p>';
-  return '<div class="grid2"><div class="card"><div class="row between"><h2>Waiting for sign-off</h2>' + (S.sk.requests.length ? '<span class="tcount warn">' + S.sk.requests.length + "</span>" : "") + '</div><div class="list">' + queue + '</div></div><div class="card"><div><h2>Sign off a group</h2><p class="who">Pick the skill, tick who did it.</p></div><div class="field"><label for="sk-bulk">Skill</label><select id="sk-bulk" data-change="skbulk">' + opts + "</select></div><div>" + people + '</div><div class="row"><button class="btn primary" data-act="skbulkgo"' + (n ? "" : " disabled") + ">Sign off " + n + " student" + (n === 1 ? "" : "s") + "</button></div></div></div>";
+  var sendBack = g && S.sk.requests.length ? '<p class="who">Send back tells the student what to practice first.</p>' : "";
+  return '<div class="grid2"><div class="card">' + (sendBack ? "<div>" : "") + '<div class="row between"><h2>Waiting for sign-off</h2>' + (S.sk.requests.length ? '<span class="tcount warn">' + S.sk.requests.length + "</span>" : "") + "</div>" + (sendBack ? sendBack + "</div>" : "") + '<div class="list">' + queue + '</div></div><div class="card"><div><h2>Sign off a group</h2><p class="who">Pick the skill, tick who did it.</p></div><div class="field"><label for="sk-bulk">Skill</label><select id="sk-bulk" data-change="skbulk">' + opts + "</select></div><div>" + people + "</div>" + nobody + '<div class="row"><button class="btn primary" data-act="skbulkgo"' + (n ? "" : " disabled") + ">" + (D.ground() && !n ? "Sign off" : "Sign off " + n + " student" + (n === 1 ? "" : "s")) + "</button></div></div></div>";
 }
 function editView() {
   var ai = D.S.sk.ai;
@@ -719,7 +747,8 @@ A.skcancelreq = function (b) { var S = D.S; S.sk.requests = S.sk.requests.filter
 A.skqok = function (b) { var S = D.S, r = S.sk.requests[+b.dataset.i]; if (!setDone(r.st, r.id)) { D.toast("Finish the level before this one first."); D.render(); return; } D.log("signed off " + r.st + " on " + BYID[r.id].name, "skills"); if (r.st === "Sam Ortiz") D.notify("student", "skills", D.me().name + " signed you off on " + BYID[r.id].name + "."); D.toast("Signed off " + r.st + "."); D.render(); };
 A.skqno = function (b) { var S = D.S, r = S.sk.requests.splice(+b.dataset.i, 1)[0]; if (r.st === "Sam Ortiz") D.notify("student", "skills", D.me().name + " says not yet on " + BYID[r.id].name + ". Ask them what to practice."); D.render(); };
 D.inputs.skfind = function (el) { D.S.sk.find = el.value; D.render(); };
-D.changes.skbulk = function (el) { D.S.sk.bulk = { id: el.value, picks: {} }; D.render(); };
+D.changes.skbulk = function (el) { D.S.sk.bulk = { id: el.value, picks: {}, chosen: true }; D.render(); };
+A.skeveryone = function () { D.S.sk.everyone = !D.S.sk.everyone; D.render(); var el = document.querySelector('[data-act="skeveryone"]'); if (el) el.focus(); };
 A.skbulkpick = function (b) { var p = D.S.sk.bulk.picks; p[b.dataset.v] = !p[b.dataset.v]; D.render(); };
 A.skbulkgo = function () { var S = D.S, b = S.sk.bulk, names = Object.keys(b.picks).filter(function (k) { return b.picks[k]; }); var done = names.filter(function (st) { return setDone(st, b.id); }); D.log("signed off " + done.length + " students on " + BYID[b.id].name, "skills"); b.picks = {}; D.toast("Signed off " + done.length + " on " + BYID[b.id].name + "."); D.render(); };
 A.skaipick = function () { D.S.sk.ai = [ { op: "Add", name: "Inspect battery leads", note: "Before each match: cracks, loose lugs, heat marks" }, { op: "Add", name: "Torque SB50 terminals", note: "Needs: Large lugs" }, { op: "Add", name: "Label and log a battery", note: "Number, date, first use" }, { op: "Update", name: "Power distribution", note: "Adds “check the main breaker rating” to the description" } ]; D.render(); };
