@@ -40,7 +40,7 @@ K.tool({
     var kind = K.seg(ID, "kind", "They are joined by", [["belt", "Belt"], ["chain", "Chain"], ["gear", "Gears"]]);
     var size = s.kind === "belt" ? K.pick(ID, "belt", "Belt", F.BELTS.map(function (b) { return [b.id, b.name]; })) :
       s.kind === "chain" ? K.pick(ID, "chain", "Chain", F.CHAINS.map(function (c) { return [c.id, c.name]; })) :
-      K.pick(ID, "gear", "Tooth size", GEARS.map(function (g) { return [g[0], g[1]]; }), { tip: "DP is teeth per inch of pitch diameter. Module is millimetres of pitch diameter per tooth." });
+      K.pick(ID, "gear", "Tooth size", GEARS.map(function (g) { return [g[0], g[1]]; }), { hint: "DP: teeth per inch of pitch diameter. Module: mm of pitch diameter per tooth.", tip: "DP is teeth per inch of pitch diameter. Module is millimetres of pitch diameter per tooth." });
     var word = s.kind === "belt" ? "pulley" : s.kind === "chain" ? "sprocket" : "gear";
     var teeth = K.num(ID, "n1", "Driving " + word, { unit: "teeth", min: 8, max: 120, step: 1, slider: true, tip: "The one the motor turns." }) + K.num(ID, "n2", "Driven " + word, { unit: "teeth", min: 8, max: 120, step: 1, slider: true });
     var space = s.kind === "gear" ?
@@ -54,7 +54,7 @@ K.tool({
   outs: function (s, r) {
     var faster = r.ratio < 1, rtxt = (faster ? K.fix(1 / r.ratio, 2) + "× faster" : r.ratio === 1 ? "same speed" : K.fix(r.ratio, 2) + "× slower");
     if (s.kind === "gear") {
-      return K.verdict("ok", "Put the shaft centres " + K.fix(r.center, 3) + " in apart. The driven gear turns the other way, " + rtxt + ".") +
+      return K.verdict("ok", "Put the shaft centres " + K.fix(r.center, 3) + " in apart" + (s.gextra > 0 ? " (the exact " + K.fix(r.center - s.gextra, 3) + " in plus " + K.fix(s.gextra, 3) + " in so the teeth do not bind)" : "") + ". The driven gear turns the other way, " + rtxt + ".") +
         K.outs([{ k: "Centre distance", v: K.fix(r.center, 3), u: "in", sub: K.fix(r.center * 25.4, 2) + " mm" },
           { k: "Ratio", v: K.fix(r.ratio, 3), u: ": 1", sub: rtxt, tip: "Driven teeth divided by driving teeth." },
           { k: "Pitch diameters", v: K.fix(r.pd1, 3) + " / " + K.fix(r.pd2, 3), u: "in", tip: "The circles that roll on each other. Their radii add up to the exact centre distance." },
@@ -98,7 +98,7 @@ K.tool({
 
   draw: function (g, s, r, t) {
     var c = g.c, C = r.center; if (!(C > 0)) { g.text("Nothing to draw yet.", 16, 28, { color: c.mute }); return; }
-    var R1 = r.od1 / 2, R2 = r.od2 / 2, big = Math.max(R1, R2), m = big * 0.25 + 0.3;
+    var R1 = r.od1 / 2, R2 = r.od2 / 2, big = Math.max(R1, R2), m = big * 0.12 + 0.15;
     var V = g.view({ x0: -R1 - m, x1: C + R2 + m, y0: -big - m, y1: big + m }, { l: 14, r: 14, t: 28, b: 40 }, "middle");
     g.grid(V, 1, g.w > 520 ? "1 in squares" : "");
     var x1 = V.X(0), x2 = V.X(C), y = V.Y(0), p1 = V.L(r.pd1 / 2), p2 = V.L(r.pd2 / 2);

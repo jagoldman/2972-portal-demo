@@ -124,7 +124,7 @@ K.tool({
     var share = r.stored > 0 ? r.used / r.stored : Infinity;
     return K.verdict(st, text) + K.outs([
       { k: "Air used in a match", v: K.n(L(r.used), 2), u: "L", sub: "free air: its volume let out to room pressure", tip: "Free air: the volume it would fill at atmospheric pressure. Each stroke fills its cylinder at working pressure, then lets it out." },
-      { k: "Stored above working", v: K.n(L(r.stored), 2), u: "L", sub: "free air in " + o.tanks + " × " + K.n(o.ml, 0) + " mL", tip: "Only the air above working pressure is usable at full force." },
+      { k: "Stored above working", v: K.n(L(r.stored), 2), u: "L", sub: "free air the tanks give up falling from " + o.stored + " to " + o.work + " psi", tip: "Only the air above working pressure is usable at full force." },
       { k: "Pressure at the end", v: K.n(r.end, 0), u: "psi", state: r.end < o.work - 1e-6 ? "bad" : "", sub: "in the tanks" },
       { k: "Cycles at full force", v: r.fullCycles + " of " + r.cycles, state: r.firstShort ? "bad" : "", sub: "before it falls below " + o.work + " psi" },
       { k: r.firstShort ? "Tanks it would take" : "Share of stored air", v: r.firstShort ? (r.need ? String(r.need) : "over 60") : K.n(share * 100, 0) + "%", state: r.firstShort ? "bad" : share > 0.8 ? "warn" : "", sub: r.firstShort ? "of " + K.n(o.ml, 0) + " mL" + (o.cfm ? ", with the compressor" : "") : "of what is stored above " + o.work + " psi" }]);

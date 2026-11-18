@@ -95,11 +95,11 @@ K.tool({
         { k: "Per motor rotation", v: sig(m.perRot), u: "m", sub: sig(m.perRot / IN) + " in" },
         { k: "Per output turn", v: sig(m.perOut), u: "m", sub: sig(m.perOut / IN) + " in" + (m.rig > 1 ? ", with " + m.rig + "× rigging" : "") },
         { k: "Speed per motor rpm", v: sig(m.perRpm), u: "m/s", sub: sig(m.perRpm / 0.3048) + " ft/s per rpm" },
-        { k: "Largest speed", v: sig(m.max), u: "m/s", sub: sig(m.maxFt) + " ft/s at " + K.n(s.rpm, 0) + " rpm with no load; slower under load" }];
+        { k: "Speed at that motor rpm", v: sig(m.max), u: "m/s", sub: sig(m.maxFt) + " ft/s at " + K.n(s.rpm, 0) + " rpm with no load; slower under load" }];
       work = [["Output turn", "π × " + num(s.dia) + " in × 0.0254" + (m.rig > 1 ? " × " + m.rig + " (rigging)" : ""), sig(m.perOut) + " m"],
         ["Per motor rotation", sig(m.perOut) + " m ÷ " + num(s.ratio), sig(m.perRot) + " m"],
         ["Per motor rpm", sig(m.perRot) + " m ÷ 60 s", sig(m.perRpm) + " m/s"],
-        ["Largest speed", sig(m.perRpm) + " × " + num(s.rpm) + " rpm", sig(m.max) + " m/s"]];
+        ["Speed at that motor rpm", sig(m.perRpm) + " per rpm × " + num(s.rpm) + " rpm", sig(m.max) + " m/s"]];
       code = "// " + MECH.filter(function (x) { return x[0] === s.mk; })[0][1] + ": " + num(s.ratio) + ":1 reduction, " + num(s.dia) + " in diameter" + (s.mk === "spool" ? ", " + s.rig + "x rigging" : "") + "\n" +
         "// Motor rotations per " + (s.mk === "wheel" ? "wheel" : "spool") + " rotation\n" +
         "public static final double k" + P + "GearRatio = " + java(s.ratio) + ";\n" +
@@ -114,12 +114,12 @@ K.tool({
       items = [
         { k: "Per motor rotation", v: sig(m.perRotDeg), u: "°", sub: sig(m.perRot) + " rad" },
         { k: "Speed per motor rpm", v: sig(m.perRpm), u: "rad/s", sub: sig(m.perRpm * 180 / Math.PI) + " deg/s per rpm" },
-        { k: "Largest speed", v: sig(m.maxDeg), u: "deg/s", sub: sig(m.max) + " rad/s at " + K.n(s.rpm, 0) + " rpm with no load; slower under load" },
+        { k: "Speed at that motor rpm", v: sig(m.maxDeg), u: "deg/s", sub: sig(m.max) + " rad/s at " + K.n(s.rpm, 0) + " rpm with no load; slower under load" },
         { k: "Arm turns", v: sig(m.outRpm), u: "rpm", sub: "at that motor speed" }];
       work = [["Per motor rotation", "360° ÷ " + num(s.ratio), sig(m.perRotDeg) + "°"],
         ["In radians", "2π ÷ " + num(s.ratio), sig(m.perRot) + " rad"],
         ["Per motor rpm", sig(m.perRot) + " rad ÷ 60 s", sig(m.perRpm) + " rad/s"],
-        ["Largest speed", sig(m.perRpm) + " × " + num(s.rpm) + " rpm", sig(m.max) + " rad/s"]];
+        ["Speed at that motor rpm", sig(m.perRpm) + " per rpm × " + num(s.rpm) + " rpm", sig(m.max) + " rad/s"]];
       code = "// Arm or turret: " + num(s.ratio) + ":1 reduction\n" +
         "// Motor rotations per arm rotation\n" +
         "public static final double kArmGearRatio = " + java(s.ratio) + ";\n" +

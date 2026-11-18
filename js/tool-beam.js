@@ -281,7 +281,7 @@ function section(g, s, r, pan, narrow, kBeam, frac) {
     g.poly([[sx, cy], [sx - d * wv, cy + bh / 2], [sx, cy + bh / 2]], { fill: col, stroke: null });
   }
   var lab = narrow ? sx + lim + 10 : pan.x + 12, ly = narrow ? pan.y + 40 : cy + bh / 2 + 44;
-  g.text("Neutral axis: no stress", lab, ly, { color: c.accent, size: 11, weight: 600 });
+  g.text("At the most-stressed point. Neutral axis: no stress", lab, ly, { color: c.accent, size: 11, weight: 600 });
   g.text("Top " + (topSq ? "squeezed" : "stretched") + ", bottom " + (topSq ? "stretched" : "squeezed"), lab, ly + 16, { color: c.text2, size: 11 });
   g.text(K.n(r.stress * frac, 0) + " psi, " + K.n(share * 100, 0) + "% of yield", lab, ly + 32, { color: share >= 1 ? c.bad : c.text2, size: 11, weight: 600 });
   if (!narrow) {

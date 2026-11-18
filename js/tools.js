@@ -52,14 +52,17 @@ function toolList() {
   if (!tools.length) return '<p class="empty">No tool matches “' + esc(D.S.tools.q) + '”. Try a shorter word.</p>';
   return D.TOOL_GROUPS.map(function (g) {
     var rows = tools.filter(function (t) { return t.group === g[0]; }); if (!rows.length) return "";
-    return '<section class="toolgroup"><h2>' + esc(g[1]) + '</h2><div class="toollist">' + rows.map(D.toolRow).join("") + "</div></section>";
+    return '<section class="toolgroup" id="tg-' + g[0] + '" tabindex="-1"><h2>' + esc(g[1]) + '</h2><div class="toollist">' + rows.map(D.toolRow).join("") + "</div></section>";
   }).join("");
 }
 D.views.tools = function () {
   if (!allowed()) return D.denied("Tools");
   return D.topbar("Tools", "", "", "") + '<div class="content toolspage"><div class="toolsearch"><input class="inp" type="search" id="toolq" data-input="toolq" value="' + esc(D.S.tools.q || "") + '" placeholder="Find a tool" aria-label="Find a tool"></div>' +
+    '<nav class="tooljump chips" aria-label="Jump to a group">' + D.TOOL_GROUPS.filter(function (g) { return D.visibleTools().some(function (t) { return t.group === g[0]; }); }).map(function (g) { return '<button class="chip" data-act="tooljump" data-v="' + g[0] + '">' + esc(g[1]) + "</button>"; }).join("") + "</nav>" +
     '<div id="toollist" class="stack" style="display:grid;gap:16px">' + toolList() + "</div></div>";
 };
+// A jump link moves the page to its group; a search that hid the group is cleared first.
+D.acts.tooljump = function (b) { if (D.S.tools.q) { D.S.tools.q = ""; D.render(); } var el = document.getElementById("tg-" + b.dataset.v); if (el) { el.scrollIntoView({ block: "start" }); el.focus({ preventScroll: true }); } };
 D.inputs.toolq = function (el) { D.S.tools.q = el.value; var box = document.getElementById("toollist"); if (box) box.innerHTML = toolList(); };
 
 /* ---------- Drawing to vector ---------- */

@@ -144,8 +144,8 @@ K.tool({
   duration: function (s, r) { return r && isFinite(r.duration) ? r.duration : 1; },
   hints: function (s, r) {
     var seg = s.travel / r.n, txt;
-    if (r.rig === "cascade") { txt = "The rope moves " + K.fix(s.travel / (r.n + 1), 1) + " in. "; for (var k = 1; k <= r.n; k++) txt += "Stage " + k + " rises " + K.fix(k * s.travel / (r.n + 1), 1) + " in. "; }
-    else txt = "The rope moves " + K.fix(s.travel, 1) + " in. Each part rises " + K.fix(s.travel / (r.n + 1), 1) + " in on its own stage, one after another.";
+    if (r.rig === "cascade") { txt = "Cascade: all " + (r.n + 1) + " parts rise at once, so " + K.fix(s.travel / (r.n + 1), 1) + " in of rope lifts the carriage " + K.fix(s.travel, 1) + " in. The carriage goes " + (r.n + 1) + " times as far as the rope, so the rope must pull " + (r.n + 1) + " times as hard. "; for (var k = 1; k <= r.n; k++) txt += "Stage " + k + " rises " + K.fix(k * s.travel / (r.n + 1), 1) + " in. "; }
+    else txt = "Continuous: one rope lifts one part at a time, the lightest first. Each of the " + (r.n + 1) + " parts rises " + K.fix(s.travel / (r.n + 1), 1) + " in in turn, so " + K.fix(s.travel, 1) + " in of rope lifts the carriage " + K.fix(s.travel, 1) + " in. The rope pulls about a third as hard as cascade would and moves three times as far.".replace("a third", r.n === 1 ? "half" : r.n === 2 ? "a third" : "a quarter").replace("three times", r.n === 1 ? "twice" : r.n === 2 ? "three times" : "four times");
     return { "h-el-travel": txt.trim() };
   },
 

@@ -198,5 +198,8 @@ details.cg:not([open]) { padding-bottom: 12px; }
   .ctab .scroll { overflow-x: visible; }
 }
 /* Code wraps at every width: a line of constants cut off at the edge is no use. */
-.codeout { white-space: pre-wrap; overflow-wrap: anywhere; }
+.codeout { white-space: pre-wrap; overflow-wrap: break-word; }
 .cnote { stroke-width: 4px; }
+.toolgroup { scroll-margin-top: calc(var(--bar) + 12px); }
+.toolgroup:focus { outline: none; }
+.tooljump { margin-top: -4px; }

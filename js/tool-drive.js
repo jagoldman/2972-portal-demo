@@ -170,7 +170,7 @@ K.tool({
     else if (Math.abs(A.time - B.time) < 0.005) text = "A and B reach " + d + " ft together, within 0.005 s.";
     else {
       var back = ft(r.dist - M.at(Lo.sim, "x", W.time));
-      text = wn + " gets to " + d + " ft first, " + K.fix(Lo.time - W.time, 2) + " s ahead of " + ln + " (about " + K.fix(back, 1) + " ft).";
+      text = Lo.time - W.time < 0.05 ? "Too close to call over " + d + " ft: " + wn + " is ahead by " + K.fix(Lo.time - W.time, 3) + " s (about " + K.fix(back, 1) + " ft), less than a driver's reaction." : wn + " gets to " + d + " ft first, " + K.fix(Lo.time - W.time, 2) + " s ahead of " + ln + " (about " + K.fix(back, 1) + " ft).";
     }
     if (Lo.reached && Math.abs(A.time - B.time) >= 0.005) {
       var after = r.cross.filter(function (c) { return c.d > r.dist; }), before = r.cross.filter(function (c) { return c.d <= r.dist; });
@@ -309,7 +309,7 @@ K.tool({
     g.text(K.fix(t, 2) + " s", 12, 19, { weight: 700, size: 13 });
     if (r.win && t >= tw) {
       var W = r.win === "A" ? r.A : r.B, Lo = r.win === "A" ? r.B : r.A, ln2 = r.win === "A" ? "B" : "A";
-      var msg = !Lo.reached ? r.win + " finishes; " + ln2 + " cannot get there" : Math.abs(W.time - Lo.time) < 0.005 ? "A dead heat" : r.win + " wins by " + K.fix(Lo.time - W.time, 2) + " s" + (narrow ? "" : "; " + ln2 + " was " + K.fix(d - ft(M.at(Lo.sim, "x", tw)), 1) + " ft back (dashed line)");
+      var msg = !Lo.reached ? r.win + " finishes; " + ln2 + " cannot get there" : Math.abs(W.time - Lo.time) < 0.005 ? "A dead heat" : (Lo.time - W.time < 0.05 ? "Too close to call: " + r.win + " by " : r.win + " wins by ") + K.fix(Lo.time - W.time, 2) + " s" + (narrow ? "" : "; " + ln2 + " was " + K.fix(d - ft(M.at(Lo.sim, "x", tw)), 1) + " ft back (dashed line)");
       g.text(msg, 70, 19, { weight: 600, color: c.text2, size: 12 });
     }
     K.chartNow("drv-v", t); K.chartNow("drv-x", t); K.chartNow("drv-a", t);

@@ -242,7 +242,7 @@ K.tool({
     var items = [
       { k: "Reduction", v: K.n(t.total, t.total >= 1000 ? 0 : t.total >= 100 ? 1 : 3), u: ": 1", sub: "motor turns per output turn", tip: "Every stage's driven teeth over driving teeth, multiplied together." },
       { k: "Output speed", v: K.n(t.freeOut, t.freeOut >= 100 ? 0 : 1), u: "rpm", sub: "no load, " + K.n(t.freeOut * F.RPM, 1) + " rad/s" },
-      { k: "Output torque", v: K.n(lb, lb >= 100 ? 0 : 1), u: "lb in", sub: K.n(t.torqueOut, 1) + " N m " + (limited ? "at the " + s.statorA + " A limit" : "at stall"), tip: "The most the output can push, with the motor held still at the current limit, after the losses in each stage." },
+      { k: "Output torque, stalled", v: K.n(lb, lb >= 100 ? 0 : 1), u: "lb in", sub: K.n(t.torqueOut, 1) + " N m " + (limited ? "at the " + s.statorA + " A limit" : "at stall"), tip: "The most the output can push, with the motor held still at the current limit, after the losses in each stage." },
       r.dia ? { k: s.out === "wheel" ? "Surface speed" : "Line speed", v: ftTxt(r.surf), u: "ft/s", sub: K.fix(r.surf * F.FT, 2) + " m/s with no load", tip: "How fast the edge of the " + (s.out === "wheel" ? "wheel" : "spool") + " moves when nothing holds it back. Under load it runs slower." } : null,
       r.dia ? { k: s.out === "wheel" ? "Push at the edge" : "Pull on the line", v: K.n(r.force, r.force >= 100 ? 0 : 1), u: "lbf", sub: K.n(r.force * F.LBF, 0) + " N" + (limited ? " at the limit" : " at stall"), tip: "Output torque divided by the radius." } : null,
       r.dia ? null : { k: "Output turns", v: t.dirOut > 0 ? "Same way" : "Other way", sub: "as the motor", tip: "Each pair of meshing gears reverses the direction. Belts, chain and planetary stages keep it." }

@@ -329,7 +329,7 @@ function draw(g, s, r, t) {
   if (wt > 0) {
     g.circle(cmx, cmy, 4, { fill: c.sheet, stroke: c.force, width: 2 });
     var wl = Math.max(16, Math.min(70, Lp(wt * 0.6), Y(0) - 8 - cmy));
-    g.arrow(cmx, cmy + 4, cmx, cmy + 4 + wl, { color: c.force, width: 2.5, label: K.fix(wt, wt < 10 ? 1 : 0) + " lb" });
+    g.arrow(cmx, cmy + 4, cmx, cmy + 4 + wl, { color: c.force, width: 2.5, label: "arm and load, " + K.fix(wt, wt < 10 ? 1 : 0) + " lb" });
   }
   // Torques at the pivot, to one scale: gravity (turns it down) and the motor.
   var big = Math.max(Math.abs(r.arm.tau0), r.avail, 1e-9), tR = Math.max(20, Lp(4.2)), gq = r.arm.torque(th), full = 1.6 * Math.PI;

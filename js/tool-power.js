@@ -49,7 +49,7 @@ function clean(rows) {
   });
 }
 function vTxt(v) { return K.fix(Math.max(0, v), 1) + " V"; }
-function breakerNote(share) { return share <= 1 ? "carries this all match" : share <= 2 ? "trips if it lasts many seconds" : "is far over its rating: see its trip curve"; }
+function breakerNote(share) { return share <= 1 ? "of its rating: it carries this all match" : share <= 2 ? "a short peak is normal; held for many seconds it trips" : "a short peak is normal; held for a few seconds it trips"; }
 
 K.tool({
   id: ID,

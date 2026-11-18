@@ -73,7 +73,7 @@ K.tool({
     var L = r.list; if (!L.length) return K.verdict("info", "Pick at least one motor.");
     var lim = "at " + K.fix(s.volts, 1) + " V " + (s.statorA > 0 ? "under a " + s.statorA + " A limit" : "with no current limit");
     var by = L.slice().sort(function (a, b) { return b.peak.power * b.n - a.peak.power * a.n; }), top = by[0], next = by[1];
-    var text = top.name + " gives the most power " + lim + ": " + K.n(top.peak.power * top.n, 0) + " W at " + K.n(top.peak.rpm, 0) + " rpm";
+    var text = top.name + " gives the most power in total " + lim + ": " + K.n(top.peak.power * top.n, 0) + " W at " + K.n(top.peak.rpm, 0) + " rpm";
     if (next) { var more = top.peak.power * top.n / (next.peak.power * next.n) - 1; text += more < 0.005 ? ", the same as " + next.name + "." : ", " + K.n(more * 100, 0) + "% more than " + next.name + "."; }
     else text += ".";
     var perLb = L.slice().sort(function (a, b) { return b.peak.power / b.m.lb - a.peak.power / a.m.lb; })[0];
