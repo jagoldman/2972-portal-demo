@@ -192,4 +192,21 @@
 
   /* Round 5: "Order by" leads its line in bold; it is not a block of its own (that left a comma starting the next line). */
   .pline .pob { display: inline; }
+
+  /* ---------- Hill climb, round 5 ---------- */
+  /* The panel leads with what the request waits for, in a line you can read at a glance; the steps follow. */
+  .preqsteps .pnow .move { font-size: 1rem; font-weight: 650; color: var(--text); white-space: normal; }
+  .pctx { margin: 0; color: var(--text-2); }
+  .btn[data-act="pdeny"] { color: var(--bad); }
+  /* The finder is as wide as a search box needs, not as wide as the page. */
+  @media (min-width: 900px) { .pfind { max-width: 640px; } }
+  .pmorebtn { display: none; }
+  @media (max-width: 640px) {
+    /* The five steps and "More" wrap onto two short rows; nothing slides and nothing is cut off. */
+    .psteps { flex-wrap: wrap; overflow: visible; -webkit-mask-image: none; mask-image: none; padding-right: 0; }
+    .psteps .pstep { flex: 0 1 auto; padding-inline: 10px; }
+    .pmorebtn { display: inline-flex; }
+    .psteps .psep, .psteps .prare { display: none; }
+    .psteps.rareopen .prare { display: inline-flex; }
+  }
 }

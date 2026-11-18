@@ -337,7 +337,8 @@ function seasonLine(simple) {
   // A parent does not count in practices: their line is the date and the days to it, with no marks.
   if (simple) {
     var np = api.practiceDays(1)[0], npt = np ? (np.date === today ? "Practice today" : "Next practice " + api.fmt(np.date)) + ", " + api.span(np) : "";
-    return '<section class="season simple" aria-label="The season"><p class="snhead"><b class="snnum num">' + days + "</b><span><b>" + (days === 1 ? "day" : "days") + " to " + esc(target.name) + '</b><span class="mute num">' + esc(api.fmt(target.date)) + "</span></span></p>" + (npt ? '<p class="snpractice">' + esc(npt) + "</p>" : "") + "</section>";
+    // A parent opens Home to see when to show up, so the practice leads and the countdown is the smaller part.
+    return '<section class="season simple" aria-label="This week and the season">' + (npt ? '<p class="snpractice">' + esc(npt) + "</p>" : "") + '<p class="snhead"><span><b>' + days + (days === 1 ? " day" : " days") + " to " + esc(target.name) + '</b><span class="mute num">' + esc(api.fmt(target.date)) + "</span></span></p></section>";
   }
   var ms = D.tasksApi ? D.tasksApi.milestones(12).filter(function (m) { return m.date >= today && m.date < target.date; }) : [];
   var due = {}; ms.forEach(function (m) { (due[m.date] = due[m.date] || []).push(m); });
@@ -355,6 +356,9 @@ function seasonLine(simple) {
 }
 // An app's api, or null unless it has every function Home is about to call (an app file may be absent or older).
 function apiWith(api, fns) { return api && fns.every(function (f) { return typeof api[f] === "function"; }) ? api : null; }
+// The reason a requester gave, and the note a student sent with a sign-off request, so a mentor can decide on Home.
+function whyOf(id) { var p = D.S.parts, r = p && p.requests ? p.requests.filter(function (x) { return x.id === id; })[0] : null; return r && r.why ? r.why : ""; }
+function noteOf(key) { var k = D.S.sk, q = String(key).split("|"), r = k && k.requests ? k.requests.filter(function (x) { return x.st === q[0] && x.id === q[1]; })[0] : null; return r && r.note ? r.note : ""; }
 // One row of the Now list: a title and one muted line that open the owning screen, then at most one action.
 function nowRow(o) {
   return '<div class="li nowrow' + (o.first ? " nowfirst" : "") + '"><button class="rowlink" data-act="' + (o.act || "goapp") + '"' + (o.v != null ? ' data-v="' + esc(o.v) + '"' : "") + (o.app ? ' data-app="' + o.app + '"' : "") + (o.tab ? ' data-tab="' + o.tab + '"' : "") + '><span class="rt">' + esc(o.title) + "</span>" + (o.line || o.mark ? '<span class="rl">' + (o.mark ? o.mark + " " : "") + (o.line || "") + "</span>" : "") + "</button>" +
@@ -365,7 +369,7 @@ function nowRow(o) {
 function nowRows() {
   var S = D.S, rows = [], api = D.calApi, c = S.cal, staff = D.isStaff(), P = apiWith(D.partsApi, ["needsOk", "approve", "open"]), K = apiWith(D.skillsApi, ["requests", "signOff"]);
   // At an event, Now holds only what the event needs (hill climb r4): the pit's own rows, from the Competition app.
-  if (S.eventDay && S.role !== "parent") return (D.eventRows ? D.eventRows() : []).map(function (r) { return { app: r.app, tab: r.tab, title: r.title, line: esc(r.line || "") }; });
+  if (S.eventDay && S.role !== "parent") return (D.eventRows ? D.eventRows() : []).map(function (r) { return { app: r.app, tab: r.tab, title: r.title, line: esc(r.line || ""), btn: r.btn ? '<button class="btn" data-act="goapp" data-app="' + r.app + '" data-tab="' + r.tab + '">' + esc(r.btn) + "</button>" : "" }; });
   practiceRows().forEach(function (r) {
     // A parent's first question is the next practice. When that is today, the row says "today", not the date.
     // A parent's practices are the "This week" list, which leads their page, so Now holds only what they can do.
@@ -383,17 +387,17 @@ function nowRows() {
       var sn = c.snacks[e.date] || (c.snacks[e.date] = new Array(c.slots).fill(null)), k = sn.indexOf(null);
       if (k < 0 || sn.indexOf(mine) >= 0) return;
       var open = sn.filter(function (x) { return !x; }).length;
-      rows.push({ app: "snacks", title: "Snacks needed " + api.fmt(e.date), line: esc(plural(open, "family", "families") + " needed"), btn: '<button class="btn primary" data-act="snack" data-d="' + e.date + '" data-k="' + k + '">Sign up</button>' });
+      rows.push({ app: "snacks", title: "Snacks needed " + api.fmt(e.date), line: esc((api.practiceOn(e.date) ? api.span(api.practiceOn(e.date)) + ", " : "") + plural(open, "family", "families") + " needed"), btn: '<button class="btn primary" data-act="snack" data-d="' + e.date + '" data-k="' + k + '">Sign up</button>' });
     });
   }
   if (staff) {
     if (P && hasTile("parts")) P.needsOk().forEach(function (r) {
-      rows.push({ group: "Needs your OK", act: "homereq", v: r.id, title: r.name, line: esc(D.money(r.total) + ", asked by " + r.by) + (r.orderBy ? (api && r.orderBy < api.TODAYS ? ', <b class="nowdue">the order was due ' + esc(api.fmt(r.orderBy)) + "</b>" : ", order by " + esc(api ? api.fmt(r.orderBy) : r.orderBy)) : ""),
+      rows.push({ group: "Needs your OK", act: "homereq", v: r.id, title: r.name, line: (r.orderBy && api && r.orderBy < api.TODAYS ? '<b class="nowdue">The order was due ' + esc(api.fmt(r.orderBy)) + ".</b> " : "") + esc(D.money(r.total) + ", asked by " + r.by + (whyOf(r.id) ? ": “" + whyOf(r.id) + "”" : "")) + (r.orderBy && !(api && r.orderBy < api.TODAYS) ? ", order by " + esc(api ? api.fmt(r.orderBy) : r.orderBy) : ""),
         mark: r.pri === "blocking" ? '<span class="pill pri bad">Blocking</span>' : r.pri === "high" ? '<span class="pill pri warn">High</span>' : "",
         btn: '<button class="btn' + (r.pri === "blocking" ? " primary" : "") + '" data-act="homeapprove" data-v="' + r.id + '">Approve</button>' });
     });
     if (K && hasTile("skills")) K.requests().forEach(function (q) {
-      rows.push({ group: "Sign-off requests", app: "skills", tab: "signoff", title: q.skill, line: esc(q.student + " asks for a sign-off"), btn: '<button class="btn" data-act="homesignoff" data-v="' + esc(q.key) + '">Sign off</button>' });
+      rows.push({ group: "Sign-off requests", app: "skills", tab: "signoff", title: q.skill, line: esc(q.student + " asks for a sign-off" + (noteOf(q.key) ? ": “" + noteOf(q.key) + "”" : "")), btn: '<button class="btn" data-act="homesignoff" data-v="' + esc(q.key) + '">Sign off</button>' });
     });
     // Stuck work comes to the mentors as a row, not only as a notice: nothing waits silently (GROUND_UP.md §1).
     if (apiWith(D.tasksApi, ["stuck", "openTask"]) && hasTile("tasks")) D.tasksApi.stuck().forEach(function (x) {
@@ -403,7 +407,7 @@ function nowRows() {
     waitingRows().forEach(function (r) {
       if (P && r.app === "parts" && /needs? an OK/.test(r.title)) return;
       if (K && r.app === "skills") return;
-      rows.push({ app: r.app, tab: r.tab, title: r.title, line: r.line ? esc(r.line) : "" });
+      rows.push({ app: r.app, tab: r.tab, title: r.title.replace(/ (is|are) ready to order$/, " $1 waiting to be ordered"), line: r.line ? esc(r.line) : "" });
     });
   }
   // For a mentor the practice row is information, not a decision, so it follows the rows that need one.
@@ -430,7 +434,8 @@ function weekRows() {
   function day(d) { if (!days[d]) { days[d] = { what: [], facts: [] }; order.push(d); } return days[d]; }
   api.meetDays(today, end).forEach(function (m) {
     var p = api.practiceOn(m.date), o = day(m.date);
-    o.what.push((m.kind === "build" ? "Build day" : m.kind === "comp" ? m.name : "Practice") + (p ? ", " + api.span(p) : ""));
+    var ev = role === "parent" ? api.upcoming(60, ["practice", "build"]).filter(function (e) { return e.date === m.date && e.where; })[0] : null;
+    o.what.push((m.kind === "build" ? "Build day" : m.kind === "comp" ? m.name : "Practice") + (p ? ", " + api.span(p) : "") + (ev ? ", " + ev.where : ""));
     if (m.kind === "comp") return;
     if (role !== "parent") { var mn = api.mentorsOn(m.date).length; o.facts.push(mn ? '<span>' + plural(mn, "mentor", "mentors") + " coming</span>" : '<span class="pill warn">No mentors yet</span>'); }
     var sn = api.snacksFor(m.date);
@@ -460,7 +465,7 @@ function homeGround() {
   if (shift) mainCol += '<div class="shiftcard">' + D.myShiftCard() + "</div>";
   var week = S.eventDay ? "" : '<section class="card wkcard"><h2>This week</h2>' + weekRows() + "</section>";
   if (role === "parent") { mainCol += week; if (now.length) mainCol += '<section class="card nowcard"><h2>Can you help?</h2><div class="list">' + now.map(nowRow).join("") + "</div></section>"; }
-  else if (now.length || !shift) mainCol += '<section class="card nowcard"><h2>Now</h2>' + (now.length ? '<div class="list">' + now.map(function (r, i) {
+  else if (now.length || !shift) mainCol += '<section class="card nowcard"><h2>' + (S.eventDay ? "In the pit" : "Now") + "</h2>" + (now.length ? '<div class="list">' + now.map(function (r, i) {
     // A short label starts each kind of decision, so a mentor's list reads in groups (hill climb r4).
     var g = r.group || (i && now[i - 1].group ? "Also" : "");
     return (g && (!i || (now[i - 1].group || "") !== (r.group || "")) ? '<h3 class="nowgroup">' + esc(g) + "</h3>" : "") + nowRow(r);

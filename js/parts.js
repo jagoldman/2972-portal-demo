@@ -239,11 +239,16 @@ function reqSteps(r) {
   var putSub = cur > 3 ? (inn ? (/ to (.+)$/.exec(inn.what) || [])[1] || "" : line && line.loc ? line.loc : "") : "";
   // A request under the limit was never approved by anyone, so its step says that and not "Approved" (hill climb r4).
   var skip = okSub === "No approval needed";
-  var now = panelMove(r), steps = D.stages([["Asked", stepSub(asked)], [skip ? "No approval needed" : "Approved", skip ? "" : okSub], ["Ordered", ordSub], ["Arrived", arrSub], ["Put away", putSub]], cur, "Where this request is");
+  /* A step that is done is named in the past ("Ordered", with who and when). The step being waited for is "now" and
+     is named as the thing to come ("Order"), and so are the steps after it. So the mark, the words and the sentence
+     above them all say the same thing: what is finished, and what the request waits for (hill climb r5). */
+  var DONE = ["Asked", skip ? "No OK needed" : "Approved", "Ordered", "Arrived", "Put away"], TODO = ["Ask", "Approval", "Order", "Arrival", "Put away"];
+  var wait = r.status === "putaway" ? 5 : cur + 1, subs = [stepSub(asked), skip ? "" : okSub, ordSub, arrSub, putSub];
+  var now = panelMove(r), steps = D.stages(DONE.map(function (n, i) { return [i < wait ? n : TODO[i], subs[i]]; }), wait, "Where this request is");
   // The arrival date is already under Arrived, so an ordered request has no second line saying it. The order number
   // has its own labelled line.
   var move = r.status === "ordered" ? "" : now;
-  return '<div class="preqsteps">' + steps + (move ? '<div class="row pnow">' + move + "</div>" : "") + (r.order ? '<p class="pordno">Order #' + r.order + "</p>" : "") + "</div>";
+  return '<div class="preqsteps">' + (move ? '<div class="row pnow">' + move + "</div>" : "") + steps + (r.order ? '<p class="pordno">Order #' + r.order + "</p>" : "") + "</div>";
 }
 // The steps of the flow, each a filter with its count; the rarely used views sit in one small "More" select.
 function flowRow(groups, gcount) {
@@ -251,9 +256,9 @@ function flowRow(groups, gcount) {
   var NAMES = { open: "All open", needsok: "Needs OK", toorder: "To order", ordered: "Ordered", done: "Arrived" };
   function g(id) { return groups.filter(function (x) { return x[0] === id; })[0]; }
   var inMore = more.indexOf(p.filter) >= 0;
-  return '<div class="pflow"><div class="psteps" role="group" aria-label="Show requests">' + steps.map(function (id) {
+  return '<div class="pflow"><div class="psteps' + (p.rare || more.indexOf(p.filter) >= 0 ? " rareopen" : "") + '" role="group" aria-label="Show requests">' + steps.map(function (id) {
     return '<button class="pstep' + (gcount(g(id)) ? "" : " zero") + '" data-act="pfilter" data-v="' + id + '" aria-pressed="' + (p.filter === id) + '">' + NAMES[id] + ' <span class="tcount">' + gcount(g(id)) + "</span></button>";
-  }).join("") + '<span class="psep" aria-hidden="true"></span>' +
+  }).join("") + '<button class="pstep pmorebtn" data-act="prare" aria-expanded="' + !!p.rare + '">' + (p.rare ? "Fewer" : "More") + '</button><span class="psep" aria-hidden="true"></span>' +
     // The rarely used views are buttons of the same shape, after a gap (hill climb r2: a select beside buttons read as two systems).
     more.map(function (id) { var x = g(id); return '<button class="pstep prare' + (gcount(x) ? "" : " zero") + '" data-act="pfilter" data-v="' + id + '" aria-pressed="' + (p.filter === id) + '">' + x[1] + ' <span class="tcount">' + gcount(x) + "</span></button>"; }).join("") + "</div>" +
     '<label class="pf-mine"><button class="toggle" data-act="pmine" aria-pressed="' + p.mine + '" aria-label="Only my requests"></button><span>Only mine</span></label></div>';
@@ -324,8 +329,10 @@ D.drawers.preq = function (d) {
      mentor settles it without scrolling (hill climb r3). On a phone the main button is full width. */
   if (D.ground()) {
     var gacts = acts.length || cancelBtn ? '<div class="row pacts">' + acts.join("") + cancelBtn + "</div>" : "";
-    return D.drawerHead("Request #" + r.id, r.name) + top + gacts +
-      (r.why ? '<p class="mute">“' + esc(r.why) + "”</p>" : "") +
+    // What a mentor needs to decide sits between the steps and the buttons: why, how much, and what it does to the budget.
+    var ctx = staff && r.status === "needsok" ? '<p class="pctx">' + (r.why ? "“" + esc(r.why) + "” " : "") + "<b>" + money(total(r)) + "</b>" + (budgetEffect(r) ? ", " + budgetEffect(r) : "") + "</p>" : "";
+    return D.drawerHead("Request #" + r.id, r.name) + top + ctx + gacts +
+      (r.why && !ctx ? '<p class="mute">“' + esc(r.why) + "”</p>" : "") +
       '<dl class="pkv">' + rows.map(function (x) { return "<dt>" + x[0] + "</dt><dd>" + x[1] + "</dd>"; }).join("") + "</dl>" +
       '<div><p class="flabel">History</p><div class="list">' + r.hist.slice().reverse().map(function (h) { return '<div class="li"><span class="grow"><b>' + esc(h.who) + "</b> " + esc(h.what) + '</span><span class="who">' + esc(h.when) + "</span></div>"; }).join("") + "</div></div>";
   }
@@ -509,6 +516,8 @@ function vendorsView() {
 /* ---------- Actions ---------- */
 var A = D.acts;
 A.pfilter = function (b) { P().filter = b.dataset.v; D.render(); };
+// On a phone the rarely used views are behind one "More" button, so the five steps fit without a sliding row.
+A.prare = function () { P().rare = !P().rare; D.render(); var el = document.querySelector('[data-act="prare"]'); if (el) el.focus(); };
 A.pvedit = function (b) { D.toast(b.dataset.v + " terms saved."); };
 D.changes.pfiltersel = function (el) { if (!el.value) return; P().filter = el.value; D.render(); };
 A.pmine = function () { P().mine = !P().mine; D.render(); };

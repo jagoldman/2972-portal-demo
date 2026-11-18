@@ -107,7 +107,7 @@ D.eventLine = function (here) { return eventLine(here || ""); };
 D.eventRows = function () {
   var c = C(), rows = [], total = 0, ticked = 0, m = nextOurs();
   c.lists.forEach(function (l) { l.items.forEach(function (i) { total++; if (i.c) ticked++; }); });
-  if (total - ticked > 0) rows.push({ app: "pit", tab: "check", title: (total - ticked) + (total - ticked === 1 ? " check is" : " checks are") + " still open" + (m ? " before Qual " + m.q : ""), line: ticked + " of " + total + " checked" });
+  if (total - ticked > 0) rows.push({ app: "pit", tab: "check", title: "Finish the checklist" + (m ? " before Qual " + m.q : ""), line: (total - ticked) + (total - ticked === 1 ? " check" : " checks") + " left", btn: "Open the checklist" });
   if (c.issues && c.issues.length) rows.push({ app: "pit", tab: "check", title: c.issues.length + (c.issues.length === 1 ? " open issue" : " open issues") + " in the pit", line: c.issues.slice(0, 2).map(function (i) { return i.n; }).join(", ") });
   return rows;
 };
@@ -129,7 +129,7 @@ function evDur(m) { var h = Math.floor(m / 60), mm = m % 60; return (h ? h + " h
 function evMatch() {
   var c = C(), m = nextOurs(); if (!m) return "No more matches today";
   var left = labelMins(m.time) - (START + c.nowSlot * 15);
-  return "Qual " + m.q + ", " + (m.red.indexOf(2972) >= 0 ? "Red" : "Blue") + ", " + m.time + ", " + (m.q === c.current ? "on the field" : left > 0 ? "in " + evDur(left) : "now");
+  return "Qual " + m.q + ", " + (m.red.indexOf(2972) >= 0 ? "Red" : "Blue") + (m.q === c.current ? ", on the field" : ", " + m.time + (left > 0 ? ", in " + evDur(left) : ""));
 }
 // "5 of 11 checked, battery B1 at 12.9 V": the Pit's checklists and the battery marked In robot.
 function evRobot() {
@@ -159,7 +159,7 @@ function mySchedule(dayTabs, heroOnly) {
   var row = scheduleRows()[who], runs = runsOf(row), cur = runs.filter(function (r) { return r.from <= c.nowSlot && c.nowSlot <= r.to; })[0], nxt = runs[runs.indexOf(cur) + 1];
   return '<div class="card hero"><div class="row between"><div><p class="eyebrow">' + c.days[c.day] + " · now " + slotLabel(c.nowSlot) + '</p><h2 class="herotitle">' + esc(ROLES[cur.r].label) + " until " + slotLabel(cur.to + 1) + "</h2>" + (nxt ? '<p class="mute">Then ' + esc(ROLES[nxt.r].label) + " at " + slotLabel(nxt.from) + ".</p>" : "") + "</div>" + dayTabs + "</div>" +
     (cur.r === "scout" ? '<div><button class="btn primary" data-act="go" data-v="scouting">Open my scouting match</button></div>' : cur.r === "pit" ? '<div><button class="btn primary" data-act="go" data-v="pit">Open Pit checklists</button></div>' : "") + "</div>" +
-    (heroOnly ? "" : '<div class="card"><h2>' + esc(who) + '</h2><div class="timeline">' + runs.map(function (r) { return '<div class="tlrow"><span class="num small">' + slotLabel(r.from) + "–" + slotLabel(r.to + 1) + (D.ground() ? (START + (r.to + 1) * 15 <= 720 ? " am" : " pm") + ", " + ((r.to - r.from + 1) / 4) + " h" : "") + '</span><div class="tlbar' + (r === cur ? " now" : "") + '" style="--rc:' + ROLES[r.r].color + '"><span>' + esc(ROLES[r.r].label) + "</span>" + (r === cur ? '<b class="nowtag">Now</b>' : "") + "</div></div>"; }).join("") + "</div></div>");
+    (heroOnly ? "" : '<div class="card"><h2>' + esc(who) + '</h2><div class="timeline">' + runs.map(function (r) { return '<div class="tlrow"><span class="num small">' + slotLabel(r.from) + "–" + slotLabel(r.to + 1) + (D.ground() ? (START + (r.to + 1) * 15 <= 720 ? " am" : " pm") + '<span class="tldur">' + ((r.to - r.from + 1) / 4) + " h</span>" : "") + '</span><div class="tlbar' + (r === cur ? " now" : "") + '" style="--rc:' + ROLES[r.r].color + '"><span>' + esc(ROLES[r.r].label) + "</span>" + (r === cur ? '<b class="nowtag">Now</b>' : "") + "</div></div>"; }).join("") + "</div></div>");
 }
 function everyone(dayTabs) {
   var c = C(), rows = scheduleRows(), staff = D.isStaff();
@@ -213,7 +213,7 @@ function nextOurs() { var c = C(); return c.matches.filter(function (m) { return
 function checklists() {
   var c = C(), total = 0, ticked = 0, m = nextOurs(), red = m.red.indexOf(2972) >= 0;
   c.lists.forEach(function (l) { l.items.forEach(function (i) { total++; if (i.c) ticked++; }); });
-  return '<div class="card hero"><div class="row between"><div><p class="eyebrow">Next match · ' + (m.q === c.current ? "on the field now" : (m.q - c.current) + " matches away") + " · scheduled " + m.time + '</p><h2 class="herotitle">Qual ' + m.q + " · " + (red ? "Red" : "Blue") + '</h2><p class="mute">With ' + (red ? m.red : m.blue).filter(function (t) { return t !== 2972; }).join(" and ") + " · against " + (red ? m.blue : m.red).join(", ") + '</p></div><span class="pill ' + (ticked === total ? "ok" : "warn") + '">' + ticked + " of " + total + " checked</span></div>" + '<div class="bar"><i class="ok" style="width:' + D.pct(ticked, total) + '%"></i></div>' +
+  return '<div class="card hero"><div class="row between"><div><p class="eyebrow">' + (D.ground() ? (m.q === c.current ? "Our match is on the field now" : "Next match, " + (m.q - c.current) + " matches away, scheduled " + m.time) : "Next match · " + (m.q === c.current ? "on the field now" : (m.q - c.current) + " matches away") + " · scheduled " + m.time) + '</p><h2 class="herotitle">Qual ' + m.q + " · " + (red ? "Red" : "Blue") + '</h2><p class="mute">With ' + (red ? m.red : m.blue).filter(function (t) { return t !== 2972; }).join(" and ") + " · against " + (red ? m.blue : m.red).join(", ") + '</p></div><span class="pill ' + (ticked === total ? "ok" : "warn") + '">' + ticked + " of " + total + " checked</span></div>" + '<div class="bar"><i class="ok" style="width:' + D.pct(ticked, total) + '%"></i></div>' +
     '<div class="row pitmaint"><button class="btn" data-act="pitarchive">Archive as Qual ' + c.last + '</button><button class="btn" data-act="pitreset">' + (D.ground() ? "Reset checklist" : "Reset") + "</button></div></div>" +
     '<div class="grid2">' + c.lists.map(function (l, li) {
       return '<div class="card"><h2>' + esc(l.name) + "</h2><div>" + l.items.map(function (it, ii) { return '<div class="checkrow"><button class="bigcheck" data-act="pittick" data-l="' + li + '" data-i="' + ii + '" aria-pressed="' + it.c + '" aria-label="' + esc(it.n) + '">' + D.ic("check", 28) + "</button><div><b>" + esc(it.n) + "</b>" + (it.c ? '<div class="who">' + esc(it.by) + " · " + esc(it.at) + "</div>" : "") + '</div><button class="btn sm" data-act="pitissue" data-l="' + li + '" data-i="' + ii + '">Problem</button></div>'; }).join("") + "</div></div>";

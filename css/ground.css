@@ -304,4 +304,32 @@
   .nexttitle:hover { text-decoration: underline; text-underline-offset: 3px; }
   .nexttitle .chev { font-size: 1.1rem; }
   @media (max-width: 640px) { .nexttitle { min-height: 44px; align-items: center; } }
+
+  /* ============================================================
+     Hill climb, round 5 (2026-11-18)
+     ============================================================ */
+  /* A group that opens points down, and up when open, so it is not read as a link to another page. */
+  .grpchev { transform: rotate(90deg); }
+  .grphead[aria-expanded="true"] .grpchev { transform: rotate(-90deg); }
+  .nli.unread .app::after { content: ", new"; }
+  @media (max-width: 640px) {
+    .tcheck { width: 32px; height: 32px; }
+    .tcheck::after { inset: -6px; }
+    .trowx { column-gap: 14px; }
+    .homec .shiftcard .btn.primary { width: 100%; }
+    /* On a phone the answer stays in view while the inputs under it are changed. */
+    .calcans { position: sticky; top: calc(var(--bar) + 6px); z-index: 3; box-shadow: 0 0 0 6px var(--surface); }
+    .calcans.plain { position: static; box-shadow: none; }
+  }
+
+  /* Round 5, third judge */
+  .nowrow.nowfirst { padding-block: 14px; }
+  .nowrow.nowfirst .rt { font-family: var(--display); font-stretch: var(--wide); font-size: 1.06rem; font-weight: 700; }
+  .nowrow.nowfirst .btn { min-height: 40px; padding-inline: 22px; }
+  .season.simple { grid-template-columns: minmax(0, 1fr) auto; }
+  .season.simple .snpractice { justify-self: start; font-family: var(--display); font-stretch: var(--wide); font-size: 1.15rem; font-weight: 750; }
+  .season.simple .snhead > span { text-align: right; }
+  @media (max-width: 640px) { .season.simple { grid-template-columns: minmax(0, 1fr); } .season.simple .snhead > span { text-align: left; } }
+  .tldur { display: block; color: var(--mute); }
+  .tlrow > .num { white-space: nowrap; }
 }

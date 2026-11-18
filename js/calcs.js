@@ -322,7 +322,7 @@ def({ id: "calc-drive", key: "drive", name: "Drivetrain", icon: "cdrive", line: 
        speed, so the row says where free speed was reached instead (hill climb r3). */
     var atFree = d && d.reached && d.atFree !== null;
     var rows = [row("Free speed", d ? fx(d.free, 1) : DASH, "ft/s"), atFree ? row("Free speed reached", "after " + fx(d.atFree, 1), "ft") : row("Speed after " + (ok(dist) ? dist : DASH) + " ft", d && d.reached ? fx(d.speed, 1) : DASH, "ft/s"), row("Time to cover it", d && d.reached ? fx(d.time, 2) : DASH, "s"),
-      '<div><dt>Wheels at the start</dt><dd>' + (d ? (d.slip ? '<span class="pill warn">Wheels slip</span>' : '<span class="pill ok">Grip holds</span>') : DASH) + "</dd></div>"];
+      '<div><dt>Grip at launch</dt><dd>' + (d ? (d.slip ? '<span class="pill warn">Wheels slip</span>' : '<span class="pill ok">Grip holds</span>') : DASH) + "</dd></div>"];
     var html = results(rows);
     if (d) {
       var tr = d.trace, last = tr[tr.length - 1], ymax = Math.max(d.free, last[1]) * 1.08;
@@ -371,7 +371,7 @@ def({ id: "calc-belt", key: "belt", name: "Belt", icon: "cbelt", line: "Which be
       (mesh && mesh.teeth < 6 ? '<p class="calcwarn"><span class="pill warn">Few teeth</span> Under 6 teeth in mesh can skip under load. Use a bigger small pulley or a longer distance.</p>' : "");
     if (best) html += pairDrawing(b.r1, b.r2, best.C, n1, n2, "C = " + lenText(best.C, u), 0, "Belt drawing");
     if (best) html += '<div class="row"><button type="button" class="btn" data-act="calcparts" data-v="' + esc(name + " belt, " + best.teeth + "T") + '">' + D.ic("search", 16) + " Find it in Parts</button></div>";
-    var ans = err || (best ? "Use a " + best.teeth + "-tooth " + name + " belt. Put the pulleys " + lenText(best.C, u) + " apart." : "No belt fits that distance. Make the distance longer.");
+    var ans = err || (best ? "Use a " + best.teeth + "-tooth " + name + " belt. Put the pulleys " + (u === "mm" ? lenText(best.C, u) : fx(best.C / 25.4, 2) + " in") + " apart." : "No belt fits that distance. Make the distance longer.");
     return { ans: ans, bad: !best, html: html };
   },
   how: function () { return how(["<b>Pitch diameter.</b> D = pitch × teeth ÷ π. A 36-tooth HTD 5 mm pulley: 5 × 36 ÷ π = 57.3 mm.",
@@ -408,7 +408,7 @@ def({ id: "calc-chain", key: "chain", name: "Chain", icon: "cchain", line: "How 
       (mesh && mesh.teeth < 6 ? '<p class="calcwarn"><span class="pill warn">Few teeth</span> Under 6 teeth in mesh can skip under load. Use a bigger small sprocket or a longer distance.</p>' : "");
     if (best) html += pairDrawing(c.r1, c.r2, best.C, n1, n2, "C = " + inText(best.C, u), p, "Chain drawing");
     if (best) html += '<div class="row"><button type="button" class="btn" data-act="calcparts" data-v="#' + st.size + ' roller chain">' + D.ic("search", 16) + " Find it in Parts</button></div>";
-    var ans = err || (best ? "Use " + best.links + " links of #" + st.size + " chain. Put the sprockets " + inText(best.C, u) + " apart." : "No even link count fits that distance. Make the distance longer.");
+    var ans = err || (best ? "Use " + best.links + " links of #" + st.size + " chain. Put the sprockets " + (u === "mm" ? inText(best.C, u) : fx(best.C, 2) + " in") + " apart." : "No even link count fits that distance. Make the distance longer.");
     return { ans: ans, bad: !best, html: html };
   },
   how: function () { return how(["<b>Pitch diameter.</b> D = pitch ÷ sin(180° ÷ teeth). #25 chain has a 0.25 in pitch, #35 a 0.375 in pitch.",

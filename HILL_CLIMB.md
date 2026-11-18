@@ -10,7 +10,8 @@ Every judge in a tier must score every area at the tier's target. Fixes are made
 | 2 | 1 (7.5) | Haiku, GPT-6 Luna | 7.5 to 8.5 | passed |
 | 3 | 2 (8.5) | Sonnet, GPT-6.1 Terra, Grok 4.6 | 6.7 to 8.7 | 16 of 16 areas under 8.5 from at least one judge |
 | 4 | 2 (8.5) | Sonnet, GPT-6.1 Terra, Grok 4.6 | 7.0 to 8.8 | 16 of 16 areas under 8.5 from at least one judge; lowest per area 7.0 to 8.3 |
-| 5 | 2 (8.5) | Sonnet, GPT-6.1 Terra, Grok 4.6 | with the judges | |
+| 5 | 2 (8.5) | Sonnet, GPT-6.1 Terra, Grok 4.6 | 7.3 to 8.8 | 16 of 16 areas under 8.5 from at least one judge; lowest per area 7.3 to 8.4 |
+| 6 | 3 (9.5) | Opus, GPT-6.1 Sol, Grok 4.7 if it can see images | with the judges | |
 
 Grok 4.5 was thrown out in rounds 1 and 2: asked to copy exact text from three screenshots, it invented it.
 Grok 4.6 copied the text correctly in round 3 and counts.
@@ -105,6 +106,11 @@ Calculators
 Shoot: the Skills overview (student, 1280 and 390), Sign off (mentor, 1280), Permissions with "pri" typed (mentor,
 390), Account (student, 390), and the drivetrain, belt and gearbox calculators (1280 and 390).
 
+**Tier 2 did not pass.** Over rounds 3, 4 and 5 the lowest score per area went 6.7 to 8.0, then 7.0 to 8.3, then
+7.3 to 8.4: a slow rise, with each fresh judge finding new small things and no area reaching 8.5 from all three. The
+owner's rule is to move up after about three rounds without a pass, so round 6 goes to tier 3. Two of the round 5
+drops (Tools, To order) were faults the lead introduced in round 4 and fixed before round 6.
+
 ## What the lead settled when judges disagreed across rounds
 - **Late tasks.** Round 1 asked for a red dot and a word; round 4 said lateness then reads as a second status. Late
   is plain red text with no dot.
@@ -116,3 +122,6 @@ Shoot: the Skills overview (student, 1280 and 390), Sign off (mentor, 1280), Per
   Sign in is a tinted first step with its own filled button, and the task's button stays filled.
 - **A parent's next practice.** Round 1 wanted it as the first row of Now; round 3 said it was then on the page
   twice. The week leads the parent's page, and "Can you help?" holds only what they can do.
+- **Request panel steps, again.** Round 5 showed the round 3 choice still read as two different "now"s. Final form:
+  a finished step is named in the past with who and when ("Ordered, Ms. Rivera, Nov 6"); the step being waited for is
+  marked "now" and named as the thing to come ("Order"); the sentence above the steps says who it waits on.
