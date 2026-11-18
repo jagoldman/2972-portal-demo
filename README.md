@@ -40,18 +40,37 @@ Open `index.html` in a browser. Nothing to install.
 - The names, numbers and schedules are made up.
 - Ideas come from [Gearbox](https://frcgearbox.com) by FRC Team 1648, reimplemented from scratch. No Gearbox code or content is copied.
 
-## Design 8.3, a proposal in two versions (branch `design-8.3`, 2026-11-17)
+## Design 8.3, a proposal (branch `design-8.3`, 2026-11-17)
 
-The demo strip has **Live | A Baseline | B Ideal**. `?design=live`, `?design=a` or `?design=b` in the address does the
-same, and the choice is kept in this browser. Not approved, not in the real apps.
+The demo strip has **Live | Baseline | Ground up**. `?design=live`, `?design=b` or `?design=c` in the address does
+the same, and the choice is kept in this browser. `?event=1` ticks Event day. Not approved, not in the real apps.
 
 - **Live** is the apps as they are today (8.1.6). Nothing in it is changed.
-- **A Baseline** is today's apps in a new look. Every layout, control, word and behaviour is the same as Live.
-  One file: `css/look.css`, every rule under `:root[data-design]`.
-- **B Ideal** is version A plus a tighter layout. Same features, same data. `css/ideal.css`, every rule under
-  `:root[data-design="b"]`, and five places in the js files behind `D.ideal()`.
+- **Baseline** is the new look and the tighter layout. The owner chose this layout on 2026-11-17 ("I like B's layout.
+  Make that the baseline improvement"). Same features, same data as Live, plus the calculators under Tools.
+  Files: `css/look.css` (every rule under `:root[data-design]`), `css/ideal.css` and five places in the js files
+  behind `D.ideal()`.
+- **Ground up** is the Baseline plus the changes that come from asking what each app is for.
+  **[GROUND_UP.md](GROUND_UP.md) is the reasoning** (the purpose, the people, each app's job, the rules);
+  [GROUND_UP_BUILD.md](GROUND_UP_BUILD.md) is the brief the coders built from. Files: `css/ground.css` (shared pieces
+  and Home), `css/ground-parts.css`, `css/ground-skills.css`, `css/ground-compete.css`, and code behind `D.ground()`.
+- The first look-only version ("A": the new look on today's layouts) is still reachable with `?design=a`.
 
-### The look (A and B)
+### What Ground up adds
+| Where | What | Rule it follows |
+|---|---|---|
+| Home | The season line: practices left to kickoff, one mark per practice, milestones on the marks | Count in practices |
+| Home | Now: one list, each item with its own action (Sign in, Approve, Sign off) | Settle it where it is listed |
+| Home | Waiting on others: a student's own requests and sign-offs, and who has the next move | Whose move |
+| Home | This week: the next seven days, with mentors, snacks and what is due | The moment first |
+| Tasks | The next-task card says how many practices are left | Count in practices |
+| Parts | "Find it or ask for it": one box that searches the shelves before it offers a request | Check the shelf before the store |
+| Parts | The flow (Needs OK, To order, Ordered, Arrived) is the filter; every request says whose move it is | Whose move |
+| Skills | A student's Overview opens with the machines they may use; "Finish what you started" comes first | The moment first |
+| Schedule, Pit, Scouting | One line across all three: you now, next match, robot | Doors between apps |
+| Tools | Nine calculators (also in Baseline): gearbox, drivetrain, belt, chain, arm, elevator, flywheel, drill and tap chart, motors | See GROUND_UP.md §6 |
+
+### The look (Baseline and Ground up)
 - **Colour** is kept from design 8.2: flag black and white, arena grey, and the blue of the robot's bumpers as the one
   accent (the main button, today, links). The app bar is black.
 - **Type** is new. The owner found 8.2's banner lettering (Big Shoulders) tall and wasteful of space. Both versions use
@@ -59,7 +78,7 @@ same, and the choice is kept in this browser. Not approved, not in the real apps
   22 px, not 25.6 px) and still read as headings because they are wide and heavy. No page is taller than it is in Live.
 - **Shape**: 8 px corners on things you press, 4 px on things that hold content.
 
-### What version B changes
+### What the Baseline layout changes from Live
 | Change | Where | Why |
 |---|---|---|
 | The app's tabs and its one button sit in the black bar (1024 px and wider) | every app with tabs | One row of chrome, not two: 48 px back on every screen. |
@@ -73,8 +92,8 @@ same, and the choice is kept in this browser. Not approved, not in the real apps
 | "Ready to start" and "In progress" sit side by side; rows do not repeat the heading as a status word | Skills, Overview | Both lists are visible at once. |
 | "Coming up" is listed beside the month (1100 px and wider) | Calendar | The next events are visible without switching to Agenda. |
 
-Measured on the 61 desktop screens of the demo (1280 px wide): version A's pages are 1% shorter than Live in total and
-none is taller; version B's are 11.8% shorter in total and none is taller. Home for a mentor goes from 1,355 px to
+Measured on the 61 desktop screens of the demo (1280 px wide): the look alone makes pages 1% shorter than Live in
+total and none taller; the Baseline's are 11.8% shorter in total and none is taller. Home for a mentor goes from 1,355 px to
 950 px, the student's Skills overview from 1,763 px to 1,142 px.
 
 ### Checked, and not checked

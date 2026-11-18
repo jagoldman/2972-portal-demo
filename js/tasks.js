@@ -188,13 +188,19 @@ function nextUp() {
   var skipped = next ? mine.filter(function (x) { return x !== next && (x.due || "9") < (next.due || "9"); })[0] : null;
   if (!next) return '<div class="card hero nextup"><h2>Nothing assigned to you</h2><p class="mute">Take something nobody has yet.</p></div>';
   var bn = blockedBy(next), steps = next.check.filter(function (c) { return c[1]; }).length;
-  return '<div class="card hero nextup"><p class="eyebrow">Your next task</p><h2>' + esc(next.title) + '</h2><p class="mute">' + esc(proj(next.p).name) + " › " + esc(next.sub) + (next.ms ? " · for “" + esc(msName(next.p, next.ms)) + "”" : "") + " · due " + fmt(next.due) + "</p>" +
+  return '<div class="card hero nextup"><p class="eyebrow">Your next task</p><h2>' + esc(next.title) + '</h2><p class="mute">' + esc(proj(next.p).name) + " › " + esc(next.sub) + (next.ms ? " · for “" + esc(msName(next.p, next.ms)) + "”" : "") + " · due " + fmt(next.due) + (D.ground() && next.due && D.practicesText(next.due) ? ", " + D.practicesText(next.due) : "") + "</p>" +
     (skipped && !bn.length ? '<p class="small mute">“' + esc(skipped.title) + "” is on hold" + (blockedBy(skipped).length ? " until “" + esc(blockedBy(skipped)[0].title) + "” is done." : ".") + "</p>" : "") +
     (next.check.length ? '<div class="row"><div class="bar" style="width:160px"><i class="ok" style="width:' + D.pct(steps, next.check.length) + '%"></i></div><span class="small mute">' + steps + " of " + next.check.length + " steps</span></div>" : "") +
     (bn.length ? '<p class="small"><span class="pill bad">Waiting on</span> <button class="linkbtn" data-act="topen" data-v="' + bn[0].id + '">' + esc(bn[0].title) + "</button> (" + esc(bn[0].who.join(", ") || "nobody yet") + ").</p>" : "") +
     '<div class="row heroacts"><button class="btn' + (bn.length ? "" : " primary") + '" data-act="tdone" data-v="' + next.id + '">' + D.ic("check", 16) + ' Done</button><button class="btn" data-act="tstuck" data-v="' + next.id + '">I\'m stuck</button><button class="btn" data-act="tpart" data-v="' + next.id + '">' + D.ic("parts", 16) + ' Request a part</button><button class="btn ghost" data-act="topen" data-v="' + next.id + '">Open</button></div></div>';
 }
 D.nextUpCard = nextUp;
+/* Small read-only answers for Home (Ground up): the milestones not yet met, soonest first, and what is due on a day.
+   Each milestone: { id, name, date, project, pid, color }. */
+D.tasksApi = {
+  milestones: function (n) { return nextMilestones(n || 4).map(function (m) { return { id: m.id, name: m.name, date: m.date, project: m.p.name, pid: m.p.id, color: m.p.color }; }); },
+  openProject: function (pid) { T().at = { v: "project", p: pid }; D.go("tasks"); }
+};
 function my() {
   var mine = T().list.filter(function (x) { return x.who.indexOf(me()) >= 0 && x.st !== "done"; }).sort(function (a, b) { return (a.due || "9") < (b.due || "9") ? -1 : 1; });
   var buckets = [["Overdue", function (x) { return x.due && days(x.due) < 0; }], ["Today", function (x) { return x.due && days(x.due) === 0; }], ["This week", function (x) { return x.due && days(x.due) > 0 && days(x.due) <= 6; }], ["Later", function (x) { return x.due && days(x.due) > 6; }], ["No date", function (x) { return !x.due; }]];

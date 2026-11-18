@@ -20,4 +20,60 @@
   /* ---------- Whose move (D.move) ---------- */
   .move { color: var(--mute); font-size: .86rem; white-space: nowrap; }
   .move.mine { color: var(--accent); font-weight: 650; }
+
+  /* ============================================================
+     Home (js/core.js, homeGround)
+     ============================================================ */
+  /* The season line: a number, what it counts to, and one mark per practice until then. */
+  .season { display: grid; grid-template-columns: auto minmax(0, 1fr); gap: 6px 22px; align-items: center; margin-top: 14px; padding: 12px 16px; background: var(--rail); color: var(--rail-text); border-radius: var(--r); }
+  .snhead { display: flex; align-items: center; gap: 12px; }
+  .snhead > span { display: grid; line-height: 1.25; }
+  .snhead .mute { color: var(--rail-mute); font-size: .86rem; }
+  .snnum { font-family: var(--display); font-stretch: var(--wide); font-weight: 800; font-size: 2rem; line-height: 1; letter-spacing: -.02em; }
+  .sntrack { display: flex; align-items: center; gap: 4px; min-width: 0; height: 28px; }
+  .pm { position: relative; flex: 1 1 0; min-width: 2px; max-width: 64px; height: 10px; border-radius: 2px; background: rgba(255,255,255,.3); }
+  .pm.build { height: 18px; }
+  .pm.today { background: #fff; }
+  .pm.due::before { content: ""; position: absolute; left: 50%; top: 50%; width: 11px; height: 11px; margin: -5.5px 0 0 -5.5px; transform: rotate(45deg); background: #fff; box-shadow: 0 0 0 3px var(--rail); }
+  .snend { flex: none; margin-left: 6px; padding: 3px 9px; border-radius: 6px; background: var(--bumper); color: #fff; font-weight: 700; font-size: .82rem; white-space: nowrap; box-shadow: inset 0 -2px 0 rgba(0,0,0,.2); }
+  .snnext { grid-column: 1 / -1; display: flex; flex-wrap: wrap; gap: 2px 22px; padding-top: 8px; border-top: 1px solid rgba(255,255,255,.16); }
+  .snms { display: inline-flex; align-items: baseline; gap: 7px; min-height: 30px; padding: 0; border: 0; background: none; color: inherit; font: inherit; text-align: left; }
+  .snms b { font-weight: 650; }
+  .snms span { color: var(--rail-mute); font-size: .86rem; }
+  .snms:hover b { text-decoration: underline; text-underline-offset: 3px; }
+  .snms:focus-visible { outline-color: #fff; }
+  .snd { flex: none; align-self: center; width: 9px; height: 9px; transform: rotate(45deg); display: inline-block; }
+  /* On a phone the line is two short rows; the milestones are in "This week" just below, so they are not repeated. */
+  @media (max-width: 760px) {
+    .season { grid-template-columns: minmax(0, 1fr); gap: 8px; padding: 10px 14px 12px; }
+    .snnum { font-size: 1.7rem; }
+    .snnext { display: none; }
+    .pm.due::before { width: 9px; height: 9px; margin: -4.5px 0 0 -4.5px; box-shadow: 0 0 0 2px var(--rail); }
+  }
+
+  /* Now: a row is a title that opens the thing, a mark, and at most one action. */
+  .nowcard { border-top: 0 !important; }
+  .nowrow { flex-wrap: nowrap; gap: 10px; }
+  .nowrow .rowlink { display: grid; grid-template-columns: minmax(0, 1fr); gap: 0; }
+  .nowrow .rl { font-size: .9rem; }
+  .nowrow .rl .pill { font-size: .9rem; }
+  .nowrow:hover { background: var(--surface-2); }
+  .nowrow > .btn, .nowrow > .pill, .nowrow > .move, .nowrow > .chev { flex: none; }
+  .nowbad { color: var(--bad); font-weight: 650; }
+  @media (max-width: 640px) {
+    .nowrow { padding-block: 6px; }
+    .nowrow > .chev, .nowrow > .pill { display: none; }
+  }
+
+  /* This week: a day, what happens on it, and the facts people ask about it. */
+  .wkrow { display: grid; grid-template-columns: 3.4rem minmax(0, 1fr); gap: 12px; align-items: start; width: 100%; padding: 8px 4px; font: inherit; color: inherit; text-align: left; }
+  .wkd { display: grid; line-height: 1.25; }
+  .wkd .num { color: var(--mute); font-size: .84rem; }
+  .wkrow.today .wkd b { color: var(--accent); }
+  .wkrow .grow { display: grid; gap: 1px; min-width: 0; }
+  .wkrow .grow > b { font-weight: 650; }
+  .wkfacts { display: flex; flex-wrap: wrap; gap: 0 12px; color: var(--mute); font-size: .86rem; }
+  .wkwarn { color: var(--warn); font-weight: 600; }
+  .wkdue { display: inline-flex; align-items: center; gap: 6px; color: var(--text-2); }
+  .homec .homeside > .card:first-child { padding-top: 16px; }
 }

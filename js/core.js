@@ -322,6 +322,120 @@ function practiceRows() {
   else rows.push({ app: "here", tab: "today", title: (today ? "Practice today, " : "Next practice " + api.fmt(pd.date) + ", ") + api.span(pd), line: today ? (signed ? "You are signed in" : "You are not signed in") : "", btn: today && !signed ? '<button class="btn" data-act="herescan">Sign in</button>' : "" });
   return rows;
 }
+/* ---------- Home, Ground up (GROUND_UP.md §4, Home) ---------- */
+function isoAdd(s, n) { var q = s.split("-"), d = new Date(+q[0], +q[1] - 1, +q[2] + n); return d.getFullYear() + "-" + ("0" + (d.getMonth() + 1)).slice(-2) + "-" + ("0" + d.getDate()).slice(-2); }
+function daysTo(s, from) { var a = s.split("-"), b = from.split("-"); return Math.round((new Date(+a[0], +a[1] - 1, +a[2]) - new Date(+b[0], +b[1] - 1, +b[2])) / 86400000); }
+/* The season line: the next date that matters (kickoff, then the next competition), counted in days and in practices,
+   with one mark for every practice between now and then. A mark with a milestone due on it is a diamond. It is the one
+   bold element of this version: it makes "count in practices" (rule 4) something you can see. */
+function seasonLine() {
+  var api = D.calApi; if (!api || !api.meetDays) return "";
+  var today = api.TODAYS, k = api.kickoff && api.kickoff(), target = k && k.date > today ? { date: k.date, name: "kickoff", title: "Kickoff" } : null;
+  if (!target) { var comp = api.upcoming(1, ["comp"])[0]; if (comp) target = { date: comp.date, name: comp.name, title: comp.name }; }
+  if (!target) return "";
+  var meets = api.meetDays(today, isoAdd(target.date, -1)), n = meets.length, days = daysTo(target.date, today);
+  var ms = D.tasksApi ? D.tasksApi.milestones(12).filter(function (m) { return m.date >= today && m.date < target.date; }) : [];
+  var due = {}; ms.forEach(function (m) { (due[m.date] = due[m.date] || []).push(m); });
+  var marks = meets.map(function (d) {
+    var cls = "pm" + (d.date === today ? " today" : "") + (d.kind === "build" ? " build" : "") + (due[d.date] ? " due" : "");
+    return '<i class="' + cls + '"></i>';
+  }).join("");
+  var next = ms.slice(0, 3).map(function (m) {
+    return '<button class="snms" data-act="homeproject" data-v="' + esc(m.pid) + '" data-tip="Open the ' + esc(m.project) + ' project in Tasks."><i class="snd" style="background:' + esc(m.color) + '"></i><b>' + esc(m.name) + '</b><span class="num">' + esc(api.fmt(m.date)) + (D.practicesText(m.date) ? ", " + D.practicesText(m.date) : "") + "</span></button>";
+  }).join("");
+  return '<section class="season" aria-label="The season">' +
+    '<p class="snhead"><b class="snnum num">' + n + "</b><span><b>" + (n === 1 ? "practice" : "practices") + " to " + esc(target.name) + '</b><span class="mute num">' + esc(api.fmt(target.date)) + ", " + plural(days, "day", "days") + "</span></span></p>" +
+    '<div class="sntrack" aria-hidden="true">' + marks + '<span class="snend">' + esc(target.title) + "</span></div>" +
+    (next ? '<div class="snnext">' + next + "</div>" : "") + "</section>";
+}
+// An app's api, or null unless it has every function Home is about to call (an app file may be absent or older).
+function apiWith(api, fns) { return api && fns.every(function (f) { return typeof api[f] === "function"; }) ? api : null; }
+// One row of the Now list: a title and one muted line that open the owning screen, then at most one action.
+function nowRow(o) {
+  return '<div class="li nowrow"><button class="rowlink" data-act="' + (o.act || "goapp") + '"' + (o.v != null ? ' data-v="' + esc(o.v) + '"' : "") + (o.app ? ' data-app="' + o.app + '"' : "") + (o.tab ? ' data-tab="' + o.tab + '"' : "") + '><span class="rt">' + esc(o.title) + "</span>" + (o.line ? '<span class="rl">' + o.line + "</span>" : "") + "</button>" +
+    (o.mark || "") + (o.btn || '<span class="chev" aria-hidden="true">›</span>') + "</div>";
+}
+/* Now: everything that needs this person, most urgent first, each with its own action (rule 3). The actions call the
+   owning app's own function (D.partsApi.approve, D.skillsApi.signOff), so they are not a second way of doing it. */
+function nowRows() {
+  var S = D.S, rows = [], api = D.calApi, c = S.cal, staff = D.isStaff(), P = apiWith(D.partsApi, ["needsOk", "approve", "open"]), K = apiWith(D.skillsApi, ["requests", "signOff"]);
+  // A parent's next practice is the first row of "This week" beside this list, so it is not said twice.
+  practiceRows().forEach(function (r) { if (S.role === "parent" && /^Next practice/.test(r.title)) return; rows.push({ app: r.app, tab: r.tab, title: r.title, line: r.line ? esc(r.line) : "", btn: r.btn || "" }); });
+  if (staff) {
+    if (P && hasTile("parts")) P.needsOk().forEach(function (r) {
+      rows.push({ act: "homereq", v: r.id, title: r.name, line: esc(D.money(r.total) + ", asked by " + r.by) + (r.orderBy ? ', <b class="nowbad">order by ' + esc(api ? api.fmt(r.orderBy) : r.orderBy) + "</b>" : ""),
+        mark: r.pri === "blocking" ? '<span class="pill pri bad">Blocking</span>' : r.pri === "high" ? '<span class="pill pri warn">High</span>' : "",
+        btn: '<button class="btn" data-act="homeapprove" data-v="' + r.id + '">Approve</button>' });
+    });
+    if (K && hasTile("skills")) K.requests().forEach(function (q) {
+      rows.push({ app: "skills", tab: "signoff", title: q.student + " asks for " + q.skill, line: esc(q.where), btn: '<button class="btn" data-act="homesignoff" data-v="' + esc(q.key) + '">Sign off</button>' });
+    });
+    // What cannot be settled in one tap stays a door, as it was.
+    waitingRows().forEach(function (r) {
+      if (P && r.app === "parts" && /needs? an OK/.test(r.title)) return;
+      if (K && r.app === "skills") return;
+      rows.push({ app: r.app, tab: r.tab, title: r.title, line: r.line ? esc(r.line) : "" });
+    });
+  }
+  return rows;
+}
+// Waiting on others (a student's own open requests and sign-offs), each with who has the next move (rule 2).
+function waitingOnOthers() {
+  var rows = [], P = apiWith(D.partsApi, ["mine", "open"]), K = apiWith(D.skillsApi, ["mine"]);
+  if (P && hasTile("parts")) P.mine().forEach(function (r) {
+    rows.push('<div class="li nowrow"><button class="rowlink" data-act="homereq" data-v="' + r.id + '"><span class="rt">' + esc(r.name) + '</span><span class="rl"><span class="pill ' + esc(r.kind || "") + '">' + esc(r.statusText) + "</span></span></button>" + (r.waitingOn ? D.move(r.waitingOn) : r.eta ? '<span class="move">' + esc(r.eta) + "</span>" : "") + '<span class="chev" aria-hidden="true">›</span></div>');
+  });
+  if (K && hasTile("skills")) { var m = K.mine(); ((m && m.waiting) || []).forEach(function (w) {
+    rows.push('<div class="li nowrow"><button class="rowlink" data-act="goapp" data-app="skills" data-tab="overview"><span class="rt">Sign-off: ' + esc(w.skill) + "</span>" + (w.since ? '<span class="rl">Asked ' + esc(w.since) + "</span>" : "") + "</button>" + D.move("a mentor") + '<span class="chev" aria-hidden="true">›</span></div>');
+  }); }
+  return rows;
+}
+/* This week: the next seven days on which the team meets or has an event. Each row is a door to the Calendar. The
+   facts under a day are the two things people ask about a practice (which adults, which food) and what is due. */
+function weekRows() {
+  var api = D.calApi; if (!api || !api.meetDays) return "";
+  var S = D.S, today = api.TODAYS, end = isoAdd(today, 6), role = S.role, days = {}, order = [];
+  function day(d) { if (!days[d]) { days[d] = { what: [], facts: [] }; order.push(d); } return days[d]; }
+  api.meetDays(today, end).forEach(function (m) {
+    var p = api.practiceOn(m.date), o = day(m.date);
+    o.what.push((m.kind === "build" ? "Build day" : m.kind === "comp" ? m.name : "Practice") + (p ? ", " + api.span(p) : ""));
+    if (m.kind === "comp") return;
+    if (role !== "parent") { var mn = api.mentorsOn(m.date).length; o.facts.push(mn ? '<span>' + plural(mn, "mentor", "mentors") + " coming</span>" : '<span class="wkwarn">No mentors yet</span>'); }
+    var sn = api.snacksFor(m.date);
+    if (sn && D.calTab("snacks")) o.facts.push(sn.filled ? "<span>Snacks: " + esc(sn.names.join(" and ")) + "</span>" : '<span class="wkwarn">Needs snacks</span>');
+  });
+  api.eventsIn(today, end, ["outreach", "meeting"]).forEach(function (e) { day(e.date).what.push(e.name); });
+  if (role !== "parent" && D.tasksApi) D.tasksApi.milestones(12).forEach(function (m) { if (m.date >= today && m.date <= end) day(m.date).facts.push('<span class="wkdue"><i class="snd" style="background:' + esc(m.color) + '"></i>Due: ' + esc(m.name) + "</span>"); });
+  order.sort();
+  if (!order.length) return '<p class="mute">Nothing in the next seven days.</p>';
+  return '<div class="list week">' + order.map(function (d) {
+    var q = d.split("-"), dt = new Date(+q[0], +q[1] - 1, +q[2]), o = days[d];
+    return '<button class="li wkrow' + (d === today ? " today" : "") + '" data-act="goapp" data-app="calendar" aria-label="' + esc(api.fmt(d) + ": " + o.what.join(", ") + ". Open the Calendar") + '"><span class="wkd"><b>' + (d === today ? "Today" : dt.toLocaleDateString("en-US", { weekday: "short" })) + '</b><span class="num">' + dt.toLocaleDateString("en-US", { month: "short", day: "numeric" }) + '</span></span><span class="grow"><b>' + esc(o.what.join(", ")) + "</b>" + (o.facts.length ? '<span class="wkfacts">' + o.facts.join("") + "</span>" : "") + "</span></button>";
+  }).join("") + "</div>";
+}
+function homeGround() {
+  var S = D.S, tiles = D.visibleTiles(), staff = D.isStaff(), role = S.role;
+  var main = tiles.filter(isCore), more = tiles.filter(function (t) { return t.more; });
+  function link(t) { return '<li><a href="' + D.appHref(t.id) + '" target="_blank" rel="noopener noreferrer"' + D.tileTip(t.id) + '>' + D.ic(t.icon, 16) + esc(t.name) + (t.ext ? " ↗" : "") + "</a></li>"; }
+  function approw(t) { return '<a class="approw" href="' + D.appHref(t.id) + '" target="_blank" rel="noopener noreferrer" aria-label="' + esc(t.name) + ' (opens in a new tab)"' + D.tileTip(t.id) + '><span class="ic">' + D.ic(t.icon, 18) + "</span><b>" + esc(t.name) + (t.ext ? " ↗" : "") + "</b><small>" + esc(SHORT[t.id] || t.desc) + "</small></a>"; }
+  var d = new Date(2026, 10, 10); try { if (D.calApi && D.calApi.TODAYS) { var q = D.calApi.TODAYS.split("-"); d = new Date(+q[0], +q[1] - 1, +q[2]); } } catch (e) {}
+  var date = d.toLocaleDateString("en-US", { weekday: "long", month: "long", day: "numeric" });
+  var now = nowRows(), others = role === "student" ? waitingOnOthers() : [];
+  var mainCol = "";
+  if (role === "student" && S.eventDay && D.myShiftCard) mainCol += D.myShiftCard();
+  mainCol += '<section class="card nowcard"><h2>Now</h2>' + (now.length ? '<div class="list">' + now.map(nowRow).join("") + "</div>" : '<p class="mute">Nothing needs you right now.</p>') + "</section>";
+  if (role === "student" && D.nextUpCard) mainCol += S.eventDay ? '<div class="evcompact">' + D.nextUpCard() + "</div>" : D.nextUpCard();
+  if (others.length) mainCol += '<section class="card"><h2>Waiting on others</h2><div class="list">' + others.join("") + "</div></section>";
+  var act = role === "parent" ? "" : '<section class="card"><h2>Recent activity</h2><div class="list">' +
+    S.activity.slice(0, 4).map(function (a) { return '<div class="li actli"><span class="actapp">' + esc(D.APPNAME[a.app] || "") + '</span><span class="grow"><b>' + esc(a.who) + "</b> " + esc(a.what) + '</span><span class="who">' + esc(a.when) + "</span></div>"; }).join("") + "</div></section>";
+  var top = S.eventDay && D.eventLine && role !== "parent" ? D.eventLine() : role === "parent" ? "" : seasonLine();
+  return '<div class="content home homeb homec"><div class="homehead"><h1>Hi ' + esc(D.me().short) + '.</h1><p class="homedate">' + esc(date) + "</p></div>" + top + (D.guideCard ? D.guideCard() : "") +
+    '<div class="homecols"><div class="homemain">' + mainCol + '</div><aside class="homeside">' +
+    '<section class="card"><h2>This week</h2>' + weekRows() + "</section>" +
+    '<section class="card"><h2>Apps</h2><div class="applist">' + main.map(approw).join("") + "</div>" +
+    '<div class="homegroups">' + toolsGroup("home") + adminGroup("home", tiles, function (l) { return '<ul class="morelinks">' + l.map(link).join("") + "</ul>"; }) + (more.length ? groupRow("more", "More", more.length, "home", '<ul class="morelinks">' + more.map(link).join("") + "</ul>") : "") + "</div></section>" +
+    act + "</aside></div></div>";
+}
 D.views.portal = function () {
   var S = D.S, tiles = D.visibleTiles(), staff = D.isStaff();
   function link(t) { return '<li><a href="' + D.appHref(t.id) + '" target="_blank" rel="noopener noreferrer"' + D.tileTip(t.id) + '>' + D.ic(t.icon, 16) + esc(t.name) + (t.ext ? " ↗" : "") + "</a></li>"; }
@@ -339,8 +453,9 @@ D.views.portal = function () {
     S.activity.slice(0, 5).map(function (a) { return '<div class="li actli"><span class="actapp">' + esc(D.APPNAME[a.app] || "") + '</span><span class="grow"><b>' + esc(a.who) + "</b> " + esc(a.what) + '</span><span class="who">' + esc(a.when) + "</span></div>"; }).join("") + "</div></section>";
   /* Version B: what needs you is the wide left column; the apps and the activity are a narrow right column, so both
      are on screen without scrolling. Apps are one-line rows (name, then what it is for), not tiles. */
+  if (D.ground()) return homeGround();
   if (D.ideal()) {
-    var approw = function (t) { return '<a class="approw" href="' + D.appHref(t.id) + '" target="_blank" rel="noopener noreferrer" aria-label="' + esc(t.name) + ' (opens in a new tab)"><span class="ic">' + D.ic(t.icon, 18) + "</span><b>" + esc(t.name) + (t.ext ? " ↗" : "") + "</b><small>" + esc(SHORT[t.id] || t.desc) + "</small></a>"; };
+    var approw = function (t) { return '<a class="approw" href="' + D.appHref(t.id) + '" target="_blank" rel="noopener noreferrer" aria-label="' + esc(t.name) + ' (opens in a new tab)"' + D.tileTip(t.id) + '><span class="ic">' + D.ic(t.icon, 18) + "</span><b>" + esc(t.name) + (t.ext ? " ↗" : "") + "</b><small>" + esc(SHORT[t.id] || t.desc) + "</small></a>"; };
     return '<div class="content home homeb"><div class="homehead"><h1>Hi ' + esc(D.me().short) + '.</h1><p class="homedate">' + esc(date) + "</p></div>" + (D.guideCard ? D.guideCard() : "") +
       '<div class="homecols"><div class="homemain">' + (cards || '<section class="card"><h2>Today</h2><p class="mute">Nothing needs you today.</p></section>') + '</div><aside class="homeside">' +
       '<section class="card"><h2>Apps</h2><div class="applist">' + main.map(approw).join("") + "</div>" +
@@ -524,6 +639,11 @@ document.addEventListener("scroll", function () { D.closeNoticeMenu(false); }, t
 A.readall = function () { D.myNotices().forEach(function (n) { n.read = true; }); D.render(); };
 // Open or close a group (Tools, More) and keep the focus on its row, in the Apps menu or on Home.
 A.grp = function (b) { var id = b.dataset.v, place = b.dataset.place; D.setPref("open-" + id, !D.groupOpen(id)); D.render(); var el = document.getElementById("grp-" + place + "-" + id + "-btn"); if (el) el.focus(); };
+// Home, Ground up: settle a thing where it is listed. Each calls the owning app's own function.
+A.homeapprove = function (b) { if (apiWith(D.partsApi, ["approve"])) D.partsApi.approve(+b.dataset.v); };
+A.homereq = function (b) { if (apiWith(D.partsApi, ["open"])) D.partsApi.open(+b.dataset.v); };
+A.homesignoff = function (b) { if (apiWith(D.skillsApi, ["signOff"])) D.skillsApi.signOff(b.dataset.v); };
+A.homeproject = function (b) { if (D.tasksApi) D.tasksApi.openProject(b.dataset.v); };
 A.goapp = function (b) { if (b.dataset.tab) D.S.tabs[b.dataset.app] = b.dataset.tab; D.go(b.dataset.app); };
 A.closedrawer = function () { D.S.drawer = null; D.render(); };
 A.closemodal = function () { D.S.modal = null; D.render(); };
@@ -552,5 +672,5 @@ document.addEventListener("focusout", function (e) {
 });
 function routeFromHash() { var h = location.hash.slice(1); return h && (D.views[h] || D.tile(h) || D.ROUTE_TAB[h]) ? h : null; }
 window.addEventListener("hashchange", function () { var h = routeFromHash(), was = D.S.tabs.calapp; if (!h) return; h = D.landing(h); if (h !== D.S.route || was !== D.S.tabs.calapp) { D.S.route = h; D.S.drawer = null; D.S.modal = null; D.render(); } });
-D.boot = function () { D.reset(); var params = new URLSearchParams(location.search); var dz = params.get("design"); if (!DESIGNS[dz]) { try { dz = localStorage.getItem("2972-demo-design83"); } catch (e) { dz = null; } } D.setDesign(DESIGNS[dz] ? dz : "c"); if (Object.prototype.hasOwnProperty.call(D.ROLES, params.get("role"))) D.S.role = params.get("role"); if (params.get("mode") === "competition") D.S.mode = "competition"; var h = routeFromHash(); if (h) { if (params.get("tab")) D.S.tabs[h] = params.get("tab"); D.S.route = D.landing(h); } D.render(); };
+D.boot = function () { D.reset(); var params = new URLSearchParams(location.search); var dz = params.get("design"); if (!DESIGNS[dz]) { try { dz = localStorage.getItem("2972-demo-design83"); } catch (e) { dz = null; } } D.setDesign(DESIGNS[dz] ? dz : "c"); if (Object.prototype.hasOwnProperty.call(D.ROLES, params.get("role"))) D.S.role = params.get("role"); if (params.get("mode") === "competition") D.S.mode = "competition"; if (params.get("event") === "1") D.S.eventDay = true; var h = routeFromHash(); if (h) { if (params.get("tab")) D.S.tabs[h] = params.get("tab"); D.S.route = D.landing(h); } D.render(); };
 })();
