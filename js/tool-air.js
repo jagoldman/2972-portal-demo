@@ -131,40 +131,70 @@ K.tool({
         M.needText(r.need, o.tanks, o.cfm);
     }
     var share = r.stored > 0 ? r.used / r.stored : Infinity;
-    return K.verdict(st, text) + K.outs([
+    var more = r.cycles ? "This assumes the cycles are spread evenly through the match, no leaks and ideal air use (no air lost in tubing, fittings or cooling). Keep a margin." : "";
+    return K.verdict(st, text, more) + K.outs([
       { k: "Air used in a match", v: K.n(L(r.used), 2), u: "L", sub: "free air: its volume let out to room pressure", tip: "Free air: the volume it would fill at atmospheric pressure. Each stroke fills its cylinder at working pressure, then lets it out." },
       { k: "Stored above working", v: K.n(L(r.stored), 2), u: "L", sub: "free air the tanks give up falling from " + o.stored + " to " + o.work + " psi", tip: "Only the air above working pressure is usable at full force." },
       { k: "Pressure at the end", v: K.n(r.end, 0), u: "psi", state: r.end < o.work - 1e-6 ? "bad" : "", sub: "in the tanks" },
-      { k: "Cycles at full force", v: r.fullCycles + " of " + r.cycles, state: r.firstShort ? "bad" : "", sub: "before it falls below " + o.work + " psi. Full force is theoretical: friction and flow losses take some" },
+      { k: "Cycles at full force", v: r.firstShort ? r.fullCycles + " of " + r.cycles : r.cycles ? "All " + r.cycles : "None", state: r.firstShort ? "bad" : "",
+        sub: (r.firstShort ? "planned cycles get full force, then it falls below " + o.work + " psi" : r.cycles ? "planned cycles get full force" : "no cycles planned") + ". Full force is theoretical: friction and flow losses take some" },
       { k: r.firstShort ? "Tanks it would take" : "Share of stored air", v: r.firstShort ? (r.need === Infinity ? "none will do" : r.need ? String(r.need) : "over " + M.MAXT) : K.n(share * 100, 0) + "%", state: r.firstShort ? "bad" : share > 0.8 ? "warn" : "", sub: r.firstShort ? "of " + K.n(o.ml, 0) + " mL" + (o.cfm ? ", with the compressor" : "") : "of what is stored above " + o.work + " psi" }]);
   },
 
   more: function (s, r) {
     var o = r.o;
-    var chart = K.chart({ id: "air-p", title: "Tank pressure through the match", x: { label: "match time, s", name: "At", unit: "s", min: 0, max: o.match }, y: { label: "psi", unit: "psi", min: 0, max: Math.max(o.stored * 1.1, 10) },
-      series: [{ name: "Tank pressure", pts: r.pts, color: 1 }], hlines: [{ y: o.work, below: true, label: "Working " + o.work + " psi" }],
-      marks: r.firstShort ? [{ x: r.firstShort.t, label: "Below working" }] : [] });
     var anyShort = r.ev.some(function (e) { return e.short; });
-    var strokes = !anyShort ? '<figure class="chart t-air-full"><figcaption>Pressure each stroke gets</figcaption><p>' + (r.cycles ? "Every stroke gets the full " + o.work + " psi." : "No strokes in this match.") + '</p><p class="t-air-hint">When the tanks run short, a chart of each stroke\'s pressure shows here.</p></figure>' : K.chart({ id: "air-s", title: "Pressure each stroke gets", x: { label: "match time, s", name: "At", unit: "s", min: 0, max: o.match }, y: { label: "psi", unit: "psi", min: 0, max: Math.max(o.work * 1.2, 5) },
-      series: r.cyls.map(function (cy, j) { return { name: cy.name, color: j < 3 ? j + 1 : "mute", dash: j % 2 === 1, pts: r.ev.filter(function (e) { return e.i === j; }).map(function (e) { return [e.t, e.p]; }) }; }), hlines: [{ y: o.work, below: true, label: "Working " + o.work + " psi" }] });
+    var chart = K.chart({ id: "air-p", h: anyShort ? 190 : 150, title: "Tank pressure through the match", x: { label: "match time, s", name: "At", unit: "s", min: 0, max: o.match }, y: { label: "psi", unit: "psi", min: 0, max: Math.max(o.stored * 1.1, 10) },
+      series: [{ name: "Tank pressure", pts: r.pts, color: 1 }], hlines: [workLine(o.work, "Working " + o.work + " psi", [r.pts], Math.max(o.stored * 1.1, 10), o.match, r.firstShort ? [r.firstShort.t] : [])],
+      marks: r.firstShort ? [{ x: r.firstShort.t, label: "Below working" }] : [] });
+    var strokes = !anyShort ? "" : K.chart({ id: "air-s", title: "Pressure each stroke gets", x: { label: "match time, s", name: "At", unit: "s", min: 0, max: o.match }, y: { label: "psi", unit: "psi", min: 0, max: Math.max(o.work * 1.2, 5) },
+      series: r.cyls.map(function (cy, j) { return { name: cy.name, color: j < 3 ? j + 1 : "mute", dash: j % 2 === 1, pts: r.ev.filter(function (e) { return e.i === j; }).map(function (e) { return [e.t, e.p]; }) }; }), hlines: [workLine(o.work, "Working " + o.work + " psi", r.cyls.map(function (cy, j) { return r.ev.filter(function (e) { return e.i === j; }).map(function (e) { return [e.t, e.p]; }); }), Math.max(o.work * 1.2, 5), o.match, [])] });
     var tab = '<section class="ctab"><h2>Cylinders at ' + o.work + ' psi</h2><div class="scroll"><table><thead><tr><th>Cylinder</th><th class="r">Bore × stroke</th><th class="r">Rod</th><th class="r">Cycles</th><th class="r">Air per cycle</th><th class="r">Push, theoretical</th><th class="r">Pull, theoretical</th><th class="r">Cycles from full, alone</th></tr></thead><tbody>' +
       r.per.map(function (p) { return "<tr><td>" + esc(p.c.name) + '</td><td class="r num">' + K.fix(p.c.bore, 4).replace(/0+$/, "").replace(/\.$/, "") + " × " + K.n(p.c.stroke, 2) + ' in</td><td class="r num">' + K.fix(p.c.rod, 4).replace(/0+$/, "").replace(/\.$/, "") + ' in</td><td class="r num">' + p.c.cycles + '</td><td class="r num">' + K.n(L(p.cycleAir), 3) + ' L</td><td class="r num">' + K.n(p.push, 1) + ' lbf</td><td class="r num">' + K.n(p.pull, 1) + ' lbf</td><td class="r num">' + (o.stored > o.work ? p.alone : 0) + "</td></tr>"; }).join("") +
       "</tbody></table></div></section>";
-    return '<div class="chartrow">' + chart + strokes + "</div>" + tab + K.notes(
-      "<p>Air is treated as staying at room temperature as it expands (isothermal, Boyle's law: pressure × volume stays the same for the same air). Pressures in the sums are absolute, gauge plus 14.7 psi.</p>" +
-      '<p class="eq">one extend fills: bore area × stroke;  one retract fills: (bore area − rod area) × stroke</p>' +
-      '<p class="eq">free air = volume × (working psi + 14.7) ÷ 14.7</p>' +
-      '<p class="eq">stored above working = tank volume × (stored psi − working psi) ÷ 14.7</p>' +
-      '<p class="eq">tank after a stroke: (P + 14.7) → (P + 14.7) − stroke volume × (working + 14.7) ÷ tank volume</p>' +
-      '<p class="eq">once that would fall under working: (P + 14.7) → (P + 14.7) × tank volume ÷ (tank volume + stroke volume)</p>' +
-      '<p class="eq">push = working psi × bore area;  pull = working psi × (bore area − rod area)</p>' +
+    // When every stroke gets full pressure there is nothing to chart per stroke: the tank chart takes the whole width
+    // and says so under it.
+    var charts = anyShort ? '<div class="chartrow">' + chart + strokes + "</div>" :
+      '<div class="t-air-wide">' + chart.replace(/<\/figure>$/, '<p class="t-air-under">' + (r.cycles ? "Every stroke gets the full " + o.work + " psi (working pressure), so each cylinder pushes with its full theoretical force all match." : "No strokes in this match.") + "</p></figure>") + "</div>";
+    return charts + tab + K.notes(
+      "<p>Air is treated as staying at room temperature as it expands (isothermal, Boyle's law: pressure × volume stays the same for the same air). Two kinds of pressure appear below. <b>Gauge</b> (psig) is what a gauge reads, the pressure above the room's; every pressure you type and every pressure the page shows is gauge. <b>Absolute</b> (psia) is gauge plus 14.7 psi, the room's own pressure at sea level. Boyle's law needs absolute pressures.</p>" +
+      '<p class="eq">one extend fills: bore area × stroke;  one retract fills: (bore area − rod area) × stroke  (volumes, no pressure)</p>' +
+      '<p class="eq">free air = volume × (working psig + 14.7) ÷ 14.7  (working pressure as absolute, over the room\'s absolute 14.7)</p>' +
+      '<p class="eq">stored above working = tank volume × (stored psig − working psig) ÷ 14.7  (a difference, so gauge and absolute give the same)</p>' +
+      '<p class="eq">tank after a stroke, absolute: (P psig + 14.7) → (P psig + 14.7) − stroke volume × (working psig + 14.7) ÷ tank volume</p>' +
+      '<p class="eq">once that would fall under working, absolute: (P psig + 14.7) → (P psig + 14.7) × tank volume ÷ (tank volume + stroke volume)</p>' +
+      '<p class="eq">push = working psig × bore area;  pull = working psig × (bore area − rod area)  (gauge: the room\'s 14.7 psi pushes on the other side too)</p>' +
       "<p>Each cylinder's cycles are spread evenly through the match, out and then back a moment later. Once a stroke would pull the tanks under working pressure, the regulator is wide open: the tank and the cylinder share what is left, so that stroke and every one after it gets less pressure and less force.</p>" +
       "<p>The compressor's flow is taken as free air per minute, the same all the time, running whenever the tanks are under the stored pressure. A real compressor gives less as the pressure rises, so read its chart at your working pressure. It is also left out that the air cools as it expands in a quick stroke (which uses a little more), and the tubing and fittings, which hold some air too. Treat the answer as a close estimate and keep a margin.</p>" +
-      "<p>In the drawing the tank fill shows the air's pressure against the stored pressure (the tanks hold only air; the fill is not a liquid level), and the gauge marks stored and working pressure. The cylinders are to scale against each other, with a dashed outline where the rod reaches at full stroke. The force arrows are the theoretical force, pressure times area. The whole match plays in " + DUR + " s; each cylinder strokes when it is used.</p>");
+      "<p>In the drawing the tank fill shows the air's pressure against the stored pressure (the tanks hold only air; the fill is not a liquid level), and the gauge marks stored and working pressure. The cylinders are to scale against each other, with a dashed outline where the rod reaches at full stroke. The force arrows are the theoretical force, pressure times area. The gauge's green band is the pressure above working pressure: the air the cylinders can use at full force. Each cylinder is drawn with one feed line, a simplification: a real double-acting cylinder has a port at each end, one to extend it and one to retract it, both fed through its valve. The whole match plays in " + DUR + " s; each cylinder strokes when it is used.</p>");
   },
 
   draw: function (g, s, r, t) { drawAir(g, s, r, t); }
 });
+
+/* The working-pressure line on a chart, with its label put where no curve and no upright mark is: right or left,
+   below or above the line (the first clear one). ytop: the chart's top; xmax: its right end; marks: upright lines' x. */
+function workLine(y, label, curves, ytop, xmax, marks) {
+  // Left first: the "now" line rests at the right-hand end when the match is not playing.
+  var ways = [["left", true], ["left", false], ["right", true], ["right", false]], pick = null;
+  ways.some(function (w) {
+    var x0 = w[0] === "left" ? 0 : 0.6 * xmax, x1 = w[0] === "left" ? 0.4 * xmax : xmax, lo = w[1] ? y - 0.14 * ytop : y + 0.01 * ytop, hi = w[1] ? y - 0.01 * ytop : y + 0.14 * ytop;
+    if (lo < 0.04 * ytop || hi > ytop) return false;
+    if (marks.some(function (m) { return m >= x0 && m <= x1; })) return false;
+    var hit = curves.some(function (pts) {
+      for (var i = 0; i < pts.length; i++) {
+        var a = pts[i], b = pts[i + 1] || pts[i];
+        if (Math.max(a[0], b[0]) < x0 || Math.min(a[0], b[0]) > x1) continue;
+        if (Math.max(a[1], b[1]) >= lo - 0.02 * ytop && Math.min(a[1], b[1]) <= hi + 0.02 * ytop) return true;
+      }
+      return false;
+    });
+    if (!hit) pick = w;
+    return !hit;
+  });
+  pick = pick || ways[0];
+  return { y: y, label: label, side: pick[0] === "left" ? "left" : undefined, below: pick[1] };
+}
 
 /* ---------- Rows of cylinders ---------- */
 D.inputs.aircyl = function (el) {
@@ -187,7 +217,7 @@ D.acts.airdel = function (b) { var s = K.state(ID); s.cyls.splice(+b.dataset.i, 
     ".t-air-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 6px 10px; }" +
     ".t-air-f { display: grid; gap: 2px; font-size: .78rem; color: var(--text-2); }" +
     ".t-air-v { display: flex; align-items: center; gap: 4px; } .t-air-v .inp { width: 100%; min-width: 0; min-height: 34px; padding: 3px 6px; text-align: right; } .t-air-v small { color: var(--mute); white-space: nowrap; font-size: .74rem; }" +
-    ".t-air-full { align-content: start; } .t-air-full p { margin: 0; }" +
+    ".t-air-wide .chart svg { max-width: 600px; } .t-air-under { margin: 0; font-size: .9rem; color: var(--text-2); }" +
     ".t-air-f .inp.t-air-bad { border-color: var(--bad); background: var(--bad-bg); }" +
     "@media (max-width: 640px) { .t-air-v .inp, .t-air-top .inp { min-height: 44px; } }";
   document.head.appendChild(st);
@@ -201,10 +231,14 @@ function drawAir(g, s, r, t) {
   // Header: the match clock and the tank pressure. At the bottom right: what the playback time means.
   g.text("Match clock " + clock(T) + " of " + clock(o.match), 12, 20, { weight: 700, size: 13 });
   g.text("Tanks " + K.n(P, 0) + " psi" + (low ? ", below working pressure" : ""), 12, 37, { color: low ? c.bad : c.text2, weight: 600, size: 12 });
-  g.text(DUR + " s here stands for the whole match", W - 10, H - 9, { align: "right", color: c.mute, size: 11 });
+  // Along the bottom: what the playback time means, and that each cylinder's air path is drawn simplified.
+  var capT = DUR + " s here stands for the whole match", simT = narrow ? "Simplified: one feed line each; a real cylinder has a port each way" : "Simplified: one feed line per cylinder; a real double-acting cylinder has a port at each end";
+  var stack = g.textWidth(capT, { size: 11 }) + g.textWidth(simT, { size: 11 }) + 40 > W;
+  g.text(capT, W - 10, H - 9, { align: "right", color: c.mute, size: 11 });
+  g.text(simT, 12, stack ? H - 25 : H - 9, { color: c.mute, size: 11 });
   /* The supply: tanks, gauge, regulator. A narrow column at the left on a laptop; a short band across the top on a
      phone. The cylinders get the rest, so they are the larger part of the drawing. */
-  var leftW = narrow ? W : F.clamp(W * 0.28, 220, 290);
+  var leftW = narrow ? W : F.clamp(W * 0.3, 236, 300);
   var tw = narrow ? 24 : 30, gapT = narrow ? 7 : 9, maxDraw = narrow ? 3 : Math.max(1, Math.floor((leftW - 22 - 2 * 40 - 30) / (tw + gapT)));
   var nDraw = Math.min(o.tanks, maxDraw);
   var tx0 = narrow ? 16 : 20, ty0 = narrow ? 88 : 92, th = narrow ? 64 : Math.max(60, Math.min(170, H - ty0 - 120));
@@ -227,7 +261,7 @@ function drawAir(g, s, r, t) {
   var gr = narrow ? 30 : F.clamp((leftW - (tanksRight - tx0) - 66) / 2, 26, 44), gx = tanksRight + 20 + gr, gy = narrow ? ty0 + th / 2 - 2 : ty0 + gr + 16;
   if (gy + gr + 6 > feedY) gy = feedY - gr - 6;
   g.line(gx, gy + gr, gx, feedY, { color: c.mute, width: 2 });
-  gauge(g, gx, gy, gr, P, o, full);
+  gauge(g, gx, gy, gr, P, o, full, narrow ? W - 90 : leftW + 16);
   // Regulator on the feed line.
   var regW = 64, regX = narrow ? W - regW - 14 : leftW - regW - 2, regY = feedY - 14;
   g.line(tx0 + tw / 2, feedY, regX, feedY, { color: c.mute, width: 2 });
@@ -244,7 +278,7 @@ function drawAir(g, s, r, t) {
   }
   // The cylinders, to scale against each other: right of the supply on a laptop, under it on a phone.
   var cyls = r.cyls, n = cyls.length, manX = narrow ? 8 : leftW + 22;
-  var ax0 = narrow ? 22 : leftW + 46, ax1 = W - 14, ay0 = narrow ? feedY + 32 : 50, ay1 = H - 22;
+  var ax0 = narrow ? 22 : leftW + 46, ax1 = W - 14, ay0 = narrow ? feedY + 32 : 50, ay1 = H - (narrow ? 38 : 26);
   if (narrow) { g.line(regX + regW / 2, regY + 28, regX + regW / 2, feedY + 22, { color: c.mute, width: 2 }); g.line(regX + regW / 2, feedY + 22, manX, feedY + 22, { color: c.mute, width: 2 }); }
   else g.line(regX + regW, feedY, manX, feedY, { color: c.mute, width: 2 });
   if (!n) { g.text("No cylinders. Add one in Cylinders.", ax0, (ay0 + ay1) / 2, { color: c.mute }); return; }
@@ -311,7 +345,7 @@ function state(r, j, T) {
 }
 function ease(u) { u = F.clamp(u, 0, 1); return u * u * (3 - 2 * u); }
 // A pressure gauge: 0 at the lower left round to the top of the scale at the lower right.
-function gauge(g, x, y, R, P, o, full) {
+function gauge(g, x, y, R, P, o, full, maxX) {
   var c = g.c, top = Math.ceil(full * 1.15 / 20) * 20, a0 = Math.PI * 0.75, sweep = Math.PI * 1.5;
   function ang(p) { return a0 + sweep * F.clamp(p / top, 0, 1); }
   g.circle(x, y, R, { fill: c.sheet, stroke: c.partLine, width: 1.5 });
@@ -324,6 +358,13 @@ function gauge(g, x, y, R, P, o, full) {
     g.line(x + cs * (R - 12), y + sn * (R - 12), x + cs * (R + 4), y + sn * (R + 4), { color: c.text, width: 2 });
     g.text(m[1], x + cs * (R + 8), y + sn * (R + 8) - (sn < -0.5 ? 4 : 0), { size: 10, color: c.text2, weight: 600, align: cs < -0.2 ? "right" : cs > 0.2 ? "left" : "center", base: sn < -0.5 ? "alphabetic" : "middle" });
   });
+  // The green band: the pressure above working, the air the cylinders can use at full force.
+  if (Math.abs(ang(o.stored) - ang(o.work)) >= 0.9) {
+    var am = ang((o.work + o.stored) / 2), ac = Math.cos(am), as = Math.sin(am), lines = ["above working:", "usable"], lw = Math.max.apply(null, lines.map(function (t) { return g.textWidth(t, { size: 10, weight: 600 }); }));
+    var lx = x + ac * (R + 9) - (ac < -0.2 ? lw : ac > 0.2 ? 0 : lw / 2), ly = y + as * (R + 9) - (as < 0 ? 12 : 0);
+    if (maxX) lx = Math.min(lx, maxX - lw);
+    lines.forEach(function (t, i) { g.text(t, lx, ly + i * 12, { size: 10, weight: 600, color: c.ok, base: "middle" }); });
+  }
   var an = ang(P), low = P < o.work - 1e-6;
   g.line(x, y, x + Math.cos(an) * (R - 9), y + Math.sin(an) * (R - 9), { color: low ? c.bad : c.text, width: 2.5 });
   g.circle(x, y, 3.5, { fill: c.text, stroke: null });

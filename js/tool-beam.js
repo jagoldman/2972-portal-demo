@@ -81,6 +81,10 @@ M.beam = function (o) {
 };
 
 // A round number at or a little above x, for the top of a chart: 1, 1.2, 1.5, 2, 2.5, 3, 4, 5, 6 or 8 times a power of ten.
+// The grid behind the beam: 1 in squares up to 40 in, 2 in up to 80 in, then 6 in. It depends on the length alone.
+M.gridStep = function (L) { return L <= 40 ? 1 : L <= 80 ? 2 : 6; };
+// When the stress is a sliver against yield, the cross-section's stress drawing is enlarged by this much (1 = true).
+M.stressZoom = function (share) { if (!(share > 0) || share >= 0.3) return 1; var z = [1000, 500, 200, 100, 50, 20, 10, 5, 4, 3, 2]; for (var i = 0; i < z.length; i++) if (share * z[i] <= 0.8) return z[i]; return 1; };
 M.niceTop = function (x) { if (!(x > 0)) return 1; var m = Math.pow(10, Math.floor(Math.log10(x))), q = [1, 1.2, 1.5, 2, 2.5, 3, 4, 5, 6, 8, 10]; for (var i = 0; i < q.length; i++) if (q[i] * m >= x * (1 - 1e-12)) return q[i] * m; return 10 * m; };
 
 if (typeof module !== "undefined" && module.exports) { module.exports = M; return; }
@@ -95,6 +99,31 @@ function where(h) { return h === "cant" ? "at the free end" : "in the middle"; }
 // A length in inches with enough places to show something; huge ones with commas.
 function inch(x) { return (x >= 1000 ? K.n(x, 0) : x > 0 && x < 0.0005 ? x.toFixed(5) : x < 0.01 ? x.toFixed(4) : x.toFixed(3)) + " in"; }
 function psi(x) { return K.n(x, 0) + " psi"; }
+/* The stress chart's level lines: yield, the peak (as a share of yield) and a safety factor of 3. Each label goes where
+   it touches neither the curve nor another label: right or left, above or below its line. A line two others crowd out
+   is left out (the safety factor first); a line whose label finds no clear spot is drawn bare and named in the caption. */
+function refLines(r, ytop, loaded) {
+  var L = r.L, pts = r.stressCurve, out = [], bare = [], boxes = [];
+  function box(y, side, below) { return { x0: side === "left" ? 0 : 0.62 * L, x1: side === "left" ? 0.38 * L : L, lo: below ? y - 0.12 * ytop : y + 0.01 * ytop, hi: below ? y - 0.01 * ytop : y + 0.12 * ytop }; }
+  function clear(b) {
+    if (b.lo < 0.05 * ytop || b.hi > ytop) return false;
+    if (pts.some(function (p) { return p[0] >= b.x0 - 1e-9 && p[0] <= b.x1 + 1e-9 && p[1] >= b.lo - 0.03 * ytop && p[1] <= b.hi + 0.03 * ytop; })) return false;
+    return !boxes.some(function (o) { return o.x0 < b.x1 && b.x0 < o.x1 && o.lo < b.hi && b.lo < o.hi; });
+  }
+  var want = [[r.mat.yld, "Yield " + psi(r.mat.yld), "yield, " + psi(r.mat.yld)]];
+  if (loaded && r.stress > 0) want.push([r.stress, "Peak, " + K.n(r.share * 100, 0) + "% of yield", "the peak, " + K.n(r.share * 100, 0) + "% of yield"]);
+  want.push([r.mat.yld / 3, "Safety factor 3", "a safety factor of 3, " + psi(r.mat.yld / 3)]);
+  var kept = [];
+  want.forEach(function (h, i) {
+    if (i === want.length - 1 && kept.some(function (k) { return Math.abs(k - h[0]) < 0.1 * ytop; })) return;   // safety factor 3 gives way
+    kept.push(h[0]);
+    var ways = [["right", false], ["right", true], ["left", false], ["left", true]], hit = null;
+    ways.some(function (q) { var b = box(h[0], q[0], q[1]); if (clear(b)) { hit = q; boxes.push(b); return true; } return false; });
+    if (hit) out.push({ y: h[0], label: h[1], side: hit[0] === "left" ? "left" : undefined, below: hit[1] });
+    else { out.push({ y: h[0] }); bare.push(h[2]); }
+  });
+  return { lines: out, unlabelled: bare };
+}
 function ease(u) { u = F.clamp(u, 0, 1); return u * u * (3 - 2 * u); }
 (function () {
   var st = document.createElement("style");
@@ -154,12 +183,13 @@ K.tool({
       series: [{ name: "Deflection", pts: r.curve, color: 1 }], dots: s.P > 0 ? [{ x: r.xmax, y: -r.delta, label: K.fix(r.delta, 3) + " in" }] : [] });
     // Scaled to the stress itself, so the curve fills the chart; yield and a safety factor of 3 are drawn when they fall
     // inside that range and named in a line under the title when they are off the top.
-    var peak = r.stress, ytop = M.niceTop(peak * 1.2), off = [];
-    if (r.mat.yld > ytop) off.push("yield, " + psi(r.mat.yld));
-    if (r.mat.yld / 3 > ytop) off.push("a safety factor of 3, " + psi(r.mat.yld / 3));
+    // The axis runs to yield (or past the peak when it yields), so the curve reads against yield; the peak is marked
+    // with its share of yield.
+    var ref, peak = r.stress, ytop = M.niceTop(Math.max(r.mat.yld * 1.05, peak * 1.15));
     var str = K.chart({ id: "beam-stress", title: "Bending stress along the beam", x: { label: "along the beam, in", name: "At", unit: "in", min: 0, max: s.L }, y: { label: "stress, psi", unit: "psi", min: 0, max: ytop },
-      series: [{ name: "Stress", pts: r.stressCurve, color: 2 }], hlines: [{ y: r.mat.yld, label: "Yield " + psi(r.mat.yld) }, { y: r.mat.yld / 3, label: "Safety factor 3", below: true }] });
-    if (off.length) str = str.replace("</figcaption>", '</figcaption><p class="t-beam-cap">Off the top of this scale: ' + off.join(" and ") + ".</p>");
+      series: [{ name: "Stress", pts: r.stressCurve, color: 2 }], hlines: (ref = refLines(r, ytop, s.P > 0)).lines,
+    });
+    str = str.replace("</figcaption>", '</figcaption><p class="t-beam-cap">' + (s.P > 0 ? "Peak " + psi(peak) + ", " + K.n(r.share * 100, 0) + "% of yield. " : "") + "The scale runs to yield, so the gap above the curve is the strength left." + (ref.unlabelled.length ? " Dashed: " + ref.unlabelled.join("; ") + "." : "") + "</p>");
     var k = M.COEF[s.hold];
     return '<div class="chartrow">' + defl + str + "</div>" + K.notes(
       "<p>The beam is treated as a straight, even beam that bends a little (Euler-Bernoulli beam theory). Three numbers decide it: how stiff the material is (E), how the section's material is spread away from its middle (the second moment of area, I) and the length.</p>" +
@@ -194,7 +224,7 @@ K.tool({
     var k = Math.min((ax1 - ax0) / L, 0.2 * (bot - top) / sec.H), th = Math.max(4, sec.H * k);
     var x0 = ax0 + ((ax1 - ax0) - L * k) / 2, cy = top + 34 + arrowLen + th / 2;
     var V = { k: k, X: function (x) { return x0 + x * k; }, Y: function (y) { return cy - y * k; }, L: function (l) { return l * k; }, ux: function (px) { return (px - x0) / k; }, uy: function (py) { return (cy - py) / k; } };
-    var step = [0.5, 1, 2, 6, 12].filter(function (q) { return q * k >= 12; })[0] || 12;
+    var step = M.gridStep(L);                       // from the length alone: the same squares in every frame and on every screen
     g.ctx.save(); g.ctx.beginPath(); g.ctx.rect(0, 0, narrow ? W : pan.x, narrow ? pan.y : H); g.ctx.clip(); g.grid(V, step, ""); g.ctx.restore();
     // How much to enlarge the bend so it shows: on a phone, a little more of the room under the beam.
     var below = s.hold === "simple" ? 26 : s.hold === "cant" && narrow ? 30 : 14;
@@ -224,17 +254,22 @@ K.tool({
     if (s.hold === "simple") { pin(g, V.X(0), cy + th / 2, false); pin(g, V.X(L), cy + th / 2, true); }
     // The load. While "Load it" plays, the arrow says how far the load has got, so it does not read as an answer.
     var xl = r.xmax, lx = V.X(xl), ly = yAt(xl) - th / 2;
+    var pd = s.P < 10 ? 1 : 0, ltxt = loading ? "loading: " + K.n(P, pd) + " of " + K.n(s.P, pd) + " lbf" : K.n(s.P, pd) + " lbf";
     if (s.P > 0) {
       g.arrow(lx, ly - arrowLen, lx, ly - 2, { color: c.force, width: 2 + 2 * frac, head: 10 });
-      var pd = s.P < 10 ? 1 : 0, ltxt = loading ? "loading: " + K.n(P, pd) + " of " + K.n(s.P, pd) + " lbf" : K.n(s.P, pd) + " lbf";
-      g.text(ltxt, lx + (s.hold === "cant" ? -8 : 8), ly - arrowLen + 4, { color: c.force, weight: 700, align: s.hold === "cant" ? "right" : "left", base: "middle" });
+      // Beside the arrow, clear of the bend's dimension line (just right of the arrow when held at both ends or resting
+      // on them), and only where it does not touch the bent beam; the line at the top of the drawing always gives it.
+      var dimHere = s.hold !== "cant" && M.deflect(s.hold, P, L, r.EI, xl) * k * f > 10, lw = g.textWidth(ltxt, { weight: 700 });
+      var lx0 = s.hold === "cant" ? lx - 8 - lw : lx + (dimHere ? 26 : 8), lyy = ly - arrowLen + 4, hitBeam = false;
+      for (var q = 0; q <= 12; q++) { var px = lx0 + lw * q / 12, bx = V.ux(px); if (bx >= 0 && bx <= L) { var bt = yAt(bx) - th / 2, bb = yAt(bx) + th / 2; if (bb > lyy - 10 && bt < lyy + 10) hitBeam = true; } }
+      if (!hitBeam) g.text(ltxt, lx0, lyy, { color: c.force, weight: 700, base: "middle" });
     }
     // Where it yields first, once it does.
     if (P > r.Pyield) {
       var hot = s.hold === "cant" ? 0 : L / 2, hy = yAt(hot);
       g.circle(V.X(hot), hy, th / 2 + 7, { stroke: c.bad, width: 2 });
       if (hot === 0) g.text("Yields here", V.X(hot) + 14, hy + th / 2 + 24, { color: c.bad, weight: 700 });
-      else g.text("Yields here", V.X(hot) - Math.max(th / 2 + 14, 26), hy, { color: c.bad, weight: 700, align: "right", base: "middle" });
+      // In the middle it goes under the bend's figure (below), clear of the beam and the dimension line.
     }
     // The bend, dimensioned in true inches: the same figure, to the same places, as the Deflection answer.
     var dTrue = M.deflect(s.hold, P, L, r.EI, xl), dDraw = dTrue * k * f, lab = "really " + inch(dTrue);
@@ -243,12 +278,14 @@ K.tool({
       if (s.P > 0 && (narrow || dDraw <= 10)) g.text((dDraw > 10 ? "" : "Bends ") + lab, lx + 14, cy + dDraw + th / 2 + 18, { color: c.text2, weight: 600, align: "right" });
     } else if (s.P > 0) {                          // under the middle: from where the bottom face was to where it is
       var yb0 = cy + th / 2;
-      if (dDraw > 10) g.dim(lx - 16, yb0, lx - 16, yb0 + dDraw, "", 0, { color: c.text2 });
-      g.text((dDraw > 10 ? "" : "Bends ") + lab, lx, yb0 + dDraw + (s.hold === "simple" && L * k < 80 ? 40 : 16) + (P > r.Pyield ? 10 : 0), { color: c.text2, weight: 600, align: "center" });
+      if (dDraw > 10) g.dim(lx + 16, yb0, lx + 16, yb0 + dDraw, "", 0, { color: c.text2 });
+      var ry0 = yb0 + dDraw + (s.hold === "simple" && L * k < 80 ? 40 : 16) + (P > r.Pyield ? 10 : 0);
+      g.text((dDraw > 10 ? "" : "Bends ") + lab, lx, ry0, { color: c.text2, weight: 600, align: "center" });
+      if (P > r.Pyield) g.text("Yields here (circled)", lx, ry0 + 17, { color: c.bad, weight: 700, align: "center" });
     }
     g.dim(V.X(0), (narrow ? pan.y : H) - 14, V.X(L), (narrow ? pan.y : H) - 14, K.n(L, 2) + " in", 0);
     // Words at the top left.
-    g.text(holdName(s.hold) + ", " + where(s.hold).replace("at the ", "load at the ").replace("in the middle", "load in the middle"), 12, top + 8, { weight: 600, base: "middle" });
+    g.text(holdName(s.hold) + ", " + (s.P > 0 ? ltxt : "no load") + " " + where(s.hold), 12, top + 8, { weight: 600, base: "middle" });
     var note = (step === 1 ? "1 in" : step + " in") + " squares" + (f !== 1 && s.P > 0 ? (f > 1 ? ". Bend drawn " + f + "× so it shows" : ". Bend drawn " + Math.round(1 / f) + " times smaller to fit") : "");
     g.text(note, 12, top + 24, { color: c.mute, size: 11, base: "middle" });
     // The cross-section.
@@ -302,11 +339,12 @@ function section(g, s, r, pan, narrow, kBeam, frac) {
   g.dim(cx - bw / 2 - 12, cy + bh / 2, cx - bw / 2 - 12, cy - bh / 2, frac2(sec.H) + " in", 0, { side: "left", size: 11 });
   /* The stress across the depth, as a small chart on its side: zero on the neutral axis, the red dashes at yield
      either side (squeezed one way, stretched the other), and the wedge reaching out to this load's stress. */
-  var lim = narrow ? 26 : 34, sx = cx + bw / 2 + 20 + lim, share = r.share * frac, wv = lim * Math.min(share, 1.15);
+  // A sliver of stress is drawn enlarged, by a stated factor, as the bend is; the ticks then mark a share of yield.
+  var zoom = M.stressZoom(r.share), lim = narrow ? 26 : 34, sx = cx + bw / 2 + 20 + lim, share = r.share * frac, wv = lim * Math.min(share * zoom, 1.15);
   var fc = M.faces(s.hold, s.P, s.L), topSq = fc.topSqueezed;   // from the moment's sign at the most-stressed point
   g.line(cx - bw / 2 - 6, cy, sx + lim + 4, cy, { color: c.accent, width: 1.25, dash: [8, 3, 2, 3] });
   g.line(sx, cy - bh / 2 - 2, sx, cy + bh / 2 + 2, { color: c.text2, width: 1 });
-  [-1, 1].forEach(function (sg) { g.line(sx + sg * lim, cy - bh / 2 - 4, sx + sg * lim, cy + bh / 2 + 4, { color: c.bad, width: 1, dash: [3, 3] }); });
+  [-1, 1].forEach(function (sg) { g.line(sx + sg * lim, cy - bh / 2 - 4, sx + sg * lim, cy + bh / 2 + 4, { color: zoom > 1 ? c.mute : c.bad, width: 1, dash: [3, 3] }); });
   if (wv > 0.5) {
     var col = share >= 1 ? c.bad : share > 1 / 3 ? c.warn : c.s1, d = topSq ? -1 : 1;
     g.poly([[sx, cy], [sx + d * wv, cy - bh / 2], [sx, cy - bh / 2]], { fill: col, stroke: null });
@@ -314,12 +352,19 @@ function section(g, s, r, pan, narrow, kBeam, frac) {
   }
   // The scale under it: yield, 0, yield; and which side is squeezed and which stretched.
   var sy = cy + bh / 2 + 15, ss = { size: 10, weight: 600, align: "center" };
-  g.text("yield", sx - lim, sy, Object.assign({ color: c.bad }, ss)); g.text("0", sx, sy, Object.assign({ color: c.text2 }, ss)); g.text("yield", sx + lim, sy, Object.assign({ color: c.bad }, ss));
+  var tick = zoom > 1 ? K.n(100 / zoom, 0) + "%" : "yield", tc = zoom > 1 ? c.text2 : c.bad;
+  g.text(tick, sx - lim, sy, Object.assign({ color: tc }, ss)); g.text("0", sx, sy, Object.assign({ color: c.text2 }, ss)); g.text(tick, sx + lim, sy, Object.assign({ color: tc }, ss));
+  if (zoom > 1) { var zt = "stress drawn " + zoom + "×", tw0 = g.textWidth(narrow ? "Cross-section" : "Cross-section, enlarged", { weight: 600, size: 12 }); if (narrow) g.text(zt, 12 + tw0 + 10, pan.y + 18, { size: 11, color: c.mute }); else g.text(zt, pan.x + 12, pan.y + 34, { size: 11, color: c.mute }); }
   g.text("squeezed", sx - 4, cy - bh / 2 - 8, { size: 10, color: c.text2, align: "right" }); g.text("stretched", Math.min(sx + 4, pan.x + pan.w - 6 - g.textWidth("stretched", { size: 10 })), cy - bh / 2 - 8, { size: 10, color: c.text2 });
   var lab = narrow ? Math.max(sx + lim + 14, sx + 14 + g.textWidth("stretched", { size: 10 })) : pan.x + 12, ly = narrow ? pan.y + 34 : sy + 34, maxW = (narrow ? g.w : pan.x + pan.w) - lab - 8;
-  var rows = [["At the most-stressed point. Neutral axis: no stress", { color: c.accent, size: 11, weight: 600 }]];
-  rows.push([fc.swap ? (topSq ? "Top squeezed in the middle, stretched at the ends" : "Top stretched in the middle, squeezed at the ends") : "Top " + (topSq ? "squeezed" : "stretched") + ", bottom " + (topSq ? "stretched" : "squeezed"), { color: c.text2, size: 11 }]);
-  rows.push([K.n(r.stress * frac, 0) + " psi, " + K.n(share * 100, 0) + "% of yield (" + K.n(r.mat.yld, 0) + " psi)", { color: share >= 1 ? c.bad : c.text2, size: 11, weight: 600 }]);
+  // One line each: where, which face is stretched, the stress, and its share of yield.
+  var where = s.hold === "cant" ? "At the wall, most stressed" : s.hold === "simple" ? "At the middle, most stressed" : "At the middle and the held ends";
+  var rows = [[where, { color: c.accent, size: 11, weight: 700 }],
+    [fc.swap ? (topSq ? "Middle: top squeezed; ends: top stretched" : "Middle: top stretched; ends: top squeezed") : "Top " + (topSq ? "squeezed" : "stretched") + ", bottom " + (topSq ? "stretched" : "squeezed"), { color: c.text2, size: 11 }],
+    ["Stress " + K.n(r.stress * frac, 0) + " psi", { color: c.text, size: 11, weight: 600 }],
+    [K.n(share * 100, 0) + "% of yield (" + K.n(r.mat.yld, 0) + " psi)", { color: share >= 1 ? c.bad : share > 1 / 3 ? c.text : c.text2, size: 11, weight: 600 }]];
+  if (zoom > 1) rows.push(["Ticks: " + K.n(100 / zoom, 0) + "% of yield", { color: c.mute, size: 11 }]);
+  if (!narrow) rows.push(["Dash-dot: neutral axis, no stress", { color: c.mute, size: 11 }]);
   if (!narrow && !sec.solid) rows.push(["Wall " + frac2(sec.t) + " in", { color: c.mute, size: 11 }]);
   // Each label wrapped to the room beside the section, so nothing runs off a phone's edge.
   var y = ly, lh = narrow ? 13 : 16;

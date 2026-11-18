@@ -45,12 +45,12 @@ if (typeof module !== "undefined" && module.exports) { module.exports = M; retur
 /* ---------- Page ---------- */
 var K = D.calc, esc = D.esc, ID = "tool-units", F = root.FRC, IN_M = 0.0254;
 var MECH = [["wheel", "Wheel or roller"], ["spool", "Spool or pinion"], ["arm", "Arm or turret"]];
-// For the answers: six significant figures at most, commas in big numbers, e-notation for the very large and small.
+// For the answers: five significant figures at most, commas in big numbers, e-notation for the very large and small.
 // The code block and the vendor settings carry the full figure (num, java).
 function sig(x) {
   if (!isFinite(x)) return "–"; if (x === 0) return "0";
-  var a = Math.abs(x); if (a >= 1e9 || a < 1e-4) return x.toExponential(5).replace(/\.?0+e/, "e").replace("e+", "e");
-  var dp = Math.max(0, 5 - Math.floor(Math.log10(a)));
+  var a = Math.abs(x); if (a >= 1e9 || a < 1e-4) return x.toExponential(4).replace(/\.?0+e/, "e").replace("e+", "e");
+  var dp = Math.max(0, 4 - Math.floor(Math.log10(a)));
   return x.toLocaleString("en-US", { minimumFractionDigits: 0, maximumFractionDigits: Math.min(dp, 9) });
 }
 // For code: plenty of digits, no commas.
@@ -115,8 +115,8 @@ function cap(x) { return x.charAt(0).toUpperCase() + x.slice(1); }
 
 K.tool({
   id: ID,
-  defaults: { x: 1, kind: "length", unit: "in", mk: "spool", ratio: 12, dia: 1.5, rig: 1, rpm: 6000 },
-  stage: { ratio: 2.6, narrow: 1.45, label: "The mechanism: the motor and its gearbox, then the wheel, spool or arm to scale, with how far it moves for one turn." },
+  defaults: { x: 1, kind: "length", unit: "in", mk: "spool", ratio: 12, dia: 1.5, rig: 1, rpm: 6000, part: "conv" },
+  stage: { ratio: 2.6, narrow: 1.15, label: "The mechanism: the motor and its gearbox, then the wheel, spool or arm to scale, with how far it moves for one turn." },
   onPick: function (key, v, s) { if (key === "kind") s.unit = M.kind(v).units[0][0]; },
 
   compute: function (s) {
@@ -128,17 +128,18 @@ K.tool({
      answers, Code constants' inputs and its answers in that order). The answers update through hints. */
   controls: function (s, r) {
     var k = M.kind(s.kind), from = unitOf(s), h = hintsOf(s, r);
-    var jump = '<div class="t-units-jump" role="group" aria-label="Go to a part"><button class="btn sm" data-act="unitsjump" data-v="units-conv">Convert</button><button class="btn sm" data-act="unitsjump" data-v="units-mech">Code constants</button></div>';
+    var part = s.part === "mech" ? "mech" : "conv";
+    var jump = '<div class="t-units-jump"><span class="seg" role="group" aria-label="Show">' + [["conv", "Convert"], ["mech", "Code constants"]].map(function (o) { return '<button data-act="unitspart" data-v="' + o[0] + '" aria-pressed="' + (part === o[0]) + '">' + o[1] + "</button>"; }).join("") + "</span></div>";
     var conv = K.pick(ID, "kind", "Kind", M.KINDS.map(function (q) { return [q.id, q.name]; })) +
       K.num(ID, "x", "Number", { step: "any" }) +
       K.pick(ID, "unit", "In", k.units.map(function (u) { return [u[0], u[1]]; })) +
       '<div class="t-units-conv" aria-live="polite"><h3 id="un-h">' + esc(h["un-h"]) + "</h3><dl>" +
-      k.units.filter(function (u) { return u[0] !== from[0]; }).map(function (u) { return "<div><dt>" + esc(u[3]) + '</dt><dd><b class="num" id="un-v-' + u[0] + '">' + esc(h["un-v-" + u[0]]) + "</b> " + esc(u[1]) + "</dd></div>"; }).join("") + "</dl></div>";
+      k.units.filter(function (u) { return u[0] !== from[0]; }).map(function (u) { return '<div><dd><b class="num" id="un-v-' + u[0] + '">' + esc(h["un-v-" + u[0]]) + "</b> " + esc(u[1]) + "</dd><dt>" + esc(u[3]) + "</dt></div>"; }).join("") + "</dl></div>";
     var kraken = F ? F.motor("kraken60").freeRpm : 6065;
     var mech = K.seg(ID, "mk", "Mechanism", MECH) +
       K.num(ID, "ratio", "Reduction", { unit: ": 1", min: 0.01, max: 2000, step: "any", tip: "Motor turns for one turn of the wheel, spool or arm. 12 means the motor turns twelve times for one output turn." }) +
       (s.mk === "arm" ? "" : K.num(ID, "dia", s.mk === "wheel" ? "Wheel diameter" : "Spool or pinion diameter", { unit: "in", min: 0.05, max: 24, step: "any", tip: s.mk === "spool" ? "Where the rope or belt runs, or the pinion's pitch diameter." : "The tread's outside diameter. Worn tread is a little smaller." })) +
-      (s.mk === "spool" ? K.num(ID, "rig", "Rigging", { unit: "×", min: 1, max: 4, step: 1, slider: true, hint: "How far the carriage moves for each inch of rope: 2 for the top of a two-stage cascade.", tip: "How far the part you care about moves for each inch of rope or belt. 1 for a first stage or a single carriage; 2 for the top of a two-stage cascade rigged for speed, and so on." }) : "") +
+      (s.mk === "spool" ? K.num(ID, "rig", "Rigging", { unit: "×", min: 1, max: 4, step: 1, slider: true, hint: "Carriage travel for each inch of rope: 1 for continuous rigging or a single carriage, 3 for a cascade with two moving stages, 2 with one.", tip: "As the Elevator tool counts it: in a cascade every stage has its own rope, so the carriage moves (moving stages + 1) times the rope. Continuous rigging, or a carriage on its own, moves once." }) : "") +
       K.num(ID, "rpm", "Motor speed", { unit: "rpm", min: 1, max: 30000, step: 1, hint: "The speed answers use this. A Kraken X60's free speed is " + kraken.toLocaleString("en-US") + " rpm; under load it turns slower." });
     return jump + '<div id="units-conv" class="t-units-a">' + K.group(ID, "conv", "Convert", conv) + '</div><div id="units-mech" class="t-units-a">' + K.group(ID, "mech", "Code constants", mech) + "</div>";
   },
@@ -163,27 +164,35 @@ K.tool({
         '<p class="eq">travel per motor rotation = π × diameter × rigging ÷ reduction</p>' +
         '<p class="eq">speed = travel per motor rotation × motor rpm ÷ 60</p>' +
         '<p class="eq">arm angle per motor rotation = 360° ÷ reduction = 2π ÷ reduction rad</p>' +
-        "<p>A wheel's travel assumes it does not slip and its tread is the diameter you typed. An elevator's rigging multiplies how far the stage you care about moves; for a cascade, the top stage moves the rigging number times the rope. The speeds are at the motor speed you entered. A motor that carries a load turns slower than that; use the Elevator, Arm and Drivetrain tools for speed under load.</p>" +
-        "<p>The answers show six significant figures. The Java constants and the vendor settings carry ten, so copy those into code.</p>" +
+        "<p>A wheel's travel assumes it does not slip and its tread is the diameter you typed. An elevator's rigging multiplies how far the carriage moves for each inch of rope, counted as the Elevator tool counts it: in a cascade every stage has its own rope, so with two moving stages the carriage moves 3 times the rope and with one, 2 times; continuous rigging, or a carriage on its own, moves once. The speeds are at the motor speed you entered. A motor that carries a load turns slower than that; use the Elevator, Arm and Drivetrain tools for speed under load.</p>" +
+        "<p>The answers show five significant figures. The Java constants and the vendor settings carry ten, so copy those into code.</p>" +
         "<p>The drawing shows the motor and gearbox as a block diagram, then the wheel or spool to scale on its grid with how far it moves for one of its turns. An arm's length does not change these numbers, so it is drawn at no particular scale.</p>");
   },
 
   draw: function (g, s, r) { drawUnits(g, s, r); }
 });
-D.acts.unitsjump = function (b) { var el = document.getElementById(b.dataset.v); if (el) el.scrollIntoView({ behavior: K.reduced() ? "auto" : "smooth", block: "start" }); };
+/* On a phone the page shows one part at a time: Convert, or Code constants (its inputs, the drawing and the answers).
+   The choice is kept in the state (a link can carry it); switching only changes classes, so nothing is redrawn. */
+D.acts.unitspart = function (b) { K.state(ID).part = b.dataset.v === "mech" ? "mech" : "conv"; showPart(); var t = document.querySelector(".t-units-jump"); if (t && t.getBoundingClientRect().top < 0) t.scrollIntoView({ block: "start" }); };
+function showPart() {
+  var b = document.querySelector('.bench[data-calc="' + ID + '"]'), part = K.state(ID).part === "mech" ? "mech" : "conv"; if (!b) return;
+  b.classList.add("t-units-bench"); b.classList.toggle("t-units-show-conv", part === "conv"); b.classList.toggle("t-units-show-mech", part === "mech");
+  document.querySelectorAll('[data-act="unitspart"]').forEach(function (x) { x.setAttribute("aria-pressed", String(x.dataset.v === part)); });
+}
 // The page's own order on a phone: inputs first, then the drawing and the answers (see the style below).
-D.after.push(function () { var b = document.querySelector('.bench[data-calc="' + ID + '"]'); if (b) b.classList.add("t-units-bench"); });
+D.after.push(function () { if (D.S.route === ID) showPart(); });
 (function () {
   var st = document.createElement("style");
   st.textContent = ".t-units-h { font-size: .95rem; margin: 0; }" +
     ".t-units-conv { display: grid; gap: 6px; padding-top: 4px; } .t-units-conv h3 { font-size: .9rem; margin: 0; }" +
     ".t-units-conv dl { display: grid; gap: 0; margin: 0; } .t-units-conv dl > div { display: flex; justify-content: space-between; align-items: baseline; gap: 12px; padding: 6px 0; border-bottom: 1px solid var(--line); }" +
-    ".t-units-conv dt { color: var(--text-2); font-size: .88rem; } .t-units-conv dd { margin: 0; text-align: right; color: var(--text-2); font-size: .88rem; } .t-units-conv dd b { color: var(--text); font-size: 1.05rem; }" +
+    ".t-units-conv dt { color: var(--mute); font-size: .82rem; text-align: right; } .t-units-conv dd { margin: 0; color: var(--text-2); font-size: .9rem; } .t-units-conv dd b { color: var(--text); font-size: 1.3rem; }" +
     ".t-units-jump { display: none; } .t-units-a { scroll-margin-top: calc(var(--bar) + 8px); }" +
     ".t-units-v p { font-size: .9rem; color: var(--text-2); margin: 0; max-width: 72ch; } .t-units-v p b { color: var(--text); overflow-wrap: anywhere; } .t-units-v .t-units-m { font-size: .8rem; color: var(--mute); }" +
     "@media (max-width: 900px) { .t-units-bench.content.bench { grid-template-areas: \"side\" \"stage\" \"outs\" \"more\"; }" +
     " .t-units-bench > [data-area=\"stage\"] { position: static; box-shadow: none; }" +
-    " .t-units-jump { display: flex; gap: 8px; padding: 12px 16px 0; } .t-units-jump .btn { flex: 1; min-height: 44px; } }";
+    " .t-units-jump { display: block; padding: 12px 16px 0; } .t-units-jump .seg { display: flex; } .t-units-jump .seg button { flex: 1; min-height: 44px; }" +
+    " .t-units-show-conv #units-mech, .t-units-show-conv > [data-area=\"stage\"], .t-units-show-conv > [data-area=\"outs\"], .t-units-show-conv > [data-area=\"more\"], .t-units-show-mech #units-conv { display: none; } }";
   document.head.appendChild(st);
 })();
 
@@ -192,10 +201,10 @@ D.after.push(function () { var b = document.querySelector('.bench[data-calc="' +
    to scale on a grid, with how far one of its turns moves things; an arm with the angle one motor turn gives it. */
 function drawUnits(g, s, r) {
   var c = g.c, W = g.w, H = g.h, narrow = W < 520, m = r.m, G = s.ratio;
-  var band = narrow ? { x: 0, y: 0, w: W, h: 104 } : { x: 0, y: 0, w: F_clamp(W * 0.34, 210, 270), h: H };
+  var band = narrow ? { x: 0, y: 0, w: W, h: 114 } : { x: 0, y: 0, w: F_clamp(W * 0.34, 210, 270), h: H };
   var reg = narrow ? { x: 0, y: band.h, w: W, h: H - band.h } : { x: band.w, y: 0, w: W - band.w, h: H };
   // The block diagram.
-  var word = what(s.mk), yb = narrow ? 62 : H / 2, mx = 14, mw = narrow ? 52 : 58, mh = 34, gx = mx + mw + (narrow ? 18 : 22), gw = narrow ? 70 : 78, gh = 52;
+  var word = what(s.mk), yb = narrow ? 72 : H / 2, mx = 14, mw = 52, mh = 34, gx = mx + mw + 16, gw = 70, gh = 52;
   g.text("Motor and gearbox", 12, 18, { weight: 600 });
   g.text("block diagram", 12, 33, { color: c.mute, size: 11 });
   g.line(mx + mw, yb, gx, yb, { color: c.text2, width: 3 });
@@ -215,7 +224,7 @@ function drawUnits(g, s, r) {
   // The wheel or spool, to scale.
   var d = s.dia, C = Math.PI * d, rig = s.mk === "spool" ? m.rig : 1, Cr = C * rig, two = rig > 1;
   var box = s.mk === "wheel" ? { x0: -0.62 * d, x1: C + 0.62 * d, y0: 0, y1: d } : { x0: -0.62 * d, x1: Cr + 0.25 * d, y0: -d / 2, y1: d / 2 };
-  var pad = s.mk === "wheel" ? { l: reg.x + 40, r: 16, t: reg.y + 50, b: 42 } : { l: reg.x + 40, r: 22, t: reg.y + (two ? 102 : 72), b: 24 };
+  var pad = s.mk === "wheel" ? { l: reg.x + 56, r: 16, t: reg.y + 50, b: 42 } : { l: reg.x + 56, r: 22, t: reg.y + (two ? (narrow ? 116 : 108) : 80), b: 24 };
   var V = g.view(box, pad, "middle");
   var step = [0.25, 0.5, 1, 2, 6, 12, 24].filter(function (q) { return V.L(q) >= 12; })[0] || 24;
   g.ctx.save(); g.ctx.beginPath(); g.ctx.rect(reg.x + 1, reg.y + 1, reg.w - 1, reg.h - 1); g.ctx.clip(); g.grid(V, step, ""); g.ctx.restore();
@@ -246,7 +255,7 @@ function drawUnits(g, s, r) {
     var ya = ry - 16, yc = ry - 54;
     g.arrow(cxs, ya, V.X(C), ya, { color: c.s1, width: 2.5, head: 8 });
 
-    labelAt(g, (two ? "rope: " : "rope, and the carriage at 1× rigging: ") + sig(C) + " in per " + word + " turn", cxs, ya - 8, c.text);
+    labelAt(g, (two ? "rope: " : narrow ? "rope and carriage (1× rigging): " : "rope, and the carriage at 1× rigging: ") + sig(C) + " in per " + word + " turn", cxs, ya - 8, c.text);
     if (two) {
       g.arrow(cxs, yc, V.X(Cr), yc, { color: c.s3, width: 2.5, head: 8 });
       labelAt(g, "carriage: " + sig(Cr) + " in, " + rig + "× the rope", cxs, yc - 8, c.text);

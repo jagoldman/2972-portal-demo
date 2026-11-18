@@ -81,5 +81,16 @@ near("niceTop 0.0071 -> 0.008", M.niceTop(0.0071), 0.008, 1e-12);
 near("niceTop 42,000 -> 50,000", M.niceTop(42000), 50000, 1e-12);
 near("niceTop of nothing -> 1", M.niceTop(0), 1, 0);
 
+// Round 6: one grid for every frame and screen, from the length alone.
+near("grid 30 in -> 1 in squares", M.gridStep(30), 1, 0);
+near("grid 60 in -> 2 in squares", M.gridStep(60), 2, 0);
+near("grid 96 in -> 6 in squares", M.gridStep(96), 6, 0);
+// Round 6: the stress drawing's enlargement. 12% of yield is drawn 5x (60% of the scale); 0.5% is drawn 100x.
+near("12% of yield drawn 5x", M.stressZoom(0.1152), 5, 0);
+near("0.5% of yield drawn 100x", M.stressZoom(0.005), 100, 0);
+near("30% or more is drawn true", M.stressZoom(0.3), 1, 0);
+near("no load is drawn true", M.stressZoom(0), 1, 0);
+ok("an enlarged share stays within the scale", [0.001, 0.01, 0.05, 0.1, 0.2, 0.29].every(function (x) { var z = M.stressZoom(x); return x * z <= 0.8 && x * z >= 0.16; }));
+
 console.log(fails ? fails + " of " + n + " checks failed" : "all " + n + " checks passed");
 process.exit(fails ? 1 : 0);
