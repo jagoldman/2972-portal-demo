@@ -418,7 +418,7 @@ function ropeDiagram(r) {
 // Time to top against reduction, drawn with the y range from M.sweepRange.
 function sweepChart(r, s, dots, items) {
   var yr = M.sweepRange(r.sweep, s.ratio), pts = r.sweep.map(function (p) { return [p[0], p[1] >= yr[0] - 1e-9 && p[1] <= yr[1] + 1e-9 ? p[1] : NaN]; });
-  var html = K.chart({ id: "el-sweep", title: "Time to top for other reductions", note: "The time axis is drawn for reductions near yours; times off its top are left out.", x: { label: "reduction (:1)", unit: ": 1", name: "Reduction", min: r.sweepLo, max: r.sweepHi }, y: { label: "s", unit: "s", min: yr[0], max: yr[1] }, series: [{ name: "Time to top", pts: pts }], dots: dots.filter(function (d) { return d.y >= yr[0] && d.y <= yr[1]; }) });
+  var html = K.chart({ id: "el-sweep", title: "Time to top for other reductions", note: "The time axis is drawn for reductions near yours; times off its top are left out.", x: { label: "reduction, to 1", unit: ": 1", name: "Reduction", min: r.sweepLo, max: r.sweepHi }, y: { label: "s", unit: "s", min: yr[0], max: yr[1] }, series: [{ name: "Time to top", pts: pts }], dots: dots.filter(function (d) { return d.y >= yr[0] && d.y <= yr[1]; }) });
   return annotate(html, items, r.sweepLo, r.sweepHi).html;
 }
 // The phases of the move, for the current chart; continuous rigging adds where each stage joins.

@@ -281,7 +281,7 @@ K.tool({
     var ymax = sw.length ? Math.min(Math.max.apply(null, sw.map(function (p) { return p[1]; })), (r.best ? r.best[1] : 3) * 1.6) : 1;
     sw = sw.map(function (p) { return [p[0], p[1] <= ymax + 1e-9 ? p[1] : NaN]; });   // leave out what is above the top
     if (tA != null && tA <= ymax) dots.push({ x: A.ratio, y: tA, label: "A" }); if (tB != null && tB <= ymax) dots.push({ x: B.ratio, y: tB, label: "B" });
-    var swX = { label: "reduction (:1)", name: "Reduction", min: r.sweep[0][0], max: r.sweep[r.sweep.length - 1][0] }, swY = { label: "s", unit: "s", min: r.best ? Math.floor(r.best[1] * 10 * 0.95) / 10 : 0, max: ymax };
+    var swX = { label: "reduction, to 1", name: "Reduction", min: r.sweep[0][0], max: r.sweep[r.sweep.length - 1][0] }, swY = { label: "s", unit: "s", min: r.best ? Math.floor(r.best[1] * 10 * 0.95) / 10 : 0, max: ymax };
     var sweep = sweepMarks(K.chart({ id: "drv-s", title: "Time to " + sd + " ft for other reductions", note: swY.min > 0 ? "The time axis starts at " + K.fix(swY.min, 1) + " s, not zero, to show the differences." : "", x: swX, y: swY,
       series: [{ name: "Time", pts: sw, color: 3 }], marks: r.best ? [{ x: r.best[0] }] : [] }), swX, swY, sw, dots, r.best);
     return '<div class="chartrow">' + dist + ahead + '</div><div class="chartrow">' + speed + amps + '</div><div class="chartrow">' + sweep + batt + "</div>" + table +
@@ -396,7 +396,7 @@ K.tool({
       var yb = V.Y(laneH), xa = V.X(gx0), xb = V.X(gx1), lo = Math.min(xa, xb), hi = Math.max(xa, xb);
       g.line(xa, V.Y(fa.yc - Lr / 2), xa, yb, { color: c.text, width: 1 }); g.line(xb, V.Y(fb.yc + Lr / 2), xb, yb, { color: c.text, width: 1 });
       g.line(lo - 3, yb, hi + 3, yb, { color: c.text, width: 3, cap: "butt" });
-      var gw = g.textWidth(gt, { size: 13, weight: 700 }), gxx = hi + 8 + gw < (t < tw ? fx - 6 : g.w - 6) ? hi + 8 : lo - 8 - gw;
+      var gw = g.textWidth(gt, { size: 13, weight: 700 }), gpad = t < tw ? 8 : 20, gxx = hi + gpad + gw < (t < tw ? fx - 6 : g.w - 6) ? hi + gpad : lo - 8 - gw;      // past the line, the label clears the chequers
       // Not across a lead-change line: then it goes to the left of the robots.
       // When there is room left of the robots (clear of the start line) it goes there; otherwise it stays and the dashed
       // line breaks behind it (the label is in the list the line avoids).

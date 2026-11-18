@@ -168,7 +168,7 @@ K.tool({
     var rMark = isFinite(r.ratioGood) && r.ratioGood >= lo && r.ratioGood <= hi && vd > 0.05 ? [{ x: r.ratioGood, label: K.fix(r.ratioGood, 2) + ":1" }] : [];
     var dMark = isFinite(dGood) && dGood >= 0.5 && dGood <= 4 && vd > 0.05 ? [{ x: dGood, label: K.fix(dGood, 2) + " in" }] : [];
     var chart = '<div class="chartrow">' +
-      dotted(K.chart({ id: "int-r", title: "Speeds for other reductions", note: note, x: { label: "reduction (: 1)", name: "Reduction", min: lo, max: hi }, y: y,
+      dotted(K.chart({ id: "int-r", title: "Speeds for other reductions", note: note, x: { label: "reduction, to 1", name: "Reduction", min: lo, max: hi }, y: y,
         series: [{ name: "Piece", pts: pts, color: 3 }, { name: "Belt surface", pts: surf, color: 1, dash: true }], hlines: hl([lo, hi], [pts, surf], s.ratio, r.piece / FT, r.ratioGood), marks: rMark, dots: [{ x: s.ratio, y: r.piece / FT }] })) +
       dotted(K.chart({ id: "int-d", title: "Speeds for other roller diameters", note: note, x: { label: "roller diameter (in)", name: "Diameter", unit: "in", min: 0.5, max: 4 }, y: y,
         series: [{ name: "Piece", pts: dp, color: 3 }, { name: "Belt surface", pts: ds, color: 1, dash: true }], hlines: hl([0.5, 4], [dp, ds], s.roller, r.piece / FT, dGood), marks: dMark, dots: s.roller <= 4 ? [{ x: s.roller, y: r.piece / FT }] : [] })) + "</div>";
