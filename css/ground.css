@@ -506,3 +506,57 @@
   /* Month: one short line per event, a dot and its name; times are in Coming up. */
   .ev .et { -webkit-line-clamp: 1; display: block; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 }
+
+/* ---- Hill climb round 10 ---- */
+:root[data-design="c"] {
+  /* Home on an event day, phone: the match and the robot follow the person's own job (they had dropped to the end). */
+  .homec .homemain > .evline { order: 0; }
+  .pm.due::before { background: var(--mc, #fff); }
+  /* On a phone the season line is the count and the milestones; the bar of marks is too small to read there. */
+  @media (max-width: 760px) { .season:not(.simple) .sntrack { display: none; } }
+  .appsmenu .xbtn { background: none; }
+  .nowrow .rt .pill { font-size: .86rem; font-weight: 600; margin-left: 4px; }
+  /* Tasks: a row's status sits under its name at every width, as on a phone. */
+  @media (min-width: 641px) {
+    .trowx { grid-template-columns: 28px minmax(0, 1fr) 76px; grid-template-areas: "c t d" ". s d"; row-gap: 2px; }
+    .trowx.nost { grid-template-areas: "c t d"; }
+    .trowx > .tst { justify-self: start; }
+    .trowx .tst .pill { text-align: left; }
+  }
+  /* The event line on a phone is two short lines everywhere, as on Scouting. */
+  @media (max-width: 640px) {
+    .evline .evpart { display: flex; flex-wrap: wrap; align-items: baseline; gap: 0 8px; min-height: 0; padding: 7px 16px; }
+    .evline .evv { font-size: .95rem; }
+  }
+  /* Scouting, wide: the countdown follows the assignment instead of sitting across the sheet. */
+  @media (min-width: 900px) { .cmp .card.hero:has(.timer) > .row.between { justify-content: flex-start; gap: 56px; } }
+  /* A phone tab row scrolled past its first tabs shows a small mark at the left edge. */
+  .tabs.more-l.snapl { --fl: 0px; }
+  .tabs.more-l.snapl::before { content: "‹"; position: sticky; left: 0; z-index: 1; flex: none; align-self: stretch; display: grid; place-items: center; width: 18px; margin-right: 2px; color: var(--mute); background: var(--surface); font-weight: 700; }
+  .nsame { font-weight: 400; }
+  .nsame b { font-weight: 650; }
+}
+
+:root[data-design="c"] {
+  /* Home on a phone: a row's button goes under its words at full width, so the words get the row and every action
+     is the same wide target. */
+  @media (max-width: 640px) {
+    .homec .nowrow:has(> .btn) { flex-wrap: wrap; row-gap: 8px; }
+    .homec .nowrow > .btn { flex: 1 1 100%; }
+    .nextup > p { margin-block: 0; }
+    .nextup { row-gap: 6px; }
+  }
+  /* The season line's end is a label, not a button. */
+  .season .snend { padding: 0 0 0 6px; border: 0; background: none; color: var(--rail-text); font-weight: 650; }
+  /* Tasks: late is strong text; red is kept for Blocked. */
+  .trowx .due.late { color: var(--text); font-weight: 650; }
+  .skdefs span { display: block; }
+  .skdefs b { font-weight: 650; color: var(--text-2); }
+  /* Pit, robot on the field: the empty boxes are greyed until it is back. */
+  .robotaway .bigcheck[aria-pressed="false"] { opacity: .45; }
+  /* Schedule: "Now" follows the block's name. */
+  .tlbar.now { justify-content: flex-start; gap: 10px; }
+  /* Scouting, wide: a shorter drawing, so Teleop starts on the first screen. */
+  @media (min-width: 1000px) { .scauto { grid-template-columns: minmax(0, 520px) minmax(260px, 1fr); } .scauto .fieldcanvas { max-width: 520px; } }
+  @media (min-width: 900px) { .calcchart { max-width: 640px; } }
+}

@@ -170,7 +170,7 @@ function month() {
     var evs = c.events.filter(function (e) { return e.date === s || (e.end2 && s >= e.date && s <= e.end2); });
     var hideAuto = evs.some(function (e) { return !e.auto && (e.kind === "build" || e.kind === "off" || e.kind === "comp"); });
     evs = evs.filter(function (e) { return !(hideAuto && e.auto); });
-    cells += '<div class="day' + (d.getMonth() !== m ? " other" : "") + (s === TODAYS ? " today" : "") + '"><span class="d">' + d.getDate() + "</span>" + evs.slice(0, 3).map(evBtn).join("") + (evs.length > 3 ? '<span class="who">+' + (evs.length - 3) + " more</span>" : "") + "</div>";
+    cells += '<div class="day' + (d.getMonth() !== m ? " other" : "") + (s === TODAYS ? " today" : "") + '"><span class="d">' + (D.ground() && d.getDate() === 1 && d.getMonth() !== m ? d.toLocaleDateString("en-US", { month: "short" }) + " " : "") + d.getDate() + "</span>" + evs.slice(0, 3).map(evBtn).join("") + (evs.length > 3 ? '<span class="who">+' + (evs.length - 3) + " more</span>" : "") + "</div>";
   }
   var title = first.toLocaleDateString("en-US", { month: "long", year: "numeric" });
   /* Version B: on a wide screen the next events are listed beside the month, so the two views do not need a switch. */
@@ -210,7 +210,7 @@ function dayDoors(e, brief) {
 function agenda() {
   var items = upcoming(18);
   return '<div class="card"><h2>Coming up</h2><div class="list">' + items.map(function (e) {
-    return '<div class="agitem"><button class="li agrow" data-act="calev" data-v="' + e.id + '"><b class="num agdate">' + fmt(e.date) + (e.end2 ? "–" + fmt(e.end2, { month: "short", day: "numeric" }) : "") + '</b><span class="grow"><b>' + esc(e.name) + '</b><span class="who agmore">' + span(e) + (e.where ? " · " + esc(e.where) : "") + '</span></span><span class="kind ' + KIND[e.kind][1] + (D.ground() && KIND[e.kind][0] === e.name ? " ksame" : "") + '"><i class="kd"></i><span class="kname">' + KIND[e.kind][0] + "</span></span></button>" + (isPractice(e) ? dayDoors(e) : "") + "</div>";
+    return '<div class="agitem"><button class="li agrow" data-act="calev" data-v="' + e.id + '"><b class="num agdate">' + fmt(e.date) + (e.end2 ? "–" + fmt(e.end2, { month: "short", day: "numeric" }) : "") + '</b><span class="grow"><b>' + esc(e.name) + '</b><span class="who agmore">' + span(e) + (e.where ? " · " + esc(e.where) : "") + '</span></span><span class="kind ' + KIND[e.kind][1] + (D.ground() && e.name.indexOf(KIND[e.kind][0]) === 0 ? " ksame" : "") + '"><i class="kd"></i><span class="kname">' + KIND[e.kind][0] + "</span></span></button>" + (isPractice(e) ? dayDoors(e) : "") + "</div>";
   }).join("") + "</div></div>";
 }
 function setup() {
@@ -363,7 +363,7 @@ function teamList(ed, days) {
   var c = C(), me = D.me().name, student = !D.isStaff(), admin = D.S.role === "admin", others = MENTORS.filter(function (m) { return m !== ed; });
   var sub = 'class="who subline"';
   return '<div class="tablewrap" data-keepscroll="mtable"><table class="mtab"><thead><tr><th>Practice</th>' +
-    (ed ? '<th class="mine">' + (ed === me ? "You" : esc(ed)) + '<span ' + sub + ">Tap a day to change it</span></th>" : "") +
+    (ed ? '<th class="mine">' + (ed === me ? "You" : esc(ed)) + '<span ' + sub + ">" + (D.ground() ? "Tap your reply to change that day" : "Tap a day to change it") + "</span></th>" : "") +
     others.map(function (m) { return "<th>" + (admin ? '<button class="linkbtn" data-act="hereeditm" data-v="' + esc(m) + '" data-tip="Edit ' + esc(m) + '\'s days.">' + esc(m) + "</button>" : esc(m)) + "</th>"; }).join("") + "</tr></thead><tbody>" +
     days.map(function (e) {
       var d = e.date, n = comingCount(d), mine = ed && ans(ed, d), open = c.pop && c.pop.d === d;
@@ -390,7 +390,7 @@ function mentorMonth(ed, days) {
       }
       below = n ? (student ? '<span class="who">' + n + " mentor" + (n > 1 ? "s" : "") + "</span>" : "") : '<span class="nobody">⚠ Nobody yet</span>';
     }
-    cells += '<div class="day' + (d.getMonth() !== m ? " other" : "") + (s === TODAYS ? " today" : "") + '"><div class="dtop"><span class="d">' + d.getDate() + "</span>" + beside + "</div>" + evs.slice(0, 2).map(evBtn).join("") + (evs.length > 2 ? '<span class="who">+' + (evs.length - 2) + " more</span>" : "") + below + "</div>";
+    cells += '<div class="day' + (d.getMonth() !== m ? " other" : "") + (s === TODAYS ? " today" : "") + '"><div class="dtop"><span class="d">' + (D.ground() && d.getDate() === 1 && d.getMonth() !== m ? d.toLocaleDateString("en-US", { month: "short" }) + " " : "") + d.getDate() + "</span>" + beside + "</div>" + evs.slice(0, 2).map(evBtn).join("") + (evs.length > 2 ? '<span class="who">+' + (evs.length - 2) + " more</span>" : "") + below + "</div>";
   }
   return '<div class="row mnav"><button class="btn sm" data-act="heremonth" data-v="-1" aria-label="Previous month" data-tip="Go back one month.">←</button><h3 class="mtitle">' + first.toLocaleDateString("en-US", { month: "long", year: "numeric" }) + '</h3><button class="btn sm" data-act="heremonth" data-v="1" aria-label="Next month" data-tip="Go forward one month.">→</button><button class="btn ghost sm" data-act="heremonth" data-v="0">Today</button></div>' +
     '<div class="tablewrap" data-keepscroll="mmonth"><div class="month wide">' + WD.map(function (x) { return '<div class="dh">' + x + "</div>"; }).join("") + cells + "</div></div>";

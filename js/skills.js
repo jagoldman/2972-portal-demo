@@ -573,7 +573,7 @@ function permitsView() {
       return '<button class="li skmach' + (line ? "" : " noline") + '" data-act="skpermit" data-st="' + esc(st) + '" data-cat="' + tool.cat + '" data-skill="' + tool.skill + '"><b class="skmn">' + esc(tool.name) + "</b>" + permitPill(state) + (line ? '<span class="who skml">' + esc(line) + "</span>" : "") + '<span class="chev" aria-hidden="true">›</span></button>';
     }).join("") + "</div></div>";
   } else body = table;
-  return '<div class="card"><div><h2>Who can use which machine</h2><p class="who">Cleared means the written test and the demonstration are signed off. In training means they have started and may not use it alone yet. Choose ' + tapWhat + ' to open that skill.</p></div>' + find + body + "</div>";
+  return '<div class="card"><div><h2>Who can use which machine</h2><p class="who skdefs"><span><b>Cleared:</b> the written test and the demonstration are signed off.</span><span><b>In training:</b> started, and may not use it alone yet.</span><span>Choose ' + tapWhat + ' to open that skill.</span></p></div>' + find + body + "</div>";
 }
 function studentPicker() {
   var S = D.S;

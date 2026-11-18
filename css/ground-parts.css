@@ -280,3 +280,26 @@
   .pwait .pother { margin-left: 6px; font-size: .9rem; color: var(--accent); min-height: 34px; }
   .pline .pqty { display: inline; font-weight: 650; color: var(--text); }
 }
+
+/* ---- Hill climb round 10 ---- */
+:root[data-design="c"] {
+  /* The wide table names the step in every row; only the folded phone rows leave it to the group heading. */
+  @media (min-width: 900px) { .ptable.gt .ptr.samest .ps .pill { position: static; width: auto; height: auto; overflow: visible; clip: auto; } }
+  .pwait .pother { text-decoration: none; font-weight: 600; }
+}
+
+:root[data-design="c"] {
+  .ptable.gt .pobrow { display: block; color: var(--text-2); font-size: .86rem; }
+  .ptable.gt .pobrow.late { color: var(--bad); font-weight: 600; }
+  /* The rarely used views are plain buttons after the divider, not more pills. */
+  .pstep.prare { border-color: transparent; background: none; }
+  .pstep.prare[aria-pressed="true"] { border-color: var(--text); }
+  .pwait .pother { margin-left: 0; font-size: inherit; color: var(--text); min-height: 0; }
+  /* Inventory: "Take one" stays in one column; "Request more" sits to its left on a low row. */
+  td.lead .row { justify-content: flex-end; flex-wrap: nowrap; }
+  td.lead .row .btn[data-act="pmore"] { order: -1; }
+}
+/* The three choices on a "Needs your OK" row wrap on a narrow screen (round 10: they ran off a phone). */
+:root[data-design="c"] .pwait > .row.nowrap { flex-wrap: wrap; }
+/* With an order-by line in the cell, the wide table drops "N practices left" there, so the row stays short. */
+@media (min-width: 900px) { :root[data-design="c"] .ptable.gt .pd:has(.pobrow) .ppr { display: none; } }

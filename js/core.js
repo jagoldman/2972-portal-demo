@@ -263,7 +263,7 @@ function appsMenu() {
 function noticeRow(n) {
   var i = D.S.notices.indexOf(n), app = D.APPNAME[n.app] || "";
   return '<button class="li nli' + (n.read ? "" : " unread") + '" data-act="notice" data-i="' + i + '" data-tip="Open it. Right-click or press and hold to mark it ' + (n.read ? "unread" : "read") + '.">' +
-    (n.read ? "" : '<span class="srt">Unread: </span>') + (D.ground() ? '<span class="grow"><span class="app">' + esc(app + (app && n.when ? ", " : "") + n.when) + "</span> " + esc(n.text.replace(/^Are you coming (.+)\? Your usual week says yes, but you marked Can't\.$/, "Check your reply for $1: your usual week says yes, you marked Not coming.").replace("you marked Can't.", "you marked Not coming.")) + '</span><span class="chev" aria-hidden="true">›</span>' : '<span class="grow"><span class="app">' + esc(app) + "</span> " + esc(n.text) + '</span><span class="who">' + esc(n.when) + "</span>") + "</button>";
+    (n.read ? "" : '<span class="srt">Unread: </span>') + (D.ground() ? '<span class="grow"><span class="app">' + esc(app + (app && n.when ? ", " : "") + n.when) + "</span> " + esc(n.text.replace(/^Are you coming (.+)\? Your usual week says yes, but you marked Can't\.$/, "$1: your usual week says Coming, but you marked Not coming. Check it.").replace("you marked Can't.", "you marked Not coming.")) + '</span><span class="chev" aria-hidden="true">›</span>' : '<span class="grow"><span class="app">' + esc(app) + "</span> " + esc(n.text) + '</span><span class="who">' + esc(n.when) + "</span>") + "</button>";
 }
 function bellPanel() {
   var list = D.myNotices();
@@ -337,7 +337,7 @@ function seasonLine(simple) {
   var meets = api.meetDays(today, isoAdd(target.date, -1)), n = meets.length, days = daysTo(target.date, today);
   // A parent does not count in practices: their line is the date and the days to it, with no marks.
   if (simple) {
-    var np = api.practiceDays(1)[0], npt = np ? (np.date === today ? "Practice today" : "Next practice " + api.fmt(np.date)) + ", " + api.span(np) : "";
+    var np = api.practiceDays(1)[0], npt = np ? (np.date === today ? "Practice today" : "Next practice " + api.fmt(np.date)) + ", " + api.span(np) + (np.where ? ", " + np.where : "") : "";
     // A parent opens Home to see when to show up, so the practice leads and the countdown is the smaller part.
     return '<section class="season simple" aria-label="This week and the season">' + (npt ? '<p class="snpractice">' + esc(npt) + "</p>" : "") + '<p class="snhead"><span><b>' + days + (days === 1 ? " day" : " days") + ", " + plural(n, "practice", "practices") + " to " + esc(target.name) + '</b><span class="mute num">' + esc(api.fmt(target.date)) + "</span></span></p></section>";
   }
@@ -345,7 +345,7 @@ function seasonLine(simple) {
   var due = {}; ms.forEach(function (m) { (due[m.date] = due[m.date] || []).push(m); });
   var marks = meets.map(function (d) {
     var cls = "pm" + (d.date === today ? " today" : "") + (d === meets[0] && d.date !== today ? " next" : "") + (d.kind === "build" ? " build" : "") + (due[d.date] ? " due" : "");
-    return '<i class="' + cls + '"></i>';
+    return '<i class="' + cls + '"' + (due[d.date] && due[d.date][0].color ? ' style="--mc:' + esc(due[d.date][0].color) + '"' : "") + "></i>";
   }).join("");
   var next = ms.slice(0, 3).map(function (m) {
     return '<button class="snms" data-act="homeproject" data-v="' + esc(m.pid) + '" data-tip="Open the ' + esc(m.project) + ' project in Tasks."><i class="snd" style="background:' + esc(m.color) + '"></i><b>' + esc(m.name) + '</b><span class="num">' + esc(api.fmt(m.date)) + (D.practicesText(m.date) ? ", " + D.practicesText(m.date) : "") + "</span></button>";
@@ -364,7 +364,7 @@ function noteOf(key) { var k = D.S.sk, q = String(key).split("|"), r = k && k.re
 function whenRank(w) { var m = /^(\d+):(\d+) (am|pm)$/.exec(w || ""); if (/just now/i.test(w)) return 1e6; if (m) return 1000 + ((+m[1] % 12) + (m[3] === "pm" ? 12 : 0)) * 60 + +m[2]; return 0; }
 // One row of the Now list: a title and one muted line that open the owning screen, then at most one action.
 function nowRow(o) {
-  return '<div class="li nowrow' + (o.first ? " nowfirst" : "") + (o.tall ? " nowtall" : "") + '"><button class="rowlink" data-act="' + (o.act || "goapp") + '"' + (o.v != null ? ' data-v="' + esc(o.v) + '"' : "") + (o.app ? ' data-app="' + o.app + '"' : "") + (o.tab ? ' data-tab="' + o.tab + '"' : "") + '><span class="rt">' + esc(o.title) + "</span>" + (o.line || o.mark ? '<span class="rl">' + (o.mark ? o.mark + (o.tall ? '<span class="marksep">. </span>' : " ") : "") + (o.line || "") + "</span>" : "") + "</button>" +
+  return '<div class="li nowrow' + (o.first ? " nowfirst" : "") + (o.tall ? " nowtall" : "") + '"><button class="rowlink" data-act="' + (o.act || "goapp") + '"' + (o.v != null ? ' data-v="' + esc(o.v) + '"' : "") + (o.app ? ' data-app="' + o.app + '"' : "") + (o.tab ? ' data-tab="' + o.tab + '"' : "") + '><span class="rt">' + esc(o.title) + (o.tall && o.mark ? " " + o.mark : "") + "</span>" + (o.line || (o.mark && !o.tall) ? '<span class="rl">' + (o.mark && !o.tall ? o.mark + " " : "") + (o.line || "") + "</span>" : "") + "</button>" +
     (o.btn || '<span class="chev" aria-hidden="true">›</span>') + "</div>";
 }
 /* Now: everything that needs this person, most urgent first, each with its own action (rule 3). The actions call the

@@ -282,7 +282,7 @@ def({ id: "calc-gearbox", key: "gearbox", name: "Gearbox", icon: "cgearbox", lin
     if (!err) st.stages.forEach(function (s, i) { var a = num(s[0]), b = num(s[1]); if (!err && !(inRange(a, 6, 200) && inRange(b, 6, 200))) err = "Stage " + (i + 1) + " needs both tooth counts, from 6 to 200."; stages.push([a, b]); });
     var g = err ? null : M.gearbox(r.m, r.n, stages, r.eff, r.lim), lim = r.lim;
     var rows = [row("Overall ratio", g ? ratioText(g.ratio) : DASH, "to 1"), row("Output free speed", g ? rpm(g.freeRpm) : DASH, "rpm"), row("Output stall torque", g ? sig(g.stall) : DASH, "N·m"),
-      row(lim ? "Output torque at the " + lim + " A limit" : "Output torque with no limit", g ? sig(lim ? g.limited : g.stall) : DASH, "N·m")];
+      row(lim ? "Torque at the " + lim + " A limit" : "Output torque with no limit", g ? sig(lim ? g.limited : g.stall) : DASH, "N·m")];
     var html = results(rows);
     if (g) {
       var c = g.curve, tmax = c[0][1], imax = c[0][2], mid = c[Math.round(c.length * 0.55)];
@@ -526,7 +526,7 @@ M.drillFind = function (q) { var k = norm(q); return DRILLS.filter(function (r) 
 def({ id: "calc-drill", key: "drill", name: "Drill and tap chart", icon: "cdrill", line: "The drill for a tap, and for a bolt to pass through.", tip: "Tap drills and close and free clearance drills, in inch and metric sizes.",
   defaults: { q: "" }, single: true,
   inputs: function (st) {
-    return '<div class="field calcf calcsearch"><label for="calc-q">Find a thread</label><div class="calcbox"><input id="calc-q" type="search" data-input="calcin" data-k="q" value="' + esc(st.q) + '" placeholder="10-32, 1/4-20 or M5" autocomplete="off" spellcheck="false"></div></div>';
+    return '<div class="field calcf calcsearch"><label for="calc-q">Find a thread</label><div class="calcbox"><input id="calc-q" type="search" data-input="calcin" data-k="q" value="' + esc(st.q) + '" placeholder="#10-32, 1/4-20 or M5" autocomplete="off" spellcheck="false"></div></div>';
   },
   out: function (st) {
     var rows = M.drillFind(st.q), first = rows[0];

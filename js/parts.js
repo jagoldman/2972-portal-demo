@@ -192,7 +192,7 @@ function isOpen(r) { return r.status === "needsok" || r.status === "toorder" || 
 // "Thu, Nov 12, 1 practice left": the practice count is only worth saying while the request is still on its way.
 function needText(r) { var pr = isOpen(r) ? D.practicesText(r.need) : ""; return fmt(r.need) + (pr ? ", " + pr : ""); }
 // The same in the table: on a wide screen the count is a second line, so the comma is only there for the folded row.
-function needCell(r) { var pr = isOpen(r) ? D.practicesText(r.need) : ""; return esc(fmt(r.need)) + (pr ? '<span class="ppr"><span class="pcm">, </span>' + esc(pr) + "</span>" : ""); }
+function needCell(r) { var pr = isOpen(r) ? D.practicesText(r.need) : "", ob = D.ground() && D.isStaff() && (r.status === "needsok" || r.status === "toorder") ? orderBy(r) : null; return esc(fmt(r.need)) + (pr ? '<span class="ppr"><span class="pcm">, </span>' + esc(pr) + "</span>" : "") + (ob ? '<span class="pobrow' + (orderByText(ob).indexOf("late") > 0 ? " late" : "") + '">' + orderByText(ob) + "</span>" : ""); }
 // The box at the top of Requests: what the shop already has, above the requests; "Request it" when neither has it.
 function findBox(q, reqHits) {
   var shop = q ? shopMatches(q) : [], html = '<div class="pfind"><label for="p-q">Find it or ask for it</label>' +
@@ -245,8 +245,8 @@ function reqSteps(r, part) {
   /* A step that is done is named in the past ("Ordered", with who and when). The step being waited for is "now" and
      is named as the thing to come ("Order"), and so are the steps after it. So the mark, the words and the sentence
      above them all say the same thing: what is finished, and what the request waits for (hill climb r5). */
-  var DONE = ["Asked", skip ? "OK not needed" : "Approved", "Ordered", "Arrived", "Put away"], TODO = ["Ask", "Approval", "Order", "Arrival", "Put away"];
-  var wait = r.status === "putaway" ? 5 : cur + 1, subs = [stepSub(asked), skip ? "" : okSub, ordSub, arrSub, putSub];
+  var DONE = ["Asked", skip ? "OK" : "Approved", "Ordered", "Arrived", "Put away"], TODO = ["Ask", "Approval", "Order", "Arrival", "Put away"];
+  var wait = r.status === "putaway" ? 5 : cur + 1, subs = [stepSub(asked), skip ? "not needed" : okSub, ordSub, arrSub, putSub];
   var now = panelMove(r), steps = D.stages(DONE.map(function (n, i) { return [i < wait ? n : TODO[i], subs[i], skip && i === 1 && i < wait ? "skip" : ""]; }), wait, "Where this request is");
   // The arrival date is already under Arrived, so an ordered request has no second line saying it. The order number
   // has its own labelled line.
@@ -328,7 +328,7 @@ D.drawers.preq = function (d) {
   if (staff && r.status === "needsok") acts.push('<button class="btn primary" data-act="papprove" data-v="' + r.id + '">Approve</button>', '<button class="btn" data-act="pdeny" data-v="' + r.id + '">' + (D.ground() ? "Deny" : "Deny…") + "</button>", '<button class="btn" data-act="preplace" data-v="' + r.id + '">' + (D.ground() ? "Approve a different part" : "Replace item…") + "</button>");
   if (r.status === "ordered") acts.push('<button class="btn" data-act="tab" data-app="parts" data-v="arriving">' + (D.ground() ? "Check it in" : "Check it in on Arriving") + "</button>");
   var cancelBtn = mine && !staff && (r.status === "needsok" || r.status === "toorder") ? '<button class="btn ghost danger" data-act="pcancel" data-v="' + r.id + '">Withdraw my request</button>' : "", cancel = cancelBtn ? "<div>" + cancelBtn + "</div>" : "";
-  var rows = [["Vendor", esc(r.vendor)], ["SKU", '<span class="mono">' + esc(r.sku) + "</span>"], ["Quantity", qtyText(r)], ["Price", money(r.price) + " each · " + money(total(r)) + " total"], ["Budget", r.status === "needsok" ? budgetEffect(r, true) : esc(bname(r.bud))], ["Priority", PRI[r.pri][0]], ["Need by", (D.ground() && r.need ? esc(needText(r)) : fmt(r.need)) + (ob && !(D.ground() && r.status !== "needsok" && r.status !== "toorder") && !(D.ground() && staff && r.status === "needsok" && r.why && orderByText(ob).indexOf("late") > 0) ? '<br><b class="' + (D.ground() && !staff ? "pquiet" : "pbad") + '">' + (D.ground() ? orderByText(ob) : "Order by " + fmt(ob)) + "</b>" : "")], ["For", esc(r.sub) + (r.task ? " · task “" + esc(r.task) + "”" : "")], ["Asked by", esc(r.by)]];
+  var rows = [["Vendor", esc(r.vendor)], ["SKU", '<span class="mono">' + esc(r.sku) + "</span>"], ["Quantity", qtyText(r)], ["Price", money(r.price) + " each · " + money(total(r)) + " total"], ["Budget", r.status === "needsok" && !(D.ground() && staff && r.why) ? budgetEffect(r, true) : esc(bname(r.bud))], ["Priority", PRI[r.pri][0]], ["Need by", (D.ground() && r.need ? esc(needText(r)) : fmt(r.need)) + (ob && !(D.ground() && r.status !== "needsok" && r.status !== "toorder") && !(D.ground() && staff && r.status === "needsok" && r.why && orderByText(ob).indexOf("late") > 0) ? '<br><b class="' + (D.ground() && !staff ? "pquiet" : "pbad") + '">' + (D.ground() ? orderByText(ob) : "Order by " + fmt(ob)) + "</b>" : "")], ["For", esc(r.sub) + (r.task ? " · task “" + esc(r.task) + "”" : "")], ["Asked by", esc(r.by)]];
   // Ground up: the panel opens with the steps of the flow and whose move it is, in place of the status word.
   var top = D.ground() ? reqSteps(r) : '<div class="row">' + statusPill(r.status) + (r.order ? '<span class="who">Order #' + r.order + "</span>" : "") + "</div>";
   /* Ground up: the choices come straight after the steps and whose move it is, before the quote and the facts, so a
@@ -404,7 +404,7 @@ function toOrderView() {
     return '<div class="li pwait"><span class="grow"><b>' + esc(r.name) + (D.ground() && priPill(r.pri) ? " " + priPill(r.pri) : "") + '</b><span class="pmeta">' + [r.vendor, "Qty " + qtyText(r), money(total(r)), r.by].map(esc).join(D.ground() ? ", " : " · ") + "</span>" +
       // Ground up: the budget on one line with a comma, and the order-by date on its own line (hill climb r3).
       (D.ground() ? '<span class="pmeta">' + budgetEffect(r) + "</span>" + (ob ? '<span class="pmeta"><b class="pbad">' + orderByText(ob) + "</b></span>" : "") : '<span class="pmeta">' + budgetEffect(r) + (ob ? ' · <b class="pbad">order by ' + fmt(ob) + "</b>" : "") + "</span>") + (r.why ? '<span class="pmeta">“' + esc(r.why) + "”</span>" : "") + "</span>" + (D.ground() ? "" : priPill(r.pri)) +
-      '<span class="row nowrap"><button class="btn' + (D.ground() ? " primary" : "") + '" data-act="papprove" data-v="' + r.id + '">Approve</button><button class="btn' + (D.ground() ? "" : " ghost") + '" data-act="pdeny" data-v="' + r.id + '">' + (D.ground() ? "Deny" : "Deny…") + "</button>" + (D.ground() ? '<button class="linkbtn pother" data-act="preplace" data-v="' + r.id + '">Approve a different part</button>' : "") + "</span></div>";
+      '<span class="row nowrap"><button class="btn' + (D.ground() ? " primary" : "") + '" data-act="papprove" data-v="' + r.id + '">Approve</button><button class="btn' + (D.ground() ? "" : " ghost") + '" data-act="pdeny" data-v="' + r.id + '">' + (D.ground() ? "Deny" : "Deny…") + "</button>" + (D.ground() ? '<button class="btn pother" data-act="preplace" data-v="' + r.id + '">Approve a different part</button>' : "") + "</span></div>";
   }).join("") + "</div></div>" : "";
   // Ground up: the vendor whose order is due soonest comes first.
   function soonest(vn) { return byV[vn].map(function (r) { return orderBy(r) || "9999"; }).sort()[0]; }

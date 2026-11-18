@@ -15,7 +15,8 @@ Every judge in a tier must score every area at the tier's target. Fixes are made
 | 7 | 3 (9.5) | Opus, GPT-6.1 Sol, Grok 4.7 | 8.0 to 9.2 | 16 of 16 areas under 9.5; Opus 8.0 to 8.8, Sol 8.0 to 9.1, Grok 4.7 8.1 to 9.2; lowest per area 8.0 to 8.8 |
 | 8 | 3 (9.5) | Opus, GPT-6.1 Sol, Grok 4.7 | 7.6 to 9.2 | 16 of 16 areas under 9.5; Opus 7.6 to 8.6, Sol 7.9 to 9.2, Grok 4.7 7.8 to 8.8; lowest per area 7.6 to 8.6 (a little under round 7) |
 | 9 | 3 (9.5) | Opus, GPT-6.1 Sol, Grok 4.7 | 7.8 to 9.2 | 16 of 16 areas under 9.5; Opus 8.2 to 8.8, Sol 7.8 to 9.2, Grok 4.7 8.0 to 9.1; lowest per area 7.8 to 8.8 |
-| 10 | 3 (9.5) | Opus, GPT-6.1 Sol, Grok 4.7 | with the judges | |
+| 10 | 3 (9.5) | Opus, GPT-6.1 Sol, Grok 4.7 | 7.9 to 9.3 | 16 of 16 areas under 9.5; Opus 8.2 to 8.9, Sol 8.0 to 9.3, Grok 4.7 7.9 to 9.1; lowest per area 7.9 to 8.9 |
+| 11 | 3 (9.5) | Opus, GPT-6.1 Sol, Grok 4.7 | with the judges | |
 
 Grok 4.5 was thrown out in rounds 1 and 2: asked to copy exact text from three screenshots, it invented it.
 Grok 4.6 copied the text correctly in round 3 and counts.
@@ -169,3 +170,14 @@ drops (Tools, To order) were faults the lead introduced in round 4 and fixed bef
   the ticks. It is a quiet text link at every width.
 - **Home on an event day.** A student's own job now comes first on every screen, then the match and the robot.
 - **Deny on Home.** A mentor can deny a part request from Home, beside Approve; it opens the same "why" box Parts uses.
+- **A fault the lead introduced in round 9, caught in round 10.** Moving a student's job first on an event day
+  dropped the match-and-robot box to the end of the phone page. All three judges marked it; it now follows the job.
+- **The Status column in the wide Parts table.** Round 9 said repeating the step under its own heading was noise;
+  round 10 said the empty column looked unfinished. Every wide row names its step; folded phone rows do not.
+- **Late in Tasks.** Rounds 1 and 4 settled on red text; two round 10 judges said three reds then competed with
+  "Blocked". In Tasks late is strong black text and red is kept for "Blocked".
+- **The season bar on a phone.** Two rounds running a judge said the marks were too small to read at 390 px. The
+  phone line is the count and the milestone lines; the bar stays on wide screens, with diamonds in the milestones'
+  colours.
+- **"Subscribe" on a phone.** Two judges asked for an icon, as other apps' tab-row buttons have. There is no plain
+  icon for subscribing, so it stays a word, and the brief says so.
