@@ -289,7 +289,7 @@ function burstOuts(s, r) {
     { k: "Wheel as the last ball reaches it", v: rpmTxt(last.wBefore / RPM), u: "rpm", sub: (1 - last.wBefore / r.w < 0.0005 ? "back to full speed" : K.fix((1 - Math.round(last.wBefore / RPM / 10) * 10 / (Math.round(r.w / RPM / 10) * 10)) * 100, 1) + "% under the set speed") + "; that ball drops it to " + rpmTxt(last.wAfter / RPM) },
     { k: "Last ball leaves at", v: K.fix(last.v / FT, 1), u: "ft/s", sub: K.fix(b.shots[0].v / FT, 1) === K.fix(last.v / FT, 1) ? "the same as the first" : "first: " + K.fix(b.shots[0].v / FT, 1) + " ft/s" },
     { k: "Fastest rate that scores them all", v: b.best == null ? "–" : b.best >= 20 ? "20+" : K.fix(Math.floor(b.best * 10) / 10, 1), u: "a second", sub: b.best >= 20 ? "no wheel limit found up to 20; check the feeder separately" : "set by how fast the wheel recovers" },
-    { k: "One ball costs the wheel", v: K.fix(r.shot.drop / (r.w || 1) * 100, 1), u: "%", sub: "and takes " + (r.recov.time === Infinity ? "forever" : K.fix(r.recov.time, 2) + " s") + " to win back" }]);
+    { k: "Wheel-speed drop per ball", v: K.fix(r.shot.drop / (r.w || 1) * 100, 1), u: "%", sub: "and takes " + (r.recov.time === Infinity ? "forever" : K.fix(r.recov.time, 2) + " s") + " to win back" }]);
 }
 function burstMore(s, r) {
   var b = r.burst, pts = b.t.map(function (t, i) { return [t, b.w[i] / RPM]; }), half = r.meet ? r.meet.half : r.target.w / 2 - r.target.r;
@@ -448,7 +448,7 @@ function closeUp(g, s, r, phase, rpmNow, tShow) {
   if (phase <= 1) g.ball(ball[0], ball[1], U.rb * k, -kk * r.shot.spin * tShow * p2, {});
   else g.circle(E[0], E[1], U.rb * k, { stroke: c.pieceLine, width: 1.25, dash: [4, 4], fill: null });
   if (La.strip) {
-    if (!U.dual) g.text("hood", x0 + 5, y0 + size - 6, { size: 10, color: c.mute, halo: false });
+    if (!U.dual) g.text("fixed hood", x0 + 5, y0 + size - 6, { size: 10, color: c.mute, halo: false });
     g.text(U.dual ? "wheels" : "wheel", W[0], W[1] + U.rw * k + 11, { size: 10, color: c.mute, align: "center", halo: false });
     g.text(phase <= 1 ? "ball" : "ball left here", x0 + 4, y0 + 11, { size: 10, color: c.mute, halo: false });
   }
@@ -611,7 +611,7 @@ function drawMap(g, s, r, t) {
 function drawMove(g, s, r, t) {
   var c = g.c, mv = r.move, d = r.target.d, tw = r.target.w;
   var half = Math.max(d * 0.55, 2.2), box = hold && hold.box ? hold.box : { x0: -half, x1: half, y0: -d - 1.1, y1: tw / 2 + 0.7 };
-  var phoneM = g.w < 520, insH = phoneM ? Math.min(170, g.w * 0.46) * 0.56 + 30 : 0;       // on a phone the side view sits under the scene
+  var phoneM = g.w < 520, insH = phoneM ? Math.min(170, g.w * 0.46) * 0.56 + 44 : 0;       // on a phone the side view sits under the scene
   var V = g.view(box, { l: 12, r: 12, t: phoneM ? 98 : 22, b: 12 + insH }); last.V = V; last.box = box;
   var step = V.k * FT >= 13 ? FT : 5 * FT; g.grid(V, step, g.w > 520 ? (step === FT ? "1 ft squares, seen from above" : "5 ft squares, seen from above") : "");
   if (g.w <= 520) g.text((step === FT ? "1 ft squares" : "5 ft squares") + ", from above", g.w - 8, 16, { align: "right", color: c.mute, size: 10.5 });
@@ -639,7 +639,7 @@ function drawMove(g, s, r, t) {
   if (Math.abs(L.leadDeg) > 0.3) { var ar = Math.min(64, V.L(d) * 0.3), a0 = -Math.PI / 2, a1 = -aim; g.arc(V.X(0), V.Y(-d), ar, Math.min(a0, a1), Math.max(a0, a1), { color: c.text2, width: 1.25 }); var am = (a0 + a1) / 2; g.text(K.fix(Math.abs(L.leadDeg), 0) + "°", V.X(0) + (ar + 12) * Math.cos(am), V.Y(-d) + (ar + 12) * Math.sin(am), { align: "center", base: "middle", size: 12, weight: 700 }); }
   // The robot, where it is now, and its speed arrow (drag its tip).
   var rx = vx * tr, ry = -d + vy * tr;
-  if (tr > 0.02) { robotTop(g, V, 0, -d, aim, c, true); if (Math.hypot(rx, ry + d) * V.k > 70) g.text("released here", V.X(-0.42) - 8, V.Y(-d - 0.3), { align: "right", color: c.mute, size: 11 }); }
+  if (tr > 0.02) { robotTop(g, V, 0, -d, aim, c, true); if (Math.hypot(rx, ry + d) * V.k > (g.w > 520 ? 70 : 24)) g.text(g.w > 520 ? "released here" : "release", V.X(-0.42) - 8, V.Y(-d - 0.3), { align: "right", color: c.mute, size: 11 }); }
   robotTop(g, V, rx, ry, aim, c);
   g.text(tr > 0.02 ? "robot now" : "robot", V.X(rx), V.Y(ry - 0.42) + 14, { align: "center", color: c.text2, size: 11, weight: 600 });
   g.arrow(V.X(0), V.Y(-d), V.X(vx * 0.35), V.Y(-d + vy * 0.35), { color: c.accent, width: 2.5, head: 9 });
@@ -654,7 +654,7 @@ function drawMove(g, s, r, t) {
   // Inset: the same shot from the side, so it is plain that it still goes in.
   // On a phone the side view is too small to read, so the phone gets its answer as a line of words.
   if (mv.side) {
-    var big = g.w > 520, iw = big ? F.clamp(g.w * 0.3, 220, 250) : Math.min(250, g.w - 20), ih = big ? iw * 0.62 : insH - 18, top2 = big ? 46 : 30, ix = 10, iy = g.h - ih - 10, sd = mv.side, tgs = sd.target;
+    var big = g.w > 520, iw = big ? F.clamp(g.w * 0.3, 220, 250) : Math.min(250, g.w - 20), ih = big ? iw * 0.62 : insH - 18, top2 = big ? 46 : 42, ix = 10, iy = g.h - ih - 10, sd = mv.side, tgs = sd.target;
     g.rect(ix, iy, iw, ih, { fill: c.surface, stroke: c.line2, width: 1 });
     var k2 = Math.min((iw - 20) / (tgs.d + tgs.w * 0.7 + 0.6), (ih - top2) / (Math.max(sd.apex[1], tgs.h) + 0.2)), X2 = function (x) { return ix + 12 + (x + 0.3) * k2; }, Y2 = function (y) { return iy + ih - 8 - y * k2; };
     g.line(ix + 4, Y2(0), ix + iw - 4, Y2(0), { color: c.text2, width: 1 });
@@ -664,7 +664,7 @@ function drawMove(g, s, r, t) {
     // Two short lines on a laptop (one long line ran out of the box); one on a phone.
     var res2 = sd.meet && sd.meet.hit ? "in, " + inch(sd.meet.room) + (big ? " to spare" : " spare") : "misses", col2 = sd.meet && sd.meet.hit ? c.ok : c.warn;
     if (big) { g.text("From the side, as a " + K.fix(L.d / FT, 1) + " ft shot", ix + 8, iy + 15, { size: 11, weight: 700, color: c.text, halo: false }); g.text(rpmTxt(mv.rpm) + " rpm: " + res2, ix + 8, iy + 30, { size: 11, weight: 700, color: col2, halo: false }); }
-    else g.text(K.fix(L.d / FT, 1) + " ft standing shot: " + res2.replace(" spare", " to spare"), ix + 8, iy + 15, { size: 11, weight: 700, color: col2, halo: false });
+    else { g.text(K.fix(L.d / FT, 1) + " ft standing shot, " + rpmTxt(mv.rpm) + " rpm", ix + 8, iy + 14, { size: 11, weight: 700, color: c.text, halo: false }); g.text(sd.meet && sd.meet.hit ? "in, " + inch(sd.meet.room) + " to spare" : "misses", ix + 8, iy + 28, { size: 11, weight: 700, color: col2, halo: false }); }
   }
 }
 function robotTop(g, V, x, y, ang, c, ghost) {

@@ -118,7 +118,7 @@ K.tool({
     var add = s.rows.length < MAXROWS ? '<div><button class="btn sm" data-act="powadd">' + D.ic("plus", 16) + " Add a row</button></div>" : "";
     // Fill a row from another calculator's present numbers (its motor count and current limit).
     // At the top of the column, where it is seen: fill a row from another calculator's present numbers.
-    var fill = '<p class="cfh">Each button copies that calculator\'s motor count and current limit into the row of the same name, or adds one.</p><div class="t-power-fill">' +
+    var fill = '<p class="cfh">Each button copies that calculator\'s motor count and current limit into the row of the same name, or adds one. That is the most the mechanism could draw from the battery, at full voltage: a hold or a slow move draws less, so lower the amps if you know the real figure.</p><div class="t-power-fill">' +
       FILL.map(function (f) {
         // What the row would read, from that calculator's numbers as they are now.
         var q = M.fromTool(K.state(f[0]), f[2]), now = q ? q.n + " × " + q.a + " A = " + (q.n * q.a) + " A" : "no motors set";
