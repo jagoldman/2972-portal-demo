@@ -74,5 +74,12 @@ var bsrc = require("fs").readFileSync(require("path").join(__dirname, "../js/too
 ok("notes no longer say four times stiffer", !/four times stiffer/.test(bsrc));
 ok("notes no longer tie the faces to the hold alone", !/the other way round for a beam held at one end/.test(bsrc));
 
+// The stress chart's top: a round number at or just above 1.2 times the peak.
+near("niceTop 4,838 psi -> 5,000", M.niceTop(4032 * 1.2), 5000, 1e-12);
+near("niceTop 1.2 -> 1.2", M.niceTop(1.2), 1.2, 1e-12);
+near("niceTop 0.0071 -> 0.008", M.niceTop(0.0071), 0.008, 1e-12);
+near("niceTop 42,000 -> 50,000", M.niceTop(42000), 50000, 1e-12);
+near("niceTop of nothing -> 1", M.niceTop(0), 1, 0);
+
 console.log(fails ? fails + " of " + n + " checks failed" : "all " + n + " checks passed");
 process.exit(fails ? 1 : 0);

@@ -117,8 +117,8 @@ K.tool({
       return '<div class="t-air-cyl"><div class="t-air-top"><input class="inp" type="text" value="' + esc(c.name) + '" aria-label="Name of cylinder ' + (i + 1) + '" data-input="aircyl" data-i="' + i + '" data-f="name"><button class="btn sm ghost" data-act="airdel" data-i="' + i + '">Remove</button></div><div class="t-air-grid">' +
         f("bore", "Bore", "in", 0.25, 4, 0.0625) + f("stroke", "Stroke", "in", 0.25, 36, 0.25) + f("rod", "Rod", "in", 0.0625, 3, 0.0625) + f("cycles", "Cycles", "a match", 0, 200, 1) + "</div></div>";
     }).join("");
-    var cyl = '<p class="t-air-hint">One cycle is out and back. The rod must be thinner than the bore.</p>' + rows + (cylsOf(s).length < MAXC ? '<button class="btn sm" data-act="airadd">Add a cylinder</button>' : "");
-    return K.group(ID, "air", "Air", air) + K.group(ID, "cyl", "Cylinders", cyl) + K.group(ID, "comp", "Compressor", comp) + K.group(ID, "adv", "Match", K.num(ID, "match", "Match length", { unit: "s", min: 15, max: 300, step: 1, tip: "The cycles are spread evenly through this time. 160 s is a typical match with autonomous and teleop together." }), true);
+    var cyl = '<p class="t-air-hint">One cycle is out and back. Each cylinder\'s cycles are spread evenly through the match. The rod must be thinner than the bore.</p>' + rows + (cylsOf(s).length < MAXC ? '<button class="btn sm" data-act="airadd">Add a cylinder</button>' : "");
+    return K.group(ID, "air", "Air", air) + K.group(ID, "cyl", "Cylinders", cyl) + K.group(ID, "comp", "Compressor", comp) + K.group(ID, "adv", "Match", K.num(ID, "match", "Match length", { unit: "s", min: 15, max: 300, step: 1, hint: "The cycles are spread evenly through it.", tip: "The cycles are spread evenly through this time. 160 s is a typical match with autonomous and teleop together." }), true);
   },
 
   outs: function (s, r) {
@@ -135,18 +135,19 @@ K.tool({
       { k: "Air used in a match", v: K.n(L(r.used), 2), u: "L", sub: "free air: its volume let out to room pressure", tip: "Free air: the volume it would fill at atmospheric pressure. Each stroke fills its cylinder at working pressure, then lets it out." },
       { k: "Stored above working", v: K.n(L(r.stored), 2), u: "L", sub: "free air the tanks give up falling from " + o.stored + " to " + o.work + " psi", tip: "Only the air above working pressure is usable at full force." },
       { k: "Pressure at the end", v: K.n(r.end, 0), u: "psi", state: r.end < o.work - 1e-6 ? "bad" : "", sub: "in the tanks" },
-      { k: "Cycles at full force", v: r.fullCycles + " of " + r.cycles, state: r.firstShort ? "bad" : "", sub: "before it falls below " + o.work + " psi" },
+      { k: "Cycles at full force", v: r.fullCycles + " of " + r.cycles, state: r.firstShort ? "bad" : "", sub: "before it falls below " + o.work + " psi. Full force is theoretical: friction and flow losses take some" },
       { k: r.firstShort ? "Tanks it would take" : "Share of stored air", v: r.firstShort ? (r.need === Infinity ? "none will do" : r.need ? String(r.need) : "over " + M.MAXT) : K.n(share * 100, 0) + "%", state: r.firstShort ? "bad" : share > 0.8 ? "warn" : "", sub: r.firstShort ? "of " + K.n(o.ml, 0) + " mL" + (o.cfm ? ", with the compressor" : "") : "of what is stored above " + o.work + " psi" }]);
   },
 
   more: function (s, r) {
     var o = r.o;
     var chart = K.chart({ id: "air-p", title: "Tank pressure through the match", x: { label: "match time, s", name: "At", unit: "s", min: 0, max: o.match }, y: { label: "psi", unit: "psi", min: 0, max: Math.max(o.stored * 1.1, 10) },
-      series: [{ name: "Tank pressure", pts: r.pts, color: 1 }], hlines: [{ y: o.work, label: "Working " + o.work + " psi" }],
+      series: [{ name: "Tank pressure", pts: r.pts, color: 1 }], hlines: [{ y: o.work, below: true, label: "Working " + o.work + " psi" }],
       marks: r.firstShort ? [{ x: r.firstShort.t, label: "Below working" }] : [] });
-    var strokes = K.chart({ id: "air-s", title: "Pressure each stroke gets", x: { label: "match time, s", name: "At", unit: "s", min: 0, max: o.match }, y: { label: "psi", unit: "psi", min: 0, max: Math.max(o.work * 1.2, 5) },
-      series: r.cyls.map(function (cy, j) { return { name: cy.name, color: j < 3 ? j + 1 : "mute", dash: j % 2 === 1, pts: r.ev.filter(function (e) { return e.i === j; }).map(function (e) { return [e.t, e.p]; }) }; }), hlines: [{ y: o.work, label: "Working " + o.work + " psi" }] });
-    var tab = '<section class="ctab"><h2>Cylinders at ' + o.work + ' psi</h2><div class="scroll"><table><thead><tr><th>Cylinder</th><th class="r">Bore × stroke</th><th class="r">Rod</th><th class="r">Cycles</th><th class="r">Air per cycle</th><th class="r">Push</th><th class="r">Pull</th><th class="r">Cycles from full, alone</th></tr></thead><tbody>' +
+    var anyShort = r.ev.some(function (e) { return e.short; });
+    var strokes = !anyShort ? '<figure class="chart t-air-full"><figcaption>Pressure each stroke gets</figcaption><p>' + (r.cycles ? "Every stroke gets the full " + o.work + " psi." : "No strokes in this match.") + '</p><p class="t-air-hint">When the tanks run short, a chart of each stroke\'s pressure shows here.</p></figure>' : K.chart({ id: "air-s", title: "Pressure each stroke gets", x: { label: "match time, s", name: "At", unit: "s", min: 0, max: o.match }, y: { label: "psi", unit: "psi", min: 0, max: Math.max(o.work * 1.2, 5) },
+      series: r.cyls.map(function (cy, j) { return { name: cy.name, color: j < 3 ? j + 1 : "mute", dash: j % 2 === 1, pts: r.ev.filter(function (e) { return e.i === j; }).map(function (e) { return [e.t, e.p]; }) }; }), hlines: [{ y: o.work, below: true, label: "Working " + o.work + " psi" }] });
+    var tab = '<section class="ctab"><h2>Cylinders at ' + o.work + ' psi</h2><div class="scroll"><table><thead><tr><th>Cylinder</th><th class="r">Bore × stroke</th><th class="r">Rod</th><th class="r">Cycles</th><th class="r">Air per cycle</th><th class="r">Push, theoretical</th><th class="r">Pull, theoretical</th><th class="r">Cycles from full, alone</th></tr></thead><tbody>' +
       r.per.map(function (p) { return "<tr><td>" + esc(p.c.name) + '</td><td class="r num">' + K.fix(p.c.bore, 4).replace(/0+$/, "").replace(/\.$/, "") + " × " + K.n(p.c.stroke, 2) + ' in</td><td class="r num">' + K.fix(p.c.rod, 4).replace(/0+$/, "").replace(/\.$/, "") + ' in</td><td class="r num">' + p.c.cycles + '</td><td class="r num">' + K.n(L(p.cycleAir), 3) + ' L</td><td class="r num">' + K.n(p.push, 1) + ' lbf</td><td class="r num">' + K.n(p.pull, 1) + ' lbf</td><td class="r num">' + (o.stored > o.work ? p.alone : 0) + "</td></tr>"; }).join("") +
       "</tbody></table></div></section>";
     return '<div class="chartrow">' + chart + strokes + "</div>" + tab + K.notes(
@@ -159,7 +160,7 @@ K.tool({
       '<p class="eq">push = working psi × bore area;  pull = working psi × (bore area − rod area)</p>' +
       "<p>Each cylinder's cycles are spread evenly through the match, out and then back a moment later. Once a stroke would pull the tanks under working pressure, the regulator is wide open: the tank and the cylinder share what is left, so that stroke and every one after it gets less pressure and less force.</p>" +
       "<p>The compressor's flow is taken as free air per minute, the same all the time, running whenever the tanks are under the stored pressure. A real compressor gives less as the pressure rises, so read its chart at your working pressure. It is also left out that the air cools as it expands in a quick stroke (which uses a little more), and the tubing and fittings, which hold some air too. Treat the answer as a close estimate and keep a margin.</p>" +
-      "<p>In the drawing the tank fill shows its pressure against the stored pressure, and the gauge marks stored and working pressure. The cylinders are to scale against each other. The match runs in " + DUR + " s; each cylinder strokes when it is used.</p>");
+      "<p>In the drawing the tank fill shows the air's pressure against the stored pressure (the tanks hold only air; the fill is not a liquid level), and the gauge marks stored and working pressure. The cylinders are to scale against each other, with a dashed outline where the rod reaches at full stroke. The force arrows are the theoretical force, pressure times area. The whole match plays in " + DUR + " s; each cylinder strokes when it is used.</p>");
   },
 
   draw: function (g, s, r, t) { drawAir(g, s, r, t); }
@@ -186,6 +187,7 @@ D.acts.airdel = function (b) { var s = K.state(ID); s.cyls.splice(+b.dataset.i, 
     ".t-air-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 6px 10px; }" +
     ".t-air-f { display: grid; gap: 2px; font-size: .78rem; color: var(--text-2); }" +
     ".t-air-v { display: flex; align-items: center; gap: 4px; } .t-air-v .inp { width: 100%; min-width: 0; min-height: 34px; padding: 3px 6px; text-align: right; } .t-air-v small { color: var(--mute); white-space: nowrap; font-size: .74rem; }" +
+    ".t-air-full { align-content: start; } .t-air-full p { margin: 0; }" +
     ".t-air-f .inp.t-air-bad { border-color: var(--bad); background: var(--bad-bg); }" +
     "@media (max-width: 640px) { .t-air-v .inp, .t-air-top .inp { min-height: 44px; } }";
   document.head.appendChild(st);
@@ -196,60 +198,79 @@ function drawAir(g, s, r, t) {
   var c = g.c, ctx = g.ctx, W = g.w, H = g.h, o = r.o, narrow = W < 560, T = F.clamp(t / DUR, 0, 1) * o.match;
   var P = pAt(r.pts, T), low = P < o.work - 1e-6, full = Math.max(o.stored, 1);
   K.chartNow("air-p", T); K.chartNow("air-s", T);
-  // Header: the match clock and the tank pressure.
+  // Header: the match clock and the tank pressure. At the bottom right: what the playback time means.
   g.text("Match clock " + clock(T) + " of " + clock(o.match), 12, 20, { weight: 700, size: 13 });
   g.text("Tanks " + K.n(P, 0) + " psi" + (low ? ", below working pressure" : ""), 12, 37, { color: low ? c.bad : c.text2, weight: 600, size: 12 });
-  // Left: tanks and gauge (top band on a phone).
-  var leftW = narrow ? W : Math.min(W * 0.36, 330), topH = narrow ? Math.min(H * 0.5, 210) : H;
-  var tw = narrow ? 30 : 36, nDraw = Math.min(o.tanks, Math.max(1, Math.floor(((narrow ? W - 80 : leftW) - 22 - 118) / (tw + 10)))), th = Math.min(topH - (narrow ? 96 : 110), narrow ? 120 : 170), tx0 = 22, ty0 = (narrow ? 66 : 56) + (topH - 56 - 34 - th) / 2;
-  if (s.comp === "robot") {                         // the compressor feeds the tanks
-    var running = P < o.stored - 0.05 && t > 0, cx0 = tx0, cy0 = ty0 + th + 8;
-    g.rect(cx0, cy0, 66, 22, { fill: c.part2, stroke: c.partLine, width: 1, radius: 4 });
-    g.text("Compressor", cx0 + 33, cy0 + 11, { align: "center", base: "middle", size: 10, weight: 700, halo: false });
-    if (running) g.text("running", cx0 + 72, cy0 + 11, { base: "middle", size: 10, color: c.ok, weight: 600 });
-  }
+  g.text(DUR + " s here stands for the whole match", W - 10, H - 9, { align: "right", color: c.mute, size: 11 });
+  /* The supply: tanks, gauge, regulator. A narrow column at the left on a laptop; a short band across the top on a
+     phone. The cylinders get the rest, so they are the larger part of the drawing. */
+  var leftW = narrow ? W : F.clamp(W * 0.28, 220, 290);
+  var tw = narrow ? 24 : 30, gapT = narrow ? 7 : 9, maxDraw = narrow ? 3 : Math.max(1, Math.floor((leftW - 22 - 2 * 40 - 30) / (tw + gapT)));
+  var nDraw = Math.min(o.tanks, maxDraw);
+  var tx0 = narrow ? 16 : 20, ty0 = narrow ? 88 : 92, th = narrow ? 64 : Math.max(60, Math.min(170, H - ty0 - 120));
+  var tanksRight = tx0 + nDraw * (tw + gapT) - gapT, feedY = ty0 + th + (narrow ? 14 : 24);
+  // What the tanks are, and what the fill means: pressure, not a liquid level.
+  var size = o.tanks > nDraw ? o.tanks + " tanks of " + K.n(o.ml, 0) + " mL, " + nDraw + " drawn" : o.tanks + " × " + K.n(o.ml, 0) + " mL";
+  if (narrow) g.text(size + ". Fill shows pressure, of " + o.stored + " psi", 12, 60, { size: 11, color: c.text2, weight: 600 });
+  else { g.text(size, tx0, 62, { size: 12, color: c.text2, weight: 700 }); g.text("Fill shows pressure, of " + o.stored + " psi", tx0, 78, { size: 11, color: c.mute }); }
   for (var i = 0; i < nDraw; i++) {
-    var x = tx0 + i * (tw + 10), frac = F.clamp(P / full, 0, 1);
+    var x = tx0 + i * (tw + gapT), frac = F.clamp(P / full, 0, 1);
     ctx.save(); ctx.beginPath(); if (ctx.roundRect) ctx.roundRect(x, ty0, tw, th, tw / 2); else ctx.rect(x, ty0, tw, th); ctx.clip();
     ctx.globalAlpha = 0.35; g.rect(x, ty0 + th * (1 - frac), tw, th * frac + 1, { fill: low ? c.bad : c.s1, stroke: null }); ctx.globalAlpha = 1;
     g.line(x, ty0 + th * (1 - frac), x + tw, ty0 + th * (1 - frac), { color: low ? c.bad : c.s1, width: 2 });
     ctx.restore();
     g.rect(x, ty0, tw, th, { stroke: c.partLine, width: 1.5, radius: tw / 2 });
-    // The working-pressure level on each tank.
     var wy = ty0 + th * (1 - o.work / full); g.line(x - 3, wy, x + tw + 3, wy, { color: c.accent, width: 1, dash: [3, 2] });
+    g.line(x + tw / 2, ty0 + th, x + tw / 2, feedY, { color: c.mute, width: 2 });
   }
-  var tanksRight = tx0 + nDraw * (tw + 10) - 10;
-  g.text(o.tanks > nDraw ? o.tanks + " tanks, " + nDraw + " drawn" : o.tanks + " × " + K.n(o.ml, 0) + " mL", tx0, ty0 - 8, { size: 11, color: c.text2, weight: 600 });
-  // Gauge.
-  var gr = narrow ? 36 : Math.min(48, (leftW - tanksRight - 30) / 2), gx = narrow ? tanksRight + 30 + gr : tanksRight + 18 + gr, gy = ty0 + gr + 16;
+  // Gauge, to the right of the tanks; its stem drops to the feed line below it, clear of the "psi" in its face.
+  var gr = narrow ? 30 : F.clamp((leftW - (tanksRight - tx0) - 66) / 2, 26, 44), gx = tanksRight + 20 + gr, gy = narrow ? ty0 + th / 2 - 2 : ty0 + gr + 16;
+  if (gy + gr + 6 > feedY) gy = feedY - gr - 6;
+  g.line(gx, gy + gr, gx, feedY, { color: c.mute, width: 2 });
   gauge(g, gx, gy, gr, P, o, full);
-  // The feed: tanks to gauge to regulator.
-  var feedY = ty0 + th - 12, regX = narrow ? W - 80 : leftW + 4, regY = feedY - 14;
-  g.line(tanksRight, feedY, gx, feedY, { color: c.mute, width: 2 }); g.line(gx, gy + gr, gx, feedY, { color: c.mute, width: 2 });
-  g.line(gx, feedY, regX, feedY, { color: c.mute, width: 2 });
-  g.rect(regX, regY, 64, 28, { fill: c.part, stroke: c.partLine, width: 1.25, radius: 4 });
-  g.text("Regulator", regX + 32, regY + 10, { align: "center", base: "middle", size: 10, weight: 700, halo: false });
-  g.text(o.work + " psi", regX + 32, regY + 21, { align: "center", base: "middle", size: 10, color: c.text2, halo: false });
-  // Right: the cylinders, to scale against each other.
-  var cyls = r.cyls, n = cyls.length;
-  var ax0 = narrow ? 16 : leftW + 96, ax1 = W - 16, ay0 = narrow ? topH + 8 : 50, ay1 = H - 10;
-  if (!narrow) g.line(regX + 64, feedY, ax0 - 30, feedY, { color: c.mute, width: 2 });
-  else if (cyls.length) { g.line(regX + 32, regY + 28, regX + 32, ay0 - 2, { color: c.mute, width: 2 }); g.line(regX + 32, ay0 - 2, 8, ay0 - 2, { color: c.mute, width: 2 }); }
+  // Regulator on the feed line.
+  var regW = 64, regX = narrow ? W - regW - 14 : leftW - regW - 2, regY = feedY - 14;
+  g.line(tx0 + tw / 2, feedY, regX, feedY, { color: c.mute, width: 2 });
+  g.rect(regX, regY, regW, 28, { fill: c.part, stroke: c.partLine, width: 1.25, radius: 4 });
+  g.text("Regulator", regX + regW / 2, regY + 10, { align: "center", base: "middle", size: 10, weight: 700, halo: false });
+  g.text(o.work + " psi", regX + regW / 2, regY + 21, { align: "center", base: "middle", size: 10, color: c.text2, halo: false });
+  if (s.comp === "robot") {                         // the compressor feeds the tanks
+    var running = P < o.stored - 0.05 && t > 0, cw = 70, cx0 = narrow ? regX - 2 : tx0, cy0 = narrow ? ty0 - 4 : feedY + 14;
+    if (narrow) cx0 = W - cw - 12;
+    g.line(cx0 + 12, narrow ? cy0 + 22 : cy0, cx0 + 12, feedY, { color: c.mute, width: 2 });
+    g.rect(cx0, cy0, cw, 22, { fill: c.part2, stroke: c.partLine, width: 1, radius: 4 });
+    g.text("Compressor", cx0 + cw / 2, cy0 + 11, { align: "center", base: "middle", size: 10, weight: 700, halo: false });
+    if (running) g.text("running", narrow ? cx0 + cw / 2 : cx0 + cw + 6, narrow ? cy0 + 34 : cy0 + 11, { base: "middle", align: narrow ? "center" : "left", size: 10, color: c.ok, weight: 600 });
+  }
+  // The cylinders, to scale against each other: right of the supply on a laptop, under it on a phone.
+  var cyls = r.cyls, n = cyls.length, manX = narrow ? 8 : leftW + 22;
+  var ax0 = narrow ? 22 : leftW + 46, ax1 = W - 14, ay0 = narrow ? feedY + 32 : 50, ay1 = H - 22;
+  if (narrow) { g.line(regX + regW / 2, regY + 28, regX + regW / 2, feedY + 22, { color: c.mute, width: 2 }); g.line(regX + regW / 2, feedY + 22, manX, feedY + 22, { color: c.mute, width: 2 }); }
+  else g.line(regX + regW, feedY, manX, feedY, { color: c.mute, width: 2 });
   if (!n) { g.text("No cylinders. Add one in Cylinders.", ax0, (ay0 + ay1) / 2, { color: c.mute }); return; }
   var rowH = (ay1 - ay0) / n, maxLen = 0, maxBore = 0;
-  cyls.forEach(function (cy) { maxLen = Math.max(maxLen, 2 * cy.stroke + 1.6); maxBore = Math.max(maxBore, cy.bore); });
-  var k = Math.min((ax1 - ax0 - 70) / maxLen, (rowH - 34) * 0.8 / maxBore);
+  cyls.forEach(function (cy) { maxLen = Math.max(maxLen, 2 * cy.stroke + 1.05); maxBore = Math.max(maxBore, cy.bore); });
+  var arrowRoom = narrow ? 44 : 64, k = Math.min((ax1 - ax0 - arrowRoom) / maxLen, (rowH - (narrow ? 46 : 58)) * 0.95 / maxBore, narrow ? 60 : 110);
   var maxF = Math.max.apply(null, r.per.map(function (p) { return p.push; })) || 1;
+  var feedTop = narrow ? feedY + 22 : feedY;
   cyls.forEach(function (cy, j) {
-    var st = state(r, j, T), ry = ay0 + rowH * j, mid = ry + 22 + (rowH - 22) / 2, bh = cy.bore * k, cap = 0.4 * k, body = cy.stroke * k + 2 * cap, bx = ax0;
-    var short = st.p < o.work - 1e-6, col = short ? c.bad : c.text;
-    // The feed line to this cylinder.
+    var st = state(r, j, T), ry = ay0 + rowH * j, bh = Math.max(6, cy.bore * k), mid = ry + (narrow ? 24 : 30) + bh / 2 + Math.max(0, (rowH - (narrow ? 46 : 58) - bh) / 2) * 0.5;
+    var cap = 0.4 * k, body = cy.stroke * k + 2 * cap, bx = ax0;
+    var short = st.p < o.work - 1e-6, col = short && st.started ? c.bad : c.text;
+    if (j > 0) g.line(ax0 - 4, ry, ax1, ry, { color: c.line, width: 1 });
+    // The feed line to this cylinder: lit while it strokes.
     var lineCol = st.moving ? (short ? c.bad : c.s1) : c.mute;
-    if (!narrow) { g.line(ax0 - 30, feedY, ax0 - 30, mid, { color: c.mute, width: 2 }); g.line(ax0 - 30, mid, bx, mid, { color: lineCol, width: st.moving ? 3 : 2 }); }
-    else { g.line(8, ay0 - 2, 8, mid, { color: c.mute, width: 2 }); g.line(8, mid, bx, mid, { color: lineCol, width: st.moving ? 3 : 2 }); }
-    var ly = Math.max(ry + 13, mid - bh / 2 - 9);
-    g.text(cy.name, bx, ly, { weight: 700, size: 12, color: col });
-    g.text(fmtIn(cy.bore) + " × " + fmtIn(cy.stroke) + " in, cycle " + Math.min(st.done, cy.cycles) + " of " + cy.cycles + (short && st.started ? ", short of air" : ""), bx + g.textWidth(cy.name, { weight: 700, size: 12 }) + 8, ly, { size: 11, color: short && st.started ? c.bad : c.mute });
+    g.line(manX, Math.min(feedTop, mid), manX, Math.max(feedTop, mid), { color: c.mute, width: 2 });
+    g.line(manX, mid, bx, mid, { color: lineCol, width: st.moving ? 3 : 2 });
+    // Its name on a line of its own, then what it is and where it has got to.
+    var ly = ry + (narrow ? 15 : 20), nw = g.textWidth(cy.name, { weight: 700, size: narrow ? 12 : 13 });
+    g.text(cy.name, bx, ly, { weight: 700, size: narrow ? 12 : 13, color: col });
+    g.text(fmtIn(cy.bore) + " in bore, cycle " + Math.min(st.done, cy.cycles) + " of " + cy.cycles + (short && st.started ? ", short of air" : ""), bx + nw + 8, ly, { size: 11, color: short && st.started ? c.bad : c.mute });
+    // Where the rod reaches at full stroke, dashed, with the stroke dimensioned under it.
+    var rh = Math.max(2, cy.rod * k), endK = 0.25 * k, rod0 = bx + body + endK, rodFull = rod0 + cy.stroke * k;
+    g.rect(bx + body, mid - rh / 2, rodFull - bx - body, rh, { stroke: c.ghost, width: 1, dash: [4, 3] });
+    g.rect(rodFull, mid - Math.max(rh, 6) / 2 - 1, 4, Math.max(rh, 6) + 2, { stroke: c.ghost, width: 1, dash: [3, 2] });
+    g.dim(rod0 + 2, mid + bh / 2 + 4, rodFull + 2, mid + bh / 2 + 4, fmtIn(cy.stroke) + " in stroke", -1, { side: "below", size: 11 });
     // Body, with the pressurised side tinted.
     var px = bx + cap + st.ext * cy.stroke * k, pw = Math.max(3, 0.3 * k);
     ctx.globalAlpha = st.moving ? 0.45 : 0.18;
@@ -260,16 +281,16 @@ function drawAir(g, s, r, t) {
     g.rect(bx, mid - bh / 2, cap * 0.6, bh, { fill: c.part2, stroke: c.partLine, width: 1 });
     g.rect(bx + body - cap * 0.6, mid - bh / 2, cap * 0.6, bh, { fill: c.part2, stroke: c.partLine, width: 1 });
     // Piston and rod.
-    var rh = Math.max(2, cy.rod * k), rodEnd = bx + body + st.ext * cy.stroke * k + 0.25 * k;
+    var rodEnd = rod0 + st.ext * cy.stroke * k;
     g.rect(px, mid - bh / 2 + 1.5, pw, bh - 3, { fill: c.text2, stroke: null });
     g.rect(px + pw, mid - rh / 2, rodEnd - px - pw, rh, { fill: c.part, stroke: c.partLine, width: 1 });
     g.rect(rodEnd, mid - Math.max(rh, 6) / 2 - 1, 4, Math.max(rh, 6) + 2, { fill: c.text2, stroke: null });
-    // The force while it moves.
+    // The force while it moves: pressure times area, before friction.
     if (st.moving) {
-      var fpush = M.forces(cy, st.p), fv = st.dir === "out" ? fpush.push : fpush.pull, len = 14 + 46 * fv / maxF;
-      if (st.dir === "out") g.arrow(rodEnd + 6, mid, rodEnd + 6 + len, mid, { color: short ? c.bad : c.force, width: 2.5, label: K.n(fv, 0) + " lbf" });
-      else g.arrow(rodEnd + 6 + len, mid, rodEnd + 6, mid, { color: short ? c.bad : c.force, width: 2.5 });
-      if (st.dir !== "out") g.text(K.n(fv, 0) + " lbf", rodEnd + 12 + len, mid, { color: short ? c.bad : c.force, weight: 600, base: "middle" });
+      var fp = M.forces(cy, st.p), fv = st.dir === "out" ? fp.push : fp.pull, len = 12 + (arrowRoom - 18) * fv / maxF, fx = rodEnd + 8, fcol = short ? c.bad : c.force;
+      if (st.dir === "out") g.arrow(fx, mid, fx + len, mid, { color: fcol, width: 2.5 }); else g.arrow(fx + len, mid, fx, mid, { color: fcol, width: 2.5 });
+      var lab = K.n(fv, 0) + " lbf, theoretical", lw = g.textWidth(lab, { size: 11, weight: 700 });
+      g.text(lab, Math.min(fx, W - 8 - lw), mid - Math.max(rh, 6) / 2 - 7, { color: fcol, weight: 700, size: 11 });
     }
   });
 }
@@ -297,7 +318,8 @@ function gauge(g, x, y, R, P, o, full) {
   g.arc(x, y, R - 5, ang(0), ang(o.work), { color: c.bad, width: 4, cap: "butt" });
   g.arc(x, y, R - 5, ang(o.work), ang(o.stored), { color: c.ok, width: 4, cap: "butt" });
   for (var p = 0; p <= top + 1e-9; p += 20) { var a = ang(p); g.line(x + Math.cos(a) * (R - 10), y + Math.sin(a) * (R - 10), x + Math.cos(a) * (R - 2), y + Math.sin(a) * (R - 2), { color: c.text2, width: 1 }); }
-  [[o.work, "working"], [o.stored, "stored"]].forEach(function (m) {
+  var close = Math.abs(ang(o.stored) - ang(o.work)) < 0.4;
+  (close ? [[o.stored, o.stored === o.work ? "stored and working" : "working, stored"]] : [[o.work, "working"], [o.stored, "stored"]]).forEach(function (m) {
     var a = ang(m[0]), cs = Math.cos(a), sn = Math.sin(a);
     g.line(x + cs * (R - 12), y + sn * (R - 12), x + cs * (R + 4), y + sn * (R + 4), { color: c.text, width: 2 });
     g.text(m[1], x + cs * (R + 8), y + sn * (R + 8) - (sn < -0.5 ? 4 : 0), { size: 10, color: c.text2, weight: 600, align: cs < -0.2 ? "right" : cs > 0.2 ? "left" : "center", base: sn < -0.5 ? "alphabetic" : "middle" });
@@ -305,7 +327,7 @@ function gauge(g, x, y, R, P, o, full) {
   var an = ang(P), low = P < o.work - 1e-6;
   g.line(x, y, x + Math.cos(an) * (R - 9), y + Math.sin(an) * (R - 9), { color: low ? c.bad : c.text, width: 2.5 });
   g.circle(x, y, 3.5, { fill: c.text, stroke: null });
-  g.text(K.n(P, 0), x, y + R * 0.5, { align: "center", base: "middle", weight: 700, size: 13, color: low ? c.bad : c.text });
-  g.text("psi", x, y + R * 0.5 + 13, { align: "center", base: "middle", size: 10, color: c.mute });
+  g.text(K.n(P, 0), x, y + R * 0.42, { align: "center", base: "middle", weight: 700, size: R < 34 ? 12 : 13, color: low ? c.bad : c.text });
+  g.text("psi", x, y + R * 0.42 + (R < 34 ? 11 : 13), { align: "center", base: "middle", size: 10, color: c.mute });
 }
 })(typeof window !== "undefined" ? window : this);
