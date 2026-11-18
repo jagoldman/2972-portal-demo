@@ -36,7 +36,11 @@ ok("sprint top speed near free speed", top.maxV > 0.93 * db.freeSpeed(12.3) * 0.
 var big = F.drive({ motor: "kraken60", n: 1, ratio: 100, eff: 1, statorA: 20 }), T = big.at(0, 12, 1).torque, J = 50;
 var mv = F.move({ drive: big, J: J, x0: 0, goal: 0.2, V: 12, Rbat: 0 });
 ok("move reaches", mv.reached);
-near("move time (bang-bang)", mv.time, 2 * Math.sqrt(0.2 * J / T), 0.03);
+// Speeding up, friction (the free current) works against the motor; braking, it helps. So the two rates differ:
+// t = sqrt(2 d (a1 + a2) / (a1 a2)).
+var a1 = T / J, a2 = big.motor.kt * (20 + big.motor.freeA) * 100 / J;
+near("brake torque includes friction", -big.at(0.3, 12, -1).torque, a2 * J, 1e-9);
+near("move time (bang-bang)", mv.time, Math.sqrt(2 * 0.2 * (a1 + a2) / (a1 * a2)), 0.03);
 near("move ends on the goal", mv.x[mv.x.length - 1], 0.2, 1e-9);
 var down = F.move({ drive: big, J: J, x0: 0.2, goal: 0, V: 12, Rbat: 0 });
 near("move down mirrors up", down.time, mv.time, 0.01);
@@ -125,7 +129,7 @@ ok("best angle in range", best && best.deg >= 45 && best.deg <= 80, best && best
 function sf(d) { var a = F.aim(shot, Object.assign({}, tgt, { d: d })); return a ? { v: a.v, time: a.meet.t } : null; }
 var still = F.moving(3, 0, 0, sf);
 near("moving: still", still.d, 3, 1e-9);
-ok("moving: toward the target shoots shorter", F.moving(3, 1.5, 0, sf).d < 3);
+ok("moving: toward the target shoots shorter", F.moving(3, 0.5, 0, sf).d < 3);
 ok("moving: across needs a lead", Math.abs(F.moving(3, 0, 2, sf).leadDeg) > 5);
 
 // Belts: equal pulleys make it simple: C = (L - pi D) / 2.
@@ -144,6 +148,34 @@ var ch = F.chain({ pitch: 0.25, n1: 16, n2: 32, target: 6 });
 ok("chain: even links", ch.options.every(function (o) { return o.links % 2 === 0; }));
 near("sprocket pitch diameter", F.sprocketPd(0.25, 22), 0.25 / Math.sin(Math.PI / 22), 1e-12);
 near("gear centre 20 DP 14:50", F.gearPair(14, 50, { dp: 20 }, 0.003).center, 1.603, 1e-9);
+
+// ---- Findings from the independent review (Opus, 2026-11-18) ----
+// A supply limit must not turn braking into a push.
+var dsl = F.drive({ motor: "kraken60", n: 1, ratio: 1, eff: 1, supplyA: 40 }), brk = dsl.at(300, 12, -1);
+ok("supply limit leaves braking alone", brk.torque < 0 && brk.statorA < 0 && brk.supplyA === 0, brk.torque);
+// A load the brake cannot hold: the move has not "arrived", it has fallen.
+var fall = F.move({ drive: big, J: 5, x0: 1.5, goal: 0, V: 12, Rbat: 0, ext: function () { return -1.2 * big.stallTorque(12); } });
+ok("cannot stop is not an arrival", !fall.reached && fall.cannotStop === true && fall.time === Infinity);
+// A tiny, quick move still arrives.
+var tiny = F.move({ drive: F.drive({ motor: "kraken60", n: 2, ratio: 5, eff: 0.9, statorA: 80 }), J: 0.01, x0: 0, goal: 0.01, V: 12.3 });
+ok("tiny move arrives", tiny.reached && tiny.time < 0.1, tiny.time);
+// A steep, back-spun shot: more speed does not always carry further, and the search must still find the window.
+var steepShot = { deg: 75, h0: 0.56, m: 0.215, r: 0.075, spinPer: 0.9 / 0.075 }, steepT = { kind: "top", d: 18 * F.FT, h: 1.83, w: 1.06, r: 0.075 };
+var steep = F.aim(steepShot, steepT, 30);
+ok("steep back-spun shot: a speed is found", !!steep && steep.meet.hit, steep && steep.v);
+ok("steep: it is the first speed that reaches the middle", steep && F.meet(F.fly(Object.assign({ v: steep.v * 0.9, spin: steepShot.spinPer * steep.v * 0.9 }, steepShot)).pts, steepT) === null || steep && F.meet(F.fly(Object.assign({ v: steep.v * 0.9, spin: steepShot.spinPer * steep.v * 0.9 }, steepShot)).pts, steepT).miss < 0);
+ok("steep: both edges score, just outside does not", [steep.lo + 0.02, steep.hi - 0.02].every(function (v) { return F.meet(F.fly(Object.assign({ v: v, spin: steepShot.spinPer * v }, steepShot)).pts, steepT).hit; }) && !F.meet(F.fly(Object.assign({ v: steep.hi + 0.05, spin: steepShot.spinPer * (steep.hi + 0.05) }, steepShot)).pts, steepT).hit);
+// Too close: the ball meets the target's wall on the way up. That is not a score.
+var closeT = { kind: "top", d: 4.5 * F.FT, h: 1.83, w: 1.06, r: 0.075 }, wallHits = 0, falseIn = 0, vv;
+for (vv = 4; vv < 9; vv += 0.05) { var cm = F.meet(F.fly({ v: vv, deg: 62, h0: 0.56, m: 0.215, r: 0.075, spin: 12 * vv }).pts, closeT); if (cm && cm.wall) wallHits++; if (cm && cm.hit) { var pts2 = F.fly({ v: vv, deg: 62, h0: 0.56, m: 0.215, r: 0.075, spin: 12 * vv }).pts; pts2.forEach(function (q) { if (q[0] < cm.t && Math.hypot(q[1] - (closeT.d - 0.53), q[2] - 1.83) < 0.07) falseIn++; }); } }
+ok("close shots that reach the wall are wall hits", wallHits > 5, wallHits);
+ok("no shot scores through the rim", falseIn === 0, falseIn);
+// Chain: two 16-tooth #25 sprockets and 64 links sit exactly 24 pitches (6 in) apart.
+near("chain 16:16, 64 links", F.chainCenter(0.25, 16, 16, 64), 6, 1e-6);
+near("chain links round trip", F.chainLinks(0.25, 16, 32, F.chainCenter(0.25, 16, 32, 72)), 72, 1e-6);
+ok("chain centre a little more than the circle formula gave", F.chainCenter(0.25, 16, 32, 72) > F.loopCenter(F.sprocketPd(0.25, 16), F.sprocketPd(0.25, 32), 72 * 0.25));
+// A burst survives a zero rate and a zero count.
+ok("burst guards", F.burst({ drive: fly, target: 400, n: 0, rate: 0, shot: Object.assign({ type: "hood", Iw: 0.004, rw: 0.0508 }, ball) }).shots.length === 1);
 
 console.log((n - fails) + " of " + n + " checks passed");
 process.exit(fails ? 1 : 0);

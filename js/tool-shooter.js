@@ -33,10 +33,13 @@ M.setup = function (s) {
   var one = F.shot(Object.assign({}, sp, { w: 1, vIn: 0 })), zero = F.shot(Object.assign({}, sp, { w: 0 }));
   return { mb: mb, rb: rb, Ib: Ib, rw: rw, rw2: rw2, G: G, dual: dual, Iw: Iw, sp: sp,
     a: one.v, b: zero.v, spinPer: one.v ? one.spin / one.v : 0,          // exit speed = a w + b; spin = spinPer v
-    fb: { deg: s.deg, h0: s.h0 * IN, m: mb, r: rb, cd: s.cd, rho: F.air(s.alt), lift: !!s.lift, dt: 0.003 },
+    fb: { deg: s.deg, h0: s.h0 * IN, m: mb, r: rb, cd: s.cd, rho: F.air(s.alt), lift: !!s.lift, dt: 0.003, floor: rb },
     target: { kind: s.tkind, d: s.dist * FT, h: s.th * IN, w: s.tw * IN, r: rb },
     drive: F.drive({ motor: s.motor, n: s.motors, ratio: s.ratio, eff: s.eff / 100, statorA: s.statorA }) };
 };
+// The fastest exit speed worth searching: a quarter more than the motor can reach on a rested battery.
+M.vmax = function (U) { return F.clamp((U.a * U.drive.freeSpeed(M.VBAT) + U.b) * 1.25, 8, 45); };
+M.VBAT = 12.3;
 M.rpmFor = function (U, v) { return (v - U.b) / U.a / RPM; };
 M.flight = function (U, v, extra) { return F.fly(Object.assign({}, U.fb, { v: v, spin: U.spinPer * v }, extra || {})); };
 // The part of a flight worth drawing: up to where it goes into the target, hits it, or lands.
@@ -44,7 +47,7 @@ M.cut = function (pts, tg, meet) {
   var out = [], outer = tg.w * 0.565;
   for (var i = 0; i < pts.length; i++) {
     var p = pts[i];
-    if (meet && meet.hit && p[0] > meet.t) { out.push([meet.t, meet.x, meet.y, p[3], p[4]]); break; }
+    if (meet && (meet.hit || meet.wall) && p[0] > meet.t) { out.push([meet.t, meet.x, meet.y, p[3], p[4]]); break; }
     if (tg.kind === "front") { if (p[1] > tg.d && !(meet && meet.hit)) { out.push([p[0], tg.d, p[2], 0, 0]); break; } }
     else if (p[1] > tg.d - outer && p[1] < tg.d + outer && p[2] < tg.h && !(meet && meet.hit && Math.abs(p[1] - tg.d) < tg.w / 2)) { out.push(p); break; }
     out.push(p);
@@ -55,7 +58,7 @@ function cols(pts) { return { t: pts.map(function (p) { return p[0]; }), x: pts.
 M.one = function (s) {
   var U = M.setup(s), w = s.rpm * RPM, shot = F.shot(Object.assign({}, U.sp, { w: w })), tg = U.target;
   var fl = M.flight(U, shot.v), meet = F.meet(fl.pts, tg), path = M.cut(fl.pts, tg, meet);
-  var aim = F.aim(Object.assign({}, U.fb, { spinPer: U.spinPer }), tg, 45, 24);
+  var aim = F.aim(Object.assign({}, U.fb, { spinPer: U.spinPer }), tg, M.vmax(U), 22);
   var r = { U: U, shot: shot, fl: fl, meet: meet, path: path, pc: cols(path), aim: aim, target: tg, w: w };
   r.vac = M.cut(M.flight(U, shot.v, { cd: 0, lift: false }).pts, tg, null);
   if (aim) {
@@ -63,7 +66,7 @@ M.one = function (s) {
     var lo = M.flight(U, aim.lo), hi = M.flight(U, aim.hi);
     r.fanLo = M.cut(lo.pts, tg, F.meet(lo.pts, tg)); r.fanHi = M.cut(hi.pts, tg, F.meet(hi.pts, tg));
   }
-  r.free = U.drive.freeSpeed(12) / RPM;
+  r.free = U.drive.freeSpeed(M.VBAT) / RPM;
   r.spinup = F.spin({ drive: U.drive, J: U.Iw, w0: 0, target: w, tmax: 8 });
   r.recov = F.spin({ drive: U.drive, J: U.Iw, w0: shot.wAfter, target: w, tmax: 8 });
   // Time in contact: the ball speeds up steadily over about a quarter turn round the wheel.
@@ -88,14 +91,17 @@ M.burst = function (s, r) {
 };
 /* Every distance: for each one, the angle (fixed, or the most forgiving in the hood's range) and the wheel speed. */
 M.map = function (s, r) {
-  var adj = s.hood === "adj", U = r.U, rows = [], near = Math.min(s.dnear, s.dfar - 1), n = adj ? 12 : 16, fb = Object.assign({}, U.fb, { spinPer: U.spinPer, dt: adj ? 0.008 : 0.005 });
+  var adj = s.hood === "adj", U = r.U, vmx = M.vmax(U), rows = [], near = Math.min(s.dnear, s.dfar - 1), n = adj ? 10 : 16, fb = Object.assign({}, U.fb, { spinPer: U.spinPer, dt: adj ? 0.008 : 0.005 });
   for (var i = 0; i <= n; i++) {
     var d = near + (s.dfar - near) * i / n, tg = Object.assign({}, r.target, { d: d * FT }), deg = s.deg, a = null;
     if (s.hood === "adj") {
-      var best = null, steps = 7, dlo = Math.min(s.degLo, s.degHi), dhi = Math.max(s.degLo, s.degHi);
-      for (var k = 0; k <= steps; k++) { var dg = dlo + (dhi - dlo) * k / steps, q = F.aim(Object.assign({}, fb, { deg: dg }), tg, 45, 12); if (q && q.meet && (!best || q.window / q.v > best.a.window / best.a.v)) best = { deg: dg, a: q }; }
+      // Only angles that keep the wheel under 85% of its top speed count; among those, the one that forgives the
+      // most speed error. For an opening that faces up that is the steepest such angle, so try from the top down.
+      var best = null, dlo = Math.min(s.degLo, s.degHi), dhi = Math.max(s.degLo, s.degHi), reach = r.free * 0.85, dg, q;
+      if (tg.kind !== "front") { for (dg = dhi; dg >= dlo - 1e-9 && !best; dg -= 2) { q = F.aim(Object.assign({}, fb, { deg: dg }), tg, vmx, 10); if (q && q.meet && M.rpmFor(U, q.v) <= reach) best = { deg: dg, a: q }; } }
+      else for (var k = 0; k <= 5; k++) { dg = dlo + (dhi - dlo) * k / 5; q = F.aim(Object.assign({}, fb, { deg: dg }), tg, vmx, 10); if (q && q.meet && M.rpmFor(U, q.v) <= reach && (!best || q.window / q.v > best.a.window / best.a.v)) best = { deg: dg, a: q }; }
       if (best) { deg = best.deg; a = best.a; }
-    } else a = F.aim(fb, tg, 45, 16);
+    } else a = F.aim(fb, tg, vmx, 14);
     if (!a || !a.meet) { rows.push({ d: d, ok: false }); continue; }
     var rpm = M.rpmFor(U, a.v);
     rows.push({ d: d, ok: rpm <= r.free * 0.97, deg: deg, v: a.v, rpm: rpm, lo: M.rpmFor(U, a.lo), hi: M.rpmFor(U, a.hi), time: a.meet.t, entry: a.meet.entryDeg, tooFast: rpm > r.free * 0.97 });
@@ -106,7 +112,7 @@ M.map = function (s, r) {
 M.move = function (s, r, map) {
   var g = map.good; if (g.length < 2) return null;
   var ds = g.map(function (x) { return x.d * FT; }), vs = g.map(function (x) { return x.v; }), ts = g.map(function (x) { return x.time; }), dg = g.map(function (x) { return x.deg; });
-  function sf(d) { if (d < ds[0] - 0.3 || d > ds[ds.length - 1] + 0.3) return null; return { v: F.interp(ds, vs, d), time: F.interp(ds, ts, d) }; }
+  function sf(d) { if (d < ds[0] - 1e-6 || d > ds[ds.length - 1] + 1e-6) return null; return { v: F.interp(ds, vs, d), time: F.interp(ds, ts, d) }; }
   var d = r.target.d, still = sf(d); if (!still) return null;
   var m = F.moving(d, s.vtoward * FT, s.vacross * FT, sf); if (!m) return { still: still, out: true };
   return { still: still, lead: m, rpm: M.rpmFor(r.U, m.v), rpmStill: M.rpmFor(r.U, still.v), deg: F.interp(ds, dg, m.d),
@@ -149,7 +155,12 @@ K.tool({
     if (s.view === "burst") r.burst = M.burst(s, r);
     if (s.view === "map" || s.view === "move") {
       var key = JSON.stringify([s.bd, s.bw, s.bshape, s.cd, s.type, s.wd, s.wd2, s.g2, s.ww, s.fw, s.fd, s.keep, s.vin, s.deg, s.h0, s.tkind, s.th, s.tw, s.alt, s.lift, s.hood, s.degLo, s.degHi, s.dnear, s.dfar, s.motor, s.ratio]);
-      if (mapCache.key !== key) { mapCache.key = key; mapCache.val = M.map(s, r); }
+      var now = Date.now();
+      if (mapCache.key !== key) {
+        if (mapCache.val && now - mapCache.at < 220) { clearTimeout(mapCache.timer); mapCache.timer = setTimeout(function () { mapCache.at = 0; K.refresh(ID); }, 240); r.settling = true; }
+        else { mapCache.key = key; mapCache.val = M.map(s, r); }
+        mapCache.at = now;
+      }
       r.map = mapCache.val;
       if (s.view === "move") r.move = M.move(s, r, r.map);
     }
@@ -163,7 +174,7 @@ K.tool({
     var top = "";
     if (s.view === "burst") top = K.group(ID, "burst", "The burst", K.num(ID, "brate", "Balls a second", { min: 0.5, max: 15, step: 0.5, slider: true }) + K.num(ID, "bn", "Balls", { min: 2, max: 20, step: 1, slider: true }));
     if (s.view === "map") top = K.group(ID, "map", "Distances", K.num(ID, "dnear", "Nearest", { unit: "ft", min: 2, max: 30, step: 0.5 }) + K.num(ID, "dfar", "Farthest", { unit: "ft", min: 4, max: 54, step: 0.5 }) +
-      K.seg(ID, "hood", "Hood", [["fixed", "Fixed angle"], ["adj", "Adjustable"]], { hint: s.hood === "adj" ? "For each distance it picks the angle that forgives the most wheel-speed error." : "" }) +
+      K.seg(ID, "hood", "Hood", [["fixed", "Fixed angle"], ["adj", "Adjustable"]], { hint: s.hood === "adj" ? "For each distance it picks the angle that forgives the most wheel-speed error while keeping the wheel under 85% of its top speed." : "" }) +
       (s.hood === "adj" ? K.num(ID, "degLo", "Lowest angle", { unit: "°", min: 15, max: 80, step: 1 }) + K.num(ID, "degHi", "Highest angle", { unit: "°", min: 25, max: 88, step: 1 }) : ""));
     if (s.view === "move") top = K.group(ID, "move", "The robot is driving", K.num(ID, "vtoward", "Toward the target", { unit: "ft/s", min: -14, max: 14, step: 0.5, slider: true, tip: "Negative means backing away." }) + K.num(ID, "vacross", "Across", { unit: "ft/s", min: -14, max: 14, step: 0.5, slider: true, tip: "Sideways past the target. Positive is to the right as the robot faces it." }));
     var shooter = K.seg(ID, "type", "Kind", [["hood", "Wheel and hood"], ["dual", "Two wheels"]]) +
@@ -177,7 +188,7 @@ K.tool({
       (s.view === "map" ? "" : K.num(ID, "dist", "Distance", { unit: "ft", min: 2, max: 40, step: 0.25, slider: true, tip: "Along the floor, from where the ball leaves the shooter to the middle of the opening. You can also drag the target in the drawing." }));
     var ball = K.pick(ID, "piece", "Ball", Object.keys(M.PIECES).map(function (k) { return [k, M.PIECES[k].name]; })) +
       (s.piece === "custom" ? K.num(ID, "bd", "Diameter", { unit: "in", min: 2, max: 14, step: 0.01 }) + K.num(ID, "bw", "Weight", { unit: "lb", min: 0.05, max: 2, step: 0.005 }) + K.seg(ID, "bshape", "Built", [["solid", "Solid foam"], ["shell", "Hollow"]]) : "");
-    var spinning = K.num(ID, "ww", "Wheels", { unit: "lb", min: 0.1, max: 8, step: 0.05, tip: "Everything on the wheel shaft at the wheel's diameter: wheels and hubs." }) +
+    var spinning = K.num(ID, "ww", "Wheels", { unit: "lb", min: 0.1, max: 8, step: 0.05, tip: "Everything on the wheel shaft: wheels and hubs, counted as solid discs of the wheel's diameter." }) +
       K.num(ID, "fw", "Added flywheel", { unit: "lb", min: 0, max: 10, step: 0.1, slider: true, tip: "Extra weight that stores energy so the wheel slows less with each ball. 0 for none." }) +
       K.num(ID, "fd", "Flywheel diameter", { unit: "in", min: 1, max: 8, step: 0.125, hintId: "sh-moi" });
     var fine = K.num(ID, "keep", "Speed kept", { unit: "%", min: 20, max: 100, step: 0.1, tip: "The share of the ideal exit speed a real, squashy ball keeps. Measure one shot with a tape and set this so the page lands where the ball did.", hintId: "sh-floor" }) +
@@ -198,11 +209,12 @@ K.tool({
   },
 
   outs: function (s, r) {
-    var sh = r.shot, m = r.meet, v = [], state, text, cannot = r.spinup.time === Infinity;
+    var sh = r.shot, m = r.meet, v = [], state, text, cannot = r.spinup.time === Infinity, tg0 = r.target;
     if (s.view === "burst") return burstOuts(s, r);
     if (s.view === "map") return mapOuts(s, r);
     if (s.view === "move") return moveOuts(s, r);
-    if (cannot) { state = "bad"; text = "The motor cannot reach " + rpmTxt(s.rpm) + " rpm through this gearing: it tops out near " + rpmTxt(r.free) + " rpm with nothing to push."; }
+    if (cannot) { state = "bad"; text = "The motor cannot reach " + rpmTxt(s.rpm) + " rpm through this gearing: on a rested battery it tops out near " + K.n(r.free, 0) + " rpm with nothing to push."; }
+    else if (m && m.wall) { state = "bad"; text = "The ball hits the front of the target on its way up, " + inch(tg0.h - m.y) + " below the rim. Move back, or raise the angle." + (r.aim ? " From here it scores between " + rpmTxt(r.rpmLo) + " and " + rpmTxt(r.rpmHi) + " rpm." : ""); }
     else if (!m) { state = "bad"; text = s.tkind === "top" ? "The ball never gets as high as the rim." + (r.aim ? " At this angle it needs about " + rpmTxt(r.rpmMid) + " rpm." : " No speed scores at this angle from here: raise the angle.") : "The ball lands before it reaches the target."; }
     else if (m.hit) { state = "ok"; text = "Goes in with " + inch(m.room) + " to spare." + (r.aim ? " The wheel can be anywhere from " + rpmTxt(r.rpmLo) + " to " + rpmTxt(r.rpmHi) + " rpm and still score, which is " + K.fix((r.rpmHi - r.rpmLo) / 2 / r.rpmMid * 100, 1) + "% either side of " + rpmTxt(r.rpmMid) + "." : ""); }
     else { state = "warn"; text = "Misses: " + inch(m.miss) + (s.tkind === "top" ? (m.miss < 0 ? " short" : " long") : (m.miss < 0 ? " low" : " high")) + " of the middle." + (r.aim ? " At this angle it scores between " + rpmTxt(r.rpmLo) + " and " + rpmTxt(r.rpmHi) + " rpm." : " No speed scores at this angle from here."); }
@@ -210,11 +222,11 @@ K.tool({
     v.push({ k: "Wheel rim", v: K.fix(sh.surface / FT, 1), u: "ft/s", sub: "ball gets " + Math.round(sh.v / (sh.surface || 1) * 100) + "% of it", tip: "How fast the wheel's surface moves. A ball rolling between a wheel and a still hood leaves at about half of this." });
     v.push({ k: "Spin", v: K.n(Math.abs(sh.spin) / RPM, 0), u: "rpm", sub: Math.abs(sh.spin) < 1 ? "none" : sh.spin > 0 ? "backspin" : "topspin" });
     v.push({ k: "Highest point", v: K.fix(r.fl.apex[1] / FT, 1), u: "ft" });
-    if (m) v.push({ k: "Enters at", v: K.fix(m.entryDeg, 0), u: "°", sub: "after " + K.fix(m.t, 2) + " s in the air", tip: "How steeply the ball is falling as it reaches the opening. Steeper leaves more room front to back on an opening that faces up." });
+    if (m && !m.wall) v.push({ k: m.entryDeg < 0 ? "Still rising at" : "Enters at", v: K.fix(Math.abs(m.entryDeg), 0), u: "°", sub: "after " + K.fix(m.t, 2) + " s in the air", tip: "How steeply the ball is falling as it reaches the opening. Steeper leaves more room front to back on an opening that faces up." });
     var w2 = [{ k: "Wheel after the shot", v: rpmTxt(sh.wAfter / RPM), u: "rpm", sub: "down " + K.n(sh.drop / RPM, 0) + " (" + K.fix(sh.drop / (r.w || 1) * 100, 1) + "%)", state: r.aim && sh.wAfter / RPM < r.rpmLo && m && m.hit ? "warn" : "" },
       { k: "Back to speed in", v: r.recov.time === Infinity ? "never" : K.fix(r.recov.time, 2), u: r.recov.time === Infinity ? "" : "s", sub: r.recov.time < Infinity && r.recov.time > 0 ? "at most " + K.fix(1 / r.recov.time, 1) + " balls a second" : "", state: r.recov.time === Infinity ? "bad" : "" },
       { k: "Spin-up from rest", v: cannot ? "never" : K.fix(r.spinup.time, 2), u: cannot ? "" : "s", state: cannot ? "bad" : "" },
-      { k: "Energy into the ball", v: K.fix(sh.eBall, 1), u: "J", sub: Math.round(sh.eff * 100) + "% of what the wheel gave up", tip: "A wheel-and-hood shooter can pass on at most half of the energy the wheel loses. The rest goes into heat and squashing the ball." }];
+      { k: "Energy into the ball", v: K.fix(sh.eBall, 1), u: "J", sub: Math.round(sh.eff * 100) + "% of what the wheel gave up", tip: "A wheel-and-hood shooter fed a ball at rest can pass on at most half of the energy the wheel loses. The rest goes into heat and squashing the ball. A feeder that pushes the ball in raises the share." }];
     return K.verdict(state, text) + K.outs(v) + K.outs(w2);
   },
 
@@ -290,7 +302,7 @@ function mapOuts(s, r) {
     { k: "Nearest shot", v: K.fix(near.d, 1), u: "ft", sub: rpmTxt(near.rpm) + " rpm" + (s.hood === "adj" ? " at " + K.fix(near.deg, 0) + "°" : "") },
     { k: "Farthest shot", v: K.fix(far.d, 1), u: "ft", sub: rpmTxt(far.rpm) + " rpm" + (s.hood === "adj" ? " at " + K.fix(far.deg, 0) + "°" : "") },
     { k: "Most forgiving", v: K.fix(mp.sweet.d, 1), u: "ft", sub: "±" + K.fix((mp.sweet.hi - mp.sweet.lo) / 2 / mp.sweet.rpm * 100, 1) + "% wheel speed" },
-    { k: "Motor's top speed", v: K.n(r.free, 0), u: "rpm", sub: "at the wheel, with nothing to push" }]);
+    { k: "Motor's top speed", v: K.n(r.free, 0), u: "rpm", sub: "at the wheel on a rested 12.3 V battery, with nothing to push" }]);
 }
 function mapMore(s, r) {
   var g = r.map.good; if (!g.length) return "";
@@ -325,11 +337,12 @@ function notes() {
     '<p class="eq">exit speed = (2 × I ÷ r) × ω ÷ (4 × I ÷ r² + I_ball ÷ r_ball² + m_ball)</p>' +
     "<p>I is the moment of inertia of everything that spins, r the wheel's radius and ω its speed. With two driven wheels the ball leaves at the average of the two rim speeds and spins by their difference. This is the corrected model from Team 449's 2026 paper (Rafi Pedersen), built on Dean Brettle's 2023 analysis for Team 199. The older formula most calculators use counts only half the wheel's inertia and assumes no energy is wasted, so it predicts too little speed loss and too fast a recovery.</p>" +
     "<p><b>Speed kept.</b> A real ball squashes and slips, so it leaves slower than the equation says. Nobody can calculate that well. Shoot once, measure where it lands, and set Speed kept until the page agrees.</p>" +
-    "<p><b>The flight.</b> Gravity, air drag and lift from spin, stepped forward 300 times a second:</p>" +
+    "<p><b>The flight.</b> Gravity, air drag and lift from spin, stepped forward a few hundred times a second:</p>" +
     '<p class="eq">drag = ½ × ρ × Cd × A × v²    lift = ½ × ρ × CL × A × v²,  CL = 1 ÷ (2.32 + 0.4 × v ÷ (r × spin))</p>' +
     "<p>ρ is the air's density, which falls with altitude. The lift figure was measured on baseballs (Alan Nathan, 2008), so for a foam ball it is an estimate. The dashed line is the same shot with no air.</p>" +
     "<p><b>Goes in or not.</b> The ball must pass between the edges of the opening without touching either. A ball that comes in at a slant needs more room than one that drops straight down, so a flat shot has a smaller opening to hit. The shaded fan is every wheel speed that does that. Its width is how much error the shot forgives, and it is the number to design for.</p>" +
-    "<p><b>Left out.</b> The ball's squash in the shooter, spin slowing in flight, wind, a ball that clips the rim and bounces in, the motor's own rotor inertia, and belt slip.</p>");
+    "<p><b>While driving.</b> The ball keeps the robot's speed when it leaves, so the launcher aims at where the target seems to be after the flight time: the target's place minus the robot's speed times that time, worked out a few times over. The robot is taken to hold a steady speed. This is exact only without air; with drag the true lead is a little different, so treat it as a first setting to tune.</p>" +
+    "<p><b>Left out.</b> The ball's squash in the shooter, spin slowing in flight, wind, a ball that clips the rim and bounces in, the motor's own rotor inertia, and belt slip. The lift figure is used at more spin than the baseball tests covered.</p>");
 }
 
 /* ---------- Drawing: from the side ---------- */
@@ -418,7 +431,7 @@ function closeUp(g, s, r, phase, rpmNow, tShow) {
   row(small ? "Ball" : "Ball leaves at", K.fix(r.shot.v / FT, 1) + " ft/s", c.s1);
   row("Spin", K.n(Math.abs(r.shot.spin) / RPM, 0) + " rpm");
   // Where the energy the wheel lost went: into the ball's flight, into its spin, and wasted.
-  var lin = 0.5 * U.mb * r.shot.v * r.shot.v, rot = 0.5 * U.Ib * r.shot.spin * r.shot.spin, tot = Math.max(r.shot.eWheel, lin + rot, 1e-9), lost = Math.max(0, tot - lin - rot);
+  var vin0 = U.sp.vIn || 0, lin = 0.5 * U.mb * (r.shot.v * r.shot.v - vin0 * vin0), rot = 0.5 * U.Ib * r.shot.spin * r.shot.spin, tot = Math.max(r.shot.eWheel, lin + rot, 1e-9), lost = Math.max(0, tot - lin - rot);
   if (ty + lh * 4 + 16 < g.h) {
     ty += 6; g.text("Energy the wheel lost", x0 + 2, ty, { size: sz, color: c.text2, weight: 600, halo: false }); ty += 8;
     var bw = cw - 12, xx = x0 + 2, segs = [[lin, c.s1, "flight"], [rot, c.s3, "spin"], [lost, c.surface3, small ? "lost" : "lost as heat"]];
@@ -439,7 +452,7 @@ function drawSide(g, s, r, t) {
     var poly = r.fanLo.map(function (p) { return [V.X(p[1]), V.Y(p[2])]; }).concat(r.fanHi.slice().reverse().map(function (p) { return [V.X(p[1]), V.Y(p[2])]; }));
     g.ctx.globalAlpha = 0.16; g.poly(poly, { fill: c.ok, stroke: null }); g.ctx.globalAlpha = 1;
   }
-  if (!burst && s.cd > 0) { pathLine(g, V, r.vac, { color: c.ghost, width: 1.25, dash: [5, 5] }); var ve = r.vac[Math.floor(r.vac.length * 0.78)]; if (ve && g.w > 520 && V.X(ve[1]) + 76 < g.w) g.text("with no air", V.X(ve[1]) + 8, V.Y(ve[2]) - 4, { color: c.mute, size: 11 }); }
+  if (!burst && s.cd > 0 && !(m && m.wall)) { pathLine(g, V, r.vac, { color: c.ghost, width: 1.25, dash: [5, 5] }); var ve = r.vac[Math.floor(r.vac.length * 0.78)]; if (ve && g.w > 520 && V.X(ve[1]) + 76 < g.w) g.text("with no air", V.X(ve[1]) + 8, V.Y(ve[2]) - 4, { color: c.mute, size: 11 }); }
   drawTarget(g, V, r, hitState, s.tpreset === "hub26" && V.L(tg.w) > 50 ? "Hub" : "");
   drawRobot(g, V, s, r, 0);
   var tNow = t, rpmNow, phase;
@@ -473,9 +486,9 @@ function drawSide(g, s, r, t) {
     g.text(K.fix(s.deg, 0) + "°", V.X(0) + 32, V.Y(s.h0 * IN) - 9, { color: c.text2, size: 11, weight: 600 });
     g.circle(hx, hy, 5, { fill: c.surface, stroke: c.accent, width: 2 });
     // Apex, entry and the verdict at the target.
-    var ap = r.fl.apex, apOn = !m || !m.hit || ap[0] < m.x;
+    var ap = r.fl.apex, apOn = m && m.wall ? false : !m || !m.hit || ap[0] < m.x;
     if (apOn && g.w > 420 && !(flying && Math.abs(bxs - V.X(ap[0])) < 60)) { g.line(V.X(ap[0]) - 5, V.Y(ap[1]), V.X(ap[0]) + 5, V.Y(ap[1]), { color: c.mute, width: 1 }); g.text(K.fix(ap[1] / FT, 1) + " ft up", V.X(ap[0]), V.Y(ap[1]) - 7, { align: "center", color: c.text2, size: 11, weight: 600 }); }
-    var tyv = V.Y(tg.kind === "front" ? tg.h + tg.w / 2 + 0.3 : tg.h) - 12, label = !m ? "does not reach" : m.hit ? "in, " + inch(m.room) + " to spare" : inch(m.miss) + (tg.kind === "top" ? (m.miss < 0 ? " short" : " long") : (m.miss < 0 ? " low" : " high"));
+    var tyv = V.Y(tg.kind === "front" ? tg.h + tg.w / 2 + 0.3 : tg.h) - 12, label = !m ? "does not reach" : m.wall ? "hits the front, " + inch(tg.h - m.y) + " under the rim" : m.hit ? "in, " + inch(m.room) + " to spare" : inch(m.miss) + (tg.kind === "top" ? (m.miss < 0 ? " short" : " long") : (m.miss < 0 ? " low" : " high"));
     g.text(label, Math.min(V.X(tg.d), g.w - 8 - g.textWidth(label, { weight: 700 }) / 2), Math.max(14, tyv), { align: "center", weight: 700, color: m && m.hit ? c.ok : c.warn });
     K.chartNow("sh-w", t <= r.tc + (r.recov.time < Infinity ? r.recov.time : 1) + 0.25 ? t : null);
   }

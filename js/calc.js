@@ -55,7 +55,7 @@ function page(def) {
     '<button class="btn sm ghost" data-act="calcreset" data-tool="' + id + '" data-tip="Put every number back to where it started.">Start over</button></span></div></div>';
   var stage = "";
   if (def.stage) {
-    var dur = def.duration && !def.loop ? def.duration(s, r) : 0, moves = def.duration || def.loop;
+    var dur = def.duration && !def.loop ? durOf(def, s, r) : 0, moves = def.duration || def.loop;
     stage = '<div class="stagewrap" data-area="stage">' + (def.tabs ? '<div class="benchtabs"><span class="seg" role="group" aria-label="View">' + def.tabs.map(function (o) { return '<button data-act="calcseg"' + attr(id, "view") + ' data-v="' + esc(o[0]) + '" aria-pressed="' + (String(s.view) === String(o[0])) + '">' + esc(o[1]) + "</button>"; }).join("") + "</span></div>" : "") + '<div class="stage" style="--ar:' + (def.stage.ratio || 16 / 9) + ";--arn:" + (def.stage.narrow || Math.min(def.stage.ratio || 16 / 9, 1.5)) + '"><canvas id="calc-cv" data-tool="' + id + '" role="img" aria-label="' + esc(def.stage.label || "Drawing") + '"></canvas></div>' +
       (moves ? '<div class="transport"><button class="btn sm' + (def.loop ? "" : " primary") + '" id="calc-play" data-act="calcplay" data-tool="' + id + '">' + playLabel(def, R) + "</button>" +
         (def.loop ? "" : '<input type="range" id="calc-scrub" class="scrub" min="0" max="' + dur.toFixed(3) + '" step="0.001" value="' + Math.min(R.t, dur).toFixed(3) + '" data-input="calcscrub" data-tool="' + id + '" aria-label="Move through the animation">' +
@@ -67,6 +67,7 @@ function page(def) {
     '<div class="benchside" data-area="side" data-keepscroll="calcside">' + safe(def.controls, s, r) + "</div>" +
     '<div class="benchmore" data-area="more" id="calc-more">' + (def.more ? safe(def.more, s, r) : "") + "</div></div>";
 }
+function durOf(def, s, r) { if (!def.duration || def.loop || (r && r.error)) return 0; try { var d = def.duration(s, r); return isFinite(d) && d > 0 ? d : 0; } catch (e) { return 0; } }
 function safe(fn, s, r) { if (r && r.error) return '<p class="warnline">This calculator hit a problem: ' + esc(r.error) + "</p>"; try { return fn(s, r) || ""; } catch (e) { if (window.console) console.error(e); return '<p class="warnline">This part could not be drawn.</p>'; } }
 function label(def) { var l = def.playLabel; return (typeof l === "function" ? l(S(def.id)) : l) || "Play"; }
 function playLabel(def, R) { return R.playing ? "Pause" : esc(label(def)); }
@@ -78,7 +79,7 @@ K.refresh = function (id) {
   swap("calc-outs", safe(def.outs, s, r));
   if (def.more) swapMore(safe(def.more, s, r));
   if (def.hints && !(r && r.error)) { var h = def.hints(s, r) || {}; Object.keys(h).forEach(function (k) { var el = document.getElementById(k); if (el) el.textContent = h[k]; }); }
-  if (def.duration && !def.loop) { var sc = document.getElementById("calc-scrub"), dur = def.duration(s, r); if (sc) sc.max = dur.toFixed(3); if (rt(id).t > dur) rt(id).t = dur; }
+  if (def.duration && !def.loop) { var sc = document.getElementById("calc-scrub"), dur = durOf(def, s, r); if (sc) sc.max = dur.toFixed(3); if (rt(id).t > dur) rt(id).t = dur; }
   markScroll();
   K.redraw(id);
 };
@@ -411,17 +412,29 @@ function G(ctx, w, h) {
   return g;
 }
 var cur = { id: null, cv: null, ro: null, raf: 0, last: 0 };
+/* A link can carry any number. Hold each one to the limits of the field that shows it, so a zero or a huge value
+   from a hand-edited link cannot freeze or break the page. Returns true when something was changed. */
+function clampToFields(id) {
+  var s = S(id), changed = false;
+  document.querySelectorAll('.benchside input[type="number"][data-input="calc"][data-tool="' + id + '"]').forEach(function (el) {
+    var k = el.dataset.k, v = s[k]; if (typeof v !== "number") return;
+    var lo = el.min !== "" ? +el.min : -Infinity, hi = el.max !== "" ? +el.max : Infinity, c = !isFinite(v) ? (isFinite(lo) ? lo : 0) : Math.min(hi, Math.max(lo, v));
+    if (c !== v) { s[k] = c; changed = true; }
+  });
+  return changed;
+}
 function mount() {
   var cv = document.getElementById("calc-cv");
   if (cur.ro) { cur.ro.disconnect(); cur.ro = null; }
   if (!cv) { if (cur.id) { stop(cur.id); } cur.id = null; cur.cv = null; chartOff(); return; }
   var id = cv.dataset.tool, def = T(id), R = rt(id);
   cur.id = id; cur.cv = cv;
+  if (clampToFields(id)) { D.render(); return; }
   size(cv); restoreOpen();
   if (window.ResizeObserver) { cur.ro = new ResizeObserver(function () { if (size(cv)) K.redraw(id); }); cur.ro.observe(cv.parentNode); }
   if (def.hints) { var hh = def.hints(S(id), CACHE[id]) || {}; Object.keys(hh).forEach(function (k) { var el = document.getElementById(k); if (el) el.textContent = hh[k]; }); }
   if (def.autoplay && !R.played && !K.reduced() && (def.duration || def.loop)) { R.played = true; R.t = 0; play(id); }
-  else if (def.duration && !def.loop && !R.played) { R.played = true; R.t = def.duration(S(id), CACHE[id]); }
+  else if (def.duration && !def.loop && !R.played) { R.played = true; R.t = durOf(def, S(id), CACHE[id]); }
   K.redraw(id);
   if (R.playing && !cur.raf) loop();
   var pb = document.getElementById("calc-play"); if (pb) pb.textContent = R.playing ? "Pause" : label(def);
@@ -452,7 +465,7 @@ function loop() {
     var id = cur.id, def = id && T(id), R = id && rt(id); cur.raf = 0;
     if (!def || !R || !R.playing || D.S.route !== id) return;
     var dt = Math.min(0.05, (now - cur.last) / 1000); cur.last = now; R.t += dt * R.speed;
-    var dur = def.duration && !def.loop ? def.duration(S(id), CACHE[id]) : Infinity;
+    var dur = def.duration && !def.loop ? durOf(def, S(id), CACHE[id]) : Infinity;
     if (R.t >= dur) { R.t = dur; R.playing = false; }
     K.redraw(id); transport(id);
     if (R.playing) cur.raf = requestAnimationFrame(step); else { var b = document.getElementById("calc-play"); if (b) b.textContent = label(def); if (def.onEnd) def.onEnd(S(id), CACHE[id]); }
@@ -460,7 +473,7 @@ function loop() {
   cur.raf = requestAnimationFrame(step);
 }
 function transport(id) { var R = rt(id), sc = document.getElementById("calc-scrub"), tm = document.getElementById("calc-time"); if (sc && document.activeElement !== sc) sc.value = R.t.toFixed(3); if (tm) tm.textContent = R.t.toFixed(2) + " s"; }
-function play(id) { var R = rt(id), def = T(id), dur = def.duration && !def.loop ? def.duration(S(id), CACHE[id]) : Infinity; if (R.t >= dur - 1e-6) R.t = 0; R.playing = true; if (!cur.raf) loop(); }
+function play(id) { var R = rt(id), def = T(id), dur = def.duration && !def.loop ? durOf(def, S(id), CACHE[id]) : Infinity; if (R.t >= dur - 1e-6) R.t = 0; R.playing = true; if (!cur.raf) loop(); }
 function stop(id) { var R = RT[id]; if (R) R.playing = false; if (cur.raf) { cancelAnimationFrame(cur.raf); cur.raf = 0; } }
 K.play = function (id, from) { if (from != null) rt(id).t = from; play(id); var b = document.getElementById("calc-play"); if (b) b.textContent = "Pause"; };
 K.pause = function (id) { stop(id); var b = document.getElementById("calc-play"); if (b) b.textContent = label(T(id)); };
