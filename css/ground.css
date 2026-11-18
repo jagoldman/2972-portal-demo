@@ -413,3 +413,45 @@
   .nsame { margin: 0; font-weight: 600; }
   .napps.allsame summary .who { display: none; }
 }
+
+/* ---- Hill climb round 8 ---- */
+:root[data-design="c"] {
+  .snms span { color: #cdd1d6; }
+  .guidecard .btn.ghost.sm, .guide .btn.ghost.sm { font-weight: 500; color: var(--mute); }
+  /* A sign-off note on Home is at most two lines, so the queue stays even. */
+  .nowrow:not(.nowtall) .rl { display: -webkit-box; -webkit-box-orient: vertical; -webkit-line-clamp: 2; overflow: hidden; }
+  /* In a week row each fact has its own line at every width. */
+  .wkrow .wkfacts { display: grid; gap: 1px; }
+  /* Sign-off queue: Sign off is the usual action and is filled; Send back is outlined. */
+  /* Who's coming: "No reply" is a status too, a hollow grey dot and the words. */
+  .pill.noreply { color: var(--mute); }
+  .pill.noreply::before { background: none; box-shadow: inset 0 0 0 1.5px var(--mute); }
+  /* Account: the chevron sits at the right edge of a notification row, as in every other list. */
+  .napps summary .chev, .napps summary > svg:last-child { margin-left: auto; }
+  .acc .card > p.mute, .acc .card > p.small.mute { font-size: .9rem; }
+  td[data-l="In store"] .pill { margin-left: 8px; }
+  .acc .linkbtn { font-size: inherit; color: var(--accent); }
+}
+
+:root[data-design="c"] {
+  .skml .skrule { display: block; color: var(--text-2); }
+  .calcnote { margin: 0 0 8px; }
+  /* Pit on a phone: "Report problem" goes under the check's words, so the words get the row's width. */
+  @media (max-width: 640px) {
+    .checkrow { grid-template-columns: 56px minmax(0, 1fr); row-gap: 0; }
+    .checkrow > .btn { grid-column: 2; justify-self: start; min-height: 44px; padding-inline: 0; border-color: transparent; background: none; color: var(--text-2); text-decoration: underline; text-underline-offset: 3px; font-weight: 500; }
+    .calcx { min-height: 44px; }
+  }
+  /* Scouting: the countdown is no louder than the team being scouted. */
+  @media (min-width: 641px) { .cmp .timer .big { font-size: 2.6rem; line-height: 1.1; } }
+  .napps summary .nchev { margin-left: auto; }
+}
+
+:root[data-design="c"] {
+  .appsmenu .xbtn { color: var(--text); }
+  /* On a phone the season line lists every coming milestone, one short line each: one that is past this week is
+     not in "This week" below (hill climb r8). */
+  @media (max-width: 760px) { .snnext .snms:nth-child(n+2) { display: inline-flex; } .snnext { gap: 4px; } }
+  .anshours { display: block; padding-left: 14px; color: var(--text-2); font-size: .86rem; }
+  .ev .et { display: -webkit-box; -webkit-box-orient: vertical; -webkit-line-clamp: 2; overflow: hidden; }
+}

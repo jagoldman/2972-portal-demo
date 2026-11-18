@@ -240,3 +240,30 @@
     .pflow { margin-bottom: -4px; }
   }
 }
+
+/* ---- Hill climb round 8 ---- */
+:root[data-design="c"] {
+  .stages li.done.skip::before { border-color: var(--line-2); background: var(--surface); }
+  .stages li.done.skip { color: var(--mute); }
+  .ptable.gt .ptg.ptgone { margin-top: 14px; }
+  .ptable.gt .pbme { font-weight: 650; color: var(--text); }
+  @media (max-width: 640px) { .ptable.gt .pfacts .pbme { text-transform: lowercase; } }
+  /* To order: an item row starts at the vendor name's left edge. */
+  .li.pline { padding-left: 0; }
+}
+
+/* To order (hill climb r8): on a wide screen the approval sits beside the orders, so the sheet's width is used and a
+   part and its price still read as a pair. Below that the two stack as before. */
+:root[data-design="c"] {
+  .ptomain > .card { margin-block: 0; padding: 16px 0 18px; border: 0; border-top: 1px solid var(--line); border-radius: 0; background: none; }
+  .ptomain > .card:first-child { border-top: 0; }
+  .ptoside > .card.hero { margin-block: 16px 2px; padding: 14px 16px 16px; border: 0; border-left: 4px solid var(--bumper); background: var(--tint); }
+  @media (min-width: 1100px) {
+    .pto2 { display: grid; grid-template-columns: minmax(300px, 380px) minmax(0, 1fr); column-gap: 36px; align-items: start; }
+    .ptoside { position: sticky; top: calc(var(--bar, 48px) + 12px); }
+    .ptomain > .card:first-child { padding-top: 14px; }
+    .pto2 .pline { max-width: none; }
+  }
+  /* Inventory: taking one is the usual action; asking for more is the quiet one beside it. */
+  .pmoveonly { margin-bottom: 0; }
+}

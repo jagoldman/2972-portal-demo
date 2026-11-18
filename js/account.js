@@ -32,7 +32,7 @@ D.views.account = function () {
   var sw = function (act, attrs, label, on) { return '<button class="toggle" data-act="' + act + '"' + attrs + ' aria-pressed="' + on + '" aria-label="' + esc(label) + '"></button>'; };
   var profile = '<section class="card"><h2>Profile</h2><div class="row nowrap"><span class="badge-2972 accav">' + esc(me.name.split(" ").map(function (w) { return w[0]; }).join("").slice(0, 2)) + '</span><div><b>' + esc(me.name) + '</b><p class="who">' + esc(me.label) + "</p></div></div>" +
     '<div class="list"><div class="li"><span class="grow"><b>Discord</b><br><span class="who">' + (a.discord ? "Linked as @sam.builds" : "Not linked") + '</span></span><button class="btn sm" data-act="acdiscord">' + (a.discord ? "Unlink" : "Link Discord") + "</button></div>" +
-    '<div class="li"><span class="grow"><b>Email</b><br><span class="who">Notices go to the email on your account.</span></span></div>' +
+    '<div class="li"><span class="grow"><b>Email</b><br><span class="who">' + (D.ground() ? "Email goes to the address on your team sign-in." : "Notices go to the email on your account.") + '</span></span></div>' +
     '<div class="li"><span class="grow"><b>Quiet hours</b><br><span class="who">No Discord or email from 9 pm to 7 am.</span></span>' + sw("acquiet", "", "Quiet hours", a.quiet) + "</div></div></section>";
   // Ground up: when every app has the same setting, it is said once under the heading and not on every row.
   var sums = D.ground() ? apps.map(function (id) { return appSummary(a.prefs[id], a.discord); }) : [], same = sums.length && sums.every(function (x) { return x === sums[0]; }) ? sums[0] : "";
@@ -49,7 +49,7 @@ D.views.account = function () {
   var look = '<section class="card"><h2>Appearance</h2><span class="seg" role="group" aria-label="Theme">' + [["light", "Light"], ["dark", "Dark"], ["", "Match my device"]].map(function (t) { return '<button data-act="actheme" data-v="' + t[0] + '" aria-pressed="' + (theme === t[0]) + '">' + t[1] + "</button>"; }).join("") + "</span></section>";
   var mode = '<section class="card"><h2>Build or Competition mode</h2><p class="small mute">Changes which apps show on Home and in the Apps menu.</p><div class="choice"><button data-act="mode" data-v="build" aria-pressed="' + (D.S.mode === "build") + '">' + (D.ground() ? "Build" : "Build mode") + '</button><button data-act="mode" data-v="competition" aria-pressed="' + (D.S.mode === "competition") + '">' + (D.ground() ? "Competition" : "Competition mode") + "</button></div></section>";
   var guide = D.GUIDE && D.GUIDE[D.S.role] ? '<section class="card"><h2>Guided tour</h2><p class="mute">A few short steps on Home that show where to start.</p><div><button class="btn" data-act="guidereplay">Start the tour again</button></div></section>' : "";
-  var signin = '<section class="card"><h2>Sign-in</h2><p class="mute">You sign in with the team sign-in. Change your password there.</p></section>';
+  var signin = '<section class="card"><h2>Sign-in</h2><p class="mute">You sign in with the team sign-in. ' + (D.ground() ? '<button class="linkbtn" data-act="demosay" data-msg="In the real site this opens the team sign-in page, where you change your password.">Change your password</button> on its page.' : "Change your password there.") + "</p></section>";
   return '<div class="content"><div class="acc"><h1>Account</h1>' + profile + look + mode + guide + notes + signin + "</div></div>";
 };
 var A = D.acts;

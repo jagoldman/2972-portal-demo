@@ -272,7 +272,7 @@ def({ id: "calc-gearbox", key: "gearbox", name: "Gearbox", icon: "cgearbox", lin
     var stages = st.stages.map(function (s, i) {
       return '<fieldset class="calcstage"><legend>Stage ' + (i + 1) + "</legend>" +
         numField("s" + i + "a", "Driving gear", s[0], "teeth", { min: 6, max: 200, step: 1, whole: true }) + numField("s" + i + "b", "Driven gear", s[1], "teeth", { min: 6, max: 200, step: 1, whole: true }) +
-        (st.stages.length > 1 ? '<button type="button" class="btn ghost sm calcx" data-act="calcstage" data-v="del" data-i="' + i + '" aria-label="Remove stage ' + (i + 1) + '">Remove stage ' + (i + 1) + "</button>" : "") + "</fieldset>";
+        (st.stages.length > 1 ? '<button type="button" class="btn sm calcx" data-act="calcstage" data-v="del" data-i="' + i + '" aria-label="Remove stage ' + (i + 1) + '">Remove stage ' + (i + 1) + "</button>" : "") + "</fieldset>";
     }).join("");
     return motorFields(st, true) + effField(st) + '<div class="calcstages">' + stages + "</div>" +
       (st.stages.length < 4 ? '<button type="button" class="btn calcadd" id="calc-addstage" data-act="calcstage" data-v="add">' + D.ic("plus", 16) + " Add a stage</button>" : "");
@@ -286,7 +286,7 @@ def({ id: "calc-gearbox", key: "gearbox", name: "Gearbox", icon: "cgearbox", lin
     var html = results(rows);
     if (g) {
       var c = g.curve, tmax = c[0][1], imax = c[0][2], mid = c[Math.round(c.length * 0.55)];
-      html += '<div class="calcpair">' + chart({ short: true, title: "Output torque against output speed, from stall to " + rpm(g.freeRpm) + " rpm", ylab: "Output torque, N·m", xlab: "Output speed, rpm", xmax: g.freeRpm, ymax: tmax * 1.05,
+      html += '<div class="calcpair">' + chart({ short: true, title: "Output torque against output speed, from stall to " + rpm(g.freeRpm) + " rpm", ylab: lim ? "Torque at the " + lim + " A limit, N·m" : "Output torque, N·m", xlab: "Output speed, rpm", xmax: g.freeRpm, ymax: tmax * 1.05,
         series: [{ pts: c.map(function (p) { return [p[0], p[1]]; }), label: "Torque", lab: [mid[0], mid[1], "start"] }] }) +
         chart({ title: "Current per motor against output speed", ylab: "Current per motor, A", xlab: "Output speed, rpm", xmax: g.freeRpm, ymax: imax * 1.05,
           series: [{ pts: [], label: "" }, { pts: c.map(function (p) { return [p[0], p[2]]; }), label: "Current", lab: [mid[0], mid[2], "start"] }] }) + "</div>";
@@ -534,7 +534,7 @@ def({ id: "calc-drill", key: "drill", name: "Drill and tap chart", icon: "cdrill
       return "<tr" + (MOST[r[0]] ? ' class="most"' : "") + '><th scope="row" data-l="Thread"><b>' + esc(r[0]) + "</b>" + (MOST[r[0]] ? '<span class="calctag">Most used on the robot</span>' : "") + "</th>" +
         drillCell(r[1], "Tap drill") + drillCell(r[2], "Close clearance") + drillCell(r[3], "Free clearance") + "</tr>";
     }).join("");
-    var html = rows.length ? '<table class="calctable"><caption class="vh">Drills for each thread</caption><thead><tr><th scope="col">Thread</th><th scope="col">Tap drill</th><th scope="col">Close clearance</th><th scope="col">Free clearance</th></tr></thead><tbody>' + body + "</tbody></table>" :
+    var html = rows.length ? '<p class="small mute calcnote">Close clearance is a snug bolt hole. Free clearance is a looser one.</p><table class="calctable"><caption class="vh">Drills for each thread</caption><thead><tr><th scope="col">Thread</th><th scope="col">Tap drill</th><th scope="col">Close clearance</th><th scope="col">Free clearance</th></tr></thead><tbody>' + body + "</tbody></table>" :
       '<p class="empty">No thread matches "' + esc(st.q) + '". Try 10-32, 1/4-20 or M5.</p>';
     var ans = !String(st.q).trim() ? "Type a thread, like 10-32 or M5, to see its drills. The two most used on the robot are marked." :
       !first ? "No thread matches that. Try 10-32, 1/4-20 or M5." :

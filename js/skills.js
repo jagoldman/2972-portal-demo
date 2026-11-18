@@ -499,14 +499,14 @@ function myMachines(name) {
   }).sort(function (a, b) { return rank[a.state] - rank[b.state] || a.i - b.i; });
 }
 function machineRow(m, name) {
-  var line, open = m.tool.skill;
+  var line, rule = "", open = m.tool.skill;
   if (m.state === "yes") line = "Signed off by " + m.rec.by + ", " + m.rec.at;
   else if (m.next) {
     open = m.next.s.id;
     var asked = D.S.sk.requests.some(function (r) { return r.st === name && r.id === m.next.s.id; });
-    line = (m.state === "training" ? "May not use it alone yet. " : "") + (asked ? "Asked for sign-off: " : "Next: ") + m.next.s.name;
+    line = (asked ? "Asked for sign-off: " : "Next: ") + m.next.s.name; if (m.state === "training") rule = "May not use it alone yet.";
   } else line = "Open the qualification";
-  return '<button class="li skmach" data-act="skmine" data-v="' + open + '"><b class="skmn">' + esc(m.tool.name) + "</b>" + permitPill(m.state) + '<span class="who skml">' + esc(line) + '</span><span class="chev" aria-hidden="true">›</span></button>';
+  return '<button class="li skmach" data-act="skmine" data-v="' + open + '"><b class="skmn">' + esc(m.tool.name) + "</b>" + permitPill(m.state) + '<span class="who skml">' + (rule ? '<span class="skrule">' + rule + "</span>" : "") + esc(line) + '</span><span class="chev" aria-hidden="true">›</span></button>';
 }
 function groundStudent(me) {
   var n = nextUp(me), cap = readyAll ? n.ready.length : 5, html = "";
@@ -573,7 +573,7 @@ function permitsView() {
       return '<button class="li skmach' + (line ? "" : " noline") + '" data-act="skpermit" data-st="' + esc(st) + '" data-cat="' + tool.cat + '" data-skill="' + tool.skill + '"><b class="skmn">' + esc(tool.name) + "</b>" + permitPill(state) + (line ? '<span class="who skml">' + esc(line) + "</span>" : "") + '<span class="chev" aria-hidden="true">›</span></button>';
     }).join("") + "</div></div>";
   } else body = table;
-  return '<div class="card"><div><h2>Who can use which machine</h2><p class="who">Cleared means the written test and the demonstration are signed off. Tap ' + tapWhat + ' to open that skill.</p></div>' + find + body + "</div>";
+  return '<div class="card"><div><h2>Who can use which machine</h2><p class="who">Cleared means the written test and the demonstration are signed off. Choose ' + tapWhat + ' to open that skill.</p></div>' + find + body + "</div>";
 }
 function studentPicker() {
   var S = D.S;
@@ -688,13 +688,13 @@ function signoffView() {
        rows drop it. */
     if (g && !can && !pickable) return '<div class="skpick nobox"><b>' + esc(st) + '</b><span class="pill ' + (stt === "complete" ? "ok" : "") + '">' + (stt === "complete" ? "Signed off" : "Not open yet, earlier skills first") + "</span></div>";
     var box = g && !can ? '<span class="skpickno" aria-hidden="true"></span>' : '<button class="bigcheck sm" data-act="skbulkpick" data-v="' + esc(st) + '" aria-pressed="' + !!b.picks[st] + '"' + (can ? "" : " disabled") + ' aria-label="Pick ' + esc(st) + '">' + D.ic("check", 22) + "</button>";
-    return '<div class="skpick">' + box + "<b>" + esc(st) + '</b><span class="pill ' + (stt === "complete" ? "ok" : stt === "locked" ? "" : g && stt === "available" ? "plain" : "info") + '">' + ({ complete: g ? "Signed off" : "Done", locked: g ? "Not open yet, earlier skills first" : "Locked", requested: "Asked", progress: "In progress", available: g ? "Ready for sign-off" : "Available" })[stt] + "</span></div>";
+    return '<div class="skpick">' + box + "<b>" + esc(st) + '</b><span class="pill ' + (stt === "complete" ? "ok" : stt === "locked" ? "" : g && stt === "available" ? "info" : "info") + '">' + ({ complete: g ? "Signed off" : "Done", locked: g ? "Not open yet, earlier skills first" : "Locked", requested: "Asked", progress: "In progress", available: g ? "Ready for sign-off" : "Available" })[stt] + "</span></div>";
   }).join("");
   var nobody = g && !pickable ? '<p class="skpicknone">Nobody can be signed off on this skill: everyone has it or it is not open to them yet.</p>' : "";
   var n = Object.keys(b.picks).filter(function (k) { return b.picks[k]; }).length;
   var queue = S.sk.requests.length ? S.sk.requests.map(function (r, i) {
     var x = BYID[r.id];
-    if (D.ground()) return '<div class="li skq"><span class="grow"><b>' + esc(x.name) + '</b><br><span class="who">' + esc(r.st) + " asks for a sign-off. " + esc(tree(x.tree).name) + " › " + esc(cat(tree(x.tree), x.cat).name) + (r.note ? ". “" + esc(r.note) + "”" : "") + '</span></span><span class="skqa"><button class="btn" data-act="skqok" data-i="' + i + '">Sign off</button><button class="btn" data-act="skqno" data-i="' + i + '">Send back</button></span></div>';
+    if (D.ground()) return '<div class="li skq"><span class="grow"><b>' + esc(x.name) + '</b><br><span class="who">' + esc(r.st) + " asks for a sign-off. " + esc(tree(x.tree).name) + " › " + esc(cat(tree(x.tree), x.cat).name) + (r.note ? ". “" + esc(r.note) + "”" : "") + '</span></span><span class="skqa"><button class="btn primary skqok" data-act="skqok" data-i="' + i + '">Sign off</button><button class="btn skqno" data-act="skqno" data-i="' + i + '">Send back</button></span></div>';
     return '<div class="li skq"><span class="grow"><b>' + esc(r.st) + "</b> asks for <b>" + esc(x.name) + '</b><br><span class="who">' + esc(tree(x.tree).name) + " › " + esc(cat(tree(x.tree), x.cat).name) + (r.note ? " · “" + esc(r.note) + "”" : "") + '</span></span><span class="skqa"><button class="btn" data-act="skqok" data-i="' + i + '">Sign off</button><button class="btn' + (D.ground() ? "" : " ghost") + '" data-act="skqno" data-i="' + i + '">' + (D.ground() ? "Send back" : "Not yet") + "</button></span></div>";
   }).join("") : '<p class="mute">No one is waiting for a sign-off.</p>';
   var sendBack = g && S.sk.requests.length ? '<p class="who">Send back tells the student what to practice first.</p>' : "";

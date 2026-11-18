@@ -13,7 +13,8 @@ Every judge in a tier must score every area at the tier's target. Fixes are made
 | 5 | 2 (8.5) | Sonnet, GPT-6.1 Terra, Grok 4.6 | 7.3 to 8.8 | 16 of 16 areas under 8.5 from at least one judge; lowest per area 7.3 to 8.4 |
 | 6 | 3 (9.5) | Opus, GPT-6.1 Sol, Grok 4.7 (all three passed the proof) | 7.6 to 9.0 | 16 of 16 areas under 9.5; lowest per area 7.6 to 8.6 |
 | 7 | 3 (9.5) | Opus, GPT-6.1 Sol, Grok 4.7 | 8.0 to 9.2 | 16 of 16 areas under 9.5; Opus 8.0 to 8.8, Sol 8.0 to 9.1, Grok 4.7 8.1 to 9.2; lowest per area 8.0 to 8.8 |
-| 8 | 3 (9.5) | Opus, GPT-6.1 Sol, Grok 4.7 | with the judges | |
+| 8 | 3 (9.5) | Opus, GPT-6.1 Sol, Grok 4.7 | 7.6 to 9.2 | 16 of 16 areas under 9.5; Opus 7.6 to 8.6, Sol 7.9 to 9.2, Grok 4.7 7.8 to 8.8; lowest per area 7.6 to 8.6 (a little under round 7) |
+| 9 | 3 (9.5) | Opus, GPT-6.1 Sol, Grok 4.7 | with the judges | |
 
 Grok 4.5 was thrown out in rounds 1 and 2: asked to copy exact text from three screenshots, it invented it.
 Grok 4.6 copied the text correctly in round 3 and counts.
@@ -141,3 +142,19 @@ drops (Tools, To order) were faults the lead introduced in round 4 and fixed bef
   the mentor can do first. It is the last row of Now.
 - **The same notification setting on every app.** Round 5 asked for a summary on each row; round 7 said seven equal
   summaries were noise. A shared setting is said once above the list; rows show a summary only when they differ.
+- **A match on the field (round 8).** Home and the Pit asked the crew to finish a checklist for a match that was
+  already playing. While our match is on the field the Pit card now reports the ticks in grey ("5 of 11 were
+  checked"), the last section reads "When the robot is back" and names the next match, and Home asks only to save
+  the checklist. The sample data is unchanged, so Live and Baseline draw as before.
+- **To order, wide screen.** Round 7 capped a vendor's rows at 780 px so a part and its price read as a pair; round 8
+  said a third of the sheet was then empty. "Needs your OK" now sits in a left column beside the orders.
+- **"Take one" in Inventory.** Round 7 left it outlined beside "Request more"; two of three round 8 judges wanted it
+  filled, as it is in the find box. It is filled; "Request more" stays outlined.
+- **"Sign off" in the queue.** Outlined in round 7 so the page had no wall of blue; two round 8 judges said it then
+  looked the same as "Send back". "Sign off" is filled and "Send back" is outlined.
+- **Role colours on the schedule.** One round 8 judge read the gold Pit block as a warning. Roles keep their own
+  colours, as calendar event types do; the brief says so.
+- **Phone request rows.** Round 7 asked for "Asked by" on its own labelled line; round 8 asked to merge it back.
+  It stays on its own line, and a person's own request reads "Asked by you".
+- **The season line on a phone.** Round 4 cut it to the next milestone because the week below repeats them; round 8
+  noted a milestone past this week was then nowhere. The phone line lists every coming milestone, one line each.

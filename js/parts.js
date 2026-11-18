@@ -117,7 +117,7 @@ function item(id) { return P().items.filter(function (i) { return i.id === id; }
 function total(r) { return r.price * r.qty; }
 function orderBy(r) { if (!r.need) return null; var v = vendor(r.vendor); return addDays(r.need, -(v.lead + v.ship)); }
 function placeToday(r) { var ob = orderBy(r); return r.pri === "blocking" || (ob && parse(ob) <= TODAY); }
-function qtyText(r) { return r.qty + (r.pack > 1 ? " × pack of " + r.pack + (r.unit ? " " + r.unit : "") : ""); }
+function qtyText(r) { return r.qty + (r.pack > 1 ? (D.ground() ? (r.qty === 1 ? " pack of " : " packs of ") : " × pack of ") + r.pack + (r.unit ? " " + r.unit : "") : ""); }
 function stockTotal(i) { return i.stock.reduce(function (a, s) { return a + s.qty; }, 0); }
 function inStore(i) { return i.stock.filter(function (s) { return s.place.indexOf("bot") < 0; }).reduce(function (a, s) { return a + s.qty; }, 0); }
 function statusPill(s) { return '<span class="pill ' + STATUS[s][1] + '">' + STATUS[s][0] + "</span>"; }
@@ -223,7 +223,7 @@ function whoWhen(h, sep) { return h ? h.who + (sep || ", ") + (h.when === "Just 
 // The comma keeps them apart on a phone, where the steps run down the panel and the two share one line.
 // Under a step, the date alone; who did it is in History.
 function stepSub(h) { return h ? (h.when === "Just now" ? "just now" : h.when) : ""; }
-function reqSteps(r) {
+function reqSteps(r, part) {
   var find = function (rx) { return r.hist.filter(function (h) { return rx.test(h.what); }).slice(-1)[0]; };
   if (r.status === "denied" || r.status === "cancelled") {
     var end = find(r.status === "denied" ? /^denied it/ : /^cancelled it/);
@@ -247,16 +247,17 @@ function reqSteps(r) {
      above them all say the same thing: what is finished, and what the request waits for (hill climb r5). */
   var DONE = ["Asked", skip ? "No OK needed" : "Approved", "Ordered", "Arrived", "Put away"], TODO = ["Ask", "Approval", "Order", "Arrival", "Put away"];
   var wait = r.status === "putaway" ? 5 : cur + 1, subs = [stepSub(asked), skip ? "" : okSub, ordSub, arrSub, putSub];
-  var now = panelMove(r), steps = D.stages(DONE.map(function (n, i) { return [i < wait ? n : TODO[i], subs[i]]; }), wait, "Where this request is");
+  var now = panelMove(r), steps = D.stages(DONE.map(function (n, i) { return [i < wait ? n : TODO[i], subs[i], skip && i === 1 && i < wait ? "skip" : ""]; }), wait, "Where this request is");
   // The arrival date is already under Arrived, so an ordered request has no second line saying it. The order number
   // has its own labelled line.
   var move = r.status === "ordered" ? "" : now;
-  return '<div class="preqsteps">' + (move ? '<div class="row pnow">' + move + "</div>" : "") + steps + (r.order ? '<p class="pordno">Order #' + r.order + "</p>" : "") + "</div>";
+  if (part === "move") return move ? '<div class="preqsteps pmoveonly"><div class="row pnow">' + move + "</div></div>" : "";
+  return '<div class="preqsteps">' + (move && part !== "steps" ? '<div class="row pnow">' + move + "</div>" : "") + steps + (r.order ? '<p class="pordno">Order #' + r.order + "</p>" : "") + "</div>";
 }
 // The steps of the flow, each a filter with its count; the rarely used views sit in one small "More" select.
 function flowRow(groups, gcount) {
   var p = P(), steps = ["open", "needsok", "toorder", "ordered", "done"], more = ["closed", "all", "wish"];
-  var NAMES = { open: "All open", needsok: "Needs OK", toorder: "Waiting to order", ordered: "Ordered", done: "Arrived" };
+  var NAMES = { open: "All open", needsok: "Needs OK", toorder: "To order", ordered: "Ordered", done: "Arrived" };
   function g(id) { return groups.filter(function (x) { return x[0] === id; })[0]; }
   var inMore = more.indexOf(p.filter) >= 0;
   return '<div class="pflow"><div class="psteps' + (p.rare || more.indexOf(p.filter) >= 0 ? " rareopen" : "") + '" role="group" aria-label="Show requests">' + steps.map(function (id) {
@@ -286,23 +287,24 @@ function requests() {
     // One row. Needs OK and To order rows leave whose move it is to their group's heading, which says it once.
     var rowG = function (r) {
       var mv = r.status === "needsok" || r.status === "toorder" ? "" : moveHtml(r);
-      return '<button class="ptr" data-act="preq" data-v="' + r.id + '"><b class="pn">' + esc(r.name) + '</b><span class="pfacts"><span class="pv">' + esc(r.vendor) + '</span><span class="pq num">' + labG("Qty") + esc(qtyText(r)) + '</span><span class="pc num r">' + money(total(r)) + '</span><span class="pb">' + esc(r.by) + '</span><span class="pd num' + (r.need ? "" : " pnd") + '">' + (r.need ? labG("Need by") + needCell(r) : '<span class="vh">No date</span>') + '</span></span><span class="pp">' + priPill(r.pri) + '</span><span class="ps">' + statusPill(r.status) + mv + "</span></button>";
+      return '<button class="ptr" data-act="preq" data-v="' + r.id + '"><b class="pn">' + esc(r.name) + '</b><span class="pfacts"><span class="pv">' + esc(r.vendor) + '</span><span class="pq num">' + labG("Qty") + esc(qtyText(r)) + '</span><span class="pc num r">' + money(total(r)) + '</span><span class="pb' + (r.by === me ? " pbme" : "") + '">' + (r.by === me ? "You" : esc(r.by)) + '</span><span class="pd num' + (r.need ? "" : " pnd") + '">' + (r.need ? labG("Need by") + needCell(r) : '<span class="vh">No date</span>') + '</span></span><span class="pp">' + priPill(r.pri) + '</span><span class="ps">' + statusPill(r.status) + mv + "</span></button>";
     };
     /* Hill climb r3: the rows go in the order of the flow, each step under one heading row with its name, its count
        and whose move it is, said once. Inside a step the rows keep the urgency order above. */
     var staffG = D.isStaff(), FLOW = [
       ["needsok", "Needs OK", ["needsok"], staffG ? "your move" : "waiting on a mentor"],
-      ["toorder", "To order", ["toorder"], staffG ? "your move" : "waiting on a mentor to order"],
+      ["toorder", "To order", ["toorder"], staffG ? "your move" : "waiting on a mentor"],
       ["ordered", "Ordered", ["ordered"], ""], ["done", "Arrived", ["arrived", "putaway"], ""],
       ["closed", "Denied or cancelled", ["denied", "cancelled"], ""]];
+    var liveG = FLOW.filter(function (f) { return rows.some(function (r) { return f[2].indexOf(r.status) >= 0; }); }).length, oneG = !!gq && liveG === 1 && p.filter !== "wish";
     var grouped = FLOW.map(function (f) {
       var inG = rows.filter(function (r) { return f[2].indexOf(r.status) >= 0; });
       if (!inG.length) return "";
-      return '<h4 class="ptg"><span class="ptgn">' + f[1] + (f[3] ? '<span class="' + (staffG ? "ptgm mine" : "ptgm") + '">, ' + f[3] + "</span>" : "") + '</span><span class="tcount">' + inG.length + "</span></h4>" + inG.map(rowG).join("");
+      return '<h4 class="ptg' + (oneG ? " ptgone" : "") + '"><span class="ptgn">' + (oneG ? "Already requested, " + f[1].charAt(0).toLowerCase() + f[1].slice(1) : f[1]) + (f[3] ? '<span class="' + (staffG ? "ptgm mine" : "ptgm") + '">, ' + f[3] + "</span>" : "") + '</span><span class="tcount">' + inG.length + "</span></h4>" + inG.map(rowG).join("");
     }).join("");
     var table = p.filter === "wish" ? '<div class="list">' + wishList() + "</div>" : none ? "" : rows.length ? '<div class="ptable gt"><div class="pth" aria-hidden="true"><span>Part</span><span>Vendor</span><span>Quantity</span><span class="r">Cost</span><span>Asked by</span><span>Need by</span><span>Priority</span><span>Status</span></div>' + grouped + "</div>" : '<div class="empty">' + (gq ? "No requests like “" + esc(gq) + "” here. Try All open or More." : "Nothing here.") + "</div>";
     // While a search is showing, the list under the shop's answer is what has already been asked for.
-    return '<div class="card preqs">' + findBox(gq, anyReq) + (none ? "" : '<h3 class="preqh">' + (gq ? "Already requested" : "Requests") + "</h3>" + (D.ground() && p.q.trim() && p.filter !== "wish" ? "" : flowRow(groups, gcount))) + table + "</div>";
+    return '<div class="card preqs">' + findBox(gq, anyReq) + (none || oneG ? "" : '<h3 class="preqh">' + (gq ? "Already requested" : "Requests") + "</h3>" + (D.ground() && p.q.trim() && p.filter !== "wish" ? "" : flowRow(groups, gcount))) + table + "</div>";
   }
   var filters = '<div class="pfilters"><label class="pf-show"><span>Show</span><select class="inp" data-change="pfiltersel">' + groups.map(function (x) { return '<option value="' + x[0] + '"' + (p.filter === x[0] ? " selected" : "") + ">" + x[1] + " (" + gcount(x) + ")</option>"; }).join("") + "</select></label>" +
     '<label class="pf-mine"><button class="toggle" data-act="pmine" aria-pressed="' + p.mine + '" aria-label="Only my requests"></button><span>Only mine</span></label>' +
@@ -323,10 +325,10 @@ function requests() {
 D.drawers.preq = function (d) {
   var r = reqById(d.id), staff = D.isStaff(), mine = r.by === D.me().name, ob = orderBy(r);
   var acts = [];
-  if (staff && r.status === "needsok") acts.push('<button class="btn primary" data-act="papprove" data-v="' + r.id + '">Approve</button>', '<button class="btn" data-act="pdeny" data-v="' + r.id + '">' + (D.ground() ? "Deny" : "Deny…") + "</button>", '<button class="btn" data-act="preplace" data-v="' + r.id + '">' + (D.ground() ? "Replace item" : "Replace item…") + "</button>");
+  if (staff && r.status === "needsok") acts.push('<button class="btn primary" data-act="papprove" data-v="' + r.id + '">Approve</button>', '<button class="btn" data-act="pdeny" data-v="' + r.id + '">' + (D.ground() ? "Deny" : "Deny…") + "</button>", '<button class="btn" data-act="preplace" data-v="' + r.id + '">' + (D.ground() ? "Approve a different part" : "Replace item…") + "</button>");
   if (r.status === "ordered") acts.push('<button class="btn" data-act="tab" data-app="parts" data-v="arriving">' + (D.ground() ? "Check it in" : "Check it in on Arriving") + "</button>");
   var cancelBtn = mine && !staff && (r.status === "needsok" || r.status === "toorder") ? '<button class="btn ghost danger" data-act="pcancel" data-v="' + r.id + '">Withdraw my request</button>' : "", cancel = cancelBtn ? "<div>" + cancelBtn + "</div>" : "";
-  var rows = [["Vendor", esc(r.vendor)], ["SKU", '<span class="mono">' + esc(r.sku) + "</span>"], ["Quantity", qtyText(r)], ["Price", money(r.price) + " each · " + money(total(r)) + " total"], ["Budget", r.status === "needsok" ? budgetEffect(r, true) : esc(bname(r.bud))], ["Priority", PRI[r.pri][0]], ["Need by", (D.ground() && r.need ? esc(needText(r)) : fmt(r.need)) + (ob && !(D.ground() && r.status !== "needsok" && r.status !== "toorder") ? '<br><b class="' + (D.ground() && !staff ? "pquiet" : "pbad") + '">' + (D.ground() ? orderByText(ob) : "Order by " + fmt(ob)) + "</b>" : "")], ["For", esc(r.sub) + (r.task ? " · task “" + esc(r.task) + "”" : "")], ["Asked by", esc(r.by)]];
+  var rows = [["Vendor", esc(r.vendor)], ["SKU", '<span class="mono">' + esc(r.sku) + "</span>"], ["Quantity", qtyText(r)], ["Price", money(r.price) + " each · " + money(total(r)) + " total"], ["Budget", r.status === "needsok" ? budgetEffect(r, true) : esc(bname(r.bud))], ["Priority", PRI[r.pri][0]], ["Need by", (D.ground() && r.need ? esc(needText(r)) : fmt(r.need)) + (ob && !(D.ground() && r.status !== "needsok" && r.status !== "toorder") && !(D.ground() && staff && r.status === "needsok" && r.why && orderByText(ob).indexOf("late") > 0) ? '<br><b class="' + (D.ground() && !staff ? "pquiet" : "pbad") + '">' + (D.ground() ? orderByText(ob) : "Order by " + fmt(ob)) + "</b>" : "")], ["For", esc(r.sub) + (r.task ? " · task “" + esc(r.task) + "”" : "")], ["Asked by", esc(r.by)]];
   // Ground up: the panel opens with the steps of the flow and whose move it is, in place of the status word.
   var top = D.ground() ? reqSteps(r) : '<div class="row">' + statusPill(r.status) + (r.order ? '<span class="who">Order #' + r.order + "</span>" : "") + "</div>";
   /* Ground up: the choices come straight after the steps and whose move it is, before the quote and the facts, so a
@@ -335,7 +337,7 @@ D.drawers.preq = function (d) {
     var gacts = acts.length || cancelBtn ? '<div class="row pacts">' + acts.join("") + cancelBtn + "</div>" : "";
     // What a mentor needs to decide sits between the steps and the buttons: why, how much, and what it does to the budget.
     var ctx = staff && r.status === "needsok" && r.why ? '<p class="pctx">' + esc(r.by) + ": “" + esc(r.why) + "”</p>" + (ob && orderByText(ob).indexOf("late") > 0 ? '<p class="pctx"><b class="pbad">' + orderByText(ob) + "</b></p>" : "") : "";
-    return D.drawerHead("Request #" + r.id, r.name) + top + ctx + gacts +
+    return D.drawerHead("Request #" + r.id, r.name) + (ctx ? reqSteps(r, "move") + ctx + gacts + reqSteps(r, "steps") : top + ctx + gacts) +
       (r.why && !ctx ? '<p class="mute">“' + esc(r.why) + "”</p>" : "") +
       '<dl class="pkv">' + rows.map(function (x) { return "<dt>" + x[0] + "</dt><dd>" + x[1] + "</dd>"; }).join("") + "</dl>" +
       '<div><p class="flabel">History</p><div class="list">' + r.hist.slice().reverse().map(function (h) { return '<div class="li"><span class="grow"><b>' + esc(h.who) + "</b> " + esc(h.what) + '</span><span class="who">' + esc(h.when) + "</span></div>"; }).join("") + "</div></div>";
@@ -408,7 +410,8 @@ function toOrderView() {
   function soonest(vn) { return byV[vn].map(function (r) { return orderBy(r) || "9999"; }).sort()[0]; }
   var vs = Object.keys(byV).sort(function (a, b) { return byV[b].some(placeToday) - byV[a].some(placeToday) || (D.ground() ? (soonest(a) < soonest(b) ? -1 : soonest(a) > soonest(b) ? 1 : 0) : 0); });
   if (!vs.length && !waiting.length) return '<div class="card"><p class="mute">Nothing to order. New requests land here, grouped by vendor.</p></div>';
-  return html + vs.map(function (vn) {
+  var two = D.ground() && waiting.length && vs.length;
+  return (two ? '<div class="pto2"><div class="ptoside">' + html + '</div><div class="ptomain">' : html) + vs.map(function (vn) {
     var v = vendor(vn), lines = byV[vn], sub = lines.reduce(function (a, r) { return a + total(r); }, 0), today = lines.filter(placeToday);
     var nudge = v.free ? (sub >= v.free ? '<span class="small pok">' + (D.ground() ? "This order ships free" : "Free shipping") + "</span>" : '<span class="small"><b>' + money(v.free - sub) + "</b> more for free shipping</span>") : "";
     var tips = [];
@@ -425,8 +428,8 @@ function toOrderView() {
     return '<div class="card"><div><div class="row between nowrap pvh"><h2>' + esc(vn) + '</h2><div class="row nowrap">' + (today.length ? '<span class="pill bad">Place today</span>' : "") + '<b class="num">' + money(sub) + '</b></div></div>' + facts + "</div>" +
       (v.free ? (D.ground() ? '<div class="pship">' + bar + nudge + "</div>" : bar + nudge) : "") +
       '<div class="list">' + lines.map(function (r) { var ob = orderBy(r); return '<div class="li pline"><span class="grow"><b>' + esc(r.name) + '</b><span class="pmeta">' + (D.ground() ? (ob ? '<b class="pob">' + orderByText(ob) + "</b>" : "") + [r.sku, "qty " + qtyText(r), bname(r.bud), "for " + r.sub, r.by].map(esc).join(", ") : [r.sku, "Qty " + qtyText(r), bname(r.bud), "for " + r.sub, r.by].map(esc).join(" · ") + (ob ? " · order by " + fmt(ob) : "")) + '</span></span><span class="pside"><span class="num">' + money(total(r)) + "</span>" + priPill(r.pri) + "</span></div>"; }).join("") + "</div>" +
-      '<div class="row"><button class="btn' + (today.length ? " primary" : "") + '" data-act="pmarkordered" data-v="' + esc(vn) + '">Mark ordered…</button><button class="btn' + (D.ground() ? " ghost" : "") + '" data-act="pcopy" data-v="' + esc(vn) + '">' + (vn === "Amazon" ? "Open Share-A-Cart" : "Copy list") + "</button></div></div>";
-  }).join("");
+      '<div class="row"><button class="btn' + (today.length ? " primary" : "") + '" data-act="pmarkordered" data-v="' + esc(vn) + '">' + (D.ground() ? "Mark ordered" : "Mark ordered…") + '</button><button class="btn' + (D.ground() ? " ghost" : "") + '" data-act="pcopy" data-v="' + esc(vn) + '">' + (vn === "Amazon" ? "Open Share-A-Cart" : "Copy list") + "</button></div></div>";
+  }).join("") + (two ? "</div></div>" : "");
 }
 D.modals.pcopy = function (d) {
   var lines = P().requests.filter(function (r) { return r.status === "toorder" && r.vendor === d.v; });
@@ -482,7 +485,7 @@ function inventory() {
       var low = inStore(i) <= i.min, places = i.stock.filter(function (s) { return under(s.place); });
       var home = places.filter(function (s) { return s.place.indexOf("bot") < 0; });
       var k = i.stock.map(function (st) { return st.place.indexOf("bot") < 0; }).indexOf(true);
-      return '<tr class="click" data-act="pitem" data-v="' + i.id + '"><td class="wrap lead"><b>' + esc(i.name) + '</b></td><td class="wrap small" data-l="Where">' + (home.map(function (s) { return esc(s.place) + (home.length > 1 ? " (" + s.qty + ")" : ""); }).join("<br>") || "Only on robots") + '</td><td data-l="In store">' + inStore(i) + " " + (i.unit === "each" ? "" : esc(i.unit)) + (low ? ' <span class="pill warn">Low</span>' : "") + '</td><td data-l="On robots">' + (stockTotal(i) - inStore(i) || "—") + '</td><td class="lead"><span class="row">' + (k >= 0 ? '<button class="btn sm" data-act="ptake" data-v="' + i.id + '" data-k="' + k + '">' + (D.ground() ? "Take one" : "Take") + "</button>" : "") + (low ? '<button class="btn sm" data-act="pmore" data-v="' + i.id + '">Request more</button>' : "") + "</span></td></tr>";
+      return '<tr class="click" data-act="pitem" data-v="' + i.id + '"><td class="wrap lead"><b>' + esc(i.name) + '</b></td><td class="wrap small" data-l="Where">' + (home.map(function (s) { return esc(s.place) + (home.length > 1 ? " (" + s.qty + ")" : ""); }).join("<br>") || "Only on robots") + '</td><td data-l="In store">' + inStore(i) + " " + (i.unit === "each" ? "" : esc(i.unit)) + (low ? ' <span class="pill warn">Low</span>' : "") + '</td><td data-l="On robots">' + (stockTotal(i) - inStore(i) || "—") + '</td><td class="lead"><span class="row">' + (k >= 0 ? '<button class="btn sm' + (D.ground() ? " primary" : "") + '" data-act="ptake" data-v="' + i.id + '" data-k="' + k + '">' + (D.ground() ? "Take one" : "Take") + "</button>" : "") + (low ? '<button class="btn sm" data-act="pmore" data-v="' + i.id + '">Request more</button>' : "") + "</span></td></tr>";
     }).join("") + "</tbody></table></div>" : '<div class="empty">No parts here.</div>') + "</div></div>";
 }
 D.drawers.pitem = function (d) {

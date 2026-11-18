@@ -89,7 +89,7 @@ D.practicesText = function (date) { var n = D.practicesLeft(date); return n == n
 D.stages = function (steps, cur, label) {
   return '<ol class="stages" aria-label="' + esc(label || "Progress") + '">' + steps.map(function (st, i) {
     var name = Array.isArray(st) ? st[0] : st, sub = Array.isArray(st) ? st[1] : "";
-    return '<li class="' + (i < cur ? "done" : i === cur ? "now" : "todo") + '"' + (i === cur ? ' aria-current="step"' : "") + "><b>" + esc(name) + "</b>" + (sub ? "<small>" + esc(sub) + "</small>" : "") + "</li>";
+    return '<li class="' + (i < cur ? "done" : i === cur ? "now" : "todo") + (Array.isArray(st) && st[2] ? " " + st[2] : "") + '"' + (i === cur ? ' aria-current="step"' : "") + "><b>" + esc(name) + "</b>" + (sub ? "<small>" + esc(sub) + "</small>" : "") + "</li>";
   }).join("") + "</ol>";
 };
 // "Waiting on Ms. Rivera" or "Your move". who: a name or a role ("a mentor"); mine: true when it is this person.
@@ -209,7 +209,7 @@ function appbar() {
   var cur = D.tile(S.route), here = S.route === "account" ? "Account" : D.isToolRoute(S.route) ? "Tools" : cur ? cur.name : "Gears & Buccaneers";
   return '<header class="appbar"><button class="appsbtn" data-act="apps" aria-expanded="' + !!S.appsOpen + '" aria-label="All apps" data-tip="Every app, tool and team link.">' + D.ic("apps", 20) + "</button>" +
     '<a class="brand" href="' + D.appHref("portal") + '" target="_blank" rel="noopener noreferrer" aria-label="Portal home" data-act="go" data-v="portal"><span class="badge-2972">2972</span></a>' +
-    '<span class="appname">' + (D.ground() && !cur && S.route === "portal" ? '<span class="hide-sm">' + esc(here) + '</span><span class="show-sm-inline">Home</span>' : esc(here)) + '</span><span class="grow"></span>' +
+    '<span class="appname">' + (D.ground() && !cur && S.route === "portal" ? "Home" : esc(here)) + '</span><span class="grow"></span>' +
     (S.mode === "competition" ? '<button class="modechip" data-act="go" data-v="account" aria-label="Competition mode" data-tip="Event apps are showing; change it on your Account page.">' + (D.ground() ? "Competition" : 'Comp<span class="hide-sm">etition mode</span>') + "</button>" : "") +
     '<button class="iconbtn" data-act="bell" aria-expanded="' + !!S.bell + '" aria-label="Notifications" data-tip="What is new for you in every app.">' + D.ic("bell") + (unread ? '<span class="count">' + unread + "</span>" : "") + "</button>" +
     (S.role !== "display" ? '<button class="iconbtn acct" data-act="accountmenu" aria-controls="account-menu" aria-expanded="' + !!S.accountOpen + '" aria-label="Account: ' + esc(D.me().name) + '" data-tip="Your theme, notices and account settings.">' + esc(D.me().name.replace(/^(Ms|Mr|Dr)\. /, "").split(" ").map(function (w) { return w[0]; }).join("").slice(0, 2)) + "</button>" : "") +
@@ -267,6 +267,7 @@ function noticeRow(n) {
 }
 function bellPanel() {
   var list = D.myNotices();
+  if (D.ground()) list = list.filter(function (n) { return !n.read; }).concat(list.filter(function (n) { return n.read; }));
   return '<div class="bellpanel" role="dialog" aria-label="Notifications" data-keepscroll="bellpanel"><div class="menuhead"><h3>Notifications</h3><span class="row nowrap"><button class="btn ghost sm" data-act="readall">Mark all read</button><button class="xbtn" data-act="bell" aria-label="Close" data-tip="Close notifications.">×</button></span></div><div class="list">' +
     (list.length ? list.map(noticeRow).join("") : '<p class="empty">Nothing yet.</p>') +
     '</div><button class="btn ghost sm" style="justify-self:start" data-act="go" data-v="account">Notification settings</button></div>';
@@ -363,7 +364,7 @@ function noteOf(key) { var k = D.S.sk, q = String(key).split("|"), r = k && k.re
 function whenRank(w) { var m = /^(\d+):(\d+) (am|pm)$/.exec(w || ""); if (/just now/i.test(w)) return 1e6; if (m) return 1000 + ((+m[1] % 12) + (m[3] === "pm" ? 12 : 0)) * 60 + +m[2]; return 0; }
 // One row of the Now list: a title and one muted line that open the owning screen, then at most one action.
 function nowRow(o) {
-  return '<div class="li nowrow' + (o.first ? " nowfirst" : "") + (o.tall ? " nowtall" : "") + '"><button class="rowlink" data-act="' + (o.act || "goapp") + '"' + (o.v != null ? ' data-v="' + esc(o.v) + '"' : "") + (o.app ? ' data-app="' + o.app + '"' : "") + (o.tab ? ' data-tab="' + o.tab + '"' : "") + '><span class="rt">' + esc(o.title) + "</span>" + (o.line || o.mark ? '<span class="rl">' + (o.mark ? o.mark + (o.tall ? '<span class="marksep">, </span>' : " ") : "") + (o.line || "") + "</span>" : "") + "</button>" +
+  return '<div class="li nowrow' + (o.first ? " nowfirst" : "") + (o.tall ? " nowtall" : "") + '"><button class="rowlink" data-act="' + (o.act || "goapp") + '"' + (o.v != null ? ' data-v="' + esc(o.v) + '"' : "") + (o.app ? ' data-app="' + o.app + '"' : "") + (o.tab ? ' data-tab="' + o.tab + '"' : "") + '><span class="rt">' + esc(o.title) + "</span>" + (o.line || o.mark ? '<span class="rl">' + (o.mark ? o.mark + (o.tall ? '<span class="marksep">. </span>' : " ") : "") + (o.line || "") + "</span>" : "") + "</button>" +
     (o.btn || '<span class="chev" aria-hidden="true">›</span>') + "</div>";
 }
 /* Now: everything that needs this person, most urgent first, each with its own action (rule 3). The actions call the
@@ -371,7 +372,7 @@ function nowRow(o) {
 function nowRows() {
   var S = D.S, rows = [], api = D.calApi, c = S.cal, staff = D.isStaff(), P = apiWith(D.partsApi, ["needsOk", "approve", "open"]), K = apiWith(D.skillsApi, ["requests", "signOff"]);
   // At an event, Now holds only what the event needs (hill climb r4): the pit's own rows, from the Competition app.
-  if (S.eventDay && S.role !== "parent") return (D.eventRows ? D.eventRows() : []).map(function (r) { return { app: r.app, tab: r.tab, title: r.title, line: esc(r.line || ""), btn: r.btn ? '<button class="btn' + (S.role === "student" && D.myShiftCard ? "" : " primary") + '" data-act="goapp" data-app="' + r.app + '" data-tab="' + r.tab + '">' + esc(r.btn) + "</button>" : "" }; });
+  if (S.eventDay && S.role !== "parent") return (D.eventRows ? D.eventRows() : []).map(function (r) { return { app: r.app, tab: r.tab, title: r.title, tall: r.tall, line: esc(r.line || ""), btn: r.btn ? '<button class="btn' + (S.role === "student" && D.myShiftCard ? "" : " primary") + '" data-act="goapp" data-app="' + r.app + '" data-tab="' + r.tab + '">' + esc(r.btn) + "</button>" : "" }; });
   practiceRows().forEach(function (r) {
     // A parent's first question is the next practice. When that is today, the row says "today", not the date.
     // A parent's practices are the "This week" list, which leads their page, so Now holds only what they can do.
@@ -396,7 +397,7 @@ function nowRows() {
   }
   if (staff) {
     if (P && hasTile("parts")) P.needsOk().forEach(function (r) {
-      rows.push({ group: "Needs your OK", act: "homereq", v: r.id, title: r.name, tall: true, line: (r.orderBy && api && r.orderBy < api.TODAYS ? '<b class="nowdue">The order is ' + plural(daysTo(api.TODAYS, r.orderBy), "day", "days") + " late.</b><br>" : "") + esc(D.money(r.total) + ", asked by " + r.by + (whyOf(r.id) ? ": “" + whyOf(r.id) + "”" : "")) + (r.orderBy && !(api && r.orderBy < api.TODAYS) ? ", order by " + esc(api ? api.fmt(r.orderBy) : r.orderBy) : ""),
+      rows.push({ group: "Needs your OK", act: "homereq", v: r.id, title: r.name, tall: true, line: (r.orderBy && api && r.orderBy < api.TODAYS ? '<b class="nowdue">Order by ' + esc(api.fmt(r.orderBy)) + ", " + plural(daysTo(api.TODAYS, r.orderBy), "day", "days") + " late</b><br>" : "") + esc(D.money(r.total) + ", asked by " + r.by + (whyOf(r.id) ? ": “" + whyOf(r.id) + "”" : "")) + (r.orderBy && !(api && r.orderBy < api.TODAYS) ? ", order by " + esc(api ? api.fmt(r.orderBy) : r.orderBy) : ""),
         mark: r.pri === "blocking" ? '<span class="pill pri bad">Blocking</span>' : r.pri === "high" ? '<span class="pill pri warn">High</span>' : "",
         btn: '<button class="btn' + (r.pri === "blocking" ? " primary" : "") + '" data-act="homeapprove" data-v="' + r.id + '">Approve</button>' });
     });
@@ -480,7 +481,7 @@ function homeGround() {
   // At an event the shop task waits: a student in the pit is not sent back to the shop (hill climb r3).
   if (role === "student" && D.nextUpCard && !S.eventDay) mainCol += D.nextUpCard();
   if (S.eventDay && role !== "parent" && D.eventNext) { var nm = D.eventNext(3); if (nm.length) mainCol += '<section class="card nextcard"><h2>Next for us</h2><div class="list week">' + nm.map(function (m) {
-    return '<button class="li wkrow" data-act="goapp" data-app="pit" data-tab="check"><span class="wkd"><b>Qual ' + m.q + '</b><span class="num">' + esc(m.time) + '</span></span><span class="grow"><b>' + esc(m.colour + " alliance" + (m.now ? ", on the field now" : "")) + '</b><span class="wkfacts"><span>With ' + esc(m.withTeams.join(" and ")) + ", against " + esc(m.against.join(", ")) + "</span></span></span></button>"; }).join("") + "</div></section>"; }
+    return '<button class="li wkrow" data-act="goapp" data-app="pit" data-tab="check"><span class="wkd"><b>Qual ' + m.q + '</b><span class="num">' + esc(m.now ? "Now" : m.time) + '</span></span><span class="grow"><b>' + esc(m.colour + " alliance" + (m.now ? ", on the field" : "")) + '</b><span class="wkfacts"><span>With ' + esc(m.withTeams.join(" and ")) + "</span><span>Against " + esc(m.against.join(", ")) + "</span></span></span></button>"; }).join("") + "</div></section>"; }
   // A parent's two questions are the next practice and the next event. The events get their own short list, so the
   // page is not mostly empty on a laptop and "Next event" is not one lonely row (hill climb r2).
   if (role === "parent" && D.calApi) {
@@ -703,6 +704,8 @@ document.addEventListener("touchstart", function (e) {
 ["touchend", "touchmove", "touchcancel"].forEach(function (ev) { document.addEventListener(ev, function () { clearTimeout(pressTimer); pressTimer = null; }, { passive: true }); });
 window.addEventListener("resize", function () { D.closeNoticeMenu(false); });
 document.addEventListener("scroll", function () { D.closeNoticeMenu(false); }, true);
+// A link that leaves the demo says where it would go.
+A.demosay = function (b) { D.toast(b.dataset.msg); };
 A.readall = function () { D.myNotices().forEach(function (n) { n.read = true; }); D.render(); };
 // Open or close a group (Tools, More) and keep the focus on its row, in the Apps menu or on Home.
 A.grp = function (b) { var id = b.dataset.v, place = b.dataset.place; D.setPref("open-" + id, !D.groupOpen(id)); D.render(); var el = document.getElementById("grp-" + place + "-" + id + "-btn"); if (el) el.focus(); };

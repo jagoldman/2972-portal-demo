@@ -32,3 +32,21 @@
   .evline .evv { font-size: 1.02rem; font-weight: 700; }
   @media (max-width: 640px) { .evline .evpart { padding: 9px 14px 10px; } .evline .evk { line-height: 1.5; } }
 }
+
+/* Hill climb r8: while our match is on the field the checklist is a record, not a to-do. */
+:root[data-design="c"] .cmp .bar > i.pastbar { background: var(--mute); }
+:root[data-design="c"] .cmp .hero .pill.plain { color: var(--text-2); }
+:root[data-design="c"] .cmp .hero .pill.plain::before { display: none; }
+:root[data-design="c"] .pitafter .pitnext { margin: 0 0 10px; }
+
+:root[data-design="c"] .content > .evline + .card.hero { margin-top: 12px; }
+/* Stacked on a phone, a part is as tall as its two lines (it was squeezed to 44 px and the label touched the edge). */
+@media (max-width: 760px) { :root[data-design="c"] .evline .evpart { flex: 0 0 auto; } }
+@media (max-width: 640px) { :root[data-design="c"] .evline .evpart { padding: 9px 16px 10px; } }
+/* Scouting, wide: the field drawing on the left, the Auto answers beside it, so the right half is not empty. */
+@media (min-width: 1000px) {
+  :root[data-design="c"] .scauto { display: grid; grid-template-columns: minmax(0, 640px) minmax(260px, 1fr); column-gap: 32px; align-items: start; }
+  :root[data-design="c"] .scauto > h2 { grid-column: 1 / -1; }
+  :root[data-design="c"] .scauto > .scpath { grid-column: 1; grid-row: 2 / span 3; margin-top: 0; }
+  :root[data-design="c"] .scauto > .field:not(.scpath) { grid-column: 2; margin-top: 0; }
+}
