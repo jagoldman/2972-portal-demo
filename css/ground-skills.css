@@ -1,4 +1,40 @@
-/* Design 8.3, Ground up ("c"): Skills. Every rule sits under :root[data-design="c"]. See GROUND_UP.md. */
+/* Design 8.3, Ground up ("c"): Skills. Every rule sits under :root[data-design="c"]. See GROUND_UP.md §4, Skills.
+   What it adds: the student's "Machines you can use" rows, the order of the two Overview lists, the "Waiting on a
+   mentor" line, and the "Find a student" box on the Permissions tab. */
 
 :root[data-design="c"] {
+  /* ---------- Machines you can use (and one student's machines on a phone) ----------
+     A machine row: its name and its status on the first line, what comes next under them. The rows sit in one
+     column on a phone, two on a tablet and three on a laptop. The columns are fixed at each width, so the first row
+     of each column can drop its top line. */
+  .skmachs { grid-template-columns: minmax(0, 1fr); column-gap: 24px; }
+  .skmach { display: grid; grid-template-columns: minmax(0, 1fr) auto; align-items: baseline; gap: 2px 12px; width: 100%; min-width: 0; padding: 8px 4px; border: 0; border-top: 1px solid var(--line); background: none; color: var(--text); font: inherit; text-align: left; }
+  .skmach:first-child { border-top: 0; }
+  .skmach .skmn { min-width: 0; font-weight: 650; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  .skmach .pill { justify-self: end; }
+  .skmach .skml { grid-column: 1 / -1; min-width: 0; font-size: .86rem; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  .skmach:focus-visible { outline: 2px solid var(--accent); outline-offset: -2px; }
+  @media (min-width: 641px) {
+    .skmachs { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+    .skmach:nth-child(2) { border-top: 0; }
+    .skmach { min-height: 40px; padding-block: 6px; }
+  }
+  @media (min-width: 1000px) {
+    .content.skills .skmachines .skmachs { grid-template-columns: repeat(3, minmax(0, 1fr)); }
+    .content.skills .skmachines .skmach:nth-child(3) { border-top: 0; }
+  }
+  @media (max-width: 640px) { .skmach { min-height: 52px; } .skmach .skml { white-space: normal; } }
+
+  /* ---------- Overview: the two lists sit under the machines, so they need the dividing line Baseline leaves off ---------- */
+  @media (min-width: 1000px) {
+    .content.skills > .skmachines ~ .skhalf { border-top: 1px solid var(--line); }
+  }
+
+  /* ---------- Waiting for sign-off: whose move, and since when ---------- */
+  .skwait .skwho { min-width: 0; }
+
+  /* ---------- Permissions: find a student ---------- */
+  .skfind { max-width: 320px; }
+  .skfind input::-webkit-search-cancel-button { cursor: pointer; }
+  @media (max-width: 640px) { .skfind { max-width: none; } }
 }

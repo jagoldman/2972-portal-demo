@@ -446,7 +446,8 @@ function treeRows(P, staff) {
 }
 function overview() {
   var S = D.S, P = S.sk.prog, staff = D.isStaff(), html = "";
-  if (!staff) {
+  if (!staff && D.ground()) html += groundStudent(D.me().name);
+  else if (!staff) {
     var me = D.me().name, n = nextUp(me), cap = readyAll ? n.ready.length : 5;
     html += '<div class="card skhalf"><div class="row between"><h2>Ready to start</h2>' + (n.ready.length ? '<span class="tcount">' + n.ready.length + "</span>" : "") + "</div>" +
       (n.ready.length ? '<div class="list">' + n.ready.slice(0, cap).map(function (x) { return skillRow(x, "Ready", "info"); }).join("") + "</div>" + (n.ready.length > 5 ? '<div><button class="btn ghost" data-act="skreadyall">' + (readyAll ? "Show fewer" : "Show all " + n.ready.length) + "</button></div>" : "") : '<p class="mute">Nothing new is open. Finish what you started.</p>') + "</div>";
@@ -464,6 +465,59 @@ function overview() {
   html += '<div class="card"><div class="row between"><h2>Students</h2><span class="who">Tap a row to open their trees.</span></div><div class="tablewrap" data-keepscroll="skstudents"><table class="sktable"><thead><tr><th>Student</th>' + TREES.map(function (t) { return "<th" + (t.name !== t.tag ? ' data-tip="' + esc(t.name) + '"' : "") + ">" + t.tag + "</th>"; }).join("") + "<th>Done</th><th>Started</th><th>Overall</th></tr></thead><tbody>" + rows + "</tbody></table></div></div>";
   return html;
 }
+/* ---------- Ground up (GROUND_UP.md §4, Skills) ----------
+   A student opens Skills to learn two things: what they may use, and what to finish next. So the Overview starts with
+   their own machines, then puts what they started before what they could start. Drawn only when D.ground() is true. */
+var PERMIT_WORD = { yes: "Cleared", training: "In training", no: "Not yet" };
+var PERMIT_PILL = { yes: "ok", training: "warn", no: "" };
+function permitPill(state) { return '<span class="pill ' + PERMIT_PILL[state] + '">' + PERMIT_WORD[state] + "</span>"; }
+function notDone(P, s) { return !(P[s.id] && P[s.id].s === "done"); }
+/* The skill a student should do next to get closer to a machine. When the machine's category waits on another
+   category (or on the Safety tree), the next step is in that one, so the door leads somewhere the student can act. */
+function nextStep(P, t, c) {
+  if (treeLocked(P, t)) {
+    var rt = tree(t.req), open = rt.cats.filter(function (x) { var cs = catStatus(P, rt, x); return cs === "progress" || cs === "available"; });
+    return open.length ? nextStep(P, rt, open[0]) : null;
+  }
+  var block = c.req.map(function (r) { return cat(t, r); }).filter(function (rc) { return catCounts(P, rc) < rc.skills.length; })[0];
+  if (block) return nextStep(P, t, block);
+  var s = c.skills.filter(function (x) { return notDone(P, x) && skillOpenFor(P, x); })[0] || c.skills.filter(function (x) { return notDone(P, x); })[0];
+  return s ? { s: s, t: t, c: c } : null;
+}
+/* One row per shop machine, in the Permissions tab's order, with the cleared ones first. */
+function myMachines(name) {
+  var P = D.S.sk.prog[name] || {}, mfg = tree("mfg"), rank = { yes: 0, training: 1, no: 2 };
+  return PERMITS.map(function (tool, i) {
+    var state = permitState(P, tool), rec = P[tool.skill];
+    return { tool: tool, state: state, rec: rec, next: state === "yes" ? null : nextStep(P, mfg, cat(mfg, tool.cat)), i: i };
+  }).sort(function (a, b) { return rank[a.state] - rank[b.state] || a.i - b.i; });
+}
+function machineRow(m, name) {
+  var line, open = m.tool.skill;
+  if (m.state === "yes") line = "Signed off by " + m.rec.by + ", " + m.rec.at;
+  else if (m.next) {
+    open = m.next.s.id;
+    var asked = D.S.sk.requests.some(function (r) { return r.st === name && r.id === m.next.s.id; });
+    line = (asked ? "Asked for sign-off: " : "Next: ") + m.next.s.name;
+  } else line = "Open the qualification";
+  return '<button class="li skmach" data-act="skmine" data-v="' + open + '"><b class="skmn">' + esc(m.tool.name) + "</b>" + permitPill(m.state) + '<span class="who skml">' + esc(line) + "</span></button>";
+}
+function groundStudent(me) {
+  var n = nextUp(me), cap = readyAll ? n.ready.length : 3, html = "";
+  var mach = myMachines(me), cleared = mach.filter(function (m) { return m.state === "yes"; }).length;
+  html += '<div class="card skmachines"><div class="row between"><h2>Machines you can use</h2><span class="who">' + cleared + " of " + mach.length + ' cleared</span></div>' +
+    '<p class="who">Cleared means a mentor signed off your written test and your demonstration. Tap a machine to see what comes next.</p>' +
+    '<div class="list skmachs">' + mach.map(function (m) { return machineRow(m, me); }).join("") + "</div></div>";
+  html += '<div class="card skhalf"><div class="row between"><h2>Finish what you started</h2>' + (n.prog.length ? '<span class="tcount">' + n.prog.length + "</span>" : "") + "</div>" +
+    (n.prog.length ? '<div class="list">' + n.prog.map(function (x) { return skillRow(x, "In progress", "warn"); }).join("") + "</div>" : '<p class="mute">Nothing started yet. Pick one from Ready to start.</p>') + "</div>";
+  html += '<div class="card skhalf"><div class="row between"><h2>Ready to start</h2>' + (n.ready.length ? '<span class="tcount">' + n.ready.length + "</span>" : "") + "</div>" +
+    (n.ready.length ? '<div class="list">' + n.ready.slice(0, cap).map(function (x) { return skillRow(x, "Ready", "info"); }).join("") + "</div>" + (n.ready.length > 3 ? '<div><button class="btn ghost" data-act="skreadyall">' + (readyAll ? "Show fewer" : "Show all " + n.ready.length) + "</button></div>" : "") : '<p class="mute">Nothing new is open. Finish what you started.</p>') + "</div>";
+  if (n.wait.length) html += '<div class="card"><div class="row between"><h2>Waiting for sign-off</h2><span class="tcount">' + n.wait.length + '</span></div><div class="list">' + n.wait.map(function (x) {
+    var r = D.S.sk.requests.filter(function (q) { return q.st === me && q.id === x.s.id; })[0];
+    return '<button class="li skwait" data-act="skmine" data-v="' + x.s.id + '"><span class="grow"><b>' + esc(x.s.name) + '</b><br><span class="who">' + esc(x.t.name) + " › " + esc(x.c.name) + '</span></span><span class="skwho">' + D.move("a mentor") + (r && r.at ? ' <span class="move">since ' + esc(r.at) + "</span>" : "") + "</span></button>";
+  }).join("") + "</div></div>";
+  return html;
+}
 function permitState(p, tool) {
   var c = cat(tree("mfg"), tool.cat);
   if (p[tool.skill] && p[tool.skill].s === "done") return "yes";
@@ -471,24 +525,46 @@ function permitState(p, tool) {
   return "no";
 }
 function permitsView() {
-  var P = D.S.sk.prog;
+  var P = D.S.sk.prog, g = D.ground();
+  /* Ground up: a mentor asks "may this student use this machine?", so the table can be narrowed to one name.
+     The words match the student's own "Machines you can use" (Cleared, In training, Not yet). */
+  var q = g ? (D.S.sk.find || "") : "", key = q.trim().toLowerCase();
+  var list = key ? STUDENTS.filter(function (st) { return st.toLowerCase().indexOf(key) >= 0; }) : STUDENTS;
   var heads = PERMITS.map(function (tool) {
     var n = STUDENTS.filter(function (st) { return permitState(P[st], tool) === "yes"; }).length;
     return "<th>" + esc(tool.name) + '<br><span class="who">' + n + " of " + STUDENTS.length + "</span></th>";
   }).join("");
-  var rows = STUDENTS.map(function (st) {
+  var tipFor = function (state, rec) {
+    if (!g) return state === "yes" ? "Signed off by " + rec.by + " · " + rec.at : state === "training" ? "Started; the qualification is not signed off." : "Not started; may not run this tool alone.";
+    return state === "yes" ? "Signed off by " + rec.by + ", " + rec.at : state === "training" ? "Started. The qualification is not signed off yet." : "Not started. May not use this machine alone.";
+  };
+  var rows = list.map(function (st) {
     var you = st === "Sam Ortiz" && D.S.role === "student" ? ' <span class="who">(you)</span>' : "";
     var cells = PERMITS.map(function (tool) {
       var state = permitState(P[st], tool);
       var rec = P[st][tool.skill];
-      var label = state === "yes" ? "Yes" : state === "training" ? "Training" : "No";
+      var label = g ? PERMIT_WORD[state] : state === "yes" ? "Yes" : state === "training" ? "Training" : "No";
       var cls = state === "yes" ? "ok" : state === "training" ? "warn" : "";
-      var tip = state === "yes" ? "Signed off by " + rec.by + " · " + rec.at : state === "training" ? "Started; the qualification is not signed off." : "Not started; may not run this tool alone.";
+      var tip = tipFor(state, rec);
       return '<td><button class="pill skperm ' + cls + '" data-act="skpermit" data-st="' + esc(st) + '" data-cat="' + tool.cat + '" data-skill="' + tool.skill + '" data-tip="' + esc(tip) + '">' + label + "</button></td>";
     }).join("");
     return "<tr><td><b>" + esc(st) + "</b>" + you + "</td>" + cells + "</tr>";
   }).join("");
-  return '<div class="card"><div><h2>Who can use which machine</h2><p class="who">Yes means the written test and the demonstration are signed off. Tap a cell to open that skill.</p></div><div class="tablewrap" data-keepscroll="skpermits"><table class="sktable skperms"><thead><tr><th>Student</th>' + heads + "</tr></thead><tbody>" + rows + "</tbody></table></div></div>";
+  var table = '<div class="tablewrap" data-keepscroll="skpermits"><table class="sktable skperms"><thead><tr><th>Student</th>' + heads + "</tr></thead><tbody>" + rows + "</tbody></table></div>";
+  if (!g) return '<div class="card"><div><h2>Who can use which machine</h2><p class="who">Yes means the written test and the demonstration are signed off. Tap a cell to open that skill.</p></div>' + table + "</div>";
+  var find = '<div class="field skfind"><label for="sk-find">Find a student</label><input id="sk-find" type="search" autocomplete="off" spellcheck="false" placeholder="Type a name" data-input="skfind" value="' + esc(q) + '"></div>';
+  var body, tapWhat = "a cell";
+  if (!list.length) body = '<p class="mute">No student matches “' + esc(q.trim()) + '”. Try part of a first or last name.</p>';
+  /* On a phone a six-column table scrolls sideways. With one student left, their machines read better as rows. */
+  else if (list.length === 1 && isPhone()) {
+    var st = list[0];
+    tapWhat = "a machine";
+    body = '<div><h3>' + esc(st) + '</h3><div class="list skmachs">' + PERMITS.map(function (tool) {
+      var state = permitState(P[st], tool);
+      return '<button class="li skmach" data-act="skpermit" data-st="' + esc(st) + '" data-cat="' + tool.cat + '" data-skill="' + tool.skill + '"><b class="skmn">' + esc(tool.name) + "</b>" + permitPill(state) + '<span class="who skml">' + esc(tipFor(state, P[st][tool.skill])) + "</span></button>";
+    }).join("") + "</div></div>";
+  } else body = table;
+  return '<div class="card"><div><h2>Who can use which machine</h2><p class="who">Cleared means the written test and the demonstration are signed off. Tap ' + tapWhat + ' to open that skill.</p></div>' + find + body + "</div>";
 }
 function studentPicker() {
   var S = D.S;
@@ -635,13 +711,14 @@ A.skprogress = function (b) {
 A.skrequest = function (b) {
   var S = D.S, id = b.dataset.v, s = BYID[id], t = tree(s.tree), c = cat(t, s.cat);
   if (skillStatus("Sam Ortiz", S.sk.prog["Sam Ortiz"], t, c, s) === "locked") { D.toast("Finish the level before this one first."); D.render(); return; }
-  S.sk.requests.push({ st: "Sam Ortiz", id: id, note: "" }); S.sk.prog["Sam Ortiz"][id] = S.sk.prog["Sam Ortiz"][id] || { s: "progress" };
+  S.sk.requests.push({ st: "Sam Ortiz", id: id, note: "", at: "Nov 10" }); S.sk.prog["Sam Ortiz"][id] = S.sk.prog["Sam Ortiz"][id] || { s: "progress" };
   D.notify("mentor", "skills", "Sam Ortiz asked for a sign-off on " + BYID[id].name + "."); D.log("asked for a sign-off on " + BYID[id].name, "skills");
   D.toast("Asked. Mentors get a notice."); D.render();
 };
 A.skcancelreq = function (b) { var S = D.S; S.sk.requests = S.sk.requests.filter(function (r) { return !(r.st === "Sam Ortiz" && r.id === b.dataset.v); }); D.render(); };
 A.skqok = function (b) { var S = D.S, r = S.sk.requests[+b.dataset.i]; if (!setDone(r.st, r.id)) { D.toast("Finish the level before this one first."); D.render(); return; } D.log("signed off " + r.st + " on " + BYID[r.id].name, "skills"); if (r.st === "Sam Ortiz") D.notify("student", "skills", D.me().name + " signed you off on " + BYID[r.id].name + "."); D.toast("Signed off " + r.st + "."); D.render(); };
 A.skqno = function (b) { var S = D.S, r = S.sk.requests.splice(+b.dataset.i, 1)[0]; if (r.st === "Sam Ortiz") D.notify("student", "skills", D.me().name + " says not yet on " + BYID[r.id].name + ". Ask them what to practice."); D.render(); };
+D.inputs.skfind = function (el) { D.S.sk.find = el.value; D.render(); };
 D.changes.skbulk = function (el) { D.S.sk.bulk = { id: el.value, picks: {} }; D.render(); };
 A.skbulkpick = function (b) { var p = D.S.sk.bulk.picks; p[b.dataset.v] = !p[b.dataset.v]; D.render(); };
 A.skbulkgo = function () { var S = D.S, b = S.sk.bulk, names = Object.keys(b.picks).filter(function (k) { return b.picks[k]; }); var done = names.filter(function (st) { return setDone(st, b.id); }); D.log("signed off " + done.length + " students on " + BYID[b.id].name, "skills"); b.picks = {}; D.toast("Signed off " + done.length + " on " + BYID[b.id].name + "."); D.render(); };
@@ -652,6 +729,38 @@ A.skaiaccept = function () {
   var S = D.S, c = cat(tree("elec"), "elctrl"), n = 0;
   S.sk.ai.forEach(function (x, i) { if (x.op === "Add") { var s = sk("ai" + i + Date.now(), x.name, x.note.toLowerCase(), [c.skills[n % c.skills.length].id]); s.cat = "elctrl"; s.tree = "elec"; c.skills.push(s); BYID[s.id] = s; n++; } });
   D.log("added " + n + " skills to Electrical › Control System", "skills"); S.sk.ai = null; S.sk.tree = "elec"; S.sk.cat = "elctrl"; S.tabs.skills = "trees"; D.toast(n + " skills added. Opened the category so you can see them."); D.render();
+};
+
+/* ---------- For Home (every version) ----------
+   Home lists what waits on a mentor and what a student waits for, and settles a sign-off on the row (GROUND_UP.md
+   §4, Home). Each call here uses the Skills app's own data and its own actions, so there is one way to sign off. */
+function reqKey(r) { return r.st + "|" + r.id; }
+D.skillsApi = {
+  // The sign-off requests a mentor sees, oldest first, as the Sign off tab lists them.
+  requests: function () {
+    return D.S.sk.requests.map(function (r) {
+      var x = BYID[r.id], t = tree(x.tree);
+      return { key: reqKey(r), student: r.st, skill: x.name, where: t.name + ", " + cat(t, x.cat).name };
+    });
+  },
+  // Exactly the Sign off button in the Sign off tab: the same action, toast, notice and log. It redraws.
+  signOff: function (key) {
+    var i = -1; D.S.sk.requests.forEach(function (r, j) { if (i < 0 && reqKey(r) === key) i = j; });
+    if (i < 0) return false;
+    A.skqok({ dataset: { i: String(i) } });
+    return true;
+  },
+  // For the signed-in student: the sign-offs they wait for, and each shop machine with "yes", "training" or "no".
+  mine: function () {
+    var name = D.me().name, P = D.S.sk.prog[name];
+    if (!P) return { waiting: [], machines: [] };
+    return {
+      waiting: D.S.sk.requests.filter(function (r) { return r.st === name; }).map(function (r) { return { skill: BYID[r.id].name, since: r.at || "" }; }),
+      machines: PERMITS.map(function (tool) { return { name: tool.name, state: permitState(P, tool) }; })
+    };
+  },
+  // Skills, on one tab: "signoff", "overview" or "permits".
+  open: function (tab) { if (tab) D.S.tabs.skills = tab; D.go("skills"); }
 };
 
 D.inits.push(function (S) {
