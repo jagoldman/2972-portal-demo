@@ -118,11 +118,12 @@ D.eventRows = function () {
   var onField = m && m.q === c.current, after = onField ? c.matches.filter(function (x) { return x.q > m.q && (x.red.indexOf(2972) >= 0 || x.blue.indexOf(2972) >= 0); })[0] : null;
   if (onField) rows.push({ app: "pit", tab: "check", tall: true, quiet: true, title: "Save the Qual " + m.q + " checklist after the match", line: after ? "Then start the one for Qual " + after.q + ", scheduled " + after.time : "", btn: "Open the checklist" });
   else if (total - ticked > 0) rows.push({ app: "pit", tab: "check", title: "Finish the checklist" + (m ? " before Qual " + m.q : ""), line: (total - ticked) + (total - ticked === 1 ? " check" : " checks") + " left", btn: "Open the checklist" });
-  if (c.issues && c.issues.length) rows.push({ app: "pit", tab: "check", title: c.issues.length + (c.issues.length === 1 ? " open issue" : " open issues") + " in the pit", line: c.issues.slice(0, 2).map(function (i) { return i.n; }).join(", ") });
+  if (c.issues && c.issues.length) rows.push({ app: "pit", tab: "check", title: c.issues.length + (c.issues.length === 1 ? " open issue" : " open issues") + " in the pit", lines: c.issues.slice(0, 3).map(function (i) { return i.n; }) });
   return rows;
 };
 // The person whose row the schedule has. Students are Sam Ortiz in the sample data, as on My schedule; a mentor not
 // on the schedule (the admin) has no shift.
+D.eventWho = function () { return evWho(); };
 function evWho() { return D.S.role === "student" ? "Sam Ortiz" : PEOPLE.indexOf(D.me().name) >= 0 ? D.me().name : null; }
 // "Scouting until 10:00, then Break". Same day and slot as the Schedule's own card and the Scouting form.
 function evNow() {
@@ -130,7 +131,7 @@ function evNow() {
   var c = C(), runs = runsOf(scheduleRows()[who]), cur = runs.filter(function (r) { return r.from <= c.nowSlot && c.nowSlot <= r.to; })[0];
   if (!cur) return "No shift now";
   var nxt = runs[runs.indexOf(cur) + 1];
-  return ROLES[cur.r].label + " until " + slotLabel(cur.to + 1) + (nxt ? ", then " + ROLES[nxt.r].label : "");
+  return ROLES[cur.r].label + " until " + slotLabel(cur.to + 1) + (nxt ? ", then " + ROLES[nxt.r].label.toLowerCase() : "");
 }
 // Match times are 12-hour labels from slotLabel, and the day starts at 8:00, so 1:00 to 7:59 are afternoon.
 function labelMins(t) { var p = String(t).split(":"), h = +p[0]; if (h < 8) h += 12; return h * 60 + (+p[1] || 0); }
@@ -169,7 +170,7 @@ D.myShiftCard = function () { return mySchedule("", true); };
 function mySchedule(dayTabs, heroOnly) {
   var c = C(), who = D.S.role === "student" ? "Sam Ortiz" : PEOPLE.indexOf(D.me().name) >= 0 ? D.me().name : "Ms. Rivera";
   var row = scheduleRows()[who], runs = runsOf(row), cur = runs.filter(function (r) { return r.from <= c.nowSlot && c.nowSlot <= r.to; })[0], nxt = runs[runs.indexOf(cur) + 1];
-  return '<div class="card hero"><div class="row between"><div><p class="eyebrow">' + (D.ground() ? (heroOnly ? "" : esc((D.calApi && D.calApi.currentEvent() ? D.calApi.currentEvent().name : "Colorado Regional")) + ", ") + c.days[c.day] + ", now " + slotLabel(c.nowSlot) + (START + c.nowSlot * 15 < 720 ? " am" : " pm") : c.days[c.day] + " · now " + slotLabel(c.nowSlot)) + '</p><h2 class="herotitle">' + esc(ROLES[cur.r].label) + " until " + slotLabel(cur.to + 1) + "</h2>" + (nxt ? '<p class="mute">Then ' + esc(ROLES[nxt.r].label) + (D.ground() ? "" : " at " + slotLabel(nxt.from)) + ".</p>" : "") + "</div>" + (D.ground() ? "" : dayTabs) + "</div>" +
+  return '<div class="card hero"><div class="row between"><div><p class="eyebrow">' + (D.ground() ? (heroOnly ? "" : esc((D.calApi && D.calApi.currentEvent() ? D.calApi.currentEvent().name : "Colorado Regional")) + ", ") + c.days[c.day] + ", now " + slotLabel(c.nowSlot) + (START + c.nowSlot * 15 < 720 ? " am" : " pm") : c.days[c.day] + " · now " + slotLabel(c.nowSlot)) + '</p><h2 class="herotitle">' + esc(ROLES[cur.r].label) + " until " + slotLabel(cur.to + 1) + "</h2>" + (nxt ? '<p class="mute">Then ' + esc(D.ground() ? ROLES[nxt.r].label.toLowerCase() + " until " + slotLabel(nxt.to + 1) : ROLES[nxt.r].label + " at " + slotLabel(nxt.from)) + ".</p>" : "") + "</div>" + (D.ground() ? "" : dayTabs) + "</div>" +
     (cur.r === "scout" ? '<div><button class="btn primary" data-act="go" data-v="scouting">Open my scouting match</button></div>' : cur.r === "pit" ? '<div><button class="btn primary" data-act="go" data-v="pit">Open Pit checklists</button></div>' : "") + "</div>" +
     (heroOnly ? "" : '<div class="card">' + (D.ground() ? '<div class="row between"><h2>' + esc(who) + "</h2>" + dayTabs + "</div>" : "<h2>" + esc(who) + "</h2>") + '<div class="timeline">' + runs.map(function (r) { return '<div class="tlrow"><span class="num small">' + slotLabel(r.from) + "–" + slotLabel(r.to + 1) + (D.ground() ? (START + (r.to + 1) * 15 <= 720 ? " am" : " pm") + '<span class="tldur">' + ((r.to - r.from + 1) / 4) + " h</span>" : "") + '</span><div class="tlbar' + (r === cur ? " now" : "") + '" style="--rc:' + ROLES[r.r].color + '"><span>' + esc(ROLES[r.r].label) + "</span>" + (r === cur ? '<b class="nowtag">Now</b>' : "") + "</div></div>"; }).join("") + "</div></div>");
 }

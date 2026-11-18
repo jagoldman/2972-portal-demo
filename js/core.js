@@ -372,7 +372,7 @@ function nowRow(o) {
 function nowRows() {
   var S = D.S, rows = [], api = D.calApi, c = S.cal, staff = D.isStaff(), P = apiWith(D.partsApi, ["needsOk", "approve", "open"]), K = apiWith(D.skillsApi, ["requests", "signOff"]);
   // At an event, Now holds only what the event needs (hill climb r4): the pit's own rows, from the Competition app.
-  if (S.eventDay && S.role !== "parent") return (D.eventRows ? D.eventRows() : []).map(function (r) { return { app: r.app, tab: r.tab, title: r.title, tall: r.tall, line: esc(r.line || ""), btn: r.btn ? '<button class="btn' + ((S.role === "student" && D.myShiftCard) || r.quiet ? "" : " primary") + '" data-act="goapp" data-app="' + r.app + '" data-tab="' + r.tab + '">' + esc(r.btn) + "</button>" : "" }; });
+  if (S.eventDay && S.role !== "parent") return (D.eventRows ? D.eventRows() : []).map(function (r) { return { app: r.app, tab: r.tab, title: r.title, tall: r.tall, line: r.lines ? r.lines.map(function (l) { return '<span class="rl2">' + esc(l) + "</span>"; }).join("") : esc(r.line || ""), btn: r.btn ? '<button class="btn' + ((S.role === "student" && D.myShiftCard) || r.quiet ? "" : " primary") + '" data-act="goapp" data-app="' + r.app + '" data-tab="' + r.tab + '">' + esc(r.btn) + "</button>" : "" }; });
   practiceRows().forEach(function (r) {
     // A parent's first question is the next practice. When that is today, the row says "today", not the date.
     // A parent's practices are the "This week" list, which leads their page, so Now holds only what they can do.
@@ -467,7 +467,7 @@ function homeGround() {
   var d = new Date(2026, 10, 10); try { if (D.calApi && D.calApi.TODAYS) { var q = D.calApi.TODAYS.split("-"); d = new Date(+q[0], +q[1] - 1, +q[2]); } } catch (e) {}
   var date = d.toLocaleDateString("en-US", { weekday: "long", month: "long", day: "numeric" });
   var now = nowRows(), others = role === "student" && !S.eventDay ? waitingOnOthers() : [];
-  var mainCol = "", shift = role === "student" && S.eventDay && !!D.myShiftCard;
+  var mainCol = "", shift = S.eventDay && !!D.myShiftCard && (role === "student" || (role !== "parent" && !!D.eventWho && !!D.eventWho()));
   // On an event day a student's shift is what needs them now, so it leads and no "nothing needs you" sits above it.
   if (shift) mainCol += '<div class="shiftcard">' + D.myShiftCard() + "</div><!--evl-->";
   var week = S.eventDay ? "" : '<section class="card wkcard"><h2>This week</h2>' + weekRows() + "</section>";

@@ -212,7 +212,7 @@ function findBox(q, reqHits) {
   } else if (reqHits) {
     html += '<div class="row pnone"><p>Nothing like “' + esc(q) + '” is in the shop.</p><button class="btn" data-act="pask">Request it</button></div>';
   } else {
-    html += '<div class="pnone pnothing"><p>Nothing like “' + esc(q) + '” is in the shop or on order.</p><p>Try a shorter name or the part number. If you request it, a mentor sees it.</p><div><button class="btn primary pmain" data-act="pask">Request “' + esc(q.length > 24 ? q.slice(0, 23) + "…" : q) + '”</button></div></div>';
+    html += '<div class="pnone pnothing"><p>Nothing like “' + esc(q) + '” is in the shop or on order.</p><p>Try a shorter name or the part number. If you request it, a mentor will OK it and order it.</p><div><button class="btn primary pmain" data-act="pask">Request “' + esc(q.length > 24 ? q.slice(0, 23) + "…" : q) + '”</button></div></div>';
   }
   return html;
 }
@@ -245,7 +245,7 @@ function reqSteps(r, part) {
   /* A step that is done is named in the past ("Ordered", with who and when). The step being waited for is "now" and
      is named as the thing to come ("Order"), and so are the steps after it. So the mark, the words and the sentence
      above them all say the same thing: what is finished, and what the request waits for (hill climb r5). */
-  var DONE = ["Asked", skip ? "OK" : "Approved", "Ordered", "Arrived", "Put away"], TODO = ["Ask", "Approval", "Order", "Arrival", "Put away"];
+  var DONE = ["Asked", skip ? "OK" : "Approved", "Ordered", "Arrived", "Put away"], TODO = ["Ask", "OK", "Order", "Arrival", "Put away"];
   var wait = r.status === "putaway" ? 5 : cur + 1, subs = [stepSub(asked), skip ? "not needed" : okSub, ordSub, arrSub, putSub];
   var now = panelMove(r), steps = D.stages(DONE.map(function (n, i) { return [i < wait ? n : TODO[i], subs[i], skip && i === 1 && i < wait ? "skip" : ""]; }), wait, "Where this request is");
   // The arrival date is already under Arrived, so an ordered request has no second line saying it. The order number
@@ -336,7 +336,7 @@ D.drawers.preq = function (d) {
   if (D.ground()) {
     var gacts = acts.length || cancelBtn ? '<div class="row pacts">' + acts.join("") + cancelBtn + "</div>" : "";
     // What a mentor needs to decide sits between the steps and the buttons: why, how much, and what it does to the budget.
-    var ctx = staff && r.status === "needsok" && r.why ? '<p class="pctx">' + esc(r.by) + ": “" + esc(r.why) + "”</p>" + '<p class="pctx pcost"><b>' + money(total(r)) + "</b>. " + budgetEffect(r) + "</p>" + (ob && orderByText(ob).indexOf("late") > 0 ? '<p class="pctx"><b class="pbad">' + orderByText(ob) + "</b></p>" : "") : "";
+    var ctx = staff && r.status === "needsok" && r.why ? '<p class="pctx">' + esc(r.by) + ": “" + esc(r.why) + "”</p>" + '<p class="pctx pcost"><b>' + money(total(r)) + "</b><br>" + budgetEffect(r, true) + "</p>" + (ob && orderByText(ob).indexOf("late") > 0 ? '<p class="pctx"><b class="pbad">' + orderByText(ob) + "</b></p>" : "") : "";
     return D.drawerHead("Request #" + r.id, r.name) + (ctx ? reqSteps(r, "move") + ctx + gacts + reqSteps(r, "steps") : top + ctx + gacts) +
       (r.why && !ctx ? '<p class="mute">“' + esc(r.why) + "”</p>" : "") +
       '<dl class="pkv">' + rows.map(function (x) { return "<dt>" + x[0] + "</dt><dd>" + x[1] + "</dd>"; }).join("") + "</dl>" +

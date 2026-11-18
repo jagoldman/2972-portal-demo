@@ -303,3 +303,8 @@
 :root[data-design="c"] .pwait > .row.nowrap { flex-wrap: wrap; }
 /* With an order-by line in the cell, the wide table drops "N practices left" there, so the row stays short. */
 @media (min-width: 900px) { :root[data-design="c"] .ptable.gt .pd:has(.pobrow) .ppr { display: none; } }
+
+/* ---- Hill climb round 11 ---- */
+:root[data-design="c"] {
+  @media (min-width: 900px) { .ptable.gt .pth, .ptable.gt .ptr { grid-template-columns: minmax(0, 2fr) minmax(0, .9fr) 6rem 5.5rem minmax(0, .9fr) 10.5rem 5rem 10.5rem; } }
+}

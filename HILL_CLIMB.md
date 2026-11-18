@@ -16,7 +16,8 @@ Every judge in a tier must score every area at the tier's target. Fixes are made
 | 8 | 3 (9.5) | Opus, GPT-6.1 Sol, Grok 4.7 | 7.6 to 9.2 | 16 of 16 areas under 9.5; Opus 7.6 to 8.6, Sol 7.9 to 9.2, Grok 4.7 7.8 to 8.8; lowest per area 7.6 to 8.6 (a little under round 7) |
 | 9 | 3 (9.5) | Opus, GPT-6.1 Sol, Grok 4.7 | 7.8 to 9.2 | 16 of 16 areas under 9.5; Opus 8.2 to 8.8, Sol 7.8 to 9.2, Grok 4.7 8.0 to 9.1; lowest per area 7.8 to 8.8 |
 | 10 | 3 (9.5) | Opus, GPT-6.1 Sol, Grok 4.7 | 7.9 to 9.3 | 16 of 16 areas under 9.5; Opus 8.2 to 8.9, Sol 8.0 to 9.3, Grok 4.7 7.9 to 9.1; lowest per area 7.9 to 8.9 |
-| 11 | 3 (9.5) | Opus, GPT-6.1 Sol, Grok 4.7 | with the judges | |
+| 11 | 3 (9.5) | Opus, Grok 4.7 (GPT-6.1 Sol stopped partway: usage limit reached) | 8.1 to 9.1 | 16 of 16 areas under 9.5; Opus 8.3 to 9.0, Grok 4.7 8.1 to 9.1; lowest per area 8.1 to 9.0. Two judges only, so this round is not a full tier-3 round |
+| 12 | 3 (9.5) | Opus, GPT-6.1 Sol, Grok 4.7 | with the judges | |
 
 Grok 4.5 was thrown out in rounds 1 and 2: asked to copy exact text from three screenshots, it invented it.
 Grok 4.6 copied the text correctly in round 3 and counts.
@@ -181,3 +182,7 @@ drops (Tools, To order) were faults the lead introduced in round 4 and fixed bef
   colours.
 - **"Subscribe" on a phone.** Two judges asked for an icon, as other apps' tab-row buttons have. There is no plain
   icon for subscribing, so it stays a word, and the brief says so.
+- **Sign off on a mentor's phone Home.** Round 10's three judges asked for a full-width button under each request;
+  round 11 asked for a compact one on the title line. It stays full width under the request.
+- **Round 11 had two judges.** GPT-6.1 Sol reached its usage limit partway through and wrote no result. The round's
+  fixes come from Opus and Grok 4.7.
