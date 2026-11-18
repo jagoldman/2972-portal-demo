@@ -67,5 +67,12 @@ near("reduction for 2.2x, rounded hand figure", p.ratioGood, 2.564, 0.001);
   ok("the pulley is past where the piece stops", G.run >= G.straight + G.Rr);
 });
 
+// Item 12 (round 6): the piece's speed is compared with the drive speed as it stands, because at first touch the
+// piece's path runs along the floor, the same line the robot drives on. Check that direction for several sizes.
+[{ piece: 5.91, roller: 2, travel: 14 }, { piece: 16, roller: 0.5, travel: 60 }, { piece: 2, roller: 6, travel: 2 }].forEach(function (sz) {
+  var dir = M.geom(sz).at(0).dir;
+  near("piece " + sz.piece + " in: at first touch it moves along the floor (x)", dir[0], -1, 1e-12);
+  near("piece " + sz.piece + " in: and not up or down", dir[1], 0, 1e-12);
+});
 console.log(fails ? fails + " of " + n + " checks failed" : "all " + n + " checks passed");
 if (fails) process.exit(1);

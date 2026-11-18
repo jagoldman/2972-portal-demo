@@ -99,6 +99,8 @@ M.compute = function (s) {
   r.timeGo = r.go.time; r.timeBack = r.back ? r.back.time : Infinity;
   // Feedforward at the output shaft, in radians.
   // kG balances gravity alone; kS is the motor's own friction (free current times resistance). Holding takes both.
+  // The torque the motor's own friction adds while it brakes (its free current through the gearbox), N m.
+  r.fricT = dr.motor.kt * dr.motor.freeA * dr.n * dr.ratio * dr.eff;
   r.kG = (arm.tau0 < 0 ? -1 : 1) * dr.kG(arm.tau0); r.kS = dr.kS; r.freeA = dr.motor.freeA; r.kV = dr.kV; r.kA = dr.kA(arm.J);
   // Charts.
   function chart(Y) { var out = []; segs.forEach(function (g) { out = out.concat(thin(T.slice(g[0], g[1]), Y.slice(g[0], g[1]), 90)); }); return out; }
@@ -135,7 +137,7 @@ K.tool({
   controls: function () {
     var arm = K.num(ID, "len", "Pivot to end", { unit: "in", min: 4, max: 60, step: 0.5, slider: true, tip: "From the centre of the pivot to the far end, where the load sits." }) +
       K.num(ID, "armLb", "Weight of the arm", { unit: "lb", min: 0, max: 30, step: 0.25, tip: "The arm's own tubes, plates and belts: everything that swings, except the load at the end." }) +
-      K.num(ID, "comPct", "Its weight sits at", { unit: "% of length", min: 0, max: 100, step: 1, hint: "For speeding up, the arm counts as a plain bar whose middle is here.", hintId: "h-arm-com", tip: "Where the arm's own centre of mass is, along it from the pivot. 50 for a plain tube; less if the heavy parts are near the pivot." }) +
+      K.num(ID, "comPct", "Its weight sits at", { unit: "% of length", min: 0, max: 100, step: 1, hint: "Used for the inertia: the arm counts as a plain bar with its weight here.", hintId: "h-arm-com", tip: "Where the arm's own centre of mass is, along it from the pivot. 50 for a plain tube; less if the heavy parts are near the pivot." }) +
       K.num(ID, "loadLb", "Load at the end", { unit: "lb", min: 0, max: 30, step: 0.25, slider: true, tip: "The end effector and the game piece it carries." }) +
       K.num(ID, "start", "Start angle", { unit: "deg", min: -90, max: 180, step: 1, tip: "From level. +90 is straight up, -90 straight down, 180 level the other way." }) +
       K.num(ID, "end", "End angle", { unit: "deg", min: -90, max: 180, step: 1, slider: true, tip: "From level. You can also drag the end of the arm in the drawing." });
@@ -171,12 +173,12 @@ K.tool({
   },
 
   more: function (s, r) {
-    var out = K.chart({ id: "arm-tq", title: "Torque against angle", x: { label: "angle (deg)", unit: "°", name: "Angle", min: r.tqRange[0], max: r.tqRange[1] }, y: { label: "lb in", unit: "lb in" },
+    var out = K.chart({ id: "arm-tq", title: "Torque against angle", x: { label: "angle (deg)", unit: "°", name: "Angle", min: r.tqRange[0], max: r.tqRange[1] }, y: { label: "lb in", unit: "lb in", max: tqTop(r) },
       series: [{ name: "Gravity needs", pts: r.chTq, color: 2 }, { name: "Gearbox gives at " + s.statorA + " A", pts: r.chAvail, color: 1, dash: true }],
       marks: [{ x: s.start, label: "start" }, { x: s.end, label: "end" }] });
     out += '<div class="chartrow">' +
       K.chart({ id: "arm-ang", title: "Angle", x: { label: "time (s)", unit: "s", name: "Time" }, y: { label: "deg", unit: "°" }, series: [{ name: "Angle", pts: r.chAng }] }) +
-      K.chart({ id: "arm-a", title: "Current in each motor", x: { label: "time (s)", unit: "s", name: "Time" }, y: { label: "A", unit: "A", min: 0, max: Math.max(s.statorA * 1.15, r.peakA * 1.05, 10) }, series: [{ name: "Current", pts: r.chA, color: 2 }], hlines: [{ y: s.statorA, label: "Limit " + s.statorA + " A" }] }) + "</div>";
+      K.chart({ id: "arm-a", title: "Current in each motor", x: { label: "time (s)", unit: "s", name: "Time" }, y: { label: "A", unit: "A", min: 0, max: Math.max(s.statorA * 1.4, r.peakA * 1.25, 10) }, series: [{ name: "Current", pts: r.chA, color: 2 }], hlines: [{ y: s.statorA, label: "limit " + s.statorA + " A", side: "left" }] }) + "</div>";
     var code = "// Arm feedforward, angle in radians from level\n" +
       "public static final double kS = " + K.fix(r.kS, 3) + "; // volts: the motor's own friction only; a real mechanism's is larger, measure it\n" +
       "public static final double kG = " + K.fix(r.kG, 3) + "; // volts at level; use kG * cos(angle)\n" +
@@ -240,6 +242,8 @@ function meter(g, x, y, w, label, value, frac, state) {
   g.rect(x, y + 5, w, 6, { fill: c.line, stroke: null, radius: 3 });
   g.rect(x, y + 5, Math.max(0, Math.min(1, frac)) * w, 6, { fill: state === "bad" ? c.bad : state === "warn" ? c.warn : c.s1, stroke: null, radius: 3 });
 }
+// The torque chart's top: room above both lines, so the start and end names (which sit at the top) touch neither.
+function tqTop(r) { var hi = r.avail * NM_LBIN; r.chTq.forEach(function (p) { hi = Math.max(hi, p[1]); }); var st = hi > 500 ? 100 : hi > 200 ? 50 : hi > 50 ? 20 : 5; return Math.ceil(hi * 1.3 / st) * st; }
 // A curved arrow round (x, y): from canvas angle a0, sweeping `sweep` radians (+ = clockwise on screen).
 function turn(g, x, y, rad, a0, sweep, color, width) {
   if (Math.abs(sweep) < 0.05) return;
@@ -270,9 +274,9 @@ function stallMsg(s, r) {
   if (r.stallGo == null) return "Stops at " + deg(r.stuckAt) + ".";
   return "Stalls past " + deg(r.stallGo) + ": " + (r.goWhy === "counterbalance" ? "the counterbalance pushes back with" : "gravity needs") + " up to " + K.n(r.peakNeed * NM_LBIN, 0) + " lb in, the gearbox gives " + K.n(r.avail * NM_LBIN, 0) + ".";
 }
-function hudHeight(g, s, r, w) { return 22 + 17 + 34 + 44 + (r.reached ? 14 : 15 * wrap(g, stallMsg(s, r), w, { size: 12, weight: 600 }).length); }
+function hudHeight(g, s, r, w) { return 22 + 17 + 34 + 56 + (r.reached ? 14 : 15 * wrap(g, stallMsg(s, r), w, { size: 12, weight: 600 }).length); }
 function draw(g, s, r, t) {
-  var c = g.c, L = Math.max(0.5, s.len), ph;
+  var c = g.c, L = Math.max(0.5, s.len), ph, swing = null, wbox = null, level = null;
   // The pivot sits high enough that the arm clears the floor at its lowest angle.
   var lo = Math.min(s.start, s.end) * DEG, hi = Math.max(s.start, s.end) * DEG, i;
   var low = 0; for (i = 0; i <= 40; i++) low = Math.min(low, Math.sin(lo + (hi - lo) * i / 40));
@@ -310,12 +314,15 @@ function draw(g, s, r, t) {
   var near0 = Math.abs(s.start) < 12 || Math.abs(s.end) < 12, near180 = Math.abs(s.start) > 168 || Math.abs(s.end) > 168;
   if (near0 && near180) { /* an outline lies along both ends of the line: leave the word off */ }
   else if (near0) g.text("level", PX - Lp(2.8), PY, { size: 11, color: c.mute, align: "right", base: "middle" });
-  else g.text("level", X(L + 2), PY + 13, { size: 11, color: c.mute, align: "right" });
+  else { var lvw = g.textWidth("level", { size: 11 }), lvx = X(L + 2); level = { x0: lvx - lvw - 2, x1: lvx + 2, y0: PY + 3, y1: PY + 16, draw: function () { g.text("level", lvx, PY + 13, { size: 11, color: c.mute, align: "right" }); } }; }
   var aR = Lp(L) * 0.42, ca0 = -s.start * DEG, ca1 = -s.end * DEG;
   if (Math.abs(s.end - s.start) >= 1) {
     g.arc(PX, PY, aR, Math.min(ca0, ca1), Math.max(ca0, ca1), { color: c.mute, width: 1.25, dash: [3, 3] });
     var mid = (ca0 + ca1) / 2, lr = aR + 14;
-    g.text("swing " + K.fix(Math.abs(s.end - s.start), 0) + "°", PX + lr * Math.cos(mid), PY + lr * Math.sin(mid), { size: 12, weight: 700, color: c.text2, align: Math.cos(mid) < -0.3 ? "right" : Math.cos(mid) > 0.3 ? "left" : "center", base: "middle" });
+    // Drawn last (below), and left out in a frame where the moving arm or its weight label would sit on it.
+    var swTxt = "swing " + K.fix(Math.abs(s.end - s.start), 0) + "°", swAl = Math.cos(mid) < -0.3 ? "right" : Math.cos(mid) > 0.3 ? "left" : "center", swW = g.textWidth(swTxt, { size: 12, weight: 700 });
+    var swX = PX + lr * Math.cos(mid), swY = PY + lr * Math.sin(mid), sx0 = swAl === "right" ? swX - swW : swAl === "center" ? swX - swW / 2 : swX;
+    swing = { x0: sx0 - 3, x1: sx0 + swW + 3, y0: swY - 9, y1: swY + 9, draw: function () { g.text(swTxt, swX, swY, { size: 12, weight: 700, color: c.text2, align: swAl, base: "middle" }); } };
   }
   // Ghosts at the start and end, each with its angle.
   function bar(a, o) {
@@ -345,7 +352,17 @@ function draw(g, s, r, t) {
   if (wt > 0) {
     g.circle(cmx, cmy, 4, { fill: c.sheet, stroke: c.force, width: 2 });
     var wl = Math.max(16, Math.min(70, Lp(wt * 0.6), Y(0) - 8 - cmy));
-    g.arrow(cmx, cmy + 4, cmx, cmy + 4 + wl, { color: c.force, width: 2.5, label: "arm and load, " + K.fix(wt, wt < 10 ? 1 : 0) + " lb" });
+    g.arrow(cmx, cmy + 4, cmx, cmy + 4 + wl, { color: c.force, width: 2.5 });
+    /* The weight, and what it is: the marker is where arm and load together act, so the block at the end is not read
+       as all of it. Two lines beside the arrow, on the side where the arm is not (right when the arm rises to the right
+       or falls to the left, else left), moved off the level line if they would sit on it. */
+    // An arm going down to the right has its weight's label above it instead (the arm drops away under it there).
+    var lev = Math.abs(Math.sin(th)) < 0.26, upR = !lev && Math.cos(th) > 0 && Math.sin(th) < 0;
+    var rt = upR || lev || Math.cos(th) * Math.sin(th) >= 0, wx = cmx + (rt ? 8 : -8), wy = upR ? cmy - Lp(1) - 30 : cmy + 4 + wl * 0.35, PYl = Y(py);
+    if (wy - 8 < PYl + 5 && wy + 22 > PYl - 5) wy = wy < PYl ? PYl - 28 : PYl + 12;
+    var wo = { color: c.force, weight: 700, base: "middle", align: rt ? "left" : "right" }, l2 = "arm and load together";
+    g.text(K.fix(wt, wt < 10 ? 1 : 0) + " lb", wx, wy, wo); g.text(l2, wx, wy + 14, Object.assign({ size: 11 }, wo));
+    var ww = g.textWidth(l2, { size: 11, weight: 700 }); wbox = { x0: rt ? wx : wx - ww, x1: rt ? wx + ww : wx, y0: wy - 8, y1: wy + 22 };
   }
   /* Torques at the pivot, to one scale: gravity (turns it down) and the motor. Drawn round the pivot gear, clearly
      larger than it, each with its name beside its arrowhead. A small torque gets a smallest sweep so it still shows. */
@@ -353,17 +370,22 @@ function draw(g, s, r, t) {
   var gearOut = Lp(2.2) + Math.min(Lp(2.2) * 0.35, 2 * Math.PI * Lp(2.2) / 36 / Math.PI), tR = Math.max(gearOut + 22, Lp(5.5)), tM = tR + 14;
   function sweepOf(v) { var sw = full * v / big; if (Math.abs(v) > 0.01 * big && Math.abs(sw) < 0.9) sw = sw < 0 ? -0.9 : 0.9; return sw; }
   // Centred across the arm, on the side that faces up the screen, so they sit in clear space off the arm and the post.
-  var aCan = Math.sin(-th + Math.PI / 2) < Math.sin(-th - Math.PI / 2) ? -th + Math.PI / 2 : -th - Math.PI / 2, sgv = sweepOf(gq), smv = sweepOf(-q), braking = q * w < -1e-9;
-  // Each name sits outside both arcs, at its own arc's tail (the arrowheads are at the other ends).
-  var used = [];
+  // Of the directions across from the arm (or behind it), the one farthest from the arm, the post, the level line and
+  // the start and end outlines, so the arcs and their names sit in clear space.
+  function adist(a, b) { var d = Math.abs(((a - b) % (2 * Math.PI) + 3 * Math.PI) % (2 * Math.PI) - Math.PI); return d; }
+  var avoid = [-th, Math.PI / 2, 0, -s.start * DEG, -s.end * DEG], aCan = null, bestD = -1;
+  [-th - Math.PI / 2, -th + Math.PI / 2, -th + Math.PI].forEach(function (a) { var d = Math.min.apply(null, avoid.map(function (b) { return adist(a, b); })); if (d > bestD + 0.05) { bestD = d; aCan = a; } });
+  var sgv = sweepOf(gq), smv = sweepOf(-q), braking = q * w < -1e-9;
+  /* The names sit outside both arcs, across from the arm (the arcs' middle, which is never on the arm or the post),
+     one above the other. */
+  var nLab = 0;
   function arcLabel(str, aTail, color) {
-    var rad = tM + 12, lx = PX + rad * Math.cos(aTail), ly = PY + rad * Math.sin(aTail), cs = Math.cos(aTail);
-    used.forEach(function (u) { if (Math.abs(u[0] - lx) < 90 && Math.abs(u[1] - ly) < 14) ly = u[1] + (ly >= u[1] ? 14 : -14); });
-    used.push([lx, ly]);
+    var rad = tM + 14, cs = Math.cos(aCan), lx = PX + rad * cs, ly = PY + rad * Math.sin(aCan) + (Math.sin(aCan) < 0 ? -15 : 15) * nLab++;
     g.text(str, lx, ly, { size: 11, weight: 700, color: color, align: cs < -0.3 ? "right" : cs > 0.3 ? "left" : "center", base: "middle" });
   }
   if (Math.abs(sgv) >= 0.05) turn(g, PX, PY, tR, aCan - 0.5 * sgv, sgv, c.force, 3);
-  if (ph !== "end" && Math.abs(smv) >= 0.05) turn(g, PX, PY, tM, aCan - 0.5 * smv, smv, c.s1, 3);
+  // The motor's ring is thin, so the pivot and the arm's root show through it.
+  if (ph !== "end" && Math.abs(smv) >= 0.05) turn(g, PX, PY, tM, aCan - 0.5 * smv, smv, c.s1, 1.6);
   if (Math.abs(sgv) >= 0.05) arcLabel(phone ? "gravity" : "gravity " + K.n(Math.abs(gq) * NM_LBIN, 0), aCan - 0.5 * sgv, c.force);
   if (ph !== "end" && Math.abs(smv) >= 0.05) arcLabel(phone ? (braking ? "motor, braking" : "motor") : (braking ? "motor, braking " : "motor ") + K.n(Math.abs(q) * NM_LBIN, 0), aCan - 0.5 * smv, c.s1);
   // The read-out at the top left.
@@ -373,12 +395,24 @@ function draw(g, s, r, t) {
   var ky = hy2 + 34;
   g.line(hx2, ky, hx2 + 16, ky, { color: c.force, width: 2.5 }); g.text("gravity " + K.n(Math.abs(gq) * NM_LBIN, 0) + " lb in", hx2 + 22, ky, { size: 11, color: c.text2, base: "middle" });
   g.line(hx2, ky + 15, hx2 + 16, ky + 15, { color: c.s1, width: 2.5 }); g.text((q * w < -1e-9 ? "motor, braking " : "motor ") + K.n(Math.abs(q) * NM_LBIN, 0) + " lb in" + (q * w < -1e-9 ? " (friction helps)" : ""), hx2 + 22, ky + 15, { size: 11, color: c.text2, base: "middle" });
-  meter(g, hx2, ky + 40, hudW, "Current per motor", K.fix(amps, 0) + " of " + s.statorA + " A", amps / s.statorA, amps >= s.statorA - 0.5 ? "warn" : "");
-  var ny = ky + 66;
+  // While braking, how much of that the motor's own friction adds (room is kept for the line, so nothing jumps).
+  if (q * w < -1e-9) g.text("friction adds " + K.n(r.fricT * NM_LBIN, 0) + " lb in while braking", hx2 + 22, ky + 30, { size: 11, color: c.mute, base: "middle" });
+  meter(g, hx2, ky + 52, hudW, "Current per motor", K.fix(amps, 0) + " of " + s.statorA + " A", amps / s.statorA, amps >= s.statorA - 0.5 ? "warn" : "");
+  var ny = ky + 78;
   if (!r.reached) {
     var msg = stallMsg(s, r);
     wrap(g, msg, hudW, { size: 12, weight: 600 }).forEach(function (ln, j) { g.text(ln, hx2, ny + 15 * j, { size: 12, weight: 600, color: c.bad }); });
   } else if (!drag && ph === "end") g.text("Drag the end of the arm to set the end angle.", hx2, ny, { size: 11, color: c.mute });
+  // The level line's name, unless the weight's label is on it in this frame.
+  if (level && !(wbox && level.x0 < wbox.x1 && level.x1 > wbox.x0 && level.y0 < wbox.y1 && level.y1 > wbox.y0)) level.draw();
+  // The swing's name, unless the arm or the weight's label is on it in this frame.
+  if (swing) {
+    var hitBox = wbox && swing.x0 < wbox.x1 && swing.x1 > wbox.x0 && swing.y0 < wbox.y1 && swing.y1 > wbox.y0;
+    var ax = tipPx[0] - PX, ay = tipPx[1] - PY, al = ax * ax + ay * ay || 1, hitArm = [[swing.x0, swing.y0], [swing.x1, swing.y0], [swing.x0, swing.y1], [swing.x1, swing.y1], [(swing.x0 + swing.x1) / 2, (swing.y0 + swing.y1) / 2]].some(function (p) {
+      var u = F.clamp(((p[0] - PX) * ax + (p[1] - PY) * ay) / al, 0, 1); return Math.hypot(p[0] - PX - u * ax, p[1] - PY - u * ay) < Lp(1) + 6;
+    });
+    if (!hitBox && !hitArm) swing.draw();
+  }
   K.chartNow("arm-ang", drag ? null : t); K.chartNow("arm-a", drag ? null : t); K.chartNow("arm-tq", th / DEG);
 }
 })(typeof window !== "undefined" ? window : this);

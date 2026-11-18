@@ -30,6 +30,10 @@ M.model = function (o) {
     load: function (x) { return wc + sec(x) * ws; },
     heights: function (x) { var h = []; for (var i = 1; i <= n; i++) h.push(F.clamp(x - (n - i + 1) * seg, 0, i * seg)); h.push(x); return h; } };
 };
+/* When a simulated move switches to full reverse to stop on its goal: the start of the last stretch where the speed
+   only falls. (In continuous rigging a stage joining can slow the lift too, but under full power it speeds up again
+   after, so the last falling stretch is the stop.) */
+M.reverseAt = function (sim) { var v = sim.v, i = v.length - 2; while (i > 0 && v[i - 1] > v[i] + 1e-12) i--; return sim.t[Math.max(0, i)]; };
 // Work done lifting from the bottom to the top (J): the integral of rope tension over rope travel.
 M.work = function (mod) { var N = 2000, dx = mod.rope / N, w = 0; for (var i = 0; i < N; i++) w += mod.load((i + 0.5) * dx) * dx; return w; };
 M.driveOf = function (s, ratio) { return F.drive({ motor: s.motor, n: Math.max(1, Math.round(s.motors)), ratio: ratio == null ? s.ratio : ratio, eff: s.eff / 100, statorA: s.statorA }); };
@@ -89,6 +93,8 @@ M.compute = function (s) {
     r.duration = tEnd + 1.2; r.stallX = xs;
   }
   r.T = T; r.X = X; r.V = Vv; r.A = A; r.B = B;
+  // When full reverse starts on each move (absolute times), for the phase marks on the current chart.
+  if (r.reached) { r.tRev1 = M.reverseAt(r.up); if (r.down && r.down.reached) r.tRev2 = r.tHold + 1e-4 + M.reverseAt(r.down); }
   var sims = [r.up].concat(r.down ? [r.down] : []);
   r.peakA = Math.max.apply(null, sims.map(function (m) { return m.peakA; }));
   r.minV = Math.min.apply(null, sims.map(function (m) { return m.minV; }).concat(r.reached ? [] : [B[B.length - 1]]));
@@ -163,8 +169,8 @@ K.tool({
     var seg = s.travel / r.n, txt;
     var n1 = r.n + 1, sumK = 0, kk; for (kk = 1; kk <= r.n; kk++) sumK += kk;
     var pullCas = n1 * s.carLb + sumK * s.stageLb, pullCon = s.carLb + r.n * s.stageLb;     // lb of rope pull to hold it at the top
-    if (r.rig === "cascade") txt = "Cascade: all " + n1 + " parts rise at once, so " + K.fix(s.travel / n1, 1) + " in of rope lifts the carriage " + K.fix(s.travel, 1) + " in. The price is pull: the rope holds " + K.n(pullCas, 0) + " lb (the carriage " + n1 + " times over, plus the stages). Continuous would hold " + K.n(pullCon, 0) + " lb.";
-    else txt = "Continuous: one rope lifts one part at a time, the lightest first, so " + K.fix(s.travel, 1) + " in of rope lifts the carriage " + K.fix(s.travel, 1) + " in. The pull is small: " + K.n(s.carLb, 0) + " lb while only the carriage moves, " + K.n(pullCon, 0) + " lb at the top with every stage hanging on it. Cascade would hold " + K.n(pullCas, 0) + " lb.";
+    if (r.rig === "cascade") txt = "Cascade: all " + n1 + " parts rise at once, so " + K.fix(s.travel / n1, 1) + " in of rope lifts the carriage " + K.fix(s.travel, 1) + " in. The price is pull: rope tension when holding at the top, " + K.n(pullCas, 0) + " lb (the carriage " + n1 + " times over, plus the stages). Continuous: " + K.n(pullCon, 0) + " lb.";
+    else txt = "Continuous: one rope lifts one part at a time, the lightest first, so " + K.fix(s.travel, 1) + " in of rope lifts the carriage " + K.fix(s.travel, 1) + " in. The pull is small: " + K.n(s.carLb, 0) + " lb while only the carriage moves, " + K.n(pullCon, 0) + " lb at the top with every stage hanging on it (rope tension when holding). Cascade: " + K.n(pullCas, 0) + " lb.";
     return { "h-el-travel": txt.trim() };
   },
 
@@ -203,7 +209,7 @@ K.tool({
       { k: "Peak current", v: K.fix(r.peakA, 0), u: "A", sub: "per motor, briefly, while it speeds up", tip: "The stator current in each motor. It sits at the limit while the motors are working hardest." },
       { k: "Lowest battery", v: K.fix(Math.max(0, r.minV), 1), u: "V", state: r.minV < 7 ? "bad" : r.minV < 8 ? "warn" : "", tip: "The battery voltage at its lowest during the move, with the resistance in Fine tuning." },
       { k: "Holding at the top", v: K.fix(holdA, 1), u: "A", sub: "per motor, " + K.fix(r.hold.volts, 2) + " V. Includes the motor's free current, " + K.fix(r.freeA, 1) + " A", state: holdA > 0.6 * lim ? "warn" : "", tip: "The current that holds the carriage still at the top, and just starts it rising. " + K.fix(r.freeA, 1) + " A of it is the motor's free current (its own friction); the rest, " + K.fix(holdA - r.freeA, 1) + " A, holds the weight. Continuous rigging is heaviest at the top, with every stage on the rope." },
-      { k: "Heaviest it holds", v: r.maxCarLb > 0 ? lbs(r.maxCarLb) : "none", u: r.maxCarLb > 0 ? "lb" : "", sub: "standing still, in theory, at " + lim + " A: not a working load. " + (r.rig === "cascade" ? "Cascade: the rope feels it " + (r.n + 1) + " times over" : "Continuous: the rope feels it once"), tip: "The heaviest carriage this gearbox holds at the top with the motors at the current limit. As with the holding current, the motor's free current (" + K.fix(r.freeA, 1) + " A) goes on its own friction, so " + K.fix(lim - r.freeA, 1) + " A of the " + lim + " A holds weight." }
+      { k: "Heaviest carriage it could hold", v: r.maxCarLb > 0 ? lbs(r.maxCarLb) : "none", u: r.maxCarLb > 0 ? "lb" : "", sub: "standing still, in theory, at " + lim + " A: not a working load. " + (r.rig === "cascade" ? "Cascade: the rope feels it " + (r.n + 1) + " times over" : "Continuous: the rope feels it once"), tip: "The heaviest carriage this gearbox holds at the top with the motors at the current limit. As with the holding current, the motor's free current (" + K.fix(r.freeA, 1) + " A) goes on its own friction, so " + K.fix(lim - r.freeA, 1) + " A of the " + lim + " A holds weight." }
     ]) + K.outs([
       { k: r.rig === "continuous" ? "kG, last section" : "kG", v: K.fix(r.kG, 3), u: "V", tip: "Volts that hold the carriage against gravity." + (r.rig === "continuous" ? " With continuous rigging it grows as each stage joins; this is the last section, with every stage moving. The code below gives every section's." : "") },
       { k: "kS", v: K.fix(r.kS, 3), u: "V", sub: "the motor's own friction only; a real mechanism's is larger, measure it", tip: "The motor's free current times its resistance: the volts it takes to turn the motor itself." },
@@ -216,7 +222,8 @@ K.tool({
     var out = '<div class="chartrow">' +
       K.chart({ id: "el-h", title: "Carriage height", x: { label: "time (s)", unit: "s", name: "Time" }, y: { label: "in", unit: "in", min: 0 }, series: [{ name: "Height", pts: r.chH }] }) +
       K.chart({ id: "el-v", title: "Carriage speed", x: { label: "time (s)", unit: "s", name: "Time" }, y: { label: "in/s", unit: "in/s" }, series: [{ name: "Speed", pts: r.chV, color: 3 }] }) + "</div>";
-    out += K.chart({ id: "el-a", title: "Current in each motor", x: { label: "time (s)", unit: "s", name: "Time" }, y: { label: "A", unit: "A", min: 0, max: Math.max(s.statorA * 1.15, r.peakA * 1.05, 10) }, series: [{ name: "Current", pts: r.chA, color: 2 }], hlines: [{ y: s.statorA, label: "Limit " + s.statorA + " A" }] });
+    out += K.chart({ id: "el-a", title: "Current in each motor", x: { label: "time (s)", unit: "s", name: "Time" }, y: { label: "A", unit: "A", min: 0, max: Math.max(s.statorA * 1.5, r.peakA * 1.3, 10) }, series: [{ name: "Current", pts: r.chA, color: 2 }], hlines: [{ y: s.statorA, label: "limit " + s.statorA + " A", side: "left" }], marks: phaseMarks(r) }) +
+      (r.reached ? '<p class="t-elevator-cap">Dashed lines mark where each phase starts: full power up, full reverse to stop at the top, holding, full power down' + (r.tRev2 != null && r.tRev2 < r.duration - 1e-3 ? ", full reverse to stop at the bottom" : "") + ". " + (phaseMarks(r).some(function (m) { return m.short; }) ? "A phase too short for its name is the unnamed dashed line. " : "") + "The current sits at the limit under full power and in full reverse; holding takes much less." + (r.rig === "continuous" ? " In continuous rigging the spikes are the stop and the reverse, not the stages joining: a stage joining only adds a small step of current." : "") + "</p>" : "");
     var range = K.fix(r.sweepLo, r.sweepLo < 10 ? 1 : 0) + " to " + K.fix(r.sweepHi, 0), bestTxt;
     if (!r.best) bestTxt = "No reduction from " + range + " lifts this load with these motors.";
     else if (r.reached && r.timeUp <= r.best[1] + 0.015) bestTxt = "Yours, " + K.fix(s.ratio, 1) + ":1, is as fast as any reduction tried (" + range + "): " + K.fix(r.timeUp, 2) + " s to the top.";
@@ -243,6 +250,7 @@ K.tool({
     for (var k = 1; k <= n; k++) { var mk = "m<sub>" + k + "</sub>"; sk += (k > 1 ? " + " : "") + (k > 1 ? k + " " : "") + mk; sk2 += (k > 1 ? " + " : "") + (k > 1 ? k * k + " " : "") + mk; }
     out += K.notes(
       "<p>The motor turns a spool, the spool winds in rope, and the rope lifts the stages. Everything here is about what the motor feels at the rope: how hard it has to pull, and how much mass it has to speed up.</p>" +
+      "<p>The stages are numbered from the outside in: stage 1 is the one nearest the fixed frame, and stage " + n + (n > 1 ? " is the innermost, the one the carriage rides in" : " carries the carriage") + ". The formulas below are written out for the " + n + " moving " + (n > 1 ? "stages" : "stage") + " now selected; change the count and they change.</p>" +
       "<p><b>Cascade.</b> Each stage carries its own short rope from the stage below it, over a pulley at its top, to the bottom of the stage above. So every stage moves at once: with " + n + " moving " + (n > 1 ? "stages" : "stage") + ", stage k moves k times as far as the drive rope and the carriage " + (n + 1) + " times. By virtual work (force times distance is the same at the rope as at the parts):</p>" +
       '<p class="eq">rope force = g × (' + (n + 1) + " m<sub>c</sub> + " + sk + ")</p>" +
       '<p class="eq">mass at the rope = ' + (n + 1) * (n + 1) + " m<sub>c</sub> + " + sk2 + "</p>" +
@@ -262,6 +270,25 @@ K.tool({
 
   draw: draw
 });
+
+/* The phases along the current chart: a dashed mark where each starts, with its name when the name fits between its
+   own mark and the next (so no name crosses a line). A phase too short to name is told in the caption under the chart.
+   The chart is 480 units wide with a 420-unit plot from x = 46; a letter is about 6.2 units; the kit puts a name to the
+   left of its mark when the mark is in the last 110 units. */
+function phaseMarks(r) {
+  if (!r.reached) return [{ x: 0, label: "full power" }];
+  var ph = [[0, "full power up"], [r.tRev1, "full reverse"], [r.tUp, "holding"]];
+  if (r.down) { ph.push([r.tHold, "full power down"]); if (r.tRev2 != null && r.tRev2 < r.duration - 1e-3) ph.push([r.tRev2, "full reverse"]); }
+  var dur = r.duration || 1, u = dur / 420, out = ph.map(function (p) { return { x: p[0], label: p[1] }; });
+  var kept = [];
+  out.forEach(function (m) {
+    var w = (m.label.length * 6.2 + 8) * u, right = 46 + m.x / u > 480 - 110, a = right ? m.x - w : m.x, b = right ? m.x : m.x + w;
+    // No other mark inside the name's span, no name already placed under it, and inside the plot.
+    var hit = out.some(function (q) { return q !== m && q.x > a - 2 * u && q.x < b + 2 * u; }) || kept.some(function (k) { return a < k[1] && b > k[0]; }) || b > dur + 1e-9;
+    if (hit) { m.label = ""; m.short = true; } else kept.push([a, b]);
+  });
+  return out;
+}
 
 /* ---------- The drawing ---------- */
 var STEP = 2.2, TUBE = 0.75;
@@ -299,10 +326,12 @@ function draw(g, s, r, t) {
   var cont = r.rig === "continuous", sct = mod.section(x);
   // The read-out's words, worked out first: on a phone they sit in a strip above the drawing.
   var title = { up: "Going up", hold: "Holding at the top", down: "Coming down", end: "Back at the bottom", stall: brown ? "Browns out" : "Stalled" }[ph];
-  var line2 = !cont ? "Cascade: every stage moves at once" : stalled ? (sct === 0 ? "Continuous: the carriage cannot move" : "Continuous: stalls as stage " + (n - sct + 1) + " joins") : ph === "hold" || ph === "end" ? "Continuous: one stage at a time" : sct === 0 ? "Continuous: the carriage moves first" : "Continuous: stage " + (n - sct + 1) + " has joined";
-  var keys = [{ col: c.gold, txt: phone ? "drive rope, from the spool" : "drive rope, from the spool" }];
-  if (!cont) keys.push({ col: c.s3, col2: c.accent, txt: n > 1 ? "each stage's own rope" : "the stage's rope" });
-  else keys.push({ col: c.s3, txt: "the laced rope" }, { col: c.s3, wide: true, txt: "thicker: the part lifting now" });
+  // Continuous: the carriage first, then the stages from the inside out (stage n, the top one, first; stage 1 last).
+  function stName(j) { return "stage " + j + (j === n && n > 1 ? " (the top one)" : ""); }
+  var joined = n - sct + 1, nextTxt = joined - 1 >= 1 ? "; stage " + (joined - 1) + " is next" : "; every stage is moving";
+  var line2 = !cont ? "Cascade: every stage moves at once" : stalled ? (sct === 0 ? "Continuous: the carriage cannot move" : "Continuous: stalls as " + stName(joined) + " joins") : ph === "hold" || ph === "end" ? "Continuous: one stage at a time" : sct === 0 ? "Continuous: the carriage moves first; " + stName(n) + " is next" : "Continuous: " + stName(joined) + " has joined" + nextTxt;
+  // The key is short: the ropes are named where they run. A rope gets a line here only when it has no room for its name.
+  var keys = cont ? [{ col: c.s3, txt: "the laced rope, one rope through every stage" }, { col: c.s3, wide: true, txt: "thicker: the part lifting now" }] : [];
   keys.push({ sq: true, txt: "end tied to a stage" });
   /* The read-out is a column at the left. On a phone the stage can only be so tall (the kit keeps it under half the
      screen), and the elevator is tall and narrow, so a narrow column beside it leaves it more room than a strip above. */
@@ -345,7 +374,13 @@ function draw(g, s, r, t) {
   function stageBot(k) { return k <= n ? G.bot[k] + (k ? hNow[k - 1] : 0) : G.carBot + hNow[n]; }
   function stageTop(k) { return G.bot[k] + (k ? hNow[k - 1] : 0) + G.len[k]; }
   function hwOf(k) { return k <= n ? G.hw[k] : G.hwc; }
-  var spoolTop = G.spY, ropeSide;
+  var spoolTop = G.spY, ropeSide, ropeLabs = [];
+  // A rope's name, written up along it on its outer side, where nothing else runs (above the next frame out).
+  function vlabel(str, xw, y0w, y1w, sd, col) {
+    var o = { size: 10, weight: 600 }, len = Y(y0w) - Y(y1w), w = g.textWidth(str, o); if (!(len > w + 12)) return false;
+    g.ctx.save(); g.ctx.translate(X(xw) + sd * 9, (Y(y0w) + Y(y1w)) / 2); g.ctx.rotate(-Math.PI / 2);
+    g.text(str, 0, 0, Object.assign({ color: col, align: "center", base: "middle" }, o)); g.ctx.restore(); return true;
+  }
   if (!cont) {
     for (k = 0; k <= n; k++) {
       var sg = k % 2 ? 1 : -1, xa = sg * (G.hw[k] + 0.72), xd = sg * (hwOf(k + 1) + 0.72), ya = k ? stageBot(k - 1) + TUBE : spoolTop, tp = stageTop(k) + 0.45, yd = stageBot(k + 1) + 0.4;
@@ -353,6 +388,7 @@ function draw(g, s, r, t) {
       rope([[xa, ya], [xa, tp], [xd, tp], [xd, yd], [sg * hwOf(k + 1), yd]], st);
       pulley(xa, tp - 0.45); pulley(xd, tp - 0.45);
       if (k) tie(xa, ya, st.color);
+      ropeLabs.push({ name: k === 0 ? "drive rope" : "stage " + k + " rope", x: xa, y0: k ? Math.max(ya, stageTop(k - 1)) + 0.6 : G.spY + G.Rs + 1.5, y1: tp - 1, sd: sg, col: k === 0 ? c.text2 : st.color, key: k === 0 ? { col: c.gold, txt: "drive rope" } : { col: st.color, dash: st.dash, txt: "stage " + k + " rope" } });
       tie(sg * hwOf(k + 1), yd, st.color);
       if (k === n) ropeSide = sg;
     }
@@ -373,7 +409,10 @@ function draw(g, s, r, t) {
     segs.forEach(function (sgm) { rope(sgm.pts, sgm); });
     pul.forEach(function (p) { pulley(p[0], p[1]); });
     tie(prev[0], prev[1], c.s3);
+    ropeLabs.push({ name: "drive rope", x: -(G.hw[0] + 0.72), y0: G.spY + G.Rs + 1.5, y1: stageTop(0) - 0.5, sd: -1, col: c.text2, key: { col: c.gold, txt: "drive rope" } });
   }
+  // Name each rope where it runs; one with no room goes in the key instead.
+  ropeLabs.forEach(function (rl) { if (!vlabel(rl.name, rl.x, rl.y0, rl.y1, rl.sd, rl.col)) keys.unshift(rl.key); });
   // Carriage and its load.
   var cb = G.carBot + hNow[n];
   rect(-G.hwc, cb, G.hwc, cb + G.carH, { fill: c.part2, stroke: stalled ? c.bad : c.partLine, width: stalled ? 2 : 1, radius: 2 });
@@ -411,22 +450,27 @@ function draw(g, s, r, t) {
   var colX = X(lane0 + 1.5 * n + 0.6) + (phone ? 8 : 12);
   for (i = 0; i <= n; i++) {
     var lx = X(lane0 + 1.5 * (i + 1) - 1.5 + (i === n ? 0.6 : 0)), ytop = Y(i < n ? stageTop(i + 1) : cb + G.carH), sp = vNow[i];
-    if (moving && Math.abs(sp) > 0.5) {
-      g.line(i < n ? X(G.hw[i + 1]) : X(G.hwc), ytop, lx, ytop, { color: c.ghost, width: 1, dash: [2, 3] });
+    var mv = moving && Math.abs(sp) > 0.5, x0e = i < n ? X(G.hw[i + 1]) : X(G.hwc);
+    if (mv) {
+      g.line(x0e, ytop, lx, ytop, { color: c.ghost, width: 1, dash: [2, 3] });
       var len = Math.max(8, (phone ? 52 : 64) * Math.abs(sp) / vmax) * (sp > 0 ? -1 : 1);
       g.arrow(lx, ytop, lx, ytop + len, { color: c.s1, width: i === n ? 3 : 2, head: i === n ? 9 : 7 });
-      labs.push({ y: ytop, x0: lx, name: i === n ? "carriage" : "stage " + (i + 1), v: K.n(Math.abs(sp), 0) + " in/s", main: i === n });
     }
+    // Every part is named at its own top, moving or not; a moving one also gets its speed.
+    labs.push({ y: ytop, x0: mv ? lx : x0e, name: i === n ? "carriage" : "stage " + (i + 1), v: mv ? K.n(Math.abs(sp), 0) + " in/s" : "", main: i === n });
   }
   // Labels in a column right of the arrows, at each part's height, pushed apart where they would touch.
+  // On a phone the name and the speed take two lines, so labels need twice the room.
+  var two = phone || labs.some(function (lb) { return lb.v && colX + g.textWidth(lb.name + " " + lb.v, { size: 11, weight: 700 }) > g.w - 4; }), gap = two ? 26 : 14;
   labs.sort(function (a, b) { return a.y - b.y; });
-  for (i = 1; i < labs.length; i++) if (labs[i].y - labs[i - 1].y < 14) labs[i].y = labs[i - 1].y + 14;
+  for (i = 0; i < labs.length; i++) { labs[i].ty = labs[i].y; if (i && labs[i].ty - labs[i - 1].ty < gap) labs[i].ty = labs[i - 1].ty + gap; }
+  var over = labs.length ? labs[labs.length - 1].ty + (two ? 14 : 0) - (g.h - 4) : 0;
+  if (over > 0) labs.forEach(function (lb) { lb.ty -= over; });
   labs.forEach(function (lb) {
-    var txt = lb.name + " " + lb.v, o = { size: 11, weight: lb.main ? 700 : 600 };
-    // On a phone only the speed: the dotted line ties it to its part.
-    if (phone || colX + g.textWidth(txt, o) > g.w - 4) txt = lb.v;
-    g.line(lb.x0 + 3, lb.y, colX - 3, lb.y, { color: c.ghost, width: 1, dash: [2, 3] });
-    g.text(txt, colX, lb.y, Object.assign({ color: c.s1, base: "middle" }, o));
+    var o = { size: 11, weight: lb.main ? 700 : 600 }, ink = lb.v ? c.s1 : c.text2;
+    g.path([[lb.x0 + 3, lb.y], [colX - 8, lb.y], [colX - 3, lb.ty]], { color: c.ghost, width: 1, dash: [2, 3] });
+    if (two && lb.v) { g.text(lb.name, colX, lb.ty, Object.assign({ color: ink, base: "middle" }, o)); g.text(lb.v, colX, lb.ty + 13, { size: 11, weight: 600, color: ink, base: "middle" }); }
+    else g.text(lb.name + (lb.v ? " " + lb.v : ""), colX, lb.ty, Object.assign({ color: ink, base: "middle" }, o));
   });
   // The read-out: what is happening, the current, the battery, and the key to the ropes.
   g.text(title, hx, hy, { size: 14, weight: 700, color: stalled ? c.bad : c.text });
@@ -438,7 +482,7 @@ function draw(g, s, r, t) {
   function key(kk, kx, ky) {
     if (kk.sq) g.rect(kx + 5, ky - 3.5, 7, 7, { fill: c.text2, stroke: null });
     else if (kk.col2) { g.line(kx, ky - 3, kx + 16, ky - 3, { color: kk.col, width: 2.5 }); g.line(kx, ky + 3, kx + 16, ky + 3, { color: kk.col2, width: 2.5, dash: [5, 3] }); }
-    else g.line(kx, ky, kx + 16, ky, { color: kk.col, width: kk.wide ? 5 : 2.5 });
+    else g.line(kx, ky, kx + 16, ky, { color: kk.col, width: kk.wide ? 5 : 2.5, dash: kk.dash ? [5, 3] : null });
     var ln = wrap(g, kk.txt, hudW - 22, { size: ks });
     ln.forEach(function (t1, j) { g.text(t1, kx + 22, ky + j * (ks + 3), { size: ks, color: c.text2, base: "middle" }); });
     return ln.length * (ks + 3) + (phone ? 4 : 5);
@@ -459,6 +503,6 @@ function speeds(mod, x, v, n) {
 
 // The chart above "Time to top" gets a little room; everything else comes from the kit.
 var st = document.createElement("style");
-st.textContent = ".t-elevator-sweep { display: grid; gap: 8px; } .t-elevator-sweep > p { max-width: 72ch; color: var(--text-2); font-size: .92rem; }";
+st.textContent = ".t-elevator-sweep { display: grid; gap: 8px; } .t-elevator-sweep > p { max-width: 72ch; color: var(--text-2); font-size: .92rem; } .t-elevator-cap { max-width: 72ch; color: var(--text-2); font-size: .88rem; margin: 4px 0 0; }";
 document.head.appendChild(st);
 })(typeof window !== "undefined" ? window : this);
