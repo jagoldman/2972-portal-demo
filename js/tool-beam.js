@@ -149,7 +149,7 @@ D.acts.beamuse = function (b) { K.state(ID).section = b.dataset.v; D.render(); }
 function ease(u) { u = F.clamp(u, 0, 1); return u * u * (3 - 2 * u); }
 (function () {
   var st = document.createElement("style");
-  st.textContent = ".t-beam-cap { margin: 0; font-size: .8rem; color: var(--mute); } .t-beam-cmp .t-beam-cap { margin-bottom: 6px; } .t-beam-cmp td:first-child { white-space: normal; min-width: 12em; } .t-beam-best { display: block; margin-top: 2px; font-size: .8rem; font-weight: 600; color: var(--ok); white-space: normal; } .t-beam-cmp td.t-beam-bad { color: var(--bad); font-weight: 700; } .t-beam-cmp td.t-beam-warn { color: var(--warn); font-weight: 700; }";
+  st.textContent = ".t-beam-cap { margin: 0; font-size: .8rem; color: var(--mute); } .t-beam-cmp .t-beam-cap { margin-bottom: 6px; } .t-beam-cmp td:first-child { white-space: normal; min-width: 12em; } @media (max-width: 640px) { .t-beam-cmp table.stk td:first-child { display: block; } } .t-beam-best { display: block; margin-top: 2px; font-size: .8rem; font-weight: 600; color: var(--ok); white-space: normal; } .t-beam-cmp td.t-beam-bad { color: var(--bad); font-weight: 700; } .t-beam-cmp td.t-beam-warn { color: var(--warn); font-weight: 700; }";
   document.head.appendChild(st);
 })();
 
@@ -193,11 +193,11 @@ K.tool({
     if (r.big && s.P > 0) text += " The formulas say it bends more than a tenth of its length; past that they are no longer accurate, so treat the bend as a warning, not a number.";
     var more = s.P > 0 ? "Ideal bending of a plain tube: holes, joints, thin walls buckling and hits can make it fail sooner." : "";
     return K.verdict(s.P > 0 ? st : "info", text, more) + K.outs([
-      { k: "Deflection", v: inch(r.delta).replace(" in", ""), u: "in", sub: r.big ? "too far for the formula" : K.fix(r.delta * 25.4, r.delta < 0.004 ? 3 : 2) + " mm " + where(s.hold), state: r.big ? "warn" : "" },
-      { k: "Bending stress", v: K.n(r.stress, 0), u: "psi", sub: K.n(r.share * 100, 0) + "% of yield, " + K.n(r.stress * 0.00689476, 1) + " MPa", state: st === "ok" ? "" : st, tip: "The highest stress, on the top and bottom faces where the bending moment is largest." },
-      { k: "Safety factor", v: isFinite(r.sf) ? K.fix(r.sf, 1) : "–", sub: "against bending yield, ideal tube; yields at " + K.n(r.Pyield, 0) + " lbf", state: s.P > 0 ? st : "", tip: "How many times this load it takes before it bends for good. 3 or more allows for hits (a rule of thumb)." },
-      { k: "Stiffness", v: K.n(r.stiff), u: "lbf/in", sub: K.n(r.stiff * 4.448222 / 25.4) + " N/mm at the load", tip: "Load for each inch it bends at the load point." },
-      { k: "Weight of the piece", v: K.fix(r.weight, 2), u: "lb", sub: K.fix(r.weight * 0.45359237, 3) + " kg, " + K.fix(s.L, 2) + " in long" }]);
+      { k: "Deflection", v: inch(r.delta).replace(" in", ""), u: "in", sub: r.big ? "too far for the formula" : where(s.hold), state: r.big ? "warn" : "" },
+      { k: "Bending stress", v: K.n(r.stress, 0), u: "psi", sub: K.n(r.stress * 0.00689476, 1) + " MPa", state: st === "ok" ? "" : st, tip: "The highest stress, on the top and bottom faces where the bending moment is largest." },
+      { k: "Safety factor", v: isFinite(r.sf) ? K.fix(r.sf, 1) : "–", sub: "against bending yield, ideal tube", state: s.P > 0 ? st : "", tip: "How many times this load it takes before it bends for good. 3 or more allows for hits (a rule of thumb)." },
+      { k: "Stiffness", v: K.n(r.stiff), u: "lbf/in", sub: K.n(r.stiff * 4.448222 / 25.4) + " N/mm", tip: "Load for each inch it bends at the load point." },
+      { k: "Weight of the piece", v: K.fix(r.weight, 2), u: "lb", sub: K.fix(r.weight * 0.45359237, 3) + " kg" }]);
   },
 
   more: function (s, r) {
@@ -409,7 +409,9 @@ function section(g, s, r, pan, narrow, kBeam, frac) {
   // Each face's word beside its own end of the triangle: the top's above it, the bottom's below it, each on the side
   // its wedge points to.
   var dd = topSq ? -1 : 1, tTop = topSq ? "squeezed" : "stretched", tBot = topSq ? "stretched" : "squeezed", lo = { size: 12, color: c.text2, weight: 600 };
-  g.text(tTop, dd > 0 ? Math.min(sx + 3, pan.x + pan.w - 8 - g.textWidth(tTop, lo)) : sx - 3, cy - bh / 2 - 7, Object.assign({ align: dd > 0 ? "left" : "right" }, lo));
+  // The triangle's tip value, just above its top end; the face's word above that.
+  if (s.P > 0 && wv > 0.5) { var tipT = K.n(share * 100, 0) + "%", tipW = g.textWidth(tipT, { size: 12, weight: 700 }), tipX = sx + dd * wv; g.text(tipT, dd > 0 ? Math.min(tipX - tipW / 2, pan.x + pan.w - 8 - tipW) : Math.max(tipX - tipW / 2, sx - wv - tipW), cy - bh / 2 - 6, { size: 12, weight: 700, color: col }); }
+  g.text(tTop, dd > 0 ? Math.min(sx + 3, pan.x + pan.w - 8 - g.textWidth(tTop, lo)) : sx - 3, cy - bh / 2 - 22, Object.assign({ align: dd > 0 ? "left" : "right" }, lo));
   g.text(tBot, dd > 0 ? sx - 3 : Math.min(sx + 3, pan.x + pan.w - 8 - g.textWidth(tBot, lo)), cy + bh / 2 + 16, Object.assign({ align: dd > 0 ? "right" : "left" }, lo));
   // The neutral axis named on its own line, at its right-hand end; the wall named beside the section.
   var nax = sx + lim + 7, naw = g.textWidth("neutral axis", { size: 12, weight: 600 });
@@ -421,15 +423,15 @@ function section(g, s, r, pan, narrow, kBeam, frac) {
   if (!narrow) {
     var ky = sy + 30, kx = pan.x + 12;
     if (!naxis) { g.line(kx, ky - 4, kx + 22, ky - 4, { color: c.accent, width: 1.25, dash: [8, 3, 2, 3] }); g.text("neutral axis, no stress", kx + 28, ky, { size: 12, weight: 600, color: c.accent }); naxis = true; ky += 16; }
-    if (!sec.solid) g.text("wall " + frac2(sec.t) + " in", kx, ky, { size: 12, color: c.mute });
+    if (!sec.solid) g.text("tube wall " + frac2(sec.t) + " in", kx, ky, { size: 12, color: c.mute });
   }
   var lab = narrow ? Math.max(sx + lim + 14, sx + 14 + g.textWidth("stretched", { size: 12 })) : pan.x + 12, ly = narrow ? pan.y + 44 : sy + 70, maxW = (narrow ? g.w : pan.x + pan.w) - lab - 8;
   // One line each: where, which face is stretched, the stress, and its share of yield.
-  var where = s.hold === "cant" ? "At the wall, most stressed" : s.hold === "simple" ? "At the middle, most stressed" : "At the middle and the held ends";
+  var where = s.hold === "cant" ? "At the support, most stressed" : s.hold === "simple" ? "At the middle, most stressed" : "At the middle and the held ends";
   var rows = [[where, { color: c.accent, size: 12, weight: 700 }],
     [fc.swap ? (topSq ? "Middle: top squeezed; ends: top stretched" : "Middle: top stretched; ends: top squeezed") : "Top " + (topSq ? "squeezed" : "stretched") + ", bottom " + (topSq ? "stretched" : "squeezed"), { color: c.text2, size: 12 }],
     [K.n(r.stress * frac, 0) + " psi, " + K.n(share * 100, 0) + "% of yield", { color: share >= 1 ? c.bad : c.text, size: 12, weight: 600 }]];
-  if (narrow) { rows.push(["Dash-dot: no stress", { color: c.accent, size: 12, weight: 600 }]); if (!sec.solid) rows.push(["Wall " + frac2(sec.t) + " in", { color: c.mute, size: 12 }]); }
+  if (narrow) { rows.push(["Dash-dot: no stress", { color: c.accent, size: 12, weight: 600 }]); if (!sec.solid) rows.push(["Tube wall " + frac2(sec.t) + " in", { color: c.mute, size: 12 }]); }
   // Each label wrapped to the room beside the section, so nothing runs off a phone's edge.
   var y = ly, lh = narrow ? 15 : 17;
   rows.forEach(function (row) {

@@ -154,7 +154,7 @@ K.motorFields = function (id, o) {
   o = o || {};
   return K.pick(id, "motor", "Motor", FRC.MOTORS.map(function (m) { return [m.id, m.name]; })) +
     K.num(id, "motors", "Motors", { min: 1, max: 8, step: 1 }) +
-    (o.noRatio ? "" : K.num(id, "ratio", o.ratioLabel || "Reduction", { unit: ": 1", min: 0.05, max: o.ratioMax || 300, step: "any", slider: !!o.slider, tip: "Motor turns for one turn of the output. 10 means the output turns ten times slower, with ten times the torque." })) +
+    (o.noRatio ? "" : K.num(id, "ratio", o.ratioLabel || "Reduction", { unit: ":1", min: 0.05, max: o.ratioMax || 300, step: "any", slider: !!o.slider, tip: "Motor turns for one turn of the output. 10 means the output turns ten times slower, with ten times the torque." })) +
     K.num(id, "statorA", "Current limit", { unit: "A", min: 5, max: 200, step: 1, tip: "The stator limit set in the motor controller, for each motor. It caps torque, heat and wheel slip." }) +
     K.num(id, "eff", "Efficiency", { unit: "%", min: 30, max: 100, step: 1, tip: "The share of the motor's torque that survives the gears, belts and bearings. 85 to 95 for a good gearbox." });
 };
@@ -200,7 +200,7 @@ function readLink(St) {
 /* A row of answers. items: [{ k: label, v: value (text), u: unit, sub: a second line, tip, state: "ok" | "warn" | "bad" }] */
 K.outs = function (items) {
   return '<dl class="outs">' + items.filter(Boolean).map(function (i) {
-    return '<div class="out' + (i.state ? " " + i.state : "") + '"><dt' + (i.tip ? ' class="abbr" tabindex="0" data-tip="' + esc(i.tip) + '"' : "") + ">" + esc(i.k) + '</dt><dd><b class="num">' + esc(i.v) + "</b>" + (i.u ? (/^(°|%|:)/.test(i.u) ? "" : " ") + "<span" + (/^(°|%|:)/.test(i.u) ? ' class="tight"' : "") + ">" + esc(i.u.replace(/^:\s*1$/, ":1")) + "</span>" : "") + (i.sub ? "<small>" + esc(i.sub) + "</small>" : "") + "</dd></div>";
+    return '<div class="out' + (i.state ? " " + i.state : "") + '"><dt' + (i.tip ? ' class="abbr" tabindex="0" data-tip="' + esc(i.tip) + '"' : "") + ">" + esc(i.k) + '</dt><dd><b class="num">' + esc(i.v) + "</b>" + (i.u ? (/^(°|%|:|×)/.test(i.u) ? "" : " ") + "<span" + (/^(°|%|:|×)/.test(i.u) ? ' class="tight"' : "") + ">" + esc(i.u.replace(/^:\s*1$/, ":1")) + "</span>" : "") + (i.sub ? "<small>" + esc(i.sub) + "</small>" : "") + "</dd></div>";
   }).join("") + "</dl>";
 };
 // One plain sentence that says whether the design works. state: "ok" | "warn" | "bad" | "info". The "ok" word is

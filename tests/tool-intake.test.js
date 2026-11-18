@@ -82,5 +82,18 @@ function boxOf(i) { return av[i]; }
 ok("the two names do not overlap", !(boxOf(1)[0] < boxOf(2)[2] && boxOf(1)[2] > boxOf(2)[0] && boxOf(1)[1] < boxOf(2)[3] && boxOf(1)[3] > boxOf(2)[1]), JSON.stringify(av));
 ok("neither name covers the dot", [1, 2].every(function (i) { var b = av[i]; return !(b[0] < 216 && b[2] > 200 && b[1] < 76 && b[3] > 60); }));
 void n1; void n2;
+// Round 11, intake 2: the pass line on the charts is the piece speed this page asks for, and the upright mark is where
+// the piece's curve meets it. At the reduction for a good margin the piece moves at exactly the pass line's speed
+// (1.1 x drive against a plate, 2 x drive between two driven surfaces).
+[["plate", 1.1], ["both", 2]].forEach(function (cs) {
+  var q0 = M.speeds({ drive: dr, V: 12, rollerR: 1 * F.IN, contact: cs[0], driveV: drive, travel: 0.3 });
+  var dq = F.drive({ motor: "kraken44", n: 1, ratio: q0.ratioGood, eff: 0.9, statorA: 30 });
+  var q1 = M.speeds({ drive: dq, V: 12, rollerR: 1 * F.IN, contact: cs[0], driveV: drive, travel: 0.3 });
+  near(cs[0] + ": pass line = " + cs[1] + " x drive", q0.target * M.factor(cs[0]), cs[1], 1e-12);
+  near(cs[0] + ": piece at the marked reduction is on the pass line", q1.piece, cs[1] * drive, 1e-9);
+  // The roller diameter that passes, at your reduction: speed goes as diameter.
+  var dGood = 2 * cs[1] * drive / q0.piece, q2 = M.speeds({ drive: dr, V: 12, rollerR: dGood / 2 * F.IN, contact: cs[0], driveV: drive, travel: 0.3 });
+  near(cs[0] + ": piece at the marked diameter is on the pass line", q2.piece, cs[1] * drive, 1e-9);
+});
 console.log(fails ? fails + " of " + n + " checks failed" : "all " + n + " checks passed");
 if (fails) process.exit(1);

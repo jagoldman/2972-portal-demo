@@ -70,8 +70,19 @@ function drawCurve(g, s, r, t) {
   var hid = others.map(function (o, k) { return others.some(function (p2, j) { return j > k && Math.abs(Y(o.limT * o.n) - Y(p2.limT * p2.n)) < 3; }); });
   others.forEach(function (o, k) { g.path(lines[k], { color: c["s" + (o.i + 1)] || c.s2, width: 1.75 }); });
   others.forEach(function (o, k) { if (hid[k]) g.path(lines[k], { color: c["s" + (o.i + 1)] || c.s2, width: 1.75, dash: [6, 5] }); });
+  // Where two lines overlap, one label names both ("Vortex (CTRE) dashed and X44 overlap"); the partner gets none.
+  var partner = others.map(function (o, k) { if (!hid[k]) return -1; for (var j = k + 1; j < others.length; j++) if (Math.abs(Y(o.limT * o.n) - Y(others[j].limT * others[j].n)) < 3) return j; return -1; });
+  var named = {};
   others.forEach(function (o, k) {
+    if (named[k]) return;
     var oc = c["s" + (o.i + 1)] || c.s2, Tm = o.limT * o.n;
+    if (partner[k] >= 0) {
+      var p2 = others[partner[k]], pc = c["s" + (p2.i + 1)] || c.s2; named[partner[k]] = true;
+      var t1 = shortOf(o) + " dashed", t2 = " and ", t3 = shortOf(p2), t4 = " overlap", yy = phone ? 58 : Y(Tm) + 14, xx = phone ? 12 + nameX : x0 + 10 + nameX;
+      [[t1, oc], [t2, c.text2], [t3, pc], [t4, c.text2]].forEach(function (q) { g.text(q[0], xx, yy, { base: phone ? "alphabetic" : "middle", size: 11, weight: 700, color: q[1] }); xx += g.textWidth(q[0], { size: 11, weight: 700 }); });
+      nameX = xx - (phone ? 12 : x0 + 10) + 14; nameYs.push(yy);
+      return;
+    }
     // Named on its flat part near the left: above the line where nothing else is within a label's height, else below.
     var on = shortOf(o) + (hid[k] ? ", dashed (overlaps)" : ""), oy = Y(Tm), flats = r.list.filter(function (p2) { return p2 !== o; }).map(function (p2) { return Y(p2.limT * p2.n); });
     var above = !flats.some(function (fy) { return fy < oy && fy > oy - 18; }) && !nameYs.some(function (ny) { return Math.abs(ny - (oy - 8)) < 14; });
@@ -113,17 +124,22 @@ function endRings(html, o, L) {
     var e = q.amp[q.amp.length - 1], x = X(e[0]), y = Y(e[1]), txt = K.fix(e[1], 1) + " A", w = txt.length * 6.8;
     out += '<circle cx="' + x.toFixed(1) + '" cy="' + y.toFixed(1) + '" r="3.5" style="fill:var(--surface);stroke:var(--s' + (q.i + 1) + ');stroke-width:2"/>';
     // Score each spot: a line point inside counts 1, a ring or another label 20; the lowest score wins.
-    var spots = [[x - 7 - w, y + 4], [x + 7, y + 4], [x + 7, y + 9], [x - 7 - w, y - 8], [x + 7, y - 8], [x - w / 2, y - 12]], pick = spots[0], best = Infinity;
+    // Right of the ring, or just left of the motor's own falling line a little higher up (its colour ties it there).
+    var spots = [[x + 7, y + 4], [x + 7, y - 6]], fall = q.amp.filter(function (p) { return p[0] > q.peak.rpm * 0.9; });
+    [8, 12, 16, 21, 27].forEach(function (h) {
+      for (var m = fall.length - 1; m > 0; m--) if (fall[m - 1][1] >= h && fall[m][1] <= h) { var u = (fall[m - 1][1] - h) / (fall[m - 1][1] - fall[m][1]), xr = fall[m - 1][0] + (fall[m][0] - fall[m - 1][0]) * u; spots.push([X(xr) - 8 - w, Y(h) + 4]); break; }
+    });
+    var pick = spots[0], best = Infinity;
     spots.forEach(function (sp) {
       var box = [sp[0] - 2, sp[1] - 11, sp[0] + w + 2, sp[1] + 2];
       if (box[0] < pl || box[2] > W) return;
-      var sc = pts.filter(function (p) { return p[0] >= box[0] && p[0] <= box[2] && p[1] >= box[1] && p[1] <= box[3]; }).length +
+      var sc = 3 * pts.filter(function (p) { return p[0] >= box[0] - 2 && p[0] <= box[2] + 2 && p[1] >= box[1] - 2 && p[1] <= box[3] + 2; }).length +
         20 * taken.filter(function (t) { return t[0] < box[2] && t[2] > box[0] && t[1] < box[3] && t[3] > box[1]; }).length;
       if (sc < best) { best = sc; pick = sp; }
     });
     taken.push([pick[0] - 2, pick[1] - 11, pick[0] + w + 2, pick[1] + 2]);
     // In the motor's colour, so each value reads with its own ring even when two sit close.
-    out += '<text class="cnote" x="' + pick[0].toFixed(1) + '" y="' + pick[1].toFixed(1) + '" style="fill:var(--s' + (q.i + 1) + ')">' + txt + "</text>";
+    // The value is in the legend ("X60, ends at 2.8 A"); text beside the rings met the other lines.
   });
   return html.replace("</svg>", out + "</svg>");
 }
@@ -242,22 +258,21 @@ K.tool({
     var xmax = Math.max.apply(null, L.map(function (q) { return q.free; }));
     var X = { label: "speed (rpm)", name: "Speed", unit: "rpm", min: 0, max: xmax };
     function ser(key) { return L.map(function (q) { return { name: shortOf(q), pts: q[key], color: q.i + 1 }; }); }
-    var limLine = s.statorA > 0 ? [{ y: s.statorA, label: "stator limit " + s.statorA + " A (motor current)" }] : [];
+    var limLine = s.statorA > 0 ? [{ y: s.statorA, label: "current limit " + s.statorA + " A (in the motor)" }] : [];
     function top(key, extra) { var m = extra || 0; L.forEach(function (q) { q[key].forEach(function (p) { if (p[1] > m) m = p[1]; }); }); return m; }
     // The knee: where the current limit stops holding torque flat, marked for the first motor.
     var q0 = L[0], knee = q0.peak.knee != null && q0.peak.knee / F.RPM < q0.free ? [{ x: q0.peak.knee / F.RPM, y: q0.limT * q0.n, label: "limit stops here" }] : [];
     // Torque: headroom above the curves for the band's name; the band is the first motor's flat part.
     var tq = { id: "motors-tq", title: "Torque", x: X, y: { label: "torque (N m)", unit: "N m", min: 0, max: top("tq") * 1.4 }, series: ser("tq"),
       bands: knee.length ? [{ x0: 0, x1: knee[0].x, label: "the current limit holds torque flat" + (L.length > 1 ? " (" + shortOf(q0) + ")" : "") }] : [] };
-    var Xa = X;
-    var amp = placeLabels({ id: "motors-amp", title: "Current from the battery, each motor", x: Xa, y: { label: "supply current (A)", unit: "A", min: 0, max: Math.ceil(top("amp", s.statorA) * 1.15 / 10) * 10 }, series: ser("amp"), hlines: limLine });
-    amp.note = (s.statorA > 0 ? "Dashed: the stator limit, on the current in the motor itself. The lines are battery current, lower than motor current at low speed. " : "") +
-      "Each line ends at its motor's free current (" + L.map(function (q) { return shortOf(q).replace(/^\d+ × /, "") + " " + K.fix(q.m.freeA, 1) + " A"; }).join(", ") + "), not at zero: a motor spinning freely still draws it.";
+    var Xa = Object.assign({}, X, { max: X.max * 1.02 });
+    var amp = placeLabels({ id: "motors-amp", title: "Current from the battery, each motor", x: Xa, y: { label: "supply current (A)", unit: "A", min: 0, max: Math.ceil(top("amp", s.statorA) * 1.15 / 10) * 10 }, series: ser("amp").map(function (sr, k) { return Object.assign(sr, { name: sr.name + ", ends at " + K.fix(L[k].amp[L[k].amp.length - 1][1], 1) + " A" }); }), hlines: limLine });
+    amp.note = (s.statorA > 0 ? "Dashed: the current limit, in the motor. " : "") + "Battery current is lower while slow and ends at the free current, not at zero.";
     // The torque chart is the drawing above; the three others share one row.
     var out = '<div class="t-motors-charts"><div class="chartrow t-motors-row3">' +
       endRings(K.chart(amp), amp, L) +
       K.chart({ id: "motors-pw", title: "Power out", x: X, y: { label: "power (W)", unit: "W", min: 0 }, series: ser("pw"), dots: L.map(function (q) { return { x: q.peak.rpm, y: q.peak.power * q.n }; }) }) +
-      K.chart({ id: "motors-eff", title: "Efficiency", note: "It falls to nothing at free speed: the motor turns but does no work there.", x: X, y: { label: "efficiency (%)", unit: "%", min: 0, max: 100 }, series: ser("eff") }) + "</div></div>";
+      K.chart({ id: "motors-eff", title: "Efficiency", note: "It falls to nothing at free speed: the motor turns but does no work there.", marks: knee.length ? [{ x: knee[0].x, label: "limit lets go" + (L.length > 1 ? " (" + shortOf(q0) + ")" : "") }] : [], x: X, y: { label: "efficiency (%)", unit: "%", min: 0, max: 100 }, series: ser("eff") }) + "</div></div>";
     var rowsT = [
       ["Free speed", function (q) { return K.n(q.free, 0) + " rpm"; }],
       ["Stall torque, no limit", function (q) { return K.n(q.stallT * q.n, 2) + " N m"; }],

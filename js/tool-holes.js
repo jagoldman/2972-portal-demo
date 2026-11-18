@@ -135,22 +135,23 @@ var def = {
       if (r.other) items.push({ k: r.other.name, v: r.other.drill ? r.other.drill.replace(/ mm$/, "") : r.other.hole.toFixed(3), u: r.other.drill ? (/ mm$/.test(r.other.drill) ? "mm" : "") : "in", sub: in4(r.other.hole) });
       if (s.kind === "print") items.push({ k: "Hole you want", v: (r.want * 25.4).toFixed(1), u: "mm", sub: r.screw + " close fit" });
       if (r.major && items.length < 5) items.push({ k: s.kind === "press" ? "Part size" : s.kind === "rivet" ? "Rivet" : "Screw", v: r.major.toFixed(3), u: "in", sub: s.kind === "press" ? "outside diameter" : "nominal (major) diameter, " + mm2(r.major) });
-      tip = s.kind === "tap" ? "Rule of thumb: thread at least 1.5 diameters deep in aluminium, about " + (1.5 * r.major).toFixed(2) + " in for this screw. That needs a plate that thick; in a thinner one, put a nut or a threaded insert behind it." :
+      tip = s.kind === "tap" ? "Rule of thumb: thread at least 1.5 diameters deep in aluminium, " + (1.5 * r.major).toFixed(2) + " in here, so a plate at least that thick or a nut or insert behind it. Tap with cutting fluid, backing off every turn." :
         s.kind === "clear" ? "Rule of thumb: close fit when the holes must line up exactly; free fit when several holes share one part and may be a little off." :
         s.kind === "rivet" ? "Rule of thumb: keep the hole at least two rivet diameters from an edge, and pick a rivet whose grip covers the total thickness (it says on the box)." :
         s.kind === "press" ? "Rule of thumb only: measure your bearing and cut a test hole in scrap first. Machines, tools and bearings differ by more than 0.001 in." :
         "Starting point: printed holes come out small. Add 0.2 mm (0.008 in) to the diameter, print a test piece and adjust for your printer.";
     }
-    var swap = !(r.frac || r.metric) ? "" : s.kind === "tap" ? "Use the named drill when you can: a bigger drill gives weaker threads, and a smaller one risks a broken tap." :
-      s.kind === "rivet" ? "Use the named drill when you can: a bigger drill lets the rivet work loose, and a smaller one will not take it." :
-      "Use the named drill when you can: a bigger drill gives a looser fit, and a smaller one may not let the screw through.";
+    var swap = !(r.frac || r.metric) ? "" : s.kind === "tap" ? "Use the named drill if you can: bigger gives weaker threads, smaller risks a broken tap." :
+      s.kind === "rivet" ? "Use the named drill if you can: bigger lets the rivet work loose, smaller will not take it." :
+      "Use the named drill if you can: bigger gives a looser fit, smaller may not let the screw through.";
     r.head = head;
-    return h + K.verdict("info", head, tip) + (s.kind === "tap" ? '<p class="vmore">Tapping: use cutting fluid, and back the tap off every turn or so.</p>' : "") + K.outs(items) + (swap ? '<p class="t-holes-tip">' + esc(swap) + "</p>" : "") + "</div>";
+    // All the advice in one block, the verdict's second line: the rule of thumb, how to cut it, and which drill.
+    return h + K.verdict("info", head, tip + (swap ? " " + swap : "")) + K.outs(items) + "</div>";
   },
 
   more: function (s, r) {
     var head, rows, i, out = "";
-    function use(k) { return '<button class="btn sm" data-act="holesuse" data-v="' + k + '">Draw it</button>'; }
+    function use(k) { return '<button class="btn sm" data-act="holesuse" data-v="' + k + '">Use this one</button>'; }
     var list = [];                                  // the same rows as one line each, for a phone: name, drill, size
     function line0(l) { return l ? l.join(" ") : ""; }
     var grp = null, ncol = 0;
@@ -161,12 +162,12 @@ var def = {
       if (metric != null && metric !== grp) { grp = metric; pre = head2(metric); }
       line = line || [cells[0], cells[1], cells[2]];
       var on = k === r.i, raw = findKey(cells.join(" ") + " " + line0(line)), key = esc(raw), hid = FIND && raw.indexOf(findKey(FIND)) < 0 ? " hidden" : "";
-      list.push('<button class="t-holes-row' + (on ? " on" : "") + '" data-act="holesuse" data-v="' + k + '" data-find="' + key + '"' + hid + (on ? ' aria-current="true"' : "") + '><b>' + esc(line[0]) + '</b><span>' + esc(line[1]) + '</span><span class="num">' + esc(line[2]) + "</span>" + (on ? '<span class="pill ok">Drawn</span>' : '<span class="t-holes-go" aria-hidden="true">Draw</span>') + "</button>");
-      return pre + '<tr data-find="' + key + '"' + hid + ' class="' + (on ? "pick" : "") + '">' + cells.map(function (c, j) { return "<td" + (j ? ' class="r num"' : "") + ">" + esc(c) + "</td>"; }).join("") + '<td class="r">' + (on ? '<span class="pill ok">Drawn</span>' : use(k)) + "</td></tr>";
+      list.push('<button class="t-holes-row' + (on ? " on" : "") + '" data-act="holesuse" data-v="' + k + '" data-find="' + key + '"' + hid + (on ? ' aria-current="true"' : "") + '><b>' + esc(line[0]) + '</b><span class="t-holes-d">' + esc([line[1], line[2]].filter(Boolean).join(", ")) + "</span>" + (on ? '<span class="pill ok">In the drawing</span>' : '<span class="t-holes-go" aria-hidden="true">Use this one</span>') + "</button>");
+      return pre + '<tr data-find="' + key + '"' + hid + ' class="' + (on ? "pick" : "") + '">' + cells.map(function (c, j) { return "<td" + (j ? ' class="r num"' : "") + ">" + esc(c) + "</td>"; }).join("") + '<td class="r">' + (on ? '<span class="pill ok">In the drawing</span>' : use(k)) + "</td></tr>";
     }
     if (s.kind === "tap") {
       head = ["Thread", "Tap drill", "Inches", "mm"]; ncol = 5;
-      rows = M.TAPS.map(function (t, k) { var x = M.inch(t[2], t[3]); return tr(k, [t[0], t[1], x.toFixed(4), (x * 25.4).toFixed(2)], [t[0], t[1], x.toFixed(4) + " in"], !!t[3]); });
+      rows = M.TAPS.map(function (t, k) { var x = M.inch(t[2], t[3]); return tr(k, [t[0], t[1], x.toFixed(4), (x * 25.4).toFixed(2)], [t[0], t[1], x.toFixed(4) + " in, " + (x * 25.4).toFixed(2) + " mm"], !!t[3]); });
     } else if (s.kind === "clear" || s.kind === "print") {
       if (s.kind === "clear") {
         head = ["Screw", "Close fit", "Inches", "Free fit", "Inches"]; ncol = 6;
@@ -236,8 +237,8 @@ function F_clamp(x, a, b) { return x < a ? a : x > b ? b : x; }
     ".t-holes-grp[hidden], tr.t-holes-grp[hidden] { display: none; } p.t-holes-grp { margin: 8px 0 0; font-size: .78rem; font-weight: 700; color: var(--mute); }" +
     ".t-holes-list, .t-holes-cue { display: none; } .t-holes-cue { margin: 0; font-size: .85rem; color: var(--text-2); }" +
     ".t-holes-go { margin-left: 2px; padding: 3px 10px; border: 1px solid var(--line-2); border-radius: 999px; font-size: .8rem; font-weight: 600; color: var(--accent) !important; }" +
-    ".t-holes-row { display: flex; align-items: center; gap: 12px; width: 100%; min-height: 44px; padding: 6px 4px; border: 0; border-bottom: 1px solid var(--line); background: none; color: var(--text); font: inherit; text-align: left; cursor: pointer; }" +
-    ".t-holes-row b { flex: 1 1 auto; min-width: 0; } .t-holes-row span { color: var(--text-2); white-space: nowrap; } .t-holes-row .num { min-width: 7ch; text-align: right; }" +
+    ".t-holes-row { display: grid; grid-template-columns: minmax(0, 1fr) auto; grid-template-areas: \"n b\" \"d b\"; align-items: center; gap: 2px 12px; width: 100%; min-height: 44px; padding: 6px 4px; border: 0; border-bottom: 1px solid var(--line); background: none; color: var(--text); font: inherit; text-align: left; cursor: pointer; }" +
+    ".t-holes-row b { grid-area: n; min-width: 0; } .t-holes-row .t-holes-d { grid-area: d; color: var(--text-2); font-size: .9rem; } .t-holes-row .t-holes-go, .t-holes-row .pill { grid-area: b; white-space: nowrap; }" +
     ".t-holes-row.on { background: var(--tint); box-shadow: inset 3px 0 0 var(--accent); padding-left: 10px; } .t-holes-row .pill { margin-left: 2px; }" +
     "@media (max-width: 900px) { .t-holes-bench.content.bench { grid-template-areas: \"side\" \"stage\" \"outs\" \"more\"; } }" +
     "@media (max-width: 640px) { .t-holes-list { display: grid; } .t-holes-cue { display: block; } .t-holes-tab .scroll { display: none; } .t-holes-find .inp { min-height: 44px; } .t-holes-find { max-width: none; } }";
@@ -255,7 +256,7 @@ function drawHoles(g, s, r) {
   var half = Math.max(big * 1.7, 0.32);              // half the plate width shown in each view
   var head = kind === "press" ? 0.03 : 0.75 * Dm, below = kind === "tap" ? 0 : kind === "clear" || kind === "print" ? 0.35 * Dm + 0.05 : kind === "rivet" ? 0.6 * Dm : 0.03;
   var gap = big * 1.2, W = 4 * half + gap, Hh = head + T + below;
-  var V = g.view({ x0: -half, x1: W - half, y0: -T - below, y1: head }, { l: 20, r: kind === "tap" ? (narrow ? 70 : 110) : 20, t: 112, b: kind === "tap" ? 64 : 56 }, "middle");
+  var V = g.view({ x0: -half, x1: W - half, y0: -T - below, y1: head }, { l: 20, r: kind === "tap" ? (narrow ? 104 : 116) : 20, t: 112, b: kind === "tap" ? 64 : 56 }, "middle");
   var step = [0.05, 0.1, 0.25, 0.5].filter(function (q) { return V.L(q) >= 14; })[0] || 0.5;
   g.grid(V, step, "");
   var xL = 0, xR = 2 * half + gap, y0 = V.Y(0), y1 = V.Y(-T);
@@ -292,8 +293,8 @@ function drawHoles(g, s, r) {
   if (kind === "tap") {
     var dep = 1.5 * Dm, dx = V.X(xR + half) + 12, dTop = V.Y(0), dBot = V.Y(-dep);
     g.dim(dx, dTop, dx, dBot, "", 0, { color: c.text2 });
-    g.text(narrow ? "depth" : "thread", dx + 8, (dTop + dBot) / 2 - 8, { size: narrow ? 11 : 12, weight: 600, color: c.text2, base: "middle" });
-    g.text((narrow ? "" : "depth ") + dep.toFixed(2) + " in", dx + 8, (dTop + dBot) / 2 + 8, { size: narrow ? 11 : 12, weight: 700, color: c.text, base: "middle" });
+    g.text("plate at least", dx + 8, (dTop + dBot) / 2 - 8, { size: narrow ? 11 : 12, weight: 600, color: c.text2, base: "middle" });
+    g.text(dep.toFixed(2) + " in thick", dx + 8, (dTop + dBot) / 2 + 8, { size: narrow ? 11 : 12, weight: 700, color: c.text, base: "middle" });
   }
   caption(g, cx, capY, kind === "tap" ? ["2. Tap, then the screw", narrow ? "thread cut, screw in it" : "the tap cuts the thread; the screw fills it"] : kind === "clear" ? ["With the screw", ((r.hole - Dm) / 2).toFixed(4) + " in gap each side"] : kind === "rivet" ? ["With the rivet", "before it is set"] : kind === "press" ? (hex ? ["With the hex shaft", ""] : s.press === "press" ? ["Pressed in", "0.001 in under the bearing"] : ["Slides in", "hole the bearing's own size"]) : insert ? ["With the insert", "melted in"] : ["With the screw", ""]);
   g.text(r.label, 12, 18, { weight: 600 });

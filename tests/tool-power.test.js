@@ -46,7 +46,7 @@ ok("branch at its rating: nothing", M.branchNote(1) === "");
 
 // Fix round 5: the verdict names the largest row, its share and the number to lower (the default: Drive, 4 x 40 A).
 var dflt = M.power([{ name: "Drive", n: 4, a: 40 }, { name: "Shooter", n: 2, a: 25 }, { name: "Intake", n: 1, a: 20 }, { name: "Elevator hold", n: 2, a: 10 }, { name: "Everything else", n: 1, a: 8 }], { rest: 12.5, rbat: 0.015, rwire: 0.006, brown: 6.8, main: 120 });
-ok("lever sentence", M.lever(dflt.rows[dflt.worst], dflt.I) === "Drive is the largest draw (160 A of 258 A): cutting what each of its motors draws from the battery (40 A here) helps most. Set a supply current limit (for example 30 A) on the drive motors.", M.lever(dflt.rows[dflt.worst], dflt.I));
+ok("lever sentence", M.lever(dflt.rows[dflt.worst], dflt.I) === "Drive draws 160 of 258 A; lowering its supply current limit helps most. Set a supply current limit (for example 30 A) on the drive motors.", M.lever(dflt.rows[dflt.worst], dflt.I));
 var src = require("fs").readFileSync(require("path").join(__dirname, "../js/tool-power.js"), "utf8");
 ok("breaker timing called a rough guide, with the trip curve named", /rough guide/.test(src) && /trip curve/.test(src) && !/carries its rating all day/.test(src));
 
@@ -61,5 +61,12 @@ ok("fill: no motors, nothing", M.fromTool({}, "Arm") === null);
 // Round 10: amps without a needless ".0", and the suggested supply limit (three quarters, to the 5 A below).
 ok("amps: 20 not 20.0", M.amps(20) === "20" && M.amps(8) === "8" && M.amps(12.5) === "12.5");
 ok("supply limit suggestion", M.supplySuggest(40) === 30 && M.supplySuggest(60) === 45 && M.supplySuggest(4) === 5);
+// Round 11: one resistance across the tools. The page's default battery and wiring come to 0.020 ohm, as the
+// Drivetrain's; 258 A then leaves 12.3 - 258 x 0.020 = 7.14 V at the robot.
+var srcP = require("fs").readFileSync(require("path").join(__dirname, "../js/tool-power.js"), "utf8");
+var dm = /rbat: ([0-9.]+), rwire: ([0-9.]+)/.exec(srcP);
+ok("defaults: 0.020 ohm in all", dm && Math.abs(+dm[1] + +dm[2] - 0.020) < 1e-12, dm && dm[0]);
+var d11 = M.power([{ name: "Drive", n: 4, a: 40 }, { name: "Shooter", n: 2, a: 25 }, { name: "Intake", n: 1, a: 20 }, { name: "Elevator hold", n: 2, a: 10 }, { name: "Other 12 V loads", n: 1, a: 8, agg: true }], { rest: 12.3, rbat: +dm[1], rwire: +dm[2], brown: 6.8, main: 120 });
+near("default voltage at the robot", d11.V, 12.3 - 258 * 0.020, 1e-9);
 console.log(fails ? fails + " of " + n + " checks failed" : "All " + n + " checks passed");
 process.exit(fails ? 1 : 0);
