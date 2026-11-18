@@ -128,7 +128,7 @@ K.tool({
        that gives the margin this page asks for. The caution goes in the second line. */
     var pct = Math.round((r.pieceRatio - 1) * 100), mine = "Yours, " + K.fix(s.ratio, 2) + ":1, ";
     if (vd <= 0.05) text = "The robot is standing still, so the piece comes in at " + fts(r.piece) + " ft/s at the roller's no-load speed.";
-    else if (r.state === "ok") text = mine + "pulls the piece in " + pct + "% faster than the floor brings it at no-load speed; " + rg + ":1 or lower keeps a 10% margin.";
+    else if (r.state === "ok") text = mine + "pulls the piece in " + pct + "% faster than the floor brings it at no-load speed; " + rg + ":1 or lower (rounded down) keeps a 10% margin.";
     else if (pct >= 0) text = mine + "pulls the piece in only " + pct + "% faster than the floor brings it at no-load speed; " + rg + ":1 or lower gives a 10% margin.";
     else text = mine + "pulls the piece in " + (-pct) + "% slower than the floor brings it, so the robot shoves it along; " + rg + ":1 or lower gives a 10% margin.";
     var more = "Once it grips, the roller slows by an amount this page cannot know, which can use up the margin. Test with a real piece how hard it must be squeezed.";

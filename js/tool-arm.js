@@ -454,15 +454,17 @@ function draw(g, s, r, t) {
   g.line(hx2, ky + 15, hx2 + 16, ky + 15, { color: c.s1, width: 2.5 });
   g.text(brk ? "braking, in all " + qa + " lb in" : "motor " + qa + " lb in", hx2 + 22, ky + 15, { size: 11, color: c.text2, base: "middle" });
   if (brk) {
-    var bx0 = hx2 + 22, bL = g.w < 520 ? 40 : Math.min(100, hudW - 60), b1 = bL * av / qa;
+    // Braking, the motor's pull at the limit and its friction work together: pull + friction. (Driving, it is pull −
+    // friction, which is the figure the Torque margin card uses.) Friction is counted once here, at its own size.
+    var fr = Math.round(r.fricT * NM_LBIN), em = qa - fr, bx0 = hx2 + 22, bL = g.w < 520 ? 40 : Math.min(100, hudW - 60), b1 = bL * em / qa;
     g.rect(bx0, ky + 27, b1, 5, { fill: c.s1, stroke: null, radius: 2 });
-    g.text((g.w < 520 ? "motor " : "motor at the limit ") + av + " lb in", bx0 + bL + 8, ky + 30, { size: 10.5, color: c.s1, weight: 700, base: "middle" });
+    g.text((g.w < 520 ? "motor's pull " : "motor's pull at the limit ") + em + " lb in", bx0 + bL + 8, ky + 30, { size: 10.5, color: c.s1, weight: 700, base: "middle" });
     g.rect(bx0 + b1, ky + 40, bL - b1, 5, { fill: c.mute, stroke: null, radius: 2 });
-    g.text(g.w < 520 ? "friction " + (qa - av) + ", both ways" : "its own friction " + (qa - av) + " lb in, both ways", bx0 + bL + 8, ky + 43, { size: 10.5, color: c.text2, weight: 700, base: "middle" });
+    g.text(g.w < 520 ? "plus friction " + fr + " lb in" : "plus its own friction " + fr + " lb in", bx0 + bL + 8, ky + 43, { size: 10.5, color: c.text2, weight: 700, base: "middle" });
   }
   var kyEnd = ky + 43;
   if (false) { kyEnd += 15; g.circle(hx2 + 8, kyEnd, 4, { fill: c.sheet, stroke: c.force, width: 2 }); g.text("centre of mass of arm and load, " + K.fix(r.arm.com / F.IN, 1) + " in out", hx2 + 22, kyEnd, { size: 11, color: c.text2, base: "middle" }); }
-  var extra = meter(g, hx2, kyEnd + 22, hudW, "Current per motor", K.fix(amps, 0) + " of " + s.statorA + " A" + (q * w < -1e-9 && amps > 0.5 ? ", braking" : ""), amps / s.statorA, amps >= s.statorA - 0.5 ? "warn" : "");
+  var extra = meter(g, hx2, kyEnd + 22, hudW, "Current per motor", K.fix(amps, amps < s.statorA - 0.5 ? 1 : 0) + " of " + s.statorA + " A" + (q * w < -1e-9 && amps > 0.5 ? ", braking" : ""), amps / s.statorA, amps >= s.statorA - 0.5 ? "warn" : "");
   var ny = kyEnd + 48 + extra;
   if (!r.reached) {
     var msg = stallMsg(s, r);

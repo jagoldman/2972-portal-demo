@@ -281,7 +281,7 @@ K.tool({
       ["Peak power", function (q) { return K.n(q.peak.power * q.n, 0) + " W at " + K.n(q.peak.rpm, 0) + " rpm"; }],
       ["Best efficiency", function (q) { return K.n(q.bestEff[1], 0) + "% at " + K.n(q.bestEff[0], 0) + " rpm"; }],
       ["Weight", function (q) { return K.n(q.m.lb * q.n, 2) + " lb"; }],
-      ["Peak power per pound", function (q) { return K.n(q.peak.power / q.m.lb, 0) + " W/lb"; }]];
+      ["Peak power per pound", function (q) { return K.n(Math.round(q.peak.power * q.n) / (Math.round(q.m.lb * q.n * 100) / 100), 0) + " W/lb"; }]];   // from the two figures as shown above it
     out += '<section class="ctab t-motors-tab"><h2>Side by side at ' + K.fix(s.volts, 1) + " V" + (s.statorA > 0 ? ", " + s.statorA + " A limit" : ", no limit") + '</h2><div class="scroll"><table><thead><tr><th></th>' + L.map(function (q) { return '<th class="r">' + D.esc(q.name) + "</th>"; }).join("") + "</tr></thead><tbody>" +
       rowsT.map(function (row) { return "<tr><td>" + row[0] + "</td>" + L.map(function (q) { return '<td class="r num">' + row[1](q) + "</td>"; }).join("") + "</tr>"; }).join("") + "</tbody></table></div>" +
       '<p class="mute small">Figures as ReCalc lists them. Two rows for the NEO Vortex: <span class="abbr" tabindex="0" data-tip="' + D.esc("\"NEO Vortex (CTRE's test)\" is CTRE's bench test, and \"NEO Vortex (REV's sheet)\" is REV's own data sheet, which gives it less stall torque and more torque per amp. Choose one of each to compare. Stall torque and stall current are with no limit, scaled to this voltage.") + '">CTRE\'s test and REV\'s sheet disagree</span>. Torque, power and weight are for all the motors in a row; current is for each one.</p></section>';
