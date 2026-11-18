@@ -97,6 +97,8 @@ M.stop = function (o, a, v0, T) {
   return out;
 };
 function sq(x) { return x * x; }
+/* The time (s) of the greatest tilt in a stop from M.stop, or null when the rear never lifts. */
+M.worstT = function (sim) { if (!sim.lifted) return null; var k = 0; for (var i = 1; i < sim.phi.length; i++) if (sim.phi[i] > sim.phi[k] + 1e-12) k = i; return sim.t[k]; };
 
 if (typeof module !== "undefined" && module.exports) { module.exports = M; return; }
 
@@ -113,7 +115,7 @@ function g2(x) { return K.fix(x, 2); }
 K.tool({
   id: ID,
   defaults: { mlb: 105, mh: 7, wb: 22, mx: 0, klb: 22, kdown: 14, kup: 52, kx: 4, raised: 100, brake: 0.8, grip: 1.1, ramp: 0, v0: 15 },
-  stage: { ratio: 1.9, narrow: 1.2, label: "Side view to scale: the chassis on its wheels, the raised mechanism, the centres of gravity, and the line the robot's weight and braking act along." },
+  stage: { ratio: 1.9, narrow: 0.82, label: "Side view to scale: the chassis on its wheels, the raised mechanism, the centres of gravity, and the line the robot's weight and braking act along." },
   autoplay: true,
 
   compute: function (s) {
@@ -148,25 +150,30 @@ K.tool({
   },
 
   outs: function (s, r) {
-    var L = r.L, c = r.cg, st, text, sim = r.sim, deg = function (x) { return K.fix(x / D2R, 0); };
+    var L = r.L, c = r.cg, st, text, more = "", sim = r.sim, deg = function (x) { return K.fix(x / D2R, 0); };
     var on = s.ramp ? " on this ramp" : "", off = M.landing(r.o, 0);
-    if (r.kind === "back") { st = "bad"; text = "It tips over backward standing still" + on + ": its weight acts " + K.fix(-s.wb / 2 - off, 1) + " in behind the rear wheels. Move weight forward or lengthen the wheelbase."; }
-    else if (r.kind === "front") { st = "bad"; text = "It tips over forward standing still" + on + ": its weight acts " + K.fix(off - s.wb / 2, 1) + " in ahead of the front wheels. Move weight back or lengthen the wheelbase."; }
+    var limit = isFinite(r.hFor) && r.hFor > Math.min(s.kdown, s.kup);
+    if (r.kind === "back") { st = "bad"; text = "It tips over backward standing still" + on + ", because its weight acts " + K.fix(-s.wb / 2 - off, 1) + " in behind the rear wheels: move weight forward or lengthen the wheelbase."; }
+    else if (r.kind === "front") { st = "bad"; text = "It tips over forward standing still" + on + ", because its weight acts " + K.fix(off - s.wb / 2, 1) + " in ahead of the front wheels: move weight back or lengthen the wheelbase."; }
     else if (r.tips) {
-      var near = " A real bumper can bounce or crush, so near the edge it could go either way.";
-      st = "bad"; text = "Braking at " + g2(r.brake) + " g tips it forward: it tips at " + g2(L.tipBrake) + " g. " +
-        (sim.fell ? "From " + s.v0 + " ft/s this model predicts it falls over onto its front." + near : sim.bumper ? "From " + s.v0 + " ft/s this model predicts the rear lifts until the front bumper hits the floor (" + deg(sim.maxPhi) + "°), then drops back." + near : sim.lifted ? "From " + s.v0 + " ft/s the rear lifts to " + deg(sim.maxPhi) + "° and drops back." : "") +
-        (isFinite(r.hFor) && r.hFor > Math.min(s.kdown, s.kup) ? " Keep the mechanism below " + K.fix(r.hFor, 0) + " in while driving hard, or move weight back." : " Move weight back or lower it.");
+      // One sentence: what happens and what to change. The detail of the stop goes in the quieter second line.
+      st = "bad"; text = "Braking at " + g2(r.brake) + " g tips it forward (it tips at " + g2(L.tipBrake) + " g): " +
+        (limit ? "keep the mechanism's centre of gravity below " + K.fix(r.hFor, 0) + " in while driving hard, with some margin, or move weight back." : "move weight back or lower it.");
+      more = (sim.fell ? "From " + s.v0 + " ft/s this model predicts it falls over onto its front." : sim.bumper ? "From " + s.v0 + " ft/s this model predicts the rear lifts until the front bumper hits the floor (" + deg(sim.maxPhi) + "°), then drops back." : sim.lifted ? "From " + s.v0 + " ft/s the rear lifts to " + deg(sim.maxPhi) + "° and drops back." : "") +
+        (sim.lifted ? " A real bumper can bounce or crush, so near the edge it could go either way." : "");
     } else if (r.kind === "slides") { st = "ok"; text = "The wheels slide before it can tip: tipping needs " + g2(L.tipBrake) + " g of braking and the tread gives at most " + g2(Math.max(0, L.gripBrake)) + " g."; }
-    else { st = "warn"; text = "Holds at " + g2(r.brake) + " g, but it tips at " + g2(L.tipBrake) + " g and the tread allows " + g2(L.gripBrake) + " g, so a harder stop could tip it." + (isFinite(r.hFor) ? " At this braking it tips with the mechanism above " + K.fix(r.hFor, 0) + " in." : ""); }
-    if (r.capped && !r.still) text += " The tread cannot brake at " + g2(s.brake) + " g here; the most is " + g2(Math.max(0, L.gripBrake)) + " g, used above.";
+    else {
+      st = "warn"; text = "Holds at " + g2(r.brake) + " g, but a harder stop could tip it: it tips at " + g2(L.tipBrake) + " g and the tread allows " + g2(L.gripBrake) + " g.";
+      if (isFinite(r.hFor)) more = "At this braking it tips once the mechanism's centre of gravity is above " + K.fix(r.hFor, 0) + " in; keep a margin below that.";
+    }
+    if (r.capped && !r.still) more = (more ? more + " " : "") + "The tread cannot brake at " + g2(s.brake) + " g here; the most is " + g2(Math.max(0, L.gripBrake)) + " g, used above.";
     var hTxt = !isFinite(r.hFor) ? (r.hFor > 0 ? "never" : "always") : K.fix(r.hFor, 1);
-    return K.verdict(st, text) + K.outs([
+    return K.verdict(st, text, more) + K.outs([
       { k: "Combined centre of gravity", v: K.fix(c.x, 1) + " / " + K.fix(c.h, 1), u: "in", sub: "forward / high", tip: "The weighted average of the chassis and the mechanism." },
       { k: "Braking that tips it", v: g2(L.tipBrake), u: "g", sub: "forward", state: r.tips ? "bad" : r.still ? "" : L.slidesFirstBrake ? "ok" : "warn", tip: "Forward tip when braking ÷ g is more than (distance to the front wheel ÷ height)." },
       { k: "Acceleration that tips it", v: g2(L.tipAccel), u: "g", sub: r.kind === "back" ? "backward; it tips standing still" : L.slidesFirstAccel ? "backward; the wheels slip first" : "backward; tread allows " + g2(L.gripAccel), state: r.kind === "back" ? "bad" : L.slidesFirstAccel ? "" : "warn" },
       { k: "Static tip angle", v: K.fix(L.staticF, 0) + "° / " + K.fix(L.staticR, 0) + "°", sub: "forward / backward", tip: "The steepest slope it can stand on without tipping, nose down and nose up." },
-      { k: "Mechanism height limit", v: hTxt, u: isFinite(r.hFor) ? "in" : "", sub: "tips above it at " + g2(r.brake) + " g", tip: "The mechanism's centre of gravity height above which braking at this rate tips the robot." },
+      { k: "Mechanism height limit", v: hTxt, u: isFinite(r.hFor) ? "in" : "", sub: "of its centre of gravity; tips above it at " + g2(r.brake) + " g", tip: "The mechanism's centre of gravity height above which braking at this rate tips the robot." },
       { k: "Comes first", v: L.slidesFirstBrake ? "Sliding" : "Tipping", sub: "when braking harder", state: r.still ? "" : L.slidesFirstBrake ? "ok" : "warn", tip: "The tread lets go before the robot tips when grip is less than (distance to the front wheel ÷ height)." }
     ]);
   },
@@ -196,6 +203,8 @@ K.tool({
   },
 
   duration: function () { return 2; },
+  // When the rear lifts, rest on the moment of greatest tilt, the picture the verdict describes. Otherwise the end.
+  rest: function (s, r) { return M.worstT(r.sim); },
 
   draw: function (g, s, r, t) {
     var c = g.c, o = r.o, L = r.L, cg = r.cg, sim = r.sim, wb = s.wb;
@@ -272,11 +281,24 @@ K.tool({
     var wide = g.w > 520;
     if (level) {
       var dist = landX - wb / 2, back = -wb / 2 - landX, msg = dist > 0 ? K.fix(dist, 1) + " in past the front wheel: it tips" : back > 0 ? K.fix(back, 1) + " in behind the rear wheel: it tips" : K.fix(-dist, 1) + " in inside the front wheel";
-      msg = wide ? (ghost ? "Braking at " + g2(r.brake) + " g, the line lands " : "The line lands ") + msg : "Lands " + msg.replace(": it tips", "");
+      msg = wide ? (ghost ? "While braking at " + g2(r.brake) + " g, the line lands " : "The line lands ") + msg : (ghost ? "While braking, lands " : "Lands ") + msg.replace(": it tips", "");
       var wbm = S([0, 0]), my = Math.max(wbm[1], landP[1]) + 40, tw = g.textWidth(msg, { size: 11 }), tx = F.clamp(landP[0] + 18, 8, g.w - tw - 8);
       g.text("wheelbase " + K.fix(wb, 1) + " in", wbm[0], wbm[1] + 22, { align: "center", color: inside ? c.ok : c.bad, size: 11, weight: 600 });
       g.line(landP[0], landP[1] + 5, F.clamp(landP[0], tx, tx + tw), my - 8, { color: c.mute, width: 1 });
       g.text(msg, tx, my, { color: out2 && !ghost ? c.bad : c.text2, size: 11 });
+    }
+    // Tilted: name the point it turns about (on the floor) and how high the rear wheels are off it.
+    if (phi > 0.004 && sim.piv[fi] < 4) {
+      var pv = S([sim.qx[fi], sim.qy[fi]]), pn = ["", "front wheel", "front bumper's edge", "top of the bumper"][sim.piv[fi]] || "";
+      g.circle(pv[0], pv[1], 4, { fill: c.bad, stroke: c.sheet, width: 1.5 });
+      var ptx = wide ? "pivot: the " + pn + ", on the floor" : "pivot: " + pn, pw = g.textWidth(ptx, { size: 11, weight: 700 }), pr = pv[0] + 22 + pw < g.w - 6;
+      g.callout(ptx, pv[0] + (pr ? 3 : -3), pv[1] + 2, pv[0] + (pr ? 18 : -18), pv[1] + 26, { size: 11, weight: 700, color: c.bad });
+      var rw = R([-wb / 2, 0]), up = rw[1];
+      if (up > 0.3) {
+        var r0 = S([rw[0], 0]), r1 = S(rw), ux = Math.min(r0[0], r1[0]) - 14;
+        g.line(ux, r0[1], ux, r1[1], { color: c.bad, width: 1.5 }); g.line(ux - 4, r0[1], ux + 4, r0[1], { color: c.bad, width: 1.5 }); g.line(ux - 4, r1[1], ux + 4, r1[1], { color: c.bad, width: 1.5 });
+        g.text((wide ? "rear wheels " : "rear ") + K.fix(up, 1) + " in up", ux - 6, (r0[1] + r1[1]) / 2, { align: "right", base: "middle", size: 11, weight: 700, color: c.bad });
+      }
     }
     if (wide) g.callout("combined", C[0] - rad, C[1], C[0] - 46, C[1] - 18, { size: 11 });
     if (wide && brk > 0.01 && level) g.text("weight + braking", C[0] + rS[0] + (rS[0] > 0 ? 8 : -8), C[1] + rS[1], { align: rS[0] > 0 ? "left" : "right", base: "middle", color: c.force, size: 11, weight: 600 });

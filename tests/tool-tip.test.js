@@ -87,5 +87,9 @@ ok("default stop hands over to the bumper", !!hb);
 var Gd = [cd.x, cd.h], Pw = [11, 0], Qb = [17, 2];
 near("bumper hand-over by angular momentum", hb.w1, hb.w0 * (Ic + 127 * ((Gd[0] - 17) * (Gd[0] - 11) + (Gd[1] - 2) * Gd[1])) / Ip(Qb), 1e-9);
 ok("the hit loses energy", Ip(Qb) * hb.w1 * hb.w1 <= Ip(Pw) * hb.w0 * hb.w0 + 1e-9);
+// Fix round 5: the drawing rests on the moment of greatest tilt when the rear lifts, and on the end when it does not.
+var tsim = { t: [0, 0.1, 0.2, 0.3], phi: [0, 0.2, 0.33, 0.1], lifted: true };
+ok("worst tilt frame", M.worstT(tsim) === 0.2, M.worstT(tsim));
+ok("no tilt: no rest frame (the page rests on the end)", M.worstT({ t: [0, 1], phi: [0, 0], lifted: false }) === null);
 console.log(fails ? fails + " of " + n + " checks failed" : "all " + n + " checks passed");
 if (fails) process.exit(1);

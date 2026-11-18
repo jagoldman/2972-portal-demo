@@ -103,6 +103,17 @@ M.crossings = function (simA, simB, xmax, step) {
   return out;
 };
 
+/* The winner's margin as the page shows it: both times rounded to the places the answer box uses (3 when they are
+   within 0.05 s, else 2), then subtracted, so the sentence and the boxes agree. Returns { dp, a, b, gap, tie }. */
+M.margin = function (tA, tB) {
+  var dp = Math.abs(tA - tB) < 0.05 ? 3 : 2, k = Math.pow(10, dp), a = Math.round(tA * k) / k, b = Math.round(tB * k) / k;
+  return { dp: dp, a: a, b: b, gap: Math.round(Math.abs(a - b) * k) / k, tie: a === b };
+};
+/* How far B is ahead of A (m) at time t: negative while A leads. */
+M.lead = function (simA, simB, t) { return M.at(simB, "x", t) - M.at(simA, "x", t); };
+/* The battery's total current (A) when it reads V: (rest - V) / resistance. */
+M.batteryAmps = function (V0, V, Rb) { return Rb > 0 ? (V0 - V) / Rb : 0; };
+
 if (typeof module !== "undefined" && module.exports) { module.exports = M; return; }
 
 /* ---------- The page ---------- */
@@ -127,7 +138,7 @@ K.tool({
   id: ID,
   defaults: { lb: 135, wheel: 4, grip: 1.1, driven: "all", share: 100, motor: "kraken60", motors: 4, statorA: 60, eff: 90,
     presetA: "mk4i-l2", ratioA: 6.75, presetB: "mk4i-l3", ratioB: 6.12, dist: 15, V0: 12.3, Rbat: 0.02, drag: 6 },
-  stage: { ratio: 2.4, narrow: 2, label: "The race from above, to scale: robot A and robot B on two lanes of carpet, with a mark every 5 feet and the finish line." },
+  stage: { ratio: 2.4, narrow: 1.45, label: "The race from above, to scale: robot A and robot B on two lanes of carpet, with a mark every 5 feet and the finish line." },
   autoplay: true,
   onPick: function (key, v, s) {
     if (key === "presetA" || key === "presetB") {
@@ -190,19 +201,19 @@ K.tool({
     if (!A.reached && !B.reached) return K.verdict("bad", "Neither gearing gets the robot to " + d + " ft in 8 s. Check the current limit and the weight.");
     var W = r.win === "A" ? A : B, Lo = r.win === "A" ? B : A, wn = r.win, ln = wn === "A" ? "B" : "A";
     if (!Lo.reached) { state = "bad"; text = ln + " cannot get the robot to " + d + " ft in 8 s; " + wn + " takes " + K.fix(W.time, 2) + " s."; }
-    else if (Math.abs(A.time - B.time) < 0.005) text = "A and B reach " + d + " ft together, within 0.005 s.";
+    else if (M.margin(A.time, B.time).tie) text = "A and B reach " + d + " ft together, within 0.001 s.";
     else {
-      var back = ft(r.dist - M.at(Lo.sim, "x", W.time));
-      text = Lo.time - W.time < 0.05 ? "Too close to call over " + d + " ft: " + wn + " is ahead by " + K.fix(Lo.time - W.time, 3) + " s (about " + K.fix(back, 1) + " ft), less than a driver's reaction." : wn + " gets to " + d + " ft first, " + K.fix(Lo.time - W.time, 2) + " s ahead of " + ln + " (about " + K.fix(back, 1) + " ft).";
+      var back = ft(r.dist - M.at(Lo.sim, "x", W.time)), mg = M.margin(A.time, B.time);
+      text = mg.dp === 3 ? "Too close to call over " + d + " ft: " + wn + " is ahead by " + K.fix(mg.gap, 3) + " s (about " + K.fix(back, 1) + " ft), less than a driver's reaction." : wn + " gets to " + d + " ft first, " + K.fix(mg.gap, 2) + " s ahead of " + ln + " (about " + K.fix(back, 1) + " ft).";
     }
-    if (Lo.reached && Math.abs(A.time - B.time) >= 0.005) {
+    if (Lo.reached && !M.margin(A.time, B.time).tie) {
       text += " " + M.leadText(r.cross, r.dist, r.searched, wn);
     }
     var low = Math.min(A.minV, B.minV);
-    if (low < 7 && state !== "bad") { state = "warn"; text += " The battery drops to " + K.fix(low, 1) + " V, " + (low < 6.8 ? "below" : "close to") + " the 6.8 V where the roboRIO cuts the motors (a brownout), so a real robot would not run this fast: lower the current limit or add a supply limit."; }
+    if (low < 7 && state !== "bad") { state = "warn"; text += " The battery drops to " + K.fix(low, 1) + " V, " + (low < 6.8 ? "below" : "close to") + " the 6.8 V where the roboRIO cuts the motors (a brownout), so a real robot would not run this fast: lower the " + s.statorA + " A current limit or add a supply limit."; }
     function two(a, b, n) { return K.fix(a, n) + " / " + K.fix(b, n); }
     return K.verdict(state, text) + K.outs([
-      { k: "Time to " + d + " ft", v: two(A.time, B.time, Math.abs(A.time - B.time) < 0.05 ? 3 : 2), u: "s", sub: "A / B", tip: "From a standing start, full power all the way." },
+      { k: "Time to " + d + " ft", v: two(A.time, B.time, M.margin(A.time, B.time).dp), u: "s", sub: "A / B", tip: "From a standing start, full power all the way." },
       { k: "Speed at the line", v: two(A.vLine / FT, B.vLine / FT, 1), u: "ft/s", sub: two(A.vLine, B.vLine, 2) + " m/s" },
       { k: "Top speed", v: two(A.top / FT, B.top / FT, 1), u: "ft/s", sub: "free speed " + two(A.free / FT, B.free / FT, 1), tip: "The speed where the motors' push has fallen to the rolling drag, with battery sag. Free speed is the catalogue figure: 12 V and no load." },
       { k: "Wheels slip until", v: (A.slipEnd < 0 ? "never" : fts(A.slipV)) + " / " + (B.slipEnd < 0 ? "never" : fts(B.slipV)), u: A.slipEnd < 0 && B.slipEnd < 0 ? "" : "ft/s", sub: "launch " + two(A.acc0 / F.G, B.acc0 / F.G, 2) + " g", state: A.slipEnd >= 0 || B.slipEnd >= 0 ? "" : "ok", tip: "While the motors could push harder than the tread grips, the wheels spin on the carpet and grip sets the acceleration." }
@@ -215,7 +226,7 @@ K.tool({
     function both(f) { return [f(A, "A"), f(B, "B")]; }
     function slipTxt(L) { return L.slipEnd < 0 ? "No" : "Until " + fts(L.slipV) + " ft/s, first " + K.fix(ft(L.slipX), 1) + " ft"; }
     function pushTxt(L) { return K.n(L.push / LBF, 0) + " lbf (" + (L.push > L.grip ? "wheels slip first" : "motors limit first") + ")"; }
-    function bold(L, k, txt) { return r.win === k && A.reached && B.reached && Math.abs(A.time - B.time) >= 0.005 ? "<b>" + txt + "</b>" : txt; }
+    function bold(L, k, txt) { return r.win === k && A.reached && B.reached && !M.margin(A.time, B.time).tie ? "<b>" + txt + "</b>" : txt; }
     var rows = [
       ["Reduction", both(function (L, k) { return esc(K.fix(L.ratio, 2) + ":1 (" + L.name + ")"); })],
       ["Time over " + sd + " ft", both(function (L, k) { return bold(L, k, L.reached ? K.fix(L.time, 3) + " s" : "Not in 8 s"); })],
@@ -229,13 +240,22 @@ K.tool({
       ["Pushing force at the limit", both(pushTxt), "Pushing against a wall: what the motors give at the current limit. Grip allows " + K.n(r.grip / LBF, 0) + " lbf; whichever is lower gives first."]
     ];
     var table = '<section class="ctab"><h2>A and B side by side</h2><div class="scroll"><table><thead><tr><th></th><th class="r"><span class="t-drive-key a"></span>A</th><th class="r"><span class="t-drive-key b"></span>B</th></tr></thead><tbody>' +
-      rows.map(function (q) { return row(q[0], q[1][0], q[1][1], q[2]); }).join("") + "</tbody></table></div></section>";
+      rows.map(function (q) { return row(q[0], q[1][0], q[1][1], q[2]); }).join("") + "</tbody></table></div>" + sagNote() + "</section>";
+    // A low battery figure reads like a bad battery. Say what it is: this sprint's own sag at that current.
+    function sagNote() {
+      var L = A.minV <= B.minV ? A : B, k = A.minV <= B.minV ? "A" : "B"; if (!(L.minV < 8.5)) return "";
+      return '<p class="mute small">The lowest battery, ' + K.fix(L.minV, 1) + " V (" + k + "), is the sag during this sprint while the robot draws about " + K.n(M.batteryAmps(s.V0, L.minV, s.Rbat), 0) + " A from the battery in all, through the " + K.fix(s.Rbat, 3) + " Ω of battery and wiring set in Fine tuning. It is not a sign of a worn battery.</p>";
+    }
     var dur = r.dur;
     function pts(L, key, k) { var o = [], sim = L.sim; for (var i = 0; i < sim.t.length && sim.t[i] <= dur + 1e-9; i += 5) o.push([sim.t[i], sim[key][i] * k]); return o; }
     var sA = { name: "A " + K.fix(A.ratio, 2), color: 1 }, sB = { name: "B " + K.fix(B.ratio, 2), color: 2 };
     var x = { label: "time (s)", name: "Time", unit: "s", min: 0, max: dur };
     var speed = K.chart({ id: "drv-v", title: "Speed", x: x, y: { label: "ft/s", unit: "ft/s" }, series: [Object.assign({ pts: pts(A, "v", 1 / FT) }, sA), Object.assign({ pts: pts(B, "v", 1 / FT) }, sB)] });
     var dist = K.chart({ id: "drv-x", title: "Distance", x: x, y: { label: "ft", unit: "ft" }, series: [Object.assign({ pts: pts(A, "x", 1 / FT) }, sA), Object.assign({ pts: pts(B, "x", 1 / FT) }, sB)], hlines: [{ y: sd, label: "finish, " + sd + " ft" }] });
+    var lead = [], i2; for (i2 = 0; i2 <= 160; i2++) { var tt = dur * i2 / 160; lead.push([tt, M.lead(A.sim, B.sim, tt) / FT]); }
+    var cr = r.cross.filter(function (c) { return c.d <= r.dist; });
+    var ahead = K.chart({ id: "drv-l", title: "How far B is ahead of A (ft)", x: x, y: { label: "ft, B ahead above 0", unit: "ft" }, series: [{ name: "B ahead of A", pts: lead, color: 2 }],
+      hlines: [{ y: 0, label: "level", side: "left", below: true }], marks: cr.length ? [{ x: M.timeAt(cr[cr.length - 1].ahead === "A" ? A.sim : B.sim, cr[cr.length - 1].d), label: cr[cr.length - 1].ahead + " takes the lead" }] : [] });
     var amps = K.chart({ id: "drv-a", title: "Current per motor", x: x, y: { label: "A", unit: "A", min: 0 }, series: [Object.assign({ pts: pts(A, "amps", 1) }, sA), Object.assign({ pts: pts(B, "amps", 1) }, sB)], hlines: s.statorA ? [{ y: s.statorA, label: "limit" }] : [] });
     var sw = r.sweep.filter(function (p) { return isFinite(p[1]); });
     var tA = A.reached ? A.time : null, tB = B.reached ? B.time : null, dots = [];
@@ -244,7 +264,7 @@ K.tool({
     if (tA != null && tA <= ymax) dots.push({ x: A.ratio, y: tA, label: "A" }); if (tB != null && tB <= ymax) dots.push({ x: B.ratio, y: tB, label: "B" });
     var sweep = K.chart({ id: "drv-s", title: "Time over " + sd + " ft for other reductions", x: { label: "reduction (: 1)", name: "Reduction", min: r.sweep[0][0], max: r.sweep[r.sweep.length - 1][0] }, y: { label: "s", unit: "s", min: r.best ? Math.floor(r.best[1] * 10 * 0.95) / 10 : 0, max: ymax },
       series: [{ name: "Time", pts: sw, color: 3 }], dots: dots, marks: r.best ? [{ x: r.best[0], label: "fastest " + K.fix(r.best[0], 2) }] : [] });
-    return '<div class="chartrow">' + speed + dist + '</div><div class="chartrow">' + amps + sweep + "</div>" + table +
+    return '<div class="chartrow">' + dist + ahead + '</div><div class="chartrow">' + speed + amps + '</div><div class="chartrow">' + sweep + "<div></div></div>" + table +
       K.notes("<p>Each robot starts at rest and drives at full power through the line. Every 2 ms the calculator works out the motors' torque at the robot's speed, with the current limit and the battery's voltage drop, turns it into a push at the wheels, and moves the robot on.</p>" +
         '<p class="eq">push = motor torque × motors × reduction × efficiency ÷ wheel radius</p>' +
         '<p class="eq">acceleration = (smaller of push and grip − rolling drag) ÷ mass</p>' +
@@ -257,16 +277,18 @@ K.tool({
   },
 
   duration: function (s, r) { return r && r.dur || 3; },
+  // Rest part way through the race, so the still picture shows the robots running and the gap between them.
+  rest: function (s, r) { var tA = r.A.reached ? r.A.time : 8, tB = r.B.reached ? r.B.time : 8; return 0.6 * Math.min(tA, tB); },
 
   draw: function (g, s, r, t) {
     var c = g.c, d = s.dist;
     if (!r || !r.A) return;
-    var Lr = 33 / 12, inset = 6 / 12, x0 = -Lr - 0.5, x1 = d + 3.6, pad = { l: 10, r: 10, t: 30, b: 26 };
+    var phone = g.w < 520, narrow = g.w < 600;
+    var Lr = 33 / 12, inset = 6 / 12, x0 = -Lr - 0.5, x1 = d + 3.6, pad = { l: 10, r: 10, t: phone ? 46 : 30, b: 26 };
     // Lanes as tall as the space allows (a lane's width is not a physical number), never narrower than a robot plus 6 in.
     var kx = (g.w - pad.l - pad.r) / (x1 - x0), laneH = F.clamp((g.h - pad.t - pad.b) / kx / 2, Lr + 2 * inset, 6);
     var V = g.view({ x0: x0, x1: x1, y0: 0, y1: 2 * laneH }, pad, "middle");
     var step = V.k >= 9 ? 1 : 5;
-    var narrow = g.w < 600;
     g.grid(V, step, narrow ? "" : step === 1 ? "1 ft squares" : "5 ft squares");
     var lanes = [{ k: "A", L: r.A, y: laneH * 1.5, col: c.s1 }, { k: "B", L: r.B, y: laneH * 0.5, col: c.s2 }];
     // Carpet.
@@ -285,11 +307,22 @@ K.tool({
     g.line(fx, top, fx, bot, { color: c.text, width: 1, cap: "butt" });
     g.text("Finish " + d + " ft", fx, bot + 15, { align: "center", weight: 600, size: 11 });
 
+    // Where the lead changes hands, marked on the carpet (drawn first, so the robots drive over it).
+    r.cross.filter(function (q) { return q.d <= r.dist; }).forEach(function (q) {
+      var xq = V.X(q.d / FT), ccol = q.ahead === "A" ? c.s1 : c.s2, ft0 = Math.round(q.d / FT);
+      g.line(xq, top + 2, xq, bot - 2, { color: ccol, width: 2, dash: [6, 4], cap: "butt" });
+      var lt = phone ? q.ahead + " leads from here, " + ft0 + " ft" : q.ahead + " takes the lead here, " + ft0 + " ft", lw = g.textWidth(lt, { size: 11, weight: 700 });
+      var left = xq + 6 + lw > fx - 10;
+      g.text(lt, left ? xq - 6 : xq + 6, top + 14, { align: left ? "right" : "left", size: 11, weight: 700, color: ccol });
+    });
+
     var vmax = Math.max(r.A.top, r.B.top, 0.1), wr = s.wheel / 24;
     var tw = r.win ? (r.win === "A" ? r.A : r.B).time : Infinity;
+    var fronts = {}, keyTxt = {};
     lanes.forEach(function (ln) {
       var L = ln.L, sim = L.sim, x = ft(M.at(sim, "x", t)), v = M.at(sim, "v", t), done = L.reached && t >= L.time;
       var xf = Math.min(x, d + 2.6), yc = ln.y, half = Lr / 2;
+      fronts[ln.k] = { x: x, xf: xf, yc: yc };
       var slipping = L.slipEnd >= 0 && t < L.slipT;
       // Rubber left on the carpet while the wheels spun.
       if (L.slipEnd >= 0 && t > 0) {
@@ -311,28 +344,50 @@ K.tool({
       });
       var cxp = V.X(xf - half), cyp = V.Y(yc), fs = F.clamp(V.L(Lr) * 0.45, 11, 20);
       g.text(ln.k, cxp, cyp, { align: "center", base: "middle", weight: 700, size: fs, halo: false, color: c.text });
-      // Speed arrow and its number, or the finish time.
-      var fx2 = V.X(xf) + 3, len2 = done ? 0 : 6 + 46 * v / vmax, label = done ? ln.k + " " + K.fix(L.time, 2) + " s" : fts(v) + " ft/s" + (slipping ? ", wheels slipping" : "");
+      // Speed arrow and its number, or the finish time. On a phone the numbers go in the key at the top left.
+      var fx2 = V.X(xf) + 3, len2 = done ? 0 : (phone ? 4 + 26 * v / vmax : 6 + 46 * v / vmax), label = done ? ln.k + " " + K.fix(L.time, M.margin(r.A.time, r.B.time).dp) + " s" : fts(v) + " ft/s" + (slipping ? ", wheels slipping" : "");
+      keyTxt[ln.k] = done ? "finished in " + K.fix(L.time, M.margin(r.A.time, r.B.time).dp) + " s" : fts(v) + " ft/s" + (slipping ? ", slipping" : "");
       if (len2 > 8) g.arrow(fx2, cyp, fx2 + len2, cyp, { color: ln.col, width: 2, head: 7 });
+      if (phone) return;
       var tx = fx2 + len2 + 5, tw2 = g.textWidth(label, { weight: 600 });
       if (tx + tw2 > g.w - 6) g.text(label, V.X(xf - Lr) - 6, cyp, { align: "right", base: "middle", weight: 600, color: c.text });
       else g.text(label, tx, cyp, { base: "middle", weight: 600, color: c.text });
     });
-    // Where the other robot was when the winner crossed.
-    if (r.win && t >= tw) {
-      var lo = r.win === "A" ? lanes[1] : lanes[0], xl = ft(M.at(lo.L.sim, "x", tw));
-      if (xl < d - 0.05) {
-        g.line(V.X(xl), V.Y(lo.y + laneH / 2) + 1, V.X(xl), V.Y(lo.y - laneH / 2) - 1, { color: lo.col, width: 2, dash: [4, 3] });
-      }
+    // The gap between the two front bumpers, as a bracket on the line between the lanes. Once the winner has crossed,
+    // the bracket stays at the gap it won by: from the finish back to where the other robot was at that moment.
+    var fa = fronts.A, fb = fronts.B, gapFt = fb.x - fa.x, gx0 = null, gx1, gt, gcol;
+    if (t > 0 && t < tw && fa.xf === fa.x && fb.xf === fb.x) {
+      gx0 = fa.x; gx1 = fb.x; gcol = Math.abs(gapFt) < 0.05 ? c.text : gapFt > 0 ? c.s2 : c.s1;
+      gt = Math.abs(gapFt) < 0.05 ? "level" : (gapFt > 0 ? "B" : "A") + " leads by " + K.fix(Math.abs(gapFt), 1) + " ft";
+    } else if (r.win && t >= tw) {
+      var los = r.win === "A" ? lanes[1] : lanes[0], xl = ft(M.at(los.L.sim, "x", tw));
+      if (xl < d - 0.05) { gx0 = r.win === "A" ? d : xl; gx1 = r.win === "A" ? xl : d; gcol = los.col; gt = los.k + " was " + K.fix(d - xl, 1) + " ft back"; }
     }
-    // The clock, and the result once someone has crossed.
-    g.text(K.fix(t, 2) + " s", 12, 19, { weight: 700, size: 13 });
-    if (r.win && t >= tw) {
-      var W = r.win === "A" ? r.A : r.B, Lo = r.win === "A" ? r.B : r.A, ln2 = r.win === "A" ? "B" : "A";
-      var msg = !Lo.reached ? r.win + " finishes; " + ln2 + " cannot get there" : Math.abs(W.time - Lo.time) < 0.005 ? "A dead heat" : (Lo.time - W.time < 0.05 ? "Too close to call: " + r.win + " by " : r.win + " wins by ") + K.fix(Lo.time - W.time, 2) + " s" + (narrow ? "" : "; " + ln2 + " was " + K.fix(d - ft(M.at(Lo.sim, "x", tw)), 1) + " ft back (dashed line)");
-      g.text(msg, 70, 19, { weight: 600, color: c.text2, size: 12 });
+    if (gx0 != null) {
+      var yb = V.Y(laneH), xa = V.X(gx0), xb = V.X(gx1), lo = Math.min(xa, xb), hi = Math.max(xa, xb);
+      g.line(xa, V.Y(fa.yc - Lr / 2), xa, yb, { color: c.text, width: 1 }); g.line(xb, V.Y(fb.yc + Lr / 2), xb, yb, { color: c.text, width: 1 });
+      g.line(lo - 3, yb, hi + 3, yb, { color: c.text, width: 3, cap: "butt" });
+      var gw = g.textWidth(gt, { size: 13, weight: 700 }), gxx = hi + 8 + gw < (t < tw ? fx - 6 : g.w - 6) ? hi + 8 : lo - 8 - gw;
+      g.text(gt, gxx, yb, { size: 13, weight: 700, base: "middle", color: gcol });
     }
-    K.chartNow("drv-v", t); K.chartNow("drv-x", t); K.chartNow("drv-a", t);
+    // The clock, and the result: once someone has crossed, and on the still picture before Play.
+    var showRes = r.win && (t >= tw || !K.playing(ID)), msg = "";
+    if (showRes) {
+      var W = r.win === "A" ? r.A : r.B, Lo = r.win === "A" ? r.B : r.A, ln2 = r.win === "A" ? "B" : "A", mg = M.margin(r.A.time, r.B.time);
+      msg = (t < tw ? "At the finish: " : "") + (!Lo.reached ? r.win + " finishes; " + ln2 + " cannot get there" : mg.tie ? "a dead heat" : (mg.dp === 3 ? "too close to call, " + r.win + " by " : r.win + " wins by ") + K.fix(mg.gap, mg.dp) + " s" + (narrow ? "" : "; " + ln2 + " is " + K.fix(d - ft(M.at(Lo.sim, "x", tw)), 1) + " ft back"));
+      if (phone) msg = (t < tw ? "At the finish: " : "") + (!Lo.reached ? ln2 + " never gets there" : mg.tie ? "a dead heat" : r.win + " by " + K.fix(mg.gap, mg.dp) + " s");
+      msg = msg.charAt(0).toUpperCase() + msg.slice(1);
+    }
+    if (phone) {
+      // A small key at the top left: each robot's speed now, or its time once it has finished.
+      [["A", c.s1, 17], ["B", c.s2, 35]].forEach(function (q) { g.rect(12, q[2] - 9, 10, 10, { fill: q[1], stroke: null, radius: 2 }); g.text(q[0] + "  " + keyTxt[q[0]], 28, q[2], { size: 12, weight: 600 }); });
+      g.text(K.fix(t, 2) + " s", g.w - 10, 17, { align: "right", weight: 700, size: 13 });
+      if (msg) g.text(msg, g.w - 10, 35, { align: "right", weight: 600, color: c.text2, size: 11 });
+    } else {
+      g.text(K.fix(t, 2) + " s", 12, 19, { weight: 700, size: 13 });
+      if (msg) g.text(msg, 70, 19, { weight: 600, color: c.text2, size: 12 });
+    }
+    K.chartNow("drv-v", t); K.chartNow("drv-x", t); K.chartNow("drv-a", t); K.chartNow("drv-l", t);
   }
 });
 // The table's colour keys, matching the chart lines.

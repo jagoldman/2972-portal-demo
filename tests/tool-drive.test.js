@@ -75,6 +75,20 @@ ok("larger reduction keeps less of its push at 10 ft/s", share(8.14, 10 * F.FT) 
 var src = require("fs").readFileSync(require("path").join(__dirname, "../js/tool-drive.js"), "utf8");
 ok("notes: sooner on the larger reduction", /sooner on the larger reduction/.test(src) && !/sooner on the smaller reduction/.test(src));
 
+// Fix round 5: the margin is worked out from the times as the boxes show them (1.335 and 1.317 differ by 0.018,
+// though the unrounded times differ by 0.0179); two decimals once the gap is 0.05 s or more.
+var mg = M.margin(1.33531, 1.31740);
+ok("margin from the rounded times", mg.dp === 3 && mg.gap === 0.018 && mg.a === 1.335 && mg.b === 1.317, JSON.stringify(mg));
+ok("margin: two places when 0.05 s or more apart", M.margin(1.444, 1.333).dp === 2 && M.margin(1.444, 1.333).gap === 0.11, JSON.stringify(M.margin(1.444, 1.333)));
+ok("margin: a tie when the shown times match", M.margin(1.3351, 1.3349).tie);
+// The default race (A ahead early, B from about 11 ft): the gap B - A is negative before the crossing and positive after.
+var tc = M.timeAt(A.sim, cr[0].d);
+ok("lead: A ahead before the crossing", M.lead(A.sim, B.sim, tc * 0.5) < 0, M.lead(A.sim, B.sim, tc * 0.5));
+ok("lead: B ahead after it", M.lead(A.sim, B.sim, Math.min(A.time, B.time)) > 0, M.lead(A.sim, B.sim, Math.min(A.time, B.time)));
+near("lead: level at the crossing", M.lead(A.sim, B.sim, tc), 0, 0.01);
+// Battery current from the sag: 12.3 V resting, 7.5 V under load through 0.02 ohm is (12.3 - 7.5) / 0.02 = 240 A.
+near("battery current from the sag", M.batteryAmps(12.3, 7.5, 0.02), 240, 1e-9);
+
 console.log(fails ? fails + " of " + n + " checks failed" : "all " + n + " checks passed");
 console.log("default race: A " + A.time.toFixed(3) + " s, B " + B.time.toFixed(3) + " s; top " + (A.top / F.FT).toFixed(2) + " / " + (B.top / F.FT).toFixed(2) + " ft/s; slip until " + (A.slipV / F.FT).toFixed(2) + " / " + (B.slipV / F.FT).toFixed(2) + " ft/s; min V " + A.minV.toFixed(2) + "; crossings (ft) " + cr.map(function (c) { return (c.d / F.FT).toFixed(1) + c.ahead; }).join(" "));
 if (fails) process.exit(1);

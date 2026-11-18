@@ -53,5 +53,21 @@ var c = M.clean([{ kind: "x", a: 3.5, b: "60" }, null, { kind: "planet", p: 6 }]
 ok("clean", c.length === 2 && c[0].kind === "gear" && c[0].a === 12 && c[0].b === 60 && c[1].p === 4, JSON.stringify(c));
 ok("clean: empty gets one stage", M.clean([]).length === 1 && M.clean("no").length === 1);
 
+// Fix round 5. The count is the whole set the best rows come from: the same as listing them all (gears, 15 : 1, 2%).
+var cO = { target: 15, tol: 0.02, maxStages: 2, kinds: { gear: true }, minT: 10, maxT: 72 };
+ok("count = every train listed", M.count(cO) === M.find(Object.assign({ limit: 1e6 }, cO)).length, M.count(cO));
+var cO3 = { target: 37, tol: 0.02, maxStages: 3, kinds: { gear: true }, minT: 10, maxT: 72 };
+ok("count = every train listed, three stages", M.count(cO3) === M.find(Object.assign({ limit: 1e6 }, cO3)).length, M.count(cO3));
+// Parts and length, by hand: 12:60 and 18:54 at 20 DP sit (12 + 60) / 40 = 1.8 in and (18 + 54) / 40 = 1.8 in apart.
+ok("length of 12:60, 18:54", Math.abs(M.length([{ kind: "gear", a: 12, b: 60 }, { kind: "gear", a: 18, b: 54 }]) - 3.6) < 1e-12);
+ok("parts: gear 2, belt 3, planetary 1", M.parts([{ kind: "gear", a: 12, b: 60 }, { kind: "belt", a: 18, b: 36 }, { kind: "planet", p: 4 }]) === 6);
+ok("smallest gear", M.smallGear([{ kind: "gear", a: 12, b: 60 }, { kind: "belt", a: 10, b: 36 }]) === 12);
+// The knee: just below it the output torque is still the flat, limited value; just above it has fallen.
+var kd = F.drive({ motor: "kraken60", n: 1, ratio: 15, eff: 0.97 * 0.97, statorA: 60 }), kr = M.kneeRpm("kraken60", 12, 60, 15), kf = kd.at(0, 12, 1).torque;
+ok("knee: flat just below", Math.abs(kd.at(kr * 0.999 * F.RPM, 12, 1).torque - kf) < 1e-9);
+ok("knee: falling just above", kd.at(kr * 1.01 * F.RPM, 12, 1).torque < kf - 1e-6);
+ok("knee: none without a limit", M.kneeRpm("kraken60", 12, 0, 15) === null);
+var srcR = require("fs").readFileSync(require("path").join(__dirname, "../js/tool-ratio.js"), "utf8");
+ok("no file names in the notes", srcR.split("module.exports")[1].indexOf("frc.js") < 0);
 console.log(fails ? fails + " of " + n + " checks failed" : "All " + n + " checks passed");
 process.exit(fails ? 1 : 0);

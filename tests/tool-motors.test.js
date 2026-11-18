@@ -38,5 +38,13 @@ ok("efficiency below 1 everywhere", F.MOTORS.every(function (m) { for (var k = 0
 // Supply current never exceeds the stator current.
 ok("supply below stator", (function () { for (var k = 0; k <= 50; k++) { var q = M.at("vortex", 12, 60, F.motor("vortex").free * k / 50); if (q.supplyA > q.statorA + 1e-9) return false; } return true; })());
 
+// Fix round 5: the knee dot on the Torque chart. At the knee the torque is still the limit's flat torque; just past it,
+// it has started to fall. Kraken X60 at 12 V, 60 A.
+var kn = M.peak("kraken60", 12, 60).knee, flat = M.at("kraken60", 12, 60, 0).torque;
+ok("knee: torque still flat there", Math.abs(M.at("kraken60", 12, 60, kn * 0.999).torque - flat) < 1e-9);
+ok("knee: falls just past it", M.at("kraken60", 12, 60, kn * 1.02).torque < flat - 1e-6);
+var srcM = require("fs").readFileSync(require("path").join(__dirname, "../js/tool-motors.js"), "utf8");
+ok("no file names in the notes", srcM.split("module.exports")[1].indexOf("frc.js") < 0);
+ok("table note names both NEO Vortex rows", /NEO Vortex \(CTRE\\'s test\)/.test(srcM) && /NEO Vortex \(REV\\'s sheet\)/.test(srcM));
 console.log(fails ? fails + " of " + n + " checks failed" : "All " + n + " checks passed");
 process.exit(fails ? 1 : 0);

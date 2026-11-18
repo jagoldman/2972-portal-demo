@@ -44,5 +44,11 @@ ok("branch at 101%: above its rating, no trip words", M.branchNote(40.4 / 40) ==
 ok("branch at 250%: can trip in seconds", M.branchNote(2.5) === ", can trip in seconds");
 ok("branch at its rating: nothing", M.branchNote(1) === "");
 
+// Fix round 5: the verdict names the largest row, its share and the number to lower (the default: Drive, 4 x 40 A).
+var dflt = M.power([{ name: "Drive", n: 4, a: 40 }, { name: "Shooter", n: 2, a: 25 }, { name: "Intake", n: 1, a: 20 }, { name: "Elevator hold", n: 2, a: 10 }, { name: "Everything else", n: 1, a: 8 }], { rest: 12.5, rbat: 0.015, rwire: 0.006, brown: 6.8, main: 120 });
+ok("lever sentence", M.lever(dflt.rows[dflt.worst], dflt.I) === "Drive is the largest draw (160 A of 258 A): lowering its 40 A limit helps most.", M.lever(dflt.rows[dflt.worst], dflt.I));
+var src = require("fs").readFileSync(require("path").join(__dirname, "../js/tool-power.js"), "utf8");
+ok("breaker timing called a rough guide, with the trip curve named", /rough guide/.test(src) && /trip curve/.test(src) && !/carries its rating all day/.test(src));
+
 console.log(fails ? fails + " of " + n + " checks failed" : "All " + n + " checks passed");
 process.exit(fails ? 1 : 0);
