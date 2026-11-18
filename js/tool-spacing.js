@@ -101,7 +101,7 @@ K.tool({
       { k: s.kind === "belt" ? "Belt" : "Chain", v: String(r.count), u: s.kind === "belt" ? "teeth" : "links", sub: K.fix(o.length, 2) + " in long" },
       { k: "Ratio", v: K.fix(r.ratio, 3), u: ": 1", sub: rtxt, tip: "Driven teeth divided by driving teeth." },
       { k: "Teeth gripped", v: o.mesh1 + " and " + o.mesh2, sub: "on the " + s.n1 + "T driving " + (s.kind === "belt" ? "pulley" : "sprocket") + " and the " + s.n2 + "T driven one" + (s.kind === "belt" ? ". Six or more is a rule of thumb" : ""), state: state === "warn" ? "warn" : "", tip: "How many teeth the belt or chain wraps on each wheel. Few teeth on a small pulley is where belts skip." },
-      { k: "Gap between them", v: K.fix(o.gap, 2), u: "in", sub: "between their outer edges, about", state: o.gap < 0.05 ? "warn" : "", tip: "Clear space between the two wheels' outer edges." }]);
+      { k: "Gap between them", v: K.fix(o.gap, 2), u: "in", sub: "roughly, between their outer edges", state: o.gap < 0.05 ? "warn" : "", tip: "Clear space between the two wheels' outer edges." }]);
   },
 
   more: function (s, r) {
@@ -197,17 +197,19 @@ K.tool({
       cross(hx, y, 10); cross(18, 36, 5);
       // The gap between the gear's centre and the hole is small at true scale, so a round detail beside the gears
       // shows the two points enlarged, with the distance between them.
-      if (g.w > 520) {
-        var gapPx = Math.abs(hx - x2), Z = Math.max(1, Math.min(12, Math.round(34 / Math.max(gapPx, 1)))), zr = 46, zx = Math.min(g.w - zr - 16, V.X(C) + p2 + zr + 40), zy = y - zr * 0.2, off = Math.min(zr - 12, gapPx * Z) * (far ? 1 : -1);
-        if (zx - zr > V.X(C) + p2 + 8) {
+      {
+        var wideG = g.w > 520, gapPx = Math.abs(hx - x2), Z = Math.max(1, Math.min(12, Math.round(34 / Math.max(gapPx, 1)))), zr = wideG ? 46 : 38, zx = wideG ? Math.min(g.w - zr - 16, V.X(C) + p2 + zr + 40) : g.w - zr - 14, zy = wideG ? y - zr * 0.2 : 62 + zr + 6, off = Math.min(zr - 12, gapPx * Z) * (far ? 1 : -1);
+        if (wideG ? zx - zr > V.X(C) + p2 + 8 : zy + zr + 18 < y - p2 - 4 || zx - zr > V.X(C) + p2 + 6) {
           g.circle(zx, zy, zr, { fill: c.surface, stroke: c.line2, width: 1 });
           g.line(hx + 11, y, zx - zr, zy, { color: c.line2, width: 1, dash: [3, 3] });
           var ax = zx - off / 2, bx = zx + off / 2;
           g.circle(ax, zy, 3.5, { fill: c.text, stroke: null }); cross(bx, zy, 7);
           g.line(ax, zy + 16, bx, zy + 16, { color: c.bad, width: 1.5 }); g.line(ax, zy + 11, ax, zy + 21, { color: c.bad, width: 1.5 }); g.line(bx, zy + 11, bx, zy + 21, { color: c.bad, width: 1.5 });
           g.text(K.fix(Math.abs(r.slack), 3) + " in", zx, zy + 33, { align: "center", color: c.bad, size: 11, weight: 700 });
-          g.text("gear's centre", ax, zy - 12, { align: far ? "right" : "left", color: c.text2, size: 10.5 });
-          g.text("your hole", bx, zy - 24, { align: far ? "left" : "right", color: c.bad, size: 10.5, weight: 600 });
+          var gcW = g.textWidth("gear's centre", { size: 10.5 }), gcL = far ? ax - gcW : ax; gcL = Math.max(4, Math.min(gcL, g.w - 4 - gcW));
+          g.text("gear's centre", gcL, zy - 12, { align: "left", color: c.text2, size: 10.5 });
+          var yhW = g.textWidth("your hole", { size: 10.5, weight: 600 }), yhL = far ? bx : bx - yhW; yhL = Math.max(4, Math.min(yhL, g.w - 4 - yhW));
+          g.text("your hole", yhL, zy - 24, { align: "left", color: c.bad, size: 10.5, weight: 600 });
           g.text("enlarged " + Z + "×", zx, zy + zr + 14, { align: "center", color: c.mute, size: 10.5 });
         }
       }

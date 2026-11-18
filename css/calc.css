@@ -207,6 +207,8 @@ details.cg:not([open]) { padding-bottom: 12px; }
 .toolquick .tqa { display: inline-flex; align-items: center; gap: 8px; min-height: 40px; padding: 4px 14px 4px 10px; border: 1px solid var(--line); border-radius: 10px; background: var(--surface); color: var(--text); text-decoration: none; font-weight: 600; font-size: .9rem; }
 .toolquick .tqa:hover { background: var(--surface-2); }
 .toolquick .tqa svg { color: var(--text-2); flex: none; }
+.toolquick .tqa b { display: block; font-weight: 600; line-height: 1.2; } .toolquick .tqa small { display: block; font-weight: 500; font-size: .74rem; color: var(--mute); line-height: 1.2; }
+.toolquick .tqa { min-height: 46px; }
 @media (max-width: 640px) { .toolquick .tql { flex-basis: 100%; padding-left: 4px; } .toolquick .tqa { flex: 1 1 100%; min-height: 44px; } }
 .tooltag { display: inline-block; margin-left: 6px; padding: 0 7px; border-radius: 999px; background: var(--surface-2); color: var(--text-2); font-size: .72rem; font-weight: 600; vertical-align: 1px; }
 .how { scroll-margin-top: calc(var(--bar) + 12px); }
