@@ -221,7 +221,8 @@ function findBox(q, reqHits) {
 function whoWhen(h, sep) { return h ? h.who + (sep || ", ") + (h.when === "Just now" ? "just now" : h.when) : ""; }
 // Under a step, who and when go on two lines (the stylesheet keeps the line break), so a narrow column reads cleanly.
 // The comma keeps them apart on a phone, where the steps run down the panel and the two share one line.
-function stepSub(h) { return whoWhen(h, ",\n"); }
+// Under a step, the date alone; who did it is in History.
+function stepSub(h) { return h ? (h.when === "Just now" ? "just now" : h.when) : ""; }
 function reqSteps(r) {
   var find = function (rx) { return r.hist.filter(function (h) { return rx.test(h.what); }).slice(-1)[0]; };
   if (r.status === "denied" || r.status === "cancelled") {
@@ -255,7 +256,7 @@ function reqSteps(r) {
 // The steps of the flow, each a filter with its count; the rarely used views sit in one small "More" select.
 function flowRow(groups, gcount) {
   var p = P(), steps = ["open", "needsok", "toorder", "ordered", "done"], more = ["closed", "all", "wish"];
-  var NAMES = { open: "All open", needsok: "Needs OK", toorder: "To order", ordered: "Ordered", done: "Arrived" };
+  var NAMES = { open: "All open", needsok: "Needs OK", toorder: "Waiting to order", ordered: "Ordered", done: "Arrived" };
   function g(id) { return groups.filter(function (x) { return x[0] === id; })[0]; }
   var inMore = more.indexOf(p.filter) >= 0;
   return '<div class="pflow"><div class="psteps' + (p.rare || more.indexOf(p.filter) >= 0 ? " rareopen" : "") + '" role="group" aria-label="Show requests">' + steps.map(function (id) {
@@ -333,7 +334,7 @@ D.drawers.preq = function (d) {
   if (D.ground()) {
     var gacts = acts.length || cancelBtn ? '<div class="row pacts">' + acts.join("") + cancelBtn + "</div>" : "";
     // What a mentor needs to decide sits between the steps and the buttons: why, how much, and what it does to the budget.
-    var ctx = staff && r.status === "needsok" && r.why ? '<p class="pctx">“' + esc(r.why) + "”</p>" : "";
+    var ctx = staff && r.status === "needsok" && r.why ? '<p class="pctx">' + esc(r.by) + ": “" + esc(r.why) + "”</p>" + (ob && orderByText(ob).indexOf("late") > 0 ? '<p class="pctx"><b class="pbad">' + orderByText(ob) + "</b></p>" : "") : "";
     return D.drawerHead("Request #" + r.id, r.name) + top + ctx + gacts +
       (r.why && !ctx ? '<p class="mute">“' + esc(r.why) + "”</p>" : "") +
       '<dl class="pkv">' + rows.map(function (x) { return "<dt>" + x[0] + "</dt><dd>" + x[1] + "</dd>"; }).join("") + "</dl>" +
@@ -401,7 +402,7 @@ function toOrderView() {
     return '<div class="li pwait"><span class="grow"><b>' + esc(r.name) + (D.ground() && priPill(r.pri) ? " " + priPill(r.pri) : "") + '</b><span class="pmeta">' + [r.vendor, "Qty " + qtyText(r), money(total(r)), r.by].map(esc).join(D.ground() ? ", " : " · ") + "</span>" +
       // Ground up: the budget on one line with a comma, and the order-by date on its own line (hill climb r3).
       (D.ground() ? '<span class="pmeta">' + budgetEffect(r) + "</span>" + (ob ? '<span class="pmeta"><b class="pbad">' + orderByText(ob) + "</b></span>" : "") : '<span class="pmeta">' + budgetEffect(r) + (ob ? ' · <b class="pbad">order by ' + fmt(ob) + "</b>" : "") + "</span>") + (r.why ? '<span class="pmeta">“' + esc(r.why) + "”</span>" : "") + "</span>" + (D.ground() ? "" : priPill(r.pri)) +
-      '<span class="row nowrap"><button class="btn' + (D.ground() ? " primary" : "") + '" data-act="papprove" data-v="' + r.id + '">Approve</button><button class="btn ghost" data-act="pdeny" data-v="' + r.id + '">Deny…</button></span></div>';
+      '<span class="row nowrap"><button class="btn' + (D.ground() ? " primary" : "") + '" data-act="papprove" data-v="' + r.id + '">Approve</button><button class="btn' + (D.ground() ? "" : " ghost") + '" data-act="pdeny" data-v="' + r.id + '">' + (D.ground() ? "Deny" : "Deny…") + "</button></span></div>";
   }).join("") + "</div></div>" : "";
   // Ground up: the vendor whose order is due soonest comes first.
   function soonest(vn) { return byV[vn].map(function (r) { return orderBy(r) || "9999"; }).sort()[0]; }
@@ -409,7 +410,7 @@ function toOrderView() {
   if (!vs.length && !waiting.length) return '<div class="card"><p class="mute">Nothing to order. New requests land here, grouped by vendor.</p></div>';
   return html + vs.map(function (vn) {
     var v = vendor(vn), lines = byV[vn], sub = lines.reduce(function (a, r) { return a + total(r); }, 0), today = lines.filter(placeToday);
-    var nudge = v.free ? (sub >= v.free ? '<span class="small pok">Free shipping</span>' : '<span class="small"><b>' + money(v.free - sub) + "</b> more for free shipping</span>") : "";
+    var nudge = v.free ? (sub >= v.free ? '<span class="small pok">' + (D.ground() ? "This order ships free" : "Free shipping") + "</span>" : '<span class="small"><b>' + money(v.free - sub) + "</b> more for free shipping</span>") : "";
     var tips = [];
     if (v.cutoff) tips.push("Order cutoff " + v.cutoff); if (v.taxfree) tips.push("Tax-exempt here"); v.credits.forEach(function (c) { tips.push(c.label + (c.bal ? ": " + money(c.bal) : "") + (c.code ? " (" + c.code + ")" : "")); }); if (v.pay) tips.push("Pay with " + v.pay);
     var facts = '<p class="who">' + esc(tips.join(" · ")) + (VURL[vn] ? ' · <a class="vlink" href="' + VURL[vn] + '" target="_blank" rel="noopener noreferrer">Open ' + esc(vn) + " ↗</a>" : "") + "</p>";
@@ -477,11 +478,11 @@ function inventory() {
   var placeTree = '<button data-act="ploc2" data-v="all" aria-pressed="' + (p.loc === "all") + '">' + D.ic("home", 16) + 'Everything<span class="n">' + p.items.length + "</span></button>" + tree(p.places, 0);
   return '<div class="side"><div class="card tight hide-sm"><div class="ltree">' + placeTree + '</div><button class="btn ghost sm">+ Add a place</button></div>' +
     '<div class="card"><div class="pinvbar"><details class="placepick show-sm-block"><summary>Place: <b>' + esc(p.loc === "all" ? "Everything" : nameOf(p.places, p.loc)) + '</b></summary><div class="ltree">' + placeTree + '</div></details><input id="p-invq" class="inp" data-input="pinvq" placeholder="Find a part" value="' + esc(p.invq) + '" aria-label="Find a part"><button class="chip" data-act="plow" aria-pressed="' + p.low + '">Low stock (' + lowN + ")</button></div>" +
-    (rows.length ? '<div class="tablewrap" data-keepscroll="inventory"><table class="stacktbl c3"><thead><tr><th>Part</th><th>Where</th><th>In store</th><th>On robots</th><th></th></tr></thead><tbody>' + rows.map(function (i) {
+    (rows.length ? '<div class="tablewrap" data-keepscroll="inventory"><table class="stacktbl c3"><thead><tr><th>Part</th><th>Where</th><th>' + (D.ground() ? "On the shelf" : "In store") + '</th><th>On robots</th><th></th></tr></thead><tbody>' + rows.map(function (i) {
       var low = inStore(i) <= i.min, places = i.stock.filter(function (s) { return under(s.place); });
       var home = places.filter(function (s) { return s.place.indexOf("bot") < 0; });
       var k = i.stock.map(function (st) { return st.place.indexOf("bot") < 0; }).indexOf(true);
-      return '<tr class="click" data-act="pitem" data-v="' + i.id + '"><td class="wrap lead"><b>' + esc(i.name) + '</b></td><td class="wrap small" data-l="Where">' + (home.map(function (s) { return esc(s.place) + (home.length > 1 ? " (" + s.qty + ")" : ""); }).join("<br>") || "Only on robots") + '</td><td data-l="In store">' + inStore(i) + " " + (i.unit === "each" ? "" : esc(i.unit)) + (low ? ' <span class="pill warn">Low</span>' : "") + '</td><td data-l="On robots">' + (stockTotal(i) - inStore(i) || "—") + '</td><td class="lead"><span class="row">' + (k >= 0 ? '<button class="btn sm" data-act="ptake" data-v="' + i.id + '" data-k="' + k + '">Take</button>' : "") + (low ? '<button class="btn sm" data-act="pmore" data-v="' + i.id + '">Request more</button>' : "") + "</span></td></tr>";
+      return '<tr class="click" data-act="pitem" data-v="' + i.id + '"><td class="wrap lead"><b>' + esc(i.name) + '</b></td><td class="wrap small" data-l="Where">' + (home.map(function (s) { return esc(s.place) + (home.length > 1 ? " (" + s.qty + ")" : ""); }).join("<br>") || "Only on robots") + '</td><td data-l="In store">' + inStore(i) + " " + (i.unit === "each" ? "" : esc(i.unit)) + (low ? ' <span class="pill warn">Low</span>' : "") + '</td><td data-l="On robots">' + (stockTotal(i) - inStore(i) || "—") + '</td><td class="lead"><span class="row">' + (k >= 0 ? '<button class="btn sm" data-act="ptake" data-v="' + i.id + '" data-k="' + k + '">' + (D.ground() ? "Take one" : "Take") + "</button>" : "") + (low ? '<button class="btn sm" data-act="pmore" data-v="' + i.id + '">Request more</button>' : "") + "</span></td></tr>";
     }).join("") + "</tbody></table></div>" : '<div class="empty">No parts here.</div>') + "</div></div>";
 }
 D.drawers.pitem = function (d) {

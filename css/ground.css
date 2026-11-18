@@ -387,4 +387,29 @@
   .calcstage { position: relative; }
   .calcstage .calcx { position: absolute; top: 2px; right: 0; min-height: 30px; color: var(--mute); }
   @media (max-width: 640px) { .calcstage .calcx { min-height: 44px; top: -6px; } }
+
+  /* ============================================================
+     Hill climb, round 7 (2026-11-18)
+     ============================================================ */
+  .nli { align-items: center; }
+  .nli > .chev { flex: none; margin-left: 8px; }
+  .nextdue { margin: 0; color: var(--text); font-weight: 650; }
+  .marksep { color: var(--mute); }
+  .homec .wkd b { white-space: nowrap; }
+  .homec .wkrow { grid-template-columns: 4.2rem minmax(0, 1fr); }
+  .warnbar, .bar > i.warnbar { background: var(--warn); }
+  /* After the match: saving is a plain button; resetting is red text, because it throws the ticks away. */
+  .pitafter .pitmaint .btn { min-height: 34px; padding-inline: 12px; border: 1px solid var(--line-2); background: var(--surface); color: var(--text); text-decoration: none; }
+  .pitafter .pitmaint .btn[data-act="pitreset"] { border-color: transparent; background: none; color: var(--bad); }
+  @media (max-width: 640px) { .pitafter .pitmaint .btn { min-height: 44px; } }
+  .acc .accav { width: 48px; height: 48px; padding: 0; flex: none; }
+  @media (min-width: 1000px) { .content.skills .skmachines .skmachs { grid-template-columns: repeat(2, minmax(0, 1fr)); column-gap: 32px; } .content.skills .skmachines .skmach:nth-child(3) { border-top: 1px solid var(--line); } }
+
+  /* Round 7, Sol */
+  @media (max-width: 899px) { .homec.evday .nextcard { order: 1; } .homec.evday .appscard { order: 2; border-top: 1px solid var(--line); } }
+  .acc .li .who, .acc .li small { font-size: .9rem; }
+
+  /* Round 7, Grok 4.7 */
+  .nsame { margin: 0; font-weight: 600; }
+  .napps.allsame summary .who { display: none; }
 }

@@ -224,4 +224,19 @@
   /* "Only mine" sits on the heading's line, so the list starts sooner. */
   .preqs { position: relative; }
   @media (max-width: 640px) { .pflow { gap: 8px 12px; } .pflow .pf-mine { min-height: 36px; } }
+
+  /* ---------- Hill climb, round 7 ---------- */
+  .preqh { font-size: .95rem; font-weight: 650; }
+  /* A vendor's parts and their prices sit close enough to read as pairs. */
+  @media (min-width: 900px) { .pline { max-width: 780px; } }
+  .pline .pob { font-weight: 600; color: var(--text-2); }
+  .card.hero .pwait > .row { grid-column: 1 / -1; }
+
+  /* Round 7, Sol: on a phone the person who asked has a line of their own, named. */
+  @media (max-width: 899px) {
+    .ptable.gt .pfacts .pb { flex: 1 1 100%; }
+    .ptable.gt .pfacts .pb::before { content: "Asked by "; }
+    .ptable.gt .pfacts .pc::after { content: none !important; }
+    .pflow { margin-bottom: -4px; }
+  }
 }

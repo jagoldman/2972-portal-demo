@@ -146,7 +146,7 @@ D.views.calendar = function () {
   } else if (top === "snacks") body = snacks();
   else {
     body = calendarTab();
-    right = staff ? '<button class="btn primary sm" data-act="calnew" aria-label="New event">' + D.ic("plus", 16) + '<span>New<span class="hide-sm"> event</span></span></button>' : '<button class="btn sm" data-act="calical"><span>Subscribe<span class="hide-sm"> on my phone</span></span></button>';
+    right = staff ? '<button class="btn primary sm" data-act="calnew" aria-label="New event">' + D.ic("plus", 16) + '<span>New<span class="hide-sm"> event</span></span></button>' : '<button class="btn sm" data-act="calical"><span>Subscribe' + (D.ground() ? "" : '<span class="hide-sm"> on my phone</span>') + "</span></button>";
   }
   var row = tabs.length > 1 ? D.tabsFor("calapp", tabs.map(function (t) { return [t.id, D.ground() && t.id === "calendar" ? "Events" : t.name]; }), "calendar") : "";
   return D.topbar("Calendar", "", row, right) + '<div class="content">' + body + "</div>";
@@ -203,7 +203,7 @@ function dayDoors(e, brief) {
   if (D.calTab("here")) out += door("here", e.date === TODAYS ? "today" : "mentors", e.date, "user", hereLine(e, brief), "Attendance");
   // Ground up: where a family can settle it in one tap, the row has the same Sign up button Home has (hill climb r2).
   var sn = C().snacks[e.date] || (D.ground() && isPractice(e) ? (C().snacks[e.date] = new Array(C().slots).fill(null)) : null), k = sn ? sn.indexOf(null) : -1;
-  if (D.calTab("snacks") && D.ground() && D.S.role === "parent" && sn && k >= 0 && sn.indexOf(snackName()) < 0) out += '<div class="doorln doorask">' + D.ic("snacks", 16) + '<span class="dtxt"><span class="pill warn">' + esc(snackLine(e.date)) + '</span></span><button class="btn sm" data-act="snack" data-d="' + e.date + '" data-k="' + k + '">Sign up</button></div>';
+  if (D.calTab("snacks") && D.ground() && D.S.role === "parent" && sn && k >= 0 && sn.indexOf(snackName()) < 0) out += '<div class="doorln doorask"><span class="dtxt"><span class="pill warn">' + esc(snackLine(e.date)) + '</span></span><button class="btn sm" data-act="snack" data-d="' + e.date + '" data-k="' + k + '">Sign up</button></div>';
   else if (D.calTab("snacks")) out += door("snacks", "", e.date, "snacks", snackLine(e.date), "Snacks");
   return out ? '<div class="agdoors">' + out + "</div>" : "";
 }
@@ -264,7 +264,7 @@ function today() {
   var ms = MENTORS.map(function (m) { var here = c.here.some(function (h) { return h.name === m; }), a = availOf(m, TODAYS); return '<div class="li"><b class="grow">' + esc(m) + "</b>" + (here ? '<span class="pill ok">Here</span>' : a === "coming" || a === "usual" ? '<span class="pill info">Planned</span>' : a === "cant" ? '<span class="pill bad">Can\'t come</span>' : '<span class="pill">No answer</span>') + "</div>"; }).join("");
   return '<div class="card hero statuscard"><div class="grow"><h2>' + (mine ? "Signed in since " + esc(mine.at) : "You are not signed in") + '</h2><p class="small mute">Practice today, ' + span({ start: "15:30", end: "18:00" }) + (D.ground() && !mine ? ". Scan the code at the door." : "") + "</p></div>" +
     (mine ? '<button class="btn" data-act="hereout">Sign out</button>' : '<button class="btn primary" data-act="herescan">' + D.ic("qr", 16) + (D.ground() ? " Sign in" : " Scan the door code") + "</button>") + "</div>" +
-    '<div class="grid2"><div class="card"><div class="row between"><h2>Here now · ' + c.here.length + '</h2>' + (staff ? '<button class="btn sm" data-act="hereall">Sign everyone out</button>' : "") + '</div><div class="list">' +
+    '<div class="grid2"><div class="card"><div class="row between"><h2>' + (D.ground() ? 'Here now <span class="tcount">' + c.here.length + "</span>" : "Here now · " + c.here.length) + "</h2>" + (staff ? '<button class="btn sm" data-act="hereall">Sign everyone out</button>' : "") + '</div><div class="list">' +
     (c.here.length ? c.here.map(function (h, i) { return '<div class="li"><span class="ring"></span><b class="grow">' + esc(h.name) + '</b><span class="who">since ' + esc(h.at) + "</span>" + (staff ? '<button class="btn ghost sm" data-act="hereone" data-i="' + i + '">Sign out</button>' : "") + "</div>"; }).join("") : '<div class="empty">Nobody is signed in yet.</div>') + '</div></div>' +
     '<div class="card"><h2>Mentors</h2><div class="list">' + ms + "</div></div></div>";
 }
@@ -297,7 +297,8 @@ function mine() {
 /* Mentor availability, laid out like the Task App's: your usual week, then Who's coming as a List
    (practice days × mentors) or a Calendar. Your own days open a small editor when clicked. */
 function shortT(s) { return t12(s).replace(" ", ""); }
-function range(a) { return a && a.start && a.end ? shortT(a.start) + "–" + shortT(a.end) : null; }
+// Ground up writes times one way everywhere: "4 pm–6 pm".
+function range(a) { return a && a.start && a.end ? (D.ground() ? t12(a.start) + "–" + t12(a.end) : shortT(a.start) + "–" + shortT(a.end)) : null; }
 function ans(m, date) {
   var a = C().avail[m], o = a.one[date], wd = parse(date).getDay(), t;
   if (o) { t = a.t[date] || {}; return { st: o, start: t.start || "", end: t.end || "", usual: false }; }
@@ -348,16 +349,15 @@ function whosComing(ed, days) {
   var c = C(), v = c.mview || "list";
   return '<div class="card"><div class="row between"><h2>Who\'s coming</h2><span class="seg" role="group" aria-label="View">' + [["list", "List", "Mentors and practice days in a table."], ["calendar", "Calendar", "Mentors coming, shown on a month."]].map(function (x) { return '<button data-act="hereview" data-v="' + x[0] + '" aria-pressed="' + (v === x[0]) + '" data-tip="' + x[2] + '">' + x[1] + "</button>"; }).join("") + "</span></div>" +
     (v === "calendar" ? mentorMonth(ed, days) : days.length ? teamList(ed, days) : '<p class="small mute">No practice days in the next 8 weeks.</p>') +
-    (D.ground() && v !== "calendar" && days.length ? '<p class="who">A dash means that mentor has not said yet.</p>' : "") +
     (ed && c.pop ? dayPop(ed, c.pop.d, days) : "") + "</div>";
 }
 function answerLabel(a, student) {
   // Ground up: one style for every answer, a dot and a word.
-  if (D.ground() && a && a.st === "coming") return '<span class="pill ok">' + (range(a) || "Coming") + "</span>";
+  if (D.ground() && a && a.st === "coming") return '<span class="pill info">' + (range(a) || "Coming") + "</span>";
   if (D.ground() && a && a.st === "cant" && !student) return '<span class="pill">Not coming</span>';
   if (a && a.st === "coming") return '<span class="ans-ok">' + D.ic("check", 13) + " " + (range(a) || "Coming") + "</span>";
   if (a && a.st === "cant" && !student) return '<span class="mute">✕ Not coming</span>';
-  return '<span class="mute" aria-label="No answer">–</span>';
+  return D.ground() ? '<span class="mute">No reply</span>' : '<span class="mute" aria-label="No answer">–</span>';
 }
 function teamList(ed, days) {
   var c = C(), me = D.me().name, student = !D.isStaff(), admin = D.S.role === "admin", others = MENTORS.filter(function (m) { return m !== ed; });

@@ -214,7 +214,7 @@ function pairDrawing(r1, r2, C, n1, n2, cLabel, pitch, what) {
   var dash = pitch && pitch * s >= 3 ? ' stroke-dasharray="' + (pitch * s * 0.6).toFixed(2) + " " + (pitch * s * 0.4).toFixed(2) + '"' : "";
   // A wheel's tooth count sits inside it; a small wheel's goes beside its centre line, just above the dimension,
   // where neither belt run passes.
-  function teeth(x, R, n) { return R >= 1e9 ? '<text class="clabel" x="' + x.toFixed(1) + '" y="' + (cy - 8).toFixed(1) + '" text-anchor="middle">' + n + " teeth</text>" : '<text class="clabel" x="' + (x + 5).toFixed(1) + '" y="' + (dy - 6) + '">' + n + " teeth</text>"; }
+  function teeth(x, R, n) { var cx = Math.max(34, Math.min(366, x)); return '<text class="clabel" x="' + cx.toFixed(1) + '" y="' + (dy - 6) + '" text-anchor="middle">' + n + " teeth</text>"; }
   return '<svg class="calcdraw" viewBox="0 0 ' + W + " " + H.toFixed(0) + '" role="img"><title>' + esc(what + ": " + n1 + " and " + n2 + " teeth, " + cLabel + " apart, drawn to scale") + "</title>" +
     '<circle class="cwheel" cx="' + x1.toFixed(1) + '" cy="' + cy.toFixed(1) + '" r="' + R1.toFixed(1) + '"/><circle class="cwheel" cx="' + x2.toFixed(1) + '" cy="' + cy.toFixed(1) + '" r="' + R2.toFixed(1) + '"/>' +
     '<path class="cbelt' + (pitch ? " chain" : "") + '" d="' + path + '"' + dash + "/>" +
@@ -367,7 +367,7 @@ def({ id: "calc-belt", key: "belt", name: "Belt", icon: "cbelt", line: "Which be
     }).join("") : "";
     var mesh = b && b.mesh;
     var html = '<h3 class="calch">Belts that fit</h3>' + (b ? '<ul class="calcopts" aria-label="Belts that fit, with the centre distance for each">' + opts + "</ul>" : '<p class="mute">' + DASH + "</p>") +
-      results([row("Pitch diameters", b ? fx(b.r1 * 2, 1) + " and " + fx(b.r2 * 2, 1) : DASH, "mm"), row("Teeth in mesh on the small pulley", mesh ? fx(mesh.teeth, 1) : DASH, "")]) +
+      results([row("Pitch diameters", b ? (u === "mm" ? fx(b.r1 * 2, 1) + " and " + fx(b.r2 * 2, 1) : fx(b.r1 * 2 / 25.4, 3) + " and " + fx(b.r2 * 2 / 25.4, 3)) : DASH, u === "mm" ? "mm" : "in"), row("Teeth in mesh on the small pulley", mesh ? fx(mesh.teeth, 1) : DASH, "")]) +
       (mesh && mesh.teeth < 6 ? '<p class="calcwarn"><span class="pill warn">Few teeth</span> Under 6 teeth in mesh can skip under load. Use a bigger small pulley or a longer distance.</p>' : "");
     if (best) html += pairDrawing(b.r1, b.r2, best.C, n1, n2, "C = " + lenText(best.C, u), 0, "Belt drawing");
     if (best) html += '<div class="row"><button type="button" class="btn" data-act="calcparts" data-v="' + esc(name + " belt, " + best.teeth + "T") + '">' + D.ic("search", 16) + " Find it in Parts</button></div>";
