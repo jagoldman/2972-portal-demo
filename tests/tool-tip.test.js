@@ -117,5 +117,18 @@ var sim9 = M.stop(Object.assign({}, dflt, { L: 33, H: 12, bumpX: 17, bBot: 2, bT
 ok("tilt marks: lifts and comes back", tmk && tmk.backT != null && tmk.backT > tmk.peakT, JSON.stringify(tmk));
 ok("tilt marks: peak is the most tilt (sampled frames, within half a degree)", tmk && Math.abs(tmk.peakDeg - sim9.maxPhi * 180 / Math.PI) < 0.5);
 ok("tilt marks: none when it does not lift", M.tiltMarks({ lifted: false }) === null);
+// Round 11 (must-fix): every angle and tangent shown agree on a calculator to the digits shown. The default backward
+// angle is 38.3° (tan 38.3° = 0.79), not 38°, whose tangent is 0.78.
+var Ld = M.limits(dflt), at = M.angleTan(Ld.dr / Ld.cg.h);
+ok("defaults: tan 38.3° = 0.79, the same 0.79 as the card", at.a === "38.3" && at.t === "0.79" && Ld.tipAccel.toFixed(2) === at.t, JSON.stringify(at));
+var bad = 0;
+for (var hh = 4; hh <= 40; hh += 0.37) for (var dd = 3; dd <= 30; dd += 0.53) {
+  var q = M.angleTan(dd / hh);
+  if (Math.tan(+q.a * Math.PI / 180).toFixed(2) !== q.t || (dd / hh).toFixed(2) !== q.t) bad++;
+}
+ok("angle and tangent agree as shown, across 5,000 robots", bad === 0, bad);
+// Round 11 (GPT Sol, must-fix): the braking arrow is a force, so no label on it gives it in g.
+var srcT = require("fs").readFileSync(require("path").join(__dirname, "../js/tool-tip.js"), "utf8");
+ok("no force arrow labelled in g", !/"inertia, " \+ g2\(brk\) \+ " g"/.test(srcT) && !/"forward, " \+ g2\(brk\) \+ " g"/.test(srcT) && /" × weight"/.test(srcT));
 console.log(fails ? fails + " of " + n + " checks failed" : "all " + n + " checks passed");
 if (fails) process.exit(1);
