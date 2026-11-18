@@ -482,7 +482,7 @@ function homeGround() {
   // On an event day the event line takes the season line's place. A student's shift card below already says "you
   // now", so the line leaves that part out for them.
   var top = S.eventDay && D.eventLine && role !== "parent" ? D.eventLine(shift ? "schedule" : "") : seasonLine(role === "parent");
-  return '<div class="content home homeb homec' + (S.eventDay ? " evday" : "") + (role === "parent" ? " parent" : "") + '"><div class="homehead"><h1>Hi ' + esc(D.me().short) + '.</h1><p class="homedate">' + esc(S.eventDay && D.calApi && D.calApi.currentEvent && D.calApi.currentEvent() ? D.calApi.currentEvent().name : date) + "</p></div>" + top +
+  return '<div class="content home homeb homec' + (S.eventDay ? " evday" : "") + (role === "parent" ? " parent" : "") + '"><div class="homehead"><h1>Hi ' + esc(D.me().short) + '.</h1>' + (S.eventDay ? "" : '<p class="homedate">' + esc(date) + "</p>") + "</div>" + top +
     '<div class="homecols"><div class="homemain">' + mainCol + act + '</div><aside class="homeside">' +
     (role === "parent" ? "" : week) +
     '<section class="card appscard"><h2>Apps</h2><div class="applist">' + main.map(approw).join("") + "</div>" +

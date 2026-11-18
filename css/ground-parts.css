@@ -189,4 +189,7 @@
     .ptable.gt .pfacts .pd { flex: 1 1 100%; order: -1; color: var(--text-2); }
     .ptable.gt .pfacts .pb::after { content: none !important; }
   }
+
+  /* Round 5: "Order by" leads its line in bold; it is not a block of its own (that left a comma starting the next line). */
+  .pline .pob { display: inline; }
 }
