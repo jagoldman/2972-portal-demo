@@ -112,7 +112,7 @@ near("continuous kG per section in proportion to the load", cont.kGs[2] / cont.k
 });
 // Item 1: the sweep says when the best reduction is at an end of the range tried.
 var fast = M.compute(Object.assign({}, base, { carLb: 2, stageLb: 1, stages: 1, ratio: 9 }));
-ok("light lift: best at the low end of the sweep", fast.bestEnd === "lo" && Math.abs(fast.best[0] - 3) < 1e-9, fast.best && fast.best[0]);
+ok("light lift: best at the low end of the sweep, 2:1 (round 8: the sweep starts at 2:1)", fast.bestEnd === "lo" && Math.abs(fast.best[0] - 2) < 1e-9, fast.best && fast.best[0]);
 var over = M.compute(Object.assign({}, base, { spring: 20, carLb: 10 }));
 ok("case 5: a spring stronger than the weight lifts faster than no-load, and the page knows", over.mod.load(0) < 0 && over.topV > over.freeV, over.topV);
 
@@ -136,6 +136,26 @@ near("stage 2 joins at a third of the rope", F.interp(con7.up.t, con7.up.x, con7
 near("stage 1 joins at two thirds", F.interp(con7.up.t, con7.up.x, con7.joins[1].t), 2 * con7.mod.seg, 0.004);
 ok("joins before the reverse to stop", con7.joins[1].t < con7.tRev1);
 ok("cascade has no joins", cas7.joins.length === 0);
+
+// Round 8, item 1: the rope diagram's columns. Cascade with 2 stages: the drive rope lifts stage 1 (1x), stage 1's rope
+// lifts stage 2 (2x), stage 2's rope lifts the carriage (3x), matching heights(x) = [x, 2x, 3x].
+var rc8 = M.ropes(2, "cascade"), hh8 = M.compute(Object.assign({}, base, { stages: 2 })).mod.heights(0.1);
+ok("cascade: three ropes", rc8.length === 3);
+rc8.forEach(function (c8, i) { near("rope " + i + " multiplier matches the model", c8.mult, hh8[i] / 0.1, 1e-9); });
+ok("drive rope lifts stage 1, last rope lifts the carriage", rc8[0].lifts === "stage 1" && rc8[2].lifts === "the carriage");
+ok("stage 1 rope is tied to the frame, stage 2 rope to stage 1", /frame/.test(rc8[1].end) && /stage 1/.test(rc8[2].end));
+var cc8 = M.ropes(3, "continuous");
+ok("continuous: one rope", cc8.length === 1);
+ok("continuous: it goes over 7 pulleys for 3 stages (frame top, then each stage's bottom and top)", cc8[0].pulleys.length === 7);
+ok("continuous: lifts the carriage, then stage 3, 2, 1", cc8[0].lifts.map(function (l) { return l.part; }).join() === "c,3,2,1");
+// Item 5: the sweep starts at 2:1 and its y range covers yours with room.
+var sw8 = M.compute(Object.assign({}, base, { stages: 2 })), yr8 = M.sweepRange(sw8.sweep, 9);
+ok("sweep starts at 2:1", Math.abs(sw8.sweep[0][0] - 2) < 1e-9);
+ok("y range holds your time", yr8[0] < sw8.timeUp && yr8[1] > sw8.timeUp, yr8);
+// By hand on a made-up curve: with yours at 10:1 only 3.4:1 to 30:1 count (a third to three times): times 1 to 2 s, so the
+// range is 1 - 0.12 to 2 + 0.12; the 5 s point at 2:1 is left out.
+var yr9 = M.sweepRange([[2, 5], [3.4, 2], [10, 1], [30, 1.5], [40, 3]], 10);
+near("hand range, bottom", yr9[0], 0.88, 1e-12); near("hand range, top", yr9[1], 2.12, 1e-12);
 
 console.log(fails ? fails + " of " + n + " checks failed" : "all " + n + " checks passed");
 process.exit(fails ? 1 : 0);
