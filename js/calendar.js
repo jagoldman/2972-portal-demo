@@ -201,7 +201,10 @@ function snackLine(date) {
 function dayDoors(e, brief) {
   var out = "";
   if (D.calTab("here")) out += door("here", e.date === TODAYS ? "today" : "mentors", e.date, "user", hereLine(e, brief), "Attendance");
-  if (D.calTab("snacks")) out += door("snacks", "", e.date, "snacks", snackLine(e.date), "Snacks");
+  // Ground up: where a family can settle it in one tap, the row has the same Sign up button Home has (hill climb r2).
+  var sn = C().snacks[e.date], k = sn ? sn.indexOf(null) : -1;
+  if (D.calTab("snacks") && D.ground() && D.S.role === "parent" && sn && k >= 0 && sn.indexOf(snackName()) < 0) out += '<div class="doorln doorask">' + D.ic("snacks", 16) + '<span class="dtxt">' + esc(snackLine(e.date)) + '</span><button class="btn sm" data-act="snack" data-d="' + e.date + '" data-k="' + k + '">Sign up</button></div>';
+  else if (D.calTab("snacks")) out += door("snacks", "", e.date, "snacks", snackLine(e.date), "Snacks");
   return out ? '<div class="agdoors">' + out + "</div>" : "";
 }
 function agenda() {

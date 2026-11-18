@@ -24,4 +24,7 @@
     .evk { font-size: .8rem; }
     .evpart + .evpart { border-left: 0; border-top: 1px solid var(--line); }
   }
+
+  /* Hill climb r2: on a phone the small names in the event line are 14 px, readable at arm's length. */
+  @media (max-width: 640px) { .evline .evk { font-size: .875rem; } }
 }

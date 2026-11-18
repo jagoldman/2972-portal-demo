@@ -506,7 +506,7 @@ function groundStudent(me) {
   var n = nextUp(me), cap = readyAll ? n.ready.length : 3, html = "";
   var mach = myMachines(me), cleared = mach.filter(function (m) { return m.state === "yes"; }).length;
   html += '<div class="card skmachines"><div class="row between"><h2>Machines you can use</h2><span class="who">' + cleared + " of " + mach.length + ' cleared</span></div>' +
-    '<p class="who">Cleared means a mentor signed off your written test and your demonstration. Tap a machine to see what comes next.</p>' +
+    '<p class="who">Cleared: a mentor signed off your test and your demonstration.</p>' +
     '<div class="list skmachs">' + mach.map(function (m) { return machineRow(m, me); }).join("") + "</div></div>";
   html += '<div class="card skhalf"><div class="row between"><h2>Finish what you started</h2>' + (n.prog.length ? '<span class="tcount">' + n.prog.length + "</span>" : "") + "</div>" +
     (n.prog.length ? '<div class="list">' + n.prog.map(function (x) { return skillRow(x, "In progress", "warn"); }).join("") + "</div>" : '<p class="mute">Nothing started yet. Pick one from Ready to start.</p>') + "</div>";
@@ -662,7 +662,7 @@ function signoffView() {
   var people = STUDENTS.map(function (st) {
     var p = S.sk.prog[st], t = tree(s.tree), c = cat(t, s.cat), stt = skillStatus(st, p, t, c, s);
     var can = stt !== "complete" && stt !== "locked";
-    return '<div class="skpick"><button class="bigcheck sm" data-act="skbulkpick" data-v="' + esc(st) + '" aria-pressed="' + !!b.picks[st] + '"' + (can ? "" : " disabled") + ' aria-label="Pick ' + esc(st) + '">' + D.ic("check", 22) + "</button><b>" + esc(st) + '</b><span class="pill ' + (stt === "complete" ? "ok" : stt === "locked" ? "" : "info") + '">' + ({ complete: "Done", locked: "Locked", requested: "Asked", progress: "In progress", available: "Available" })[stt] + "</span></div>";
+    return '<div class="skpick"><button class="bigcheck sm" data-act="skbulkpick" data-v="' + esc(st) + '" aria-pressed="' + !!b.picks[st] + '"' + (can ? "" : " disabled") + ' aria-label="Pick ' + esc(st) + '">' + D.ic("check", 22) + "</button><b>" + esc(st) + '</b><span class="pill ' + (stt === "complete" ? "ok" : stt === "locked" ? "" : "info") + '">' + ({ complete: D.ground() ? "Signed off" : "Done", locked: D.ground() ? "Not open yet" : "Locked", requested: "Asked", progress: "In progress", available: "Available" })[stt] + "</span></div>";
   }).join("");
   var n = Object.keys(b.picks).filter(function (k) { return b.picks[k]; }).length;
   var queue = S.sk.requests.length ? S.sk.requests.map(function (r, i) {

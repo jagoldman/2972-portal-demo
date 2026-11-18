@@ -110,8 +110,9 @@
   }
 
   /* Month: a name that does not fit takes a second line before it is cut. */
-  .month .ev { white-space: normal; }
-  .month .ev .et { display: -webkit-box; -webkit-box-orient: vertical; -webkit-line-clamp: 2; overflow: hidden; }
+  .month .ev { white-space: normal; align-items: flex-start; }
+  .month .ev::before { margin-top: 5px; }
+  .month .ev .et { display: -webkit-box; -webkit-box-orient: vertical; -webkit-line-clamp: 2; overflow: hidden; white-space: normal; line-height: 1.25; }
 
   /* Account: Build or Competition is the same kind of choice as Light or Dark, so it is the same control. */
   .acc .choice { display: inline-flex; flex-wrap: wrap; gap: 2px; padding: 2px; justify-self: start; max-width: 100%; background: var(--surface-3); border-radius: var(--r-ctl); }
@@ -136,4 +137,41 @@
     .homec .actcard { order: 7; }
     .homec .homeside > .card:first-child { border-top: 1px solid var(--line); }
   }
+
+  /* ============================================================
+     Hill climb, round 2 (2026-11-18)
+     ============================================================ */
+  /* Until a student has signed in, Sign in is the one filled button; the next task's Done waits its turn. */
+  .homec .homecols:has(.nowrow .btn.primary) .nextup .btn.primary { background: var(--surface); border-color: var(--line-2); color: var(--text); box-shadow: none; }
+  /* The chosen theme has a tick as well as a tint. */
+  .accountchoice[aria-pressed="true"]::after { content: ""; margin-left: auto; width: 6px; height: 11px; border: solid currentColor; border-width: 0 2px 2px 0; transform: rotate(45deg) translate(-2px, -2px); }
+  /* A switch says On or Off in words, not by colour alone. */
+  .acc .toggle::before { content: "Off"; position: absolute; right: calc(100% + 8px); top: 50%; transform: translateY(-50%); color: var(--mute); font-size: .86rem; font-weight: 600; }
+  .acc .toggle[aria-pressed="true"]::before { content: "On"; color: var(--text); }
+  /* The Tools page is named by the bar; its heading is kept for screen readers and not drawn twice. */
+  .pagehead:has(+ .toolspage) { position: absolute; width: 1px; height: 1px; padding: 0; overflow: hidden; clip: rect(0 0 0 0); }
+  .toolspage { padding-top: 6px; }
+  .nowrow .rl .move { font-size: inherit; }
+  /* Event day: the event's apps come before the week. */
+  .homec.evday .homeside { display: flex; flex-direction: column; }
+  .homec.evday .appscard { order: -1; border-top: 0; }
+  .homec.evday .homeside > .wkcard { border-top: 1px solid var(--line); }
+  @media (max-width: 899px) { .homec.evday .appscard { order: 3; border-top: 1px solid var(--line); } }
+  @media (max-width: 640px) {
+    /* Competition mode on a phone: the chip and the app's name both fit. */
+    .appbar { gap: 4px; }
+    .appbar .appname { font-size: .96rem; }
+    .modechip { padding-inline: 7px; font-size: .74rem; min-height: 30px; }
+    .heroacts .btn.ghost { border-color: var(--line); }
+    .homec .gnext { flex-wrap: wrap; }
+    .homec .gnext .btn { flex: 1 1 100%; }
+    .li.tkr { flex-wrap: nowrap; }
+    .li.tkr .grow { min-width: 0; }
+    .subnav .seg { -webkit-mask-image: linear-gradient(to right, #000 calc(100% - 32px), transparent); mask-image: linear-gradient(to right, #000 calc(100% - 32px), transparent); padding-right: 28px; }
+    .calcchart text { font-size: 15px; }
+  }
+  .doorask { cursor: default; }
+  .doorask:hover { background: none; color: var(--text-2); }
+  .doorask .btn { flex: none; }
+  .fieldcanvas { background: #24272b; }
 }

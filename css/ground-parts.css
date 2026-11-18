@@ -112,4 +112,27 @@
     /* The panel's choices share the width evenly and never crowd. */
     .drawer > .row > .btn { flex: 1 1 auto; }
   }
+
+  /* ---------- Hill climb, round 2 ---------- */
+  .psep { flex: none; width: 1px; height: 22px; margin-inline: 4px; background: var(--line-2); }
+  .pstep.prare { color: var(--text-2); }
+  @media (max-width: 899px) {
+    /* Folded row: the name with its priority; then the state and whose move; then the facts. */
+    .ptable.gt .pn { flex: 1 1 calc(100% - 6.5rem); order: 1; }
+    .ptable.gt .pp { order: 2; margin-left: auto; }
+    /* A request with no priority still keeps its state on the second line, so every row has the same shape. */
+    .ptable.gt .ptr:has(.pp:empty) .pn { flex-basis: 100%; }
+    .ptable.gt .ps .pill { order: 3; }
+    .ptable.gt .ps .move { order: 4; }
+    .ptable.gt .pfacts { order: 5; }
+  }
+  @media (max-width: 640px) {
+    .psteps { -webkit-mask-image: linear-gradient(to right, #000 calc(100% - 44px), transparent); mask-image: linear-gradient(to right, #000 calc(100% - 44px), transparent); padding-right: 40px; }
+    /* The request's steps run down the panel on a phone, one line each, so no name is squeezed. */
+    .preqsteps .stages { grid-template-columns: minmax(0, 1fr); gap: 0; }
+    .preqsteps .stages li { display: flex; flex-wrap: wrap; align-items: baseline; gap: 0 10px; min-height: 30px; padding: 4px 0 4px 26px; }
+    .preqsteps .stages li::before { top: 8px; }
+    .preqsteps .stages li::after { top: 22px; left: 5px; right: auto; width: 2px; height: calc(100% - 14px); }
+    .preqsteps .stages small { white-space: normal; }
+  }
 }

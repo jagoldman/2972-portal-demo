@@ -12,7 +12,9 @@ D.inits.push(function (S) {
 /* One choice per kind; the bell is always on. Values map onto the stored {discord, email}. */
 var CHOICES = [["bell", "Bell only", false, false], ["email", "Bell and email", false, true], ["discord", "Bell and Discord", true, false], ["both", "Bell, Discord and email", true, true]];
 function choiceOf(p, linked) { var d = p.discord && linked; return CHOICES.filter(function (c) { return c[2] === d && c[3] === p.email; })[0]; }
-function appSummary(ap, linked) { var names = KINDS.map(function (k) { return choiceOf(ap[k[0]], linked)[1]; }); return names.every(function (n) { return n === names[0]; }) ? names[0] : "Mixed"; }
+function appSummary(ap, linked) { var names = KINDS.map(function (k) { return choiceOf(ap[k[0]], linked)[1]; }); if (names.every(function (n) { return n === names[0]; })) return names[0]; if (!D.ground()) return "Mixed";
+  // Ground up names the channels (hill climb r2: "Mixed" did not say what was on).
+  var uniq = names.filter(function (n, i) { return names.indexOf(n) === i; }); return uniq.length === 2 ? uniq[0] + " for some, " + uniq[1].charAt(0).toLowerCase() + uniq[1].slice(1) + " for others" : "Different for each kind"; }
 function Acc() { return D.S.account; }
 D.views.account = function () {
   var a = Acc(), apps = APPS.filter(function (id) { return D.inGroup(id); });

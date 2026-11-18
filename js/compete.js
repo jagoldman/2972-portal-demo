@@ -275,12 +275,14 @@ D.after.push(function () {
 });
 function drawField(cv) {
   var x = cv.getContext("2d"), w = cv.width, h = cv.height, f = C().form;
-  x.fillStyle = "#1d2a1f"; x.fillRect(0, 0, w, h);
+  // Ground up: the field is neutral grey; red and blue stay, because they are the two alliances.
+  var g = D.ground(), mark = g ? "rgba(255,255,255,.75)" : "rgba(232,185,49,.8)", pen = g ? "#ffffff" : "#e8b931";
+  x.fillStyle = g ? "#24272b" : "#1d2a1f"; x.fillRect(0, 0, w, h);
   x.strokeStyle = "rgba(255,255,255,.5)"; x.lineWidth = 2; x.strokeRect(6, 6, w - 12, h - 12); x.beginPath(); x.moveTo(w / 2, 6); x.lineTo(w / 2, h - 6); x.stroke();
   x.fillStyle = "rgba(220,60,50,.35)"; x.fillRect(6, 6, 70, h - 12); x.fillStyle = "rgba(60,110,220,.35)"; x.fillRect(w - 76, 6, 70, h - 12);
   x.fillStyle = "rgba(255,255,255,.7)"; x.font = "12px sans-serif"; x.fillText("Red start", 14, 22); x.fillText("Blue start", w - 70, 22);
-  [[180, 90], [180, 230], [w - 180, 90], [w - 180, 230]].forEach(function (p) { x.beginPath(); x.arc(p[0], p[1], 18, 0, 7); x.strokeStyle = "rgba(232,185,49,.8)"; x.stroke(); });
-  x.strokeStyle = "#e8b931"; x.lineWidth = 4; x.lineCap = "round";
+  [[180, 90], [180, 230], [w - 180, 90], [w - 180, 230]].forEach(function (p) { x.beginPath(); x.arc(p[0], p[1], 18, 0, 7); x.strokeStyle = mark; x.stroke(); });
+  x.strokeStyle = pen; x.lineWidth = 4; x.lineCap = "round";
   f.path.forEach(function (stroke) { x.beginPath(); stroke.forEach(function (p, i) { if (i) x.lineTo(p[0], p[1]); else x.moveTo(p[0], p[1]); }); x.stroke(); });
 }
 var drawing = null;

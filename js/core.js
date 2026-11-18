@@ -256,7 +256,7 @@ function appsMenu() {
   var more = tiles.filter(function (t) { return t.more; });
   return '<div class="appsmenu" role="dialog" aria-label="All apps" data-keepscroll="appsmenu"><div class="menuhead"><div class="seg" role="group" aria-label="Mode"><button data-act="mode" data-v="build" aria-pressed="' + (S.mode === "build") + '" data-tip="Show the apps for build season.">Build</button><button data-act="mode" data-v="competition" aria-pressed="' + (S.mode === "competition") + '" data-tip="Show the event apps: schedule, pit and scouting.">Competition</button></div><button class="xbtn" data-act="apps" aria-label="Close" data-tip="Close the apps menu.">×</button></div>' +
     '<div class="appgrid">' + tiles.filter(isCore).map(item).join("") + "</div>" +
-    '<div class="menugroups">' + toolsGroup("menu") + adminGroup("menu", tiles, function (l) { return '<div class="appgrid">' + l.map(item).join("") + "</div>"; }) + (more.length ? groupRow("more", "More", more.length, "menu", '<div class="appgrid">' + more.map(item).join("") + "</div>") : "") + "</div></div>";
+    '<div class="menugroups">' + toolsGroup("menu") + adminGroup("menu", tiles, function (l) { return '<div class="appgrid">' + l.map(item).join("") + "</div>"; }) + (more.length ? groupRow("more", D.ground() ? "Team links" : "More", more.length, "menu", '<div class="appgrid">' + more.map(item).join("") + "</div>") : "") + "</div></div>";
 }
 /* One notice row. Click: mark read, then open its app. Right-click, long-press, Shift+F10 or the context-menu key:
    a one-item menu to mark it read or unread (D.noticeMenu below). Unread = dot + bold + "Unread:" for screen readers. */
@@ -361,16 +361,18 @@ function nowRows() {
   var S = D.S, rows = [], api = D.calApi, c = S.cal, staff = D.isStaff(), P = apiWith(D.partsApi, ["needsOk", "approve", "open"]), K = apiWith(D.skillsApi, ["requests", "signOff"]);
   practiceRows().forEach(function (r) {
     // A parent's first question is the next practice. When that is today, the row says "today", not the date.
+    if (S.role === "parent" && /^Next event: /.test(r.title)) return;
     if (S.role === "parent" && api && /^Next practice: /.test(r.title) && api.practiceDays(1)[0] && api.practiceDays(1)[0].date === api.TODAYS) r.title = "Practice today";
-    rows.push({ app: r.app, tab: r.tab, title: r.title, line: r.line ? esc(r.line) : "", btn: r.btn || "" }); });
+    // Signing in is the first job at practice, so until it is done it is the page's one main button (hill climb r2).
+    rows.push({ app: r.app, tab: r.tab, title: r.title, line: r.line ? esc(r.line) : "", btn: (r.btn || "").replace('class="btn" data-act="herescan"', 'class="btn primary" data-act="herescan"') }); });
   if (staff) {
     if (P && hasTile("parts")) P.needsOk().forEach(function (r) {
       rows.push({ act: "homereq", v: r.id, title: r.name, line: esc(D.money(r.total) + ", asked by " + r.by) + (r.orderBy ? ', <b class="nowbad">order by ' + esc(api ? api.fmt(r.orderBy) : r.orderBy) + "</b>" : ""),
         mark: r.pri === "blocking" ? '<span class="pill pri bad">Blocking</span>' : r.pri === "high" ? '<span class="pill pri warn">High</span>' : "",
-        btn: '<button class="btn" data-act="homeapprove" data-v="' + r.id + '">Approve</button>' });
+        btn: '<button class="btn' + (r.pri === "blocking" ? " primary" : "") + '" data-act="homeapprove" data-v="' + r.id + '">Approve</button>' });
     });
     if (K && hasTile("skills")) K.requests().forEach(function (q) {
-      rows.push({ app: "skills", tab: "signoff", title: q.student + " asks for " + q.skill, line: esc(q.where), btn: '<button class="btn" data-act="homesignoff" data-v="' + esc(q.key) + '">Sign off</button>' });
+      rows.push({ app: "skills", tab: "signoff", title: q.student + ": " + q.skill, line: esc("Asks for a sign-off. " + q.where), btn: '<button class="btn" data-act="homesignoff" data-v="' + esc(q.key) + '">Sign off</button>' });
     });
     // Stuck work comes to the mentors as a row, not only as a notice: nothing waits silently (GROUND_UP.md §1).
     if (apiWith(D.tasksApi, ["stuck", "openTask"]) && hasTile("tasks")) D.tasksApi.stuck().forEach(function (x) {
@@ -389,10 +391,10 @@ function nowRows() {
 function waitingOnOthers() {
   var rows = [], P = apiWith(D.partsApi, ["mine", "open"]), K = apiWith(D.skillsApi, ["mine"]);
   if (P && hasTile("parts")) P.mine().forEach(function (r) {
-    rows.push('<div class="li nowrow"><button class="rowlink" data-act="homereq" data-v="' + r.id + '"><span class="rt">' + esc(r.name) + '</span><span class="rl"><span class="pill ' + esc(r.kind || "") + '">' + esc(r.statusText) + "</span></span></button>" + (r.waitingOn ? D.move(r.waitingOn) : r.eta ? '<span class="move">' + esc(r.eta) + "</span>" : "") + '<span class="chev" aria-hidden="true">›</span></div>');
+    rows.push('<div class="li nowrow"><button class="rowlink" data-act="homereq" data-v="' + r.id + '"><span class="rt">' + esc(r.name) + '</span><span class="rl"><span class="pill ' + esc(r.kind || "") + '">' + esc(r.statusText) + "</span> " + (r.waitingOn ? D.move(r.waitingOn) : r.eta ? '<span class="move">' + esc(r.eta) + "</span>" : "") + '</span></button><span class="chev" aria-hidden="true">›</span></div>');
   });
   if (K && hasTile("skills")) { var m = K.mine(); ((m && m.waiting) || []).forEach(function (w) {
-    rows.push('<div class="li nowrow"><button class="rowlink" data-act="goapp" data-app="skills" data-tab="overview"><span class="rt">Sign-off: ' + esc(w.skill) + "</span>" + (w.since ? '<span class="rl">Asked ' + esc(w.since) + "</span>" : "") + "</button>" + D.move("a mentor") + '<span class="chev" aria-hidden="true">›</span></div>');
+    rows.push('<div class="li nowrow"><button class="rowlink" data-act="goapp" data-app="skills" data-tab="overview"><span class="rt">Sign-off: ' + esc(w.skill) + '</span><span class="rl">' + D.move("a mentor") + (w.since ? " since " + esc(w.since) : "") + '</span></button><span class="chev" aria-hidden="true">›</span></div>');
   }); }
   return rows;
 }
@@ -432,6 +434,15 @@ function homeGround() {
   if (role === "student" && S.eventDay && D.myShiftCard) mainCol += D.myShiftCard();
   if (now.length || !shift) mainCol += '<section class="card nowcard"><h2>Now</h2>' + (now.length ? '<div class="list">' + now.map(nowRow).join("") + "</div>" : '<p class="mute">Nothing needs you right now.</p>') + "</section>";
   if (role === "student" && D.nextUpCard) mainCol += S.eventDay ? '<div class="evcompact">' + D.nextUpCard() + "</div>" : D.nextUpCard();
+  // A parent's two questions are the next practice and the next event. The events get their own short list, so the
+  // page is not mostly empty on a laptop and "Next event" is not one lonely row (hill climb r2).
+  if (role === "parent" && D.calApi) {
+    var evs = D.calApi.upcoming(40, ["comp", "outreach", "meeting"]).slice(0, 4);
+    if (evs.length) mainCol += '<section class="card"><h2>Coming up</h2><div class="list week">' + evs.map(function (e) {
+      var q = e.date.split("-"), dt = new Date(+q[0], +q[1] - 1, +q[2]);
+      return '<button class="li wkrow" data-act="goapp" data-app="calendar" aria-label="' + esc(D.calApi.fmt(e.date) + ": " + e.name + ". Open the Calendar") + '"><span class="wkd"><b>' + dt.toLocaleDateString("en-US", { weekday: "short" }) + '</b><span class="num">' + dt.toLocaleDateString("en-US", { month: "short", day: "numeric" }) + '</span></span><span class="grow"><b>' + esc(e.name) + '</b><span class="wkfacts"><span>' + esc(D.calApi.span(e) + (e.where ? ", " + e.where : "")) + "</span></span></span></button>";
+    }).join("") + "</div></section>";
+  }
   if (others.length) mainCol += '<section class="card"><h2>Waiting on others</h2><div class="list">' + others.join("") + "</div></section>";
   var act = role === "parent" ? "" : '<section class="card actcard"><h2>Recent activity</h2><div class="list">' +
     S.activity.slice(0, 4).map(function (a) { return '<div class="li actli"><span class="actapp">' + esc(D.APPNAME[a.app] || "") + '</span><span class="grow"><b>' + esc(a.who) + "</b> " + esc(a.what) + '</span><span class="who">' + esc(a.when) + "</span></div>"; }).join("") + "</div></section>";
@@ -439,11 +450,11 @@ function homeGround() {
   // now", so the line leaves that part out for them.
   var shift = role === "student" && S.eventDay && D.myShiftCard;
   var top = S.eventDay && D.eventLine && role !== "parent" ? D.eventLine(shift ? "schedule" : "") : role === "parent" ? "" : seasonLine();
-  return '<div class="content home homeb homec"><div class="homehead"><h1>Hi ' + esc(D.me().short) + '.</h1><p class="homedate">' + esc(date) + "</p></div>" + top +
+  return '<div class="content home homeb homec' + (S.eventDay ? " evday" : "") + '"><div class="homehead"><h1>Hi ' + esc(D.me().short) + '.</h1><p class="homedate">' + esc(date) + "</p></div>" + top +
     '<div class="homecols"><div class="homemain">' + mainCol + (D.guideCard ? D.guideCard() : "") + act + '</div><aside class="homeside">' +
     '<section class="card wkcard"><h2>This week</h2>' + weekRows() + "</section>" +
     '<section class="card appscard"><h2>Apps</h2><div class="applist">' + main.map(approw).join("") + "</div>" +
-    '<div class="homegroups">' + toolsGroup("home") + adminGroup("home", tiles, function (l) { return '<ul class="morelinks">' + l.map(link).join("") + "</ul>"; }) + (more.length ? groupRow("more", "More", more.length, "home", '<ul class="morelinks">' + more.map(link).join("") + "</ul>") : "") + "</div></section>" +
+    '<div class="homegroups">' + toolsGroup("home") + adminGroup("home", tiles, function (l) { return '<ul class="morelinks">' + l.map(link).join("") + "</ul>"; }) + (more.length ? groupRow("more", "Team links", more.length, "home", '<ul class="morelinks">' + more.map(link).join("") + "</ul>") : "") + "</div></section>" +
     "</aside></div></div>";
 }
 D.views.portal = function () {

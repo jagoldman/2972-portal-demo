@@ -189,7 +189,7 @@ function findBox(q, reqHits) {
   } else if (reqHits) {
     html += '<div class="row pnone"><p>Nothing like “' + esc(q) + '” is in the shop.</p><button class="btn" data-act="pask">Request it</button></div>';
   } else {
-    html += '<div class="pnone pnothing"><p>Nothing like “' + esc(q) + '” is in the shop or on order.</p><p class="who">Try a shorter name or the part number.</p><div><button class="btn primary" data-act="pask">Request it</button></div></div>';
+    html += '<div class="pnone pnothing"><p>Nothing like “' + esc(q) + '” is in the shop or on order.</p><p class="who">Try a shorter name or the part number.</p><div><button class="btn primary" data-act="pask">Request “' + esc(q.length > 24 ? q.slice(0, 23) + "…" : q) + '”</button></div></div>';
   }
   return html;
 }
@@ -212,7 +212,10 @@ function reqSteps(r) {
   var arrSub = inn ? stepSub(inn) : cur > 3 && o && o.arrived ? fmt(o.arrived).replace(/^\w+, /, "") : cur === 3 ? etaText(r) : "";
   var line = o && o.lines ? o.lines.filter(function (l) { return l.name === r.name || l.rid === r.id; })[0] : null;
   var putSub = cur > 4 ? (inn ? (/ to (.+)$/.exec(inn.what) || [])[1] || "" : line && line.loc ? line.loc : "") : "";
-  var now = moveHtml(r), steps = D.stages([["Asked", stepSub(asked)], ["OK'd", okSub], ["Ordered", ordSub], ["Arrived", arrSub], ["Put away", putSub]], cur, "Where this request is");
+  // The step it is on is named for what is being waited for ("Arriving"), so the mark and the word agree (hill climb r2).
+  var names = ["Asked", "OK'd", "Ordered", "Arrived", "Put away"], NOW = { 1: "Needs OK", 2: "To order", 3: "Arriving", 4: "To put away" };
+  if (NOW[cur]) names[cur] = NOW[cur];
+  var now = moveHtml(r), steps = D.stages([[names[0], stepSub(asked)], [names[1], okSub], [names[2], ordSub], [names[3], arrSub], [names[4], putSub]], cur, "Where this request is");
   return '<div class="preqsteps">' + steps + (now || r.order ? '<div class="row pnow">' + (r.status === "ordered" ? "" : now) + (r.order ? '<span class="who">Order #' + r.order + "</span>" : "") + "</div>" : "") + "</div>";
 }
 // The steps of the flow, each a filter with its count; the rarely used views sit in one small "More" select.
@@ -223,8 +226,9 @@ function flowRow(groups, gcount) {
   var inMore = more.indexOf(p.filter) >= 0;
   return '<div class="pflow"><div class="psteps" role="group" aria-label="Show requests">' + steps.map(function (id) {
     return '<button class="pstep" data-act="pfilter" data-v="' + id + '" aria-pressed="' + (p.filter === id) + '">' + NAMES[id] + ' <span class="tcount">' + gcount(g(id)) + "</span></button>";
-  }).join("") + '<select class="inp pmore' + (inMore ? " on" : "") + '" data-change="pfiltersel" aria-label="More views">' + (inMore ? "" : '<option value="" selected>More</option>') +
-    more.map(function (id) { var x = g(id); return '<option value="' + id + '"' + (p.filter === id ? " selected" : "") + ">" + x[1] + " (" + gcount(x) + ")</option>"; }).join("") + "</select></div>" +
+  }).join("") + '<span class="psep" aria-hidden="true"></span>' +
+    // The rarely used views are buttons of the same shape, after a gap (hill climb r2: a select beside buttons read as two systems).
+    more.map(function (id) { var x = g(id); return '<button class="pstep prare" data-act="pfilter" data-v="' + id + '" aria-pressed="' + (p.filter === id) + '">' + x[1] + ' <span class="tcount">' + gcount(x) + "</span></button>"; }).join("") + "</div>" +
     '<label class="pf-mine"><button class="toggle" data-act="pmine" aria-pressed="' + p.mine + '" aria-label="Only my requests"></button><span>Only mine</span></label></div>';
 }
 function requests() {
@@ -333,7 +337,7 @@ function toOrderView() {
     var ob = orderBy(r);
     return '<div class="li pwait"><span class="grow"><b>' + esc(r.name) + '</b><span class="pmeta">' + [r.vendor, "Qty " + qtyText(r), money(total(r)), r.by].map(esc).join(" · ") + "</span>" +
       '<span class="pmeta">' + budgetEffect(r) + (ob ? ' · <b class="pbad">order by ' + fmt(ob) + "</b>" : "") + "</span>" + (r.why ? '<span class="pmeta">“' + esc(r.why) + "”</span>" : "") + "</span>" + priPill(r.pri) +
-      '<span class="row nowrap"><button class="btn" data-act="papprove" data-v="' + r.id + '">Approve</button><button class="btn ghost" data-act="pdeny" data-v="' + r.id + '">Deny…</button></span></div>';
+      '<span class="row nowrap"><button class="btn' + (D.ground() ? " primary" : "") + '" data-act="papprove" data-v="' + r.id + '">Approve</button><button class="btn ghost" data-act="pdeny" data-v="' + r.id + '">Deny…</button></span></div>';
   }).join("") + "</div></div>" : "";
   var vs = Object.keys(byV).sort(function (a, b) { return byV[b].some(placeToday) - byV[a].some(placeToday); });
   if (!vs.length && !waiting.length) return '<div class="card"><p class="mute">Nothing to order. New requests land here, grouped by vendor.</p></div>';
