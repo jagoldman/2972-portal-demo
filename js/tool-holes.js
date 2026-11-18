@@ -68,7 +68,7 @@ function nearText(v, drill) {
 function in4(x) { return x.toFixed(4) + " in"; }
 function mm2(x) { return (x * 25.4).toFixed(2) + " mm"; }
 
-K.tool({
+var def = {
   id: ID,
   defaults: { kind: "tap", size: 5, fit: "close", press: "slip" },
   stage: { ratio: 2.2, narrow: 1.2, label: "A section through the plate, enlarged and to scale: the hole as drilled, and the same hole with its screw, rivet or part in it." },
@@ -100,6 +100,10 @@ K.tool({
     var html = K.seg(ID, "kind", "What you are making", M.KINDS) + K.pick(ID, "size", s.kind === "press" ? "Part" : "Size", sizes(s.kind));
     if (s.kind === "clear") html += K.seg(ID, "fit", "Fit", [["close", "Close fit"], ["free", "Free fit"]], { tip: "Close fit lines parts up well. Free fit forgives holes that are a little out of place." });
     if (s.kind === "press" && !r.hex) html += K.seg(ID, "press", "Fit", [["slip", "Slip fit"], ["press", "Light press"]], { tip: "Slip: the bearing slides in by hand. Light press: it needs a vice or an arbor press, and stays put." });
+    // On a phone the answer sits right under the pickers, above the drawing (the page's own order there puts the
+    // pickers first); on a laptop it stays with the answers.
+    if (r && r.head == null) def.outs(s, r);
+    if (r && r.head) html += '<p class="t-holes-ans">' + esc(r.head) + "</p>";
     return K.group(ID, "what", "Hole", html);
   },
 
@@ -140,6 +144,7 @@ K.tool({
     var swap = !(r.frac || r.metric) ? "" : s.kind === "tap" ? "Use the named drill when you can: a bigger drill gives weaker threads, and a smaller one risks a broken tap." :
       s.kind === "rivet" ? "Use the named drill when you can: a bigger drill lets the rivet work loose, and a smaller one will not take it." :
       "Use the named drill when you can: a bigger drill gives a looser fit, and a smaller one may not let the screw through.";
+    r.head = head;
     return h + K.verdict("info", head, tip) + K.outs(items) + (swap ? '<p class="t-holes-tip">' + esc(swap) + "</p>" : "") + "</div>";
   },
 
@@ -187,7 +192,8 @@ K.tool({
   },
 
   draw: function (g, s, r) { drawHoles(g, s, r); }
-});
+};
+K.tool(def);
 D.acts.holesuse = function (b) { K.state(ID).size = +b.dataset.v; D.render(); };
 /* The find box: hides the rows (in the table and in the phone's list) whose thread, screw or drill does not contain
    what was typed. Only the rows change, so the box keeps its caret. The words are kept while the page is open. */
@@ -212,6 +218,8 @@ function F_clamp(x, a, b) { return x < a ? a : x > b ? b : x; }
   st.textContent = ".t-holes { display: grid; gap: 10px; } .t-holes .t-holes-tip { font-size: .88rem; color: var(--text-2); max-width: 70ch; margin: 0; }" +
     ".t-holes-find { display: grid; gap: 4px; font-size: .85rem; color: var(--text-2); max-width: 340px; } .t-holes-find .inp { min-height: 40px; }" +
     ".t-holes-none { margin: 0; font-size: .9rem; color: var(--text-2); } .t-holes-tab tr[hidden], .t-holes-row[hidden], .t-holes-none[hidden] { display: none; }" +
+    ".t-holes-ans { display: none; margin: 4px 0 0; padding: 10px 12px; border-left: 3px solid var(--accent); background: var(--tint); font-weight: 700; font-size: 1rem; line-height: 1.35; }" +
+    "@media (max-width: 900px) { .t-holes-ans { display: block; } }" +
     ".t-holes-list, .t-holes-cue { display: none; } .t-holes-cue { margin: 0; font-size: .85rem; color: var(--text-2); }" +
     ".t-holes-go { margin-left: 2px; padding: 3px 10px; border: 1px solid var(--line-2); border-radius: 999px; font-size: .8rem; font-weight: 600; color: var(--accent) !important; }" +
     ".t-holes-row { display: flex; align-items: center; gap: 12px; width: 100%; min-height: 44px; padding: 6px 4px; border: 0; border-bottom: 1px solid var(--line); background: none; color: var(--text); font: inherit; text-align: left; cursor: pointer; }" +

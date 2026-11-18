@@ -140,7 +140,7 @@ D.acts.beamuse = function (b) { K.state(ID).section = b.dataset.v; D.render(); }
 function ease(u) { u = F.clamp(u, 0, 1); return u * u * (3 - 2 * u); }
 (function () {
   var st = document.createElement("style");
-  st.textContent = ".t-beam-cap { margin: 0; font-size: .8rem; color: var(--mute); } .t-beam-cmp .t-beam-cap { margin-bottom: 6px; } .t-beam-cmp td.t-beam-bad { color: var(--bad); font-weight: 700; } .t-beam-cmp td.t-beam-warn { color: var(--warn); font-weight: 700; }";
+  st.textContent = ".t-beam-cap { margin: 0; font-size: .8rem; color: var(--mute); } .t-beam-cmp .t-beam-cap { margin-bottom: 6px; } .t-beam-cmp td:first-child { white-space: normal; min-width: 12em; } .t-beam-best { display: block; margin-top: 2px; font-size: .8rem; font-weight: 600; color: var(--ok); white-space: normal; } .t-beam-cmp td.t-beam-bad { color: var(--bad); font-weight: 700; } .t-beam-cmp td.t-beam-warn { color: var(--warn); font-weight: 700; }";
   document.head.appendChild(st);
 })();
 
@@ -205,11 +205,11 @@ K.tool({
     var k = M.COEF[s.hold];
     // Every stock section under this same load, lightest first.
     var cmp = M.compare({ mat: r.mat, L: s.L, P: s.P, hold: s.hold, way: s.way }), cur = s.section;
-    var tab = '<section class="ctab t-beam-cmp"><h2>Other sections under this load</h2><p class="t-beam-cap">' + esc(r.mat.name) + ", " + K.n(s.L, 2) + " in, " + K.n(s.P, 1) + " lbf, " + holdName(s.hold).toLowerCase() + (symmetric(s) ? "" : ", rectangles the " + (s.way === "flat" ? "flat" : "tall") + " way") + ". Lightest first.</p>" +
+    var tab = '<section class="ctab t-beam-cmp"><h2>Other sections under this load</h2><p class="t-beam-cap">' + esc(r.mat.name) + ", " + K.n(s.L, 2) + " in, " + K.n(s.P, 1) + " lbf, " + holdName(s.hold).toLowerCase() + (symmetric(s) ? "" : ", rectangles the " + (s.way === "flat" ? "flat" : "tall") + " way") + ". Lightest first. The safety factor is against bending yield only, so check the bend too.</p>" +
       '<div class="scroll"><table><thead><tr><th>Section</th><th class="r">Bend</th><th class="r">Safety factor</th><th class="r">Weight</th><th></th></tr></thead><tbody>' +
       cmp.rows.map(function (q) {
         var on = q.id === cur, best = q.id === cmp.best, sfc = q.sf < 1 ? "bad" : q.sf < 3 ? "warn" : "";
-        return '<tr class="' + (on ? "pick" : "") + '"><td>' + esc(q.name) + (best ? ' <span class="pill ok">Lightest that keeps 3</span>' : "") + '</td><td class="r num">' + (q.big ? "too far" : inch(q.delta)) + '</td><td class="r num' + (sfc ? " t-beam-" + sfc : "") + '">' + (isFinite(q.sf) ? K.fix(q.sf, 1) : "–") + '</td><td class="r num">' + K.fix(q.weight, 2) + ' lb</td><td class="r">' +
+        return '<tr class="' + (on ? "pick" : "") + '"><td>' + esc(q.name) + (best ? '<small class="t-beam-best">Lightest with a safety factor of 3; it bends ' + K.fix(q.delta, 2) + " in</small>" : "") + '</td><td class="r num">' + (q.big ? "too far" : inch(q.delta)) + '</td><td class="r num' + (sfc ? " t-beam-" + sfc : "") + '">' + (isFinite(q.sf) ? K.fix(q.sf, 1) : "–") + '</td><td class="r num">' + K.fix(q.weight, 2) + ' lb</td><td class="r">' +
           (on ? '<span class="pill ok">In the drawing</span>' : '<button class="btn sm" data-act="beamuse" data-v="' + q.id + '">Use this one</button>') + "</td></tr>";
       }).join("") + "</tbody></table></div>" + (cmp.best ? "" : '<p class="t-beam-cap">None of these keeps a safety factor of 3 here. Shorten the span, support both ends, or use steel.</p>') + "</section>";
     return '<div class="chartrow">' + defl + str + "</div>" + tab + K.notes(
@@ -375,7 +375,7 @@ function section(g, s, r, pan, narrow, kBeam, frac) {
   var sy = cy + bh / 2 + 15, ss = { size: 10, weight: 600, align: "center" };
   var tick = zoom > 1 ? K.n(100 / zoom, 0) + "%" : "yield", tc = zoom > 1 ? c.text2 : c.bad;
   g.text(tick, sx - lim, sy, Object.assign({ color: tc }, ss)); g.text("0", sx, sy, Object.assign({ color: c.text2 }, ss)); g.text(tick, sx + lim, sy, Object.assign({ color: tc }, ss));
-  if (zoom > 1) { var zt = "stress drawn " + zoom + "×", tw0 = g.textWidth(narrow ? "Cross-section" : "Cross-section, enlarged", { weight: 600, size: 12 }); if (narrow) g.text(zt, 12 + tw0 + 10, pan.y + 18, { size: 11, color: c.mute }); else g.text(zt, pan.x + 12, pan.y + 34, { size: 11, color: c.mute }); }
+  if (zoom > 1) { var zt = "stress drawn " + zoom + "×; ticks: % of yield", tw0 = g.textWidth(narrow ? "Cross-section" : "Cross-section, enlarged", { weight: 600, size: 12 }); if (narrow) g.text(zt, 12 + tw0 + 10, pan.y + 18, { size: 11, color: c.mute }); else g.text(zt, pan.x + 12, pan.y + 34, { size: 11, color: c.mute }); }
   g.text("squeezed", sx - 4, cy - bh / 2 - 8, { size: 10, color: c.text2, align: "right" }); g.text("stretched", Math.min(sx + 4, pan.x + pan.w - 6 - g.textWidth("stretched", { size: 10 })), cy - bh / 2 - 8, { size: 10, color: c.text2 });
   // The neutral axis named on its own line, at its right-hand end; the wall named beside the section.
   var nax = sx + lim + 7, naw = g.textWidth("neutral axis", { size: 10, weight: 600 });
@@ -389,7 +389,7 @@ function section(g, s, r, pan, narrow, kBeam, frac) {
     if (!naxis) { g.line(kx, ky - 4, kx + 22, ky - 4, { color: c.accent, width: 1.25, dash: [8, 3, 2, 3] }); g.text("neutral axis, no stress", kx + 28, ky, { size: 10, weight: 600, color: c.accent }); naxis = true; ky += 16; }
     if (!sec.solid) g.text("wall " + frac2(sec.t) + " in", kx, ky, { size: 10, color: c.mute });
   }
-  var lab = narrow ? Math.max(sx + lim + 14, sx + 14 + g.textWidth("stretched", { size: 10 })) : pan.x + 12, ly = narrow ? pan.y + 30 : sy + 70, maxW = (narrow ? g.w : pan.x + pan.w) - lab - 8;
+  var lab = narrow ? Math.max(sx + lim + 14, sx + 14 + g.textWidth("stretched", { size: 10 })) : pan.x + 12, ly = narrow ? pan.y + 38 : sy + 70, maxW = (narrow ? g.w : pan.x + pan.w) - lab - 8;
   // One line each: where, which face is stretched, the stress, and its share of yield.
   var where = s.hold === "cant" ? "At the wall, most stressed" : s.hold === "simple" ? "At the middle, most stressed" : "At the middle and the held ends";
   var rows = [[where, { color: c.accent, size: 12, weight: 700 }],
