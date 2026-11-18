@@ -179,14 +179,14 @@ K.tool({
       if (r.tips) ways.push("braking at " + g2(r.brake) + " g lifts the rear wheels (from " + g2(L.tipBrake) + " g)");
       if (r.backTips) ways.push("accelerating at " + g2(r.acc) + " g lifts the front wheels (from " + g2(L.tipAccel) + " g)");
       var dir = r.tips && r.backTips ? "lower" : r.tips ? "back" : "forward";
-      st = "bad"; text = ways.join(" and ") + ": " + (hs.length && hs.length === (r.tips ? 1 : 0) + (r.backTips ? 1 : 0) ? "keep the mechanism's centre of gravity well under " + K.fix(Math.min.apply(null, hs), 0) + " in (the ideal limit) or move weight " + dir : "move weight " + dir + " or lower it") + ", and test with someone ready to catch the robot.";
+      st = "bad"; text = ways.join(" and ") + ": " + (hs.length && hs.length === (r.tips ? 1 : 0) + (r.backTips ? 1 : 0) ? "keep the mechanism's centre of gravity well under " + K.fix(Math.min.apply(null, hs), 0) + " in (the ideal limit) or move weight " + dir : "move weight " + dir + " or lower it") + ". Test it tethered or against a padded stop, with nobody in its path: do not try to catch a falling robot.";
       text = text.charAt(0).toUpperCase() + text.slice(1);
       more = !r.tips ? "The animation shows a stop, which this robot survives; the front lifts when it speeds up at this rate." : (sim.fell ? "From " + s.v0 + " ft/s this model predicts it falls over onto its front." : sim.bumper ? "From " + s.v0 + " ft/s this model predicts the rear lifts until the front bumper hits the floor (" + deg(sim.maxPhi) + "°), then drops back." : sim.lifted ? "From " + s.v0 + " ft/s the rear lifts to " + deg(sim.maxPhi) + "° and drops back." : "") +
         (sim.lifted ? " A real bumper can bounce or crush, so near the edge it could go either way." : "");
     } else if (r.kind === "slides") { st = "ok"; text = "The wheels slide before it can tip: tipping needs " + g2(L.tipBrake) + " g of braking and the tread gives at most " + g2(Math.max(0, L.gripBrake)) + " g."; }
     else {
       st = "warn"; text = "Holds at " + g2(r.brake) + " g, but a harder stop could tip it: it tips at " + g2(L.tipBrake) + " g and the tread allows " + g2(L.gripBrake) + " g.";
-      if (isFinite(r.hFor)) more = "At this braking it tips once the mechanism's centre of gravity is above " + K.fix(r.hFor, 0) + " in, the ideal limit: stay well under it, and test with someone ready to catch the robot.";
+      if (isFinite(r.hFor)) more = "At this braking it tips once the mechanism's centre of gravity is above " + K.fix(r.hFor, 0) + " in, the ideal limit: stay well under it. Test it tethered or against a padded stop, with nobody in its path.";
     }
     if (r.capped && !r.still) more = (more ? more + " " : "") + "The tread cannot brake at " + g2(s.brake) + " g here; the most is " + g2(Math.max(0, L.gripBrake)) + " g, used above.";
     var hTxt = !isFinite(r.hFor) ? (r.hFor > 0 ? "never" : "always") : K.fix(r.hFor, 1);
