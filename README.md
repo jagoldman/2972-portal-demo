@@ -92,15 +92,31 @@ the same, and the choice is kept in this browser. `?event=1` ticks Event day. No
 | "Ready to start" and "In progress" sit side by side; rows do not repeat the heading as a status word | Skills, Overview | Both lists are visible at once. |
 | "Coming up" is listed beside the month (1100 px and wider) | Calendar | The next events are visible without switching to Agenda. |
 
-Measured on the 61 desktop screens of the demo (1280 px wide): the look alone makes pages 1% shorter than Live in
-total and none taller; the Baseline's are 11.8% shorter in total and none is taller. Home for a mentor goes from 1,355 px to
+Measured on 61 desktop screens of the demo (1280 px wide): the look alone makes pages 1% shorter than Live in total
+and none taller; the Baseline's are 11.6% shorter in total (11.8% before the calculators were added to the Tools
+page). Ground up adds content, so its pages are 8.8% shorter than Live in total. Home for a mentor goes from 1,355 px to
 950 px, the student's Skills overview from 1,763 px to 1,142 px.
 
-### Checked, and not checked
-- Checked by the designer: 183 screens (every app, every tab, five roles; 1280, 820 and 390 px) in each of the three
-  versions, with no JavaScript errors and no sideways scroll. Dark mode looked at on Home and Parts only.
-- Not reviewed by a second model. Not tested with a screen reader. The guide's ring was not re-tested against the
-  tabs in the bar.
+### Checked, and not checked (2026-11-18)
+- **Every screen draws.** 240 screens (every app, every tab, every calculator, five roles, event day; 1280, 820 and
+  390 px) in each of Live, Baseline and Ground up: no JavaScript errors and no sideways scroll. Ground up in dark
+  mode at 1280 px: 80 screens, none.
+- **Live is unchanged.** The 61 desktop screens measured before the Ground up work are the same height after it.
+  The coders for Skills, Competition and Parts also compared the page HTML of Live and Baseline before and after
+  their changes: identical (Parts: 106 states).
+- **Baseline changed in one place:** the Tools page lists the calculators.
+- **The calculator maths.** The coder's test checks eleven results against hand-worked values (belt and chain centre
+  distances, gear ratio, free speeds, holding torques, peak power): all pass. The lead recomputed five more by hand
+  (the 110-tooth belt length, the gearbox torque at the current limit, the arm's reserve, the elevator's stall load,
+  the drivetrain's sprint time): all agree.
+- **One review per change set, by a different model than the coder.** The four coders were Opus 5.5; the lead
+  (Fable 5.2) read each diff and looked at each screen. Home and the Tasks change were written by the lead and have
+  had no second review.
+- **Not checked:** a screen reader; a real phone; the guide's ring on every stop (the first stop for a mentor and a
+  student was checked against the tabs in the bar).
+- **Known simplifications:** the drivetrain model has no rolling loss, so the robot reaches its free speed (the page
+  says a real mechanism loses more). Parts adds a vendor's shipping days as calendar days. The sample inventory has
+  no belts, so "Find it in Parts" from the Belt calculator finds nothing.
 - Left as they are in Live: the Projector's task-state colours, the scouting field drawing, the tool drawings.
 - Design 8.2 (Big Shoulders and Libre Franklin) is still on branch `design-8.2`; this branch starts from it and
   replaces its stylesheet.
