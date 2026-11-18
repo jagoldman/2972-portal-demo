@@ -136,19 +136,116 @@ D.views.parts = function () {
   else if (t === "budget") body = budget();
   else if (t === "vendors" && staff) body = vendorsView();
   else body = requests();
-  var right = t === "new" ? "" : '<button class="btn primary sm" data-act="tab" data-app="parts" data-v="new" aria-label="Request a part">' + D.ic("plus", 16) + '<span>Request<span class="hide-sm"> a part</span></span></button>';
+  // Ground up: when the search finds nothing, "Request it" under it is the one main button, so this one turns plain.
+  var asking = D.ground() && body.indexOf('class="pnone pnothing"') >= 0;
+  var right = t === "new" ? "" : '<button class="btn' + (asking ? "" : " primary") + ' sm" data-act="tab" data-app="parts" data-v="new" aria-label="Request a part">' + D.ic("plus", 16) + '<span>Request<span class="hide-sm"> a part</span></span></button>';
   return D.topbar("Parts & Inventory", "", D.tabsFor("parts", list, "requests"), right) + '<div class="content">' + body + "</div>";
 };
+/* ---------- Ground up (GROUND_UP.md §4, Parts): find it or ask for it, the flow as the filter, whose move ---------- */
+// Every word of the search must appear somewhere in the text, so "22T sprocket" finds "Sprocket #25, 22T".
+function matches(text, q) { var t = text.toLowerCase(); return q.toLowerCase().split(/\s+/).filter(Boolean).every(function (w) { return t.indexOf(w) >= 0; }); }
+function reqText(r) { return r.name + " " + r.sku + " " + r.vendor + " " + r.by + " " + r.sub; }
+function itemSku(i) { var c = P().catalog.filter(function (x) { return x.id === i.cid; })[0]; return c ? c.sku : ""; }
+function shopMatches(q) { return P().items.filter(function (i) { return matches(i.name + " " + itemSku(i), q); }); }
+function isLow(i) { return inStore(i) <= i.min; }
+// An order's "placed" date is kept as "Nov 6" (this season's year), so it is read back into an ISO date here.
+var MON = { Jan: 0, Feb: 1, Mar: 2, Apr: 3, May: 4, Jun: 5, Jul: 6, Aug: 7, Sep: 8, Oct: 9, Nov: 10, Dec: 11 };
+function placedIso(s) { var m = /^([A-Z][a-z]{2}) (\d{1,2})$/.exec(String(s || "")); return m && MON[m[1]] != null ? iso(new Date(2026, MON[m[1]], +m[2])) : null; }
+function orderOf(r) { var p = P(); return r.order ? p.orders.concat(p.closed).filter(function (o) { return o.id === r.order; })[0] || null : null; }
+// "Arrives about Thu, Nov 12": the day the order was placed plus the vendor's shipping days. Empty when unknown.
+// The order's vendor ships it, which can differ from the vendor named on the request. A day already past says so.
+function etaText(r) {
+  if (r.status !== "ordered") return ""; var o = orderOf(r), d = o && placedIso(o.placed); if (!d) return "";
+  var due = addDays(d, vendor(o.vendor || r.vendor).ship || 0);
+  return (due < iso(TODAY) ? "Was due " : "Arrives about ") + fmt(due);
+}
+// Who has the next move on a request (rule 2), as the little line under its status.
+function moveHtml(r) {
+  var staff = D.isStaff();
+  if (r.status === "needsok") return D.move("a mentor", staff);
+  if (r.status === "toorder") return D.move("a mentor to order", staff);
+  if (r.status === "ordered") { var eta = etaText(r); return eta ? '<span class="move">' + esc(eta) + "</span>" : ""; }
+  if (r.status === "arrived") return '<span class="move">Ready to put away</span>';
+  return "";
+}
+function isOpen(r) { return r.status === "needsok" || r.status === "toorder" || r.status === "ordered" || r.status === "arrived"; }
+// "Thu, Nov 12, 1 practice left": the practice count is only worth saying while the request is still on its way.
+function needText(r) { var pr = isOpen(r) ? D.practicesText(r.need) : ""; return fmt(r.need) + (pr ? ", " + pr : ""); }
+// The same in the table: on a wide screen the count is a second line, so the comma is only there for the folded row.
+function needCell(r) { var pr = isOpen(r) ? D.practicesText(r.need) : ""; return esc(fmt(r.need)) + (pr ? '<span class="ppr"><span class="pcm">, </span>' + esc(pr) + "</span>" : ""); }
+// The box at the top of Requests: what the shop already has, above the requests; "Request it" when neither has it.
+function findBox(q, reqHits) {
+  var shop = q ? shopMatches(q) : [], html = '<div class="pfind"><label for="p-q">Find it or ask for it</label>' +
+    '<input id="p-q" class="inp" type="search" data-input="pq" placeholder="What do you need?" value="' + esc(P().q) + '" autocomplete="off"></div>';
+  if (!q) return html;
+  if (shop.length) {
+    html += '<section class="pshop" aria-label="In the shop"><h3>In the shop <span class="tcount">' + shop.length + '</span></h3><div class="list">' + shop.slice(0, 5).map(function (i) {
+      var home = i.stock.filter(function (s) { return s.place.indexOf("bot") < 0; }), k = i.stock.map(function (st) { return st.place.indexOf("bot") < 0; }).indexOf(true);
+      return '<div class="li pshopi"><span class="grow"><b>' + esc(i.name) + '</b><span class="pmeta">' + (home.map(function (s) { return esc(s.place); }).join(", ") || "Only on robots") + "</span></span>" +
+        '<span class="pinst num">' + inStore(i) + (i.unit === "each" ? "" : " " + esc(i.unit)) + " in store" + (isLow(i) ? ' <span class="pill warn">Low</span>' : "") + "</span>" +
+        (k >= 0 ? '<button class="btn sm" data-act="ptake" data-v="' + i.id + '" data-k="' + k + '" aria-label="Take ' + esc(i.name) + '">Take</button>' : '<span class="pnotake" aria-hidden="true"></span>') + "</div>";
+    }).join("") + '</div><div class="row pshopact"><button class="btn ghost" data-act="pinvopen">Open Inventory</button><button class="btn" data-act="pask" data-v="more">Request more</button></div></section>';
+  } else if (reqHits) {
+    html += '<div class="row pnone"><p>Nothing like “' + esc(q) + '” is in the shop.</p><button class="btn" data-act="pask">Request it</button></div>';
+  } else {
+    html += '<div class="pnone pnothing"><p>Nothing like “' + esc(q) + '” is in the shop or on order.</p><div><button class="btn primary" data-act="pask">Request it</button></div></div>';
+  }
+  return html;
+}
+/* The request panel's steps: Asked, OK'd, Ordered, Arrived, Put away, each with who and when. The history says it
+   where it can; the order itself fills in who placed it and when it arrived for requests older than their history. */
+function whoWhen(h, sep) { return h ? h.who + (sep || ", ") + (h.when === "Just now" ? "just now" : h.when) : ""; }
+// Under a step, who and when go on two lines (the stylesheet keeps the line break), so a narrow column reads cleanly.
+function stepSub(h) { return whoWhen(h, "\n"); }
+function reqSteps(r) {
+  var find = function (rx) { return r.hist.filter(function (h) { return rx.test(h.what); }).slice(-1)[0]; };
+  if (r.status === "denied" || r.status === "cancelled") {
+    var end = find(r.status === "denied" ? /^denied it/ : /^cancelled it/);
+    var said = [end ? "by " + whoWhen(end) + "." : "", r.denied ? "“" + r.denied + "”" : ""].filter(Boolean).join(" ");
+    return '<p class="pstop">' + statusPill(r.status) + (said ? "<span>" + esc(said) + "</span>" : "") + "</p>";
+  }
+  var cur = { needsok: 1, toorder: 2, ordered: 3, arrived: 4, putaway: 5 }[r.status] || 0, o = orderOf(r);
+  var asked = find(/^requested it/), ok = find(/approved it$/), ord = find(/^ordered it/), inn = find(/^checked in/);
+  var okSub = ok ? stepSub(ok) : cur > 1 && total(r) <= LIMIT ? "No OK needed" : "";
+  var ordSub = ord ? stepSub(ord) : cur > 2 && o ? stepSub({ who: o.placedBy, when: o.placed }) : "";
+  var arrSub = inn ? stepSub(inn) : cur > 3 && o && o.arrived ? fmt(o.arrived).replace(/^\w+, /, "") : cur === 3 ? etaText(r) : "";
+  var line = o && o.lines ? o.lines.filter(function (l) { return l.name === r.name || l.rid === r.id; })[0] : null;
+  var putSub = cur > 4 ? (inn ? (/ to (.+)$/.exec(inn.what) || [])[1] || "" : line && line.loc ? line.loc : "") : "";
+  var now = moveHtml(r), steps = D.stages([["Asked", stepSub(asked)], ["OK'd", okSub], ["Ordered", ordSub], ["Arrived", arrSub], ["Put away", putSub]], cur, "Where this request is");
+  return '<div class="preqsteps">' + steps + (now || r.order ? '<div class="row pnow">' + (r.status === "ordered" ? "" : now) + (r.order ? '<span class="who">Order #' + r.order + "</span>" : "") + "</div>" : "") + "</div>";
+}
+// The steps of the flow, each a filter with its count; the rarely used views sit in one small "More" select.
+function flowRow(groups, gcount) {
+  var p = P(), steps = ["open", "needsok", "toorder", "ordered", "done"], more = ["closed", "all", "wish"];
+  var NAMES = { open: "All open", needsok: "Needs OK", toorder: "To order", ordered: "Ordered", done: "Arrived" };
+  function g(id) { return groups.filter(function (x) { return x[0] === id; })[0]; }
+  var inMore = more.indexOf(p.filter) >= 0;
+  return '<div class="pflow"><div class="psteps" role="group" aria-label="Show requests">' + steps.map(function (id) {
+    return '<button class="pstep" data-act="pfilter" data-v="' + id + '" aria-pressed="' + (p.filter === id) + '">' + NAMES[id] + ' <span class="tcount">' + gcount(g(id)) + "</span></button>";
+  }).join("") + '<select class="inp pmore' + (inMore ? " on" : "") + '" data-change="pfiltersel" aria-label="More views">' + (inMore ? "" : '<option value="" selected>More</option>') +
+    more.map(function (id) { var x = g(id); return '<option value="' + id + '"' + (p.filter === id ? " selected" : "") + ">" + x[1] + " (" + gcount(x) + ")</option>"; }).join("") + "</select></div>" +
+    '<label class="pf-mine"><button class="toggle" data-act="pmine" aria-pressed="' + p.mine + '" aria-label="Only my requests"></button><span>Only mine</span></label></div>';
+}
 function requests() {
   var p = P(), me = D.me().name;
   var groups = [["open", "Open", ["needsok", "toorder", "ordered"]], ["needsok", "Needs mentor OK", ["needsok"]], ["toorder", "To order", ["toorder"]], ["ordered", "Ordered", ["ordered"]], ["done", "Arrived", ["arrived", "putaway"]], ["closed", "Denied or cancelled", ["denied", "cancelled"]], ["all", "All", Object.keys(STATUS)], ["wish", "Wishlist", []]];
   function gcount(x) { return x[0] === "wish" ? (p.wish || []).length : p.requests.filter(function (r) { return x[2].indexOf(r.status) >= 0; }).length; }
   var g = groups.filter(function (x) { return x[0] === p.filter; })[0];
-  var q = p.q.toLowerCase();
-  var rows = p.requests.filter(function (r) { return g[2].indexOf(r.status) >= 0 && (!p.mine || r.by === me) && (!q || (r.name + r.sku + r.vendor + r.by + r.sub).toLowerCase().indexOf(q) >= 0); });
+  var q = p.q.toLowerCase(), ground = D.ground(), gq = p.q.trim();
+  var rows = p.requests.filter(function (r) { return g[2].indexOf(r.status) >= 0 && (!p.mine || r.by === me) && (ground ? !gq || matches(reqText(r), gq) : !q || (r.name + r.sku + r.vendor + r.by + r.sub).toLowerCase().indexOf(q) >= 0); });
   // Most urgent first: blocking, then waiting for a mentor, then high priority; then your own; then soonest need-by.
   function urg(r) { return r.pri === "blocking" ? 0 : r.status === "needsok" ? 1 : r.pri === "high" ? 2 : 3; }
   rows.sort(function (a, b) { return urg(a) - urg(b) || (b.by === me) - (a.by === me) || String(a.need || "9").localeCompare(String(b.need || "9")) || a.id - b.id; });
+  /* Ground up: the search comes first and answers "do we already have it?" before the list of requests. "Nothing like
+     it" is judged on every request, whatever step is showing, so the sentence is never false. */
+  if (ground) {
+    var anyReq = !!gq && p.requests.some(function (r) { return matches(reqText(r), gq); }), none = !!gq && !anyReq && !shopMatches(gq).length;
+    var labG = function (t) { return '<span class="pl">' + t + " </span>"; };
+    var table = p.filter === "wish" ? '<div class="list">' + wishList() + "</div>" : none ? "" : rows.length ? '<div class="ptable gt"><div class="pth" aria-hidden="true"><span>Part</span><span>Vendor</span><span>Quantity</span><span class="r">Cost</span><span>Asked by</span><span>Need by</span><span>Priority</span><span>Status</span></div>' + rows.map(function (r) {
+      return '<button class="ptr" data-act="preq" data-v="' + r.id + '"><b class="pn">' + esc(r.name) + '</b><span class="pfacts"><span class="pv">' + esc(r.vendor) + '</span><span class="pq num">' + labG("Qty") + esc(qtyText(r)) + '</span><span class="pc num r">' + money(total(r)) + '</span><span class="pb">' + esc(r.by) + '</span><span class="pd num">' + (r.need ? labG("Need by") + needCell(r) : '<span class="vh">No date</span>') + '</span></span><span class="pp">' + priPill(r.pri) + '</span><span class="ps">' + statusPill(r.status) + moveHtml(r) + "</span></button>";
+    }).join("") + "</div>" : '<div class="empty">' + (gq ? "No requests like “" + esc(gq) + "” here. Try All open or More." : "Nothing here.") + "</div>";
+    return '<div class="card preqs">' + findBox(gq, anyReq) + (none ? "" : '<h3 class="preqh">Requests</h3>' + flowRow(groups, gcount)) + table + "</div>";
+  }
   var filters = '<div class="pfilters"><label class="pf-show"><span>Show</span><select class="inp" data-change="pfiltersel">' + groups.map(function (x) { return '<option value="' + x[0] + '"' + (p.filter === x[0] ? " selected" : "") + ">" + x[1] + " (" + gcount(x) + ")</option>"; }).join("") + "</select></label>" +
     '<label class="pf-mine"><button class="toggle" data-act="pmine" aria-pressed="' + p.mine + '" aria-label="Only my requests"></button><span>Only mine</span></label>' +
     '<input id="p-q" class="inp pf-q" data-input="pq" placeholder="Search parts" value="' + esc(p.q) + '" aria-label="Search requests"></div>';
@@ -171,9 +268,11 @@ D.drawers.preq = function (d) {
   if (staff && r.status === "needsok") acts.push('<button class="btn primary" data-act="papprove" data-v="' + r.id + '">Approve</button>', '<button class="btn" data-act="pdeny" data-v="' + r.id + '">Deny…</button>', '<button class="btn" data-act="preplace" data-v="' + r.id + '">Replace item…</button>');
   if (r.status === "ordered") acts.push('<button class="btn" data-act="tab" data-app="parts" data-v="arriving">Check it in on Arriving</button>');
   var cancel = mine && !staff && (r.status === "needsok" || r.status === "toorder") ? '<div><button class="btn ghost danger" data-act="pcancel" data-v="' + r.id + '">Withdraw my request</button></div>' : "";
-  var rows = [["Vendor", esc(r.vendor)], ["SKU", '<span class="mono">' + esc(r.sku) + "</span>"], ["Quantity", qtyText(r)], ["Price", money(r.price) + " each · " + money(total(r)) + " total"], ["Budget", r.status === "needsok" ? budgetEffect(r) : esc(bname(r.bud))], ["Priority", PRI[r.pri][0]], ["Need by", fmt(r.need) + (ob ? '<br><b class="pbad">Order by ' + fmt(ob) + "</b>" : "")], ["For", esc(r.sub) + (r.task ? " · task “" + esc(r.task) + "”" : "")], ["Asked by", esc(r.by)]];
-  return D.drawerHead("Request #" + r.id, r.name) + '<div class="row">' + statusPill(r.status) + (r.order ? '<span class="who">Order #' + r.order + "</span>" : "") + "</div>" +
-    (r.why ? '<p class="mute">“' + esc(r.why) + "”</p>" : "") + (r.denied ? '<p class="pbad">Denied: ' + esc(r.denied) + "</p>" : "") +
+  var rows = [["Vendor", esc(r.vendor)], ["SKU", '<span class="mono">' + esc(r.sku) + "</span>"], ["Quantity", qtyText(r)], ["Price", money(r.price) + " each · " + money(total(r)) + " total"], ["Budget", r.status === "needsok" ? budgetEffect(r) : esc(bname(r.bud))], ["Priority", PRI[r.pri][0]], ["Need by", (D.ground() && r.need ? esc(needText(r)) : fmt(r.need)) + (ob && !(D.ground() && r.status !== "needsok" && r.status !== "toorder") ? '<br><b class="pbad">Order by ' + fmt(ob) + "</b>" : "")], ["For", esc(r.sub) + (r.task ? " · task “" + esc(r.task) + "”" : "")], ["Asked by", esc(r.by)]];
+  // Ground up: the panel opens with the steps of the flow and whose move it is, in place of the status word.
+  var top = D.ground() ? reqSteps(r) : '<div class="row">' + statusPill(r.status) + (r.order ? '<span class="who">Order #' + r.order + "</span>" : "") + "</div>";
+  return D.drawerHead("Request #" + r.id, r.name) + top +
+    (r.why ? '<p class="mute">“' + esc(r.why) + "”</p>" : "") + (r.denied && !D.ground() ? '<p class="pbad">Denied: ' + esc(r.denied) + "</p>" : "") +
     '<dl class="pkv">' + rows.map(function (x) { return "<dt>" + x[0] + "</dt><dd>" + x[1] + "</dd>"; }).join("") + "</dl>" +
     (acts.length ? '<div class="row">' + acts.join("") + "</div>" : "") + cancel +
     '<div><p class="flabel">History</p><div class="list">' + r.hist.slice().reverse().map(function (h) { return '<div class="li"><span class="grow"><b>' + esc(h.who) + "</b> " + esc(h.what) + '</span><span class="who">' + esc(h.when) + "</span></div>"; }).join("") + "</div></div>";
@@ -343,12 +442,29 @@ function vendorsView() {
 var A = D.acts;
 A.pfilter = function (b) { P().filter = b.dataset.v; D.render(); };
 A.pvedit = function (b) { D.toast(b.dataset.v + " terms saved."); };
-D.changes.pfiltersel = function (el) { P().filter = el.value; D.render(); };
+D.changes.pfiltersel = function (el) { if (!el.value) return; P().filter = el.value; D.render(); };
 A.pmine = function () { P().mine = !P().mine; D.render(); };
 D.inputs.pq = function (el) { P().q = el.value; D.render(); };
 A.preq = function (b) { D.openDrawer("preq", { id: b.dataset.v }); };
 function hist(r, what) { r.hist.push({ who: D.me().name, what: what, when: "Just now" }); }
-A.papprove = function (b) { var r = reqById(b.dataset.v); r.status = "toorder"; hist(r, "approved it"); D.log("approved " + r.name, "parts"); D.notify("mentor", "parts", D.me().name + " approved " + r.name + " for " + r.by + "."); D.toast("Approved. It's on the To order list."); D.render(); };
+A.papprove = function (b) {
+  var r = reqById(b.dataset.v); if (!r || r.status !== "needsok") return;
+  var did = function () { r.status = "toorder"; hist(r, "approved it"); D.log("approved " + r.name, "parts"); D.notify("mentor", "parts", D.me().name + " approved " + r.name + " for " + r.by + "."); };
+  // Ground up: Home approves with this same function, one tap away from the request, so the toast offers Undo.
+  if (D.ground()) { D.withUndo("Approved. It's on the To order list.", did, function () { r.status = "needsok"; r.hist.pop(); D.S.activity.shift(); D.S.notices.shift(); }); return; }
+  did(); D.toast("Approved. It's on the To order list."); D.render();
+};
+// Ground up: "Open Inventory" under the shop matches carries the search text over to the Inventory tab.
+A.pinvopen = function () { var p = P(); p.invq = p.q.trim(); p.loc = "all"; p.low = false; D.S.tabs.parts = "inventory"; D.S.drawer = null; D.render(); window.scrollTo(0, 0); };
+/* Ground up: "Request it" and "Request more" open the request form with the search filled in. When exactly one shop
+   item matched and the catalog knows it, the form is filled from the catalog; otherwise the name is the search text and
+   the form's own catalog search shows what might match. */
+A.pask = function (b) {
+  var p = P(), q = p.q.trim(), d = blankDraft(), hits = q ? shopMatches(q) : [];
+  var c = b.dataset.v === "more" && hits.length === 1 ? p.catalog.filter(function (x) { return x.id === hits[0].cid; })[0] : null;
+  if (c) { fill(d, c, "From the catalog."); p.lq = ""; } else { d.name = q; p.lq = q; }
+  p.draft = d; D.S.tabs.parts = "new"; D.S.drawer = null; D.render(); window.scrollTo(0, 0);
+};
 A.pdeny = function (b) { D.openModal("pdeny", { id: b.dataset.v }); };
 A.pdenygo = function (b) { var r = reqById(b.dataset.v); r.status = "denied"; r.denied = D.val("p-deny"); hist(r, "denied it: " + r.denied); D.S.modal = null; D.toast("Denied. " + r.by + " sees your reason."); D.render(); };
 A.preplace = function (b) { var r = reqById(b.dataset.v); var c = P().catalog.filter(function (x) { return x.id === "c6"; })[0]; var old = r.name; r.cid = c.id; r.name = c.name; r.sku = c.sku; r.price = c.price; r.vendor = c.vendor; r.status = "toorder"; hist(r, "replaced " + old + " with " + c.name + " and approved it"); D.toast("Replaced with " + c.name + " (in stock at REV) and approved."); D.render(); };
@@ -452,6 +568,24 @@ D.partsApi = {
   // What arrived on or after a date (closed orders' lines), newest order first. Read by the Projector's Meeting view.
   arrivedSince: function (date) { var out = []; P().closed.forEach(function (c) { if (c.arrived && c.arrived >= date) (c.lines || []).forEach(function (l) { out.push({ name: l.name, qty: l.qty, order: c.id }); }); }); return out; },
   stockFor: function (name) { var i = P().items.filter(function (x) { return x.name.toLowerCase().indexOf(name.toLowerCase()) >= 0; })[0]; return i ? { name: i.name, store: inStore(i), where: i.stock.filter(function (s) { return s.place.indexOf("bot") < 0; }).map(function (s) { return s.place + " (" + s.qty + ")"; }).join(", ") } : null; },
-  startRequest: function (opts) { var p = P(), d = blankDraft(), c = opts.catalogName ? p.catalog.filter(function (x) { return x.name.toLowerCase().indexOf(opts.catalogName.toLowerCase()) >= 0; })[0] : null; if (c) fill(d, c, "From the catalog."); d.task = opts.task || ""; d.from = opts.from || "Tasks"; d.sub = opts.sub || ""; d.need = opts.need || ""; d.pri = opts.pri || "normal"; if (!c && opts.name) d.name = opts.name; if (opts.why) d.why = opts.why; p.draft = d; D.S.tabs.parts = "new"; D.go("parts"); }
+  startRequest: function (opts) { var p = P(), d = blankDraft(), c = opts.catalogName ? p.catalog.filter(function (x) { return x.name.toLowerCase().indexOf(opts.catalogName.toLowerCase()) >= 0; })[0] : null; if (c) fill(d, c, "From the catalog."); d.task = opts.task || ""; d.from = opts.from || "Tasks"; d.sub = opts.sub || ""; d.need = opts.need || ""; d.pri = opts.pri || "normal"; if (!c && opts.name) d.name = opts.name; if (opts.why) d.why = opts.why; p.draft = d; D.S.tabs.parts = "new"; D.go("parts"); },
+  /* For Home (Ground up), in every version because it is only data. Mentor approvals waiting, most urgent first:
+     blocking, then the soonest order-by date, then high priority. total is in cents; orderBy is an ISO date or null. */
+  needsOk: function () {
+    var rank = { blocking: 0, high: 1, normal: 2, nice: 3 };
+    return P().requests.filter(function (r) { return r.status === "needsok"; }).map(function (r) { return { id: r.id, name: r.name, by: r.by, total: total(r), pri: r.pri, orderBy: orderBy(r) }; })
+      .sort(function (a, b) { return (a.pri === "blocking" ? 0 : 1) - (b.pri === "blocking" ? 0 : 1) || String(a.orderBy || "9").localeCompare(String(b.orderBy || "9")) || rank[a.pri] - rank[b.pri] || a.id - b.id; });
+  },
+  // Exactly the Approve button: the same function, toast, notice and log. It redraws.
+  approve: function (id) { A.papprove({ dataset: { v: String(id) } }); },
+  // The signed-in person's own requests that are not finished, with who has the next move.
+  mine: function () {
+    var me = D.me().name;
+    return P().requests.filter(function (r) { return r.by === me && isOpen(r); }).map(function (r) {
+      return { id: r.id, name: r.name, status: r.status, statusText: STATUS[r.status][0], kind: STATUS[r.status][1], waitingOn: r.status === "needsok" || r.status === "toorder" ? "a mentor" : "", eta: etaText(r) };
+    });
+  },
+  // Parts, Requests tab, with that request's panel open.
+  open: function (id) { D.S.tabs.parts = "requests"; D.go("parts"); if (reqById(id)) D.openDrawer("preq", { id: String(id) }); }
 };
 })();

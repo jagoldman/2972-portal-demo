@@ -1,4 +1,92 @@
-/* Design 8.3, Ground up ("c"): Parts & Inventory. Every rule sits under :root[data-design="c"]. See GROUND_UP.md. */
+/* Design 8.3, Ground up ("c"): Parts & Inventory. Every rule sits under :root[data-design="c"]. See GROUND_UP.md §4.
+   1. Find it or ask for it: the search box first, then what the shop has, then the requests.
+   2. The flow is the filter: a row of steps with counts, and one small "More" select for the rare views.
+   3. Whose move: a line under each request's status, and the steps at the top of the request panel. */
 
 :root[data-design="c"] {
+  /* ---------- 1. Find it or ask for it ---------- */
+  .preqs { gap: 12px; }
+  .pfind { display: grid; gap: 6px; }
+  .pfind label { font-size: 1rem; font-weight: 650; color: var(--text); }
+  .pfind .inp { width: 100%; min-height: 44px; }
+  .pshop { display: grid; gap: 4px; padding: 10px 12px 8px; border: 1px solid var(--line); border-radius: var(--r); background: var(--surface-2); }
+  .pshop h3 { display: flex; align-items: center; gap: 6px; }
+  .pshop .list { margin-inline: -4px; }
+  .pshopi { display: grid; grid-template-columns: minmax(0, 1fr) auto auto; gap: 2px 14px; min-height: 48px; padding-block: 6px; }
+  .pshopi .grow { min-width: 0; }
+  .pshopi b { display: block; font-weight: 650; }
+  .pshopi .pmeta { margin: 0; }
+  .pinst { display: inline-flex; align-items: center; gap: 10px; color: var(--text-2); white-space: nowrap; }
+  .pshopi .btn { min-width: 64px; }
+  .pnotake { width: 64px; }
+  .pshopact { gap: 8px; padding-top: 4px; border-top: 1px solid var(--line); }
+  .pshopact .btn.ghost { margin-left: -12px; }
+  .pnone { gap: 8px 14px; }
+  .pnone p { margin: 0; color: var(--text-2); }
+  .pnothing { display: grid; gap: 10px; padding: 14px 16px; border: 1px solid var(--line); border-radius: var(--r); background: var(--surface-2); }
+  .pnothing p { color: var(--text); }
+  .preqh { margin-top: 6px; }
+
+  /* ---------- 2. The flow is the filter ---------- */
+  .pflow { display: flex; flex-wrap: wrap; align-items: center; gap: 10px 16px; }
+  .psteps { display: flex; flex-wrap: wrap; align-items: center; gap: 6px; min-width: 0; flex: 1 1 auto; }
+  .pstep { display: inline-flex; align-items: center; gap: 6px; min-height: 34px; padding: 0 12px; border: 1px solid var(--line-2); border-radius: var(--r-ctl); background: var(--surface); color: var(--text-2); font: inherit; font-weight: 600; white-space: nowrap; cursor: pointer; }
+  .pstep:hover { background: var(--surface-2); }
+  .pstep[aria-pressed="true"] { border-color: var(--text); background: var(--text); color: var(--surface); }
+  .pstep[aria-pressed="true"] .tcount { background: var(--surface); color: var(--text); }
+  .pstep .tcount { margin: 0; }
+  .pmore { width: auto; min-width: 0; min-height: 34px; padding-block: 4px; color: var(--text-2); font-weight: 600; }
+  .pmore.on { border-color: var(--text); color: var(--text); }
+  .pflow .pf-mine { flex: none; }
+
+  /* ---------- 3. Whose move: the requests table ---------- */
+  /* The status column holds the status and who has the next move, so it is wider; the need-by date carries the
+     practice count on a second line. */
+  .ptable.gt .pth, .ptable.gt .ptr { grid-template-columns: minmax(0, 2.2fr) minmax(0, 1fr) 7rem 5.5rem minmax(0, 1fr) 7.5rem 5rem 11rem; }
+  .ptable.gt .ptr { min-height: 50px; padding-block: 5px; }
+  .ptable.gt .ps { display: grid; justify-items: start; gap: 1px; }
+  .ptable.gt .ps .move, .ptable.gt .pd { white-space: normal; overflow-wrap: anywhere; }
+  .ptable.gt .ps .move { font-size: .82rem; line-height: 1.25; }
+  .ptable.gt .pd { line-height: 1.3; }
+  .ptable.gt .ppr { display: block; color: var(--mute); font-size: .82rem; }
+  .ptable.gt .pcm { display: none; }
+
+  /* ---------- 3. Whose move: the request panel ---------- */
+  .preqsteps { display: grid; gap: 10px; padding: 12px 0; border-bottom: 1px solid var(--line); }
+  /* Five steps in five equal columns: a dot, a line to the next dot, and the name with who and when under it. */
+  .preqsteps .stages { display: grid; grid-template-columns: repeat(5, minmax(0, 1fr)); gap: 0; }
+  .preqsteps .stages li { padding: 20px 8px 0 0; margin: 0; }
+  .preqsteps .stages li::before { top: 0; left: 0; }
+  .preqsteps .stages li::after { top: 5px; left: 16px; right: 4px; width: auto; }
+  .preqsteps .stages li.done::after { background: var(--ok); }
+  .preqsteps .stages li:last-child::after { display: none; }
+  .preqsteps .stages small { overflow-wrap: anywhere; line-height: 1.25; white-space: pre-line; }
+  .pnow { gap: 6px 14px; }
+  .pstop { display: flex; flex-wrap: wrap; align-items: center; gap: 4px 8px; margin: 0; color: var(--text-2); }
+
+  @media (max-width: 899px) {
+    .ptable.gt .ptr { grid-template-columns: minmax(0, 1fr) auto; min-height: 52px; padding-block: 9px; }
+    /* Folded row: name and status on top, the facts, then whose move on its own line under them. */
+    .ptable.gt .ps { display: contents; }
+    .ptable.gt .ps .pill { grid-column: 2; grid-row: 1; justify-self: end; }
+    .ptable.gt .ps .move { grid-column: 1 / -1; grid-row: 3; font-size: .86rem; }
+    .ptable.gt .ps .move.mine { font-size: .86rem; }
+    .ptable.gt .ppr { display: inline; color: inherit; font-size: inherit; }
+    .ptable.gt .pcm { display: inline; }
+  }
+  @media (max-width: 640px) {
+    .pshopi { grid-template-columns: minmax(0, 1fr) auto; }
+    .pshopi .grow { grid-column: 1 / -1; }
+    .pinst { grid-column: 1; }
+    .pshopi .btn, .pshopact .btn, .pnone .btn { min-height: 44px; }
+    .pnotake { display: none; }
+    .pnothing .btn { width: 100%; }
+    /* The five steps and More sit in a three-column grid, so the row wraps evenly and never runs sideways. */
+    .psteps { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 6px; width: 100%; }
+    .pstep { justify-content: center; padding: 0 6px; min-width: 0; }
+    .pstep, .pmore { min-height: 44px; }
+    .pmore { width: 100%; padding-inline: 8px 4px; }
+    .pflow { gap: 10px 12px; }
+    .pflow .pf-mine { min-height: 44px; }
+  }
 }
