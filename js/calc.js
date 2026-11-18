@@ -200,7 +200,7 @@ function readLink(St) {
 /* A row of answers. items: [{ k: label, v: value (text), u: unit, sub: a second line, tip, state: "ok" | "warn" | "bad" }] */
 K.outs = function (items) {
   return '<dl class="outs">' + items.filter(Boolean).map(function (i) {
-    return '<div class="out' + (i.state ? " " + i.state : "") + '"><dt' + (i.tip ? ' class="abbr" tabindex="0" data-tip="' + esc(i.tip) + '"' : "") + ">" + esc(i.k) + '</dt><dd><b class="num">' + esc(i.v) + "</b>" + (i.u ? " <span>" + esc(i.u) + "</span>" : "") + (i.sub ? "<small>" + esc(i.sub) + "</small>" : "") + "</dd></div>";
+    return '<div class="out' + (i.state ? " " + i.state : "") + '"><dt' + (i.tip ? ' class="abbr" tabindex="0" data-tip="' + esc(i.tip) + '"' : "") + ">" + esc(i.k) + '</dt><dd><b class="num">' + esc(i.v) + "</b>" + (i.u ? (/^(°|%|:)/.test(i.u) ? "" : " ") + "<span" + (/^(°|%|:)/.test(i.u) ? ' class="tight"' : "") + ">" + esc(i.u.replace(/^:\s*1$/, ":1")) + "</span>" : "") + (i.sub ? "<small>" + esc(i.sub) + "</small>" : "") + "</dd></div>";
   }).join("") + "</dl>";
 };
 // One plain sentence that says whether the design works. state: "ok" | "warn" | "bad" | "info". The "ok" word is
@@ -225,7 +225,7 @@ function ticks(lo, hi, want) {
   for (var v = Math.ceil(lo / step - 1e-9) * step; v <= hi + step * 1e-6; v += step) out.push(Math.abs(v) < step * 1e-9 ? 0 : v);
   return { list: out, step: step };
 }
-function tickFmt(v, step) { var dp = step >= 1 ? 0 : Math.min(4, Math.ceil(-Math.log10(step) - 1e-9)); return v.toLocaleString("en-US", { minimumFractionDigits: dp, maximumFractionDigits: dp }); }
+function tickFmt(v, step) { var dp = step >= 1 ? 0 : Math.min(4, Math.ceil(-Math.log10(step) - 1e-9)); return v.toLocaleString("en-US", { minimumFractionDigits: dp, maximumFractionDigits: dp }).replace("-", "−"); }
 /* A line chart. o: { id (unique on the page), title, x: { label, min, max }, y: { label, min, max },
      series: [{ name, pts: [[x, y], ...], color: 1 | 2 | 3 | "mute", dash: true }],
      (the y label is written above the top of the axis, the x label under its right-hand end)
@@ -400,7 +400,6 @@ function G(ctx, w, h) {
     g.poly(pts, { fill: o.fill || c.part, stroke: o.stroke || c.partLine, width: 1 });
     var b = o.bore || Math.max(3, rp * 0.18), hex = []; for (var k = 0; k < 6; k++) hex.push([x + b * Math.cos(ang + k * Math.PI / 3), y + b * Math.sin(ang + k * Math.PI / 3)]);
     g.poly(hex, { fill: c.sheet, stroke: o.stroke || c.partLine, width: 1 });
-    if (rr > b * 2.4) g.circle(x, y, (rr + b) / 2, { stroke: o.stroke || c.partLine, width: 1, dash: [2, 3] });
   };
   // A ball with a stripe, so its spin shows. o: { fill, stroke }
   g.ball = function (x, y, r, ang, o) {

@@ -63,6 +63,9 @@
 .out dd { margin: 0; line-height: 1.25; }
 .out dd b { font-size: 1.3rem; font-weight: 700; letter-spacing: -.01em; }
 .out dd span { font-size: .82rem; color: var(--text-2); font-weight: 500; }
+.out dd span.tight { font-size: 1.05rem; font-weight: 700; color: var(--text); }
+/* On a phone the cards sit two to a row: a last card that would sit beside an empty cell takes the whole row. */
+@media (max-width: 640px) { .outs > .out:last-child:nth-child(odd) { grid-column: 1 / -1; } }
 .out dd small { display: block; font-size: .78rem; color: var(--mute); }
 .out.warn dd b { color: var(--warn); } .out.bad dd b { color: var(--bad); } .out.ok dd b { color: var(--ok); }
 .outs + .outs { margin-top: -2px; }
