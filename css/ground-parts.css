@@ -333,3 +333,11 @@
   .pline .pl1, .pline .pl2 { display: block; }
 }
 @media (max-width: 640px) { :root[data-design="c"] .preqsteps .stages li { min-height: 24px; padding-block: 2px; } :root[data-design="c"] .preqsteps .stages li::before { top: 6px; } :root[data-design="c"] .preqsteps .stages li::after { top: 20px; } }
+
+/* ---- Hill climb round 14 ---- */
+:root[data-design="c"] {
+  /* Every request row names its step, on a phone too. */
+  .ptable.gt .ptr.samest .ps .pill { position: static; width: auto; height: auto; overflow: visible; clip: auto; }
+  .ptable.gt .pnodate { color: var(--mute); }
+  .pinvh { margin: 0 0 10px; }
+}

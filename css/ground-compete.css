@@ -50,3 +50,9 @@
   :root[data-design="c"] .scauto > .scpath { grid-column: 1; grid-row: 2 / span 3; margin-top: 0; }
   :root[data-design="c"] .scauto > .field:not(.scpath) { grid-column: 2; margin-top: 0; }
 }
+/* Hill climb r14: Scouting, wide, reads in the phone's order. The answers come first (left), the drawing after (right). */
+@media (min-width: 1000px) {
+  :root[data-design="c"] .scauto { grid-template-columns: minmax(260px, 1fr) minmax(0, 520px); }
+  :root[data-design="c"] .scauto > .scpath { grid-column: 2; grid-row: 2 / span 3; }
+  :root[data-design="c"] .scauto > .field:not(.scpath) { grid-column: 1; }
+}

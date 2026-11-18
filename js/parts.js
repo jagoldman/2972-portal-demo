@@ -17,7 +17,7 @@ function budgetEffect(r, two) {
   var left = budgetLeft(r.bud); if (left == null) return "";
   var head = esc(bname(r.bud)) + (D.ground() ? " budget: " : ": ") + money(left) + " left", after = money(left - total(r)) + " after this";
   if (!D.ground()) return head + " → " + after;
-  return two ? head + '<br><span class="pafter">' + after + "</span>" : head + ", " + after;
+  return two ? head + '<br><span class="pafter">' + after + "</span>" : head + ', <span class="nw">' + after + "</span>";
 }
 var VURL = { REV: "https://www.revrobotics.com", WCP: "https://wcproducts.com", AndyMark: "https://www.andymark.com", "McMaster-Carr": "https://www.mcmaster.com", "The Thrifty Bot": "https://www.thethriftybot.com", CTRE: "https://store.ctr-electronics.com", Amazon: "https://www.amazon.com" };
 var PRI = { blocking: ["Blocking", "bad"], high: ["High", "warn"], normal: ["Normal", ""], nice: ["Nice to have", ""] };
@@ -287,7 +287,7 @@ function requests() {
     // One row. Needs OK and To order rows leave whose move it is to their group's heading, which says it once.
     var rowG = function (r) {
       var mv = r.status === "needsok" || r.status === "toorder" ? "" : moveHtml(r);
-      return '<button class="ptr' + (mv || (r.status !== "needsok" && r.status !== "toorder") ? "" : " samest") + '" data-act="preq" data-v="' + r.id + '"><b class="pn">' + esc(r.name) + '</b><span class="pfacts"><span class="pv">' + esc(r.vendor) + '</span><span class="pq num">' + labG("Qty") + esc(qtyText(r)) + '</span><span class="pc num r">' + money(total(r)) + '</span><span class="pb' + (r.by === me ? " pbme" : "") + '">' + (r.by === me ? '<span class="dk">You</span><span class="ph">you</span>' : esc(r.by)) + '</span><span class="pd num' + (r.need ? "" : " pnd") + '">' + (r.need ? labG("Need by") + needCell(r) : '<span class="vh">No date</span>') + '</span></span><span class="pp">' + priPill(r.pri) + '</span><span class="ps">' + statusPill(r.status) + mv + "</span></button>";
+      return '<button class="ptr' + (mv || (r.status !== "needsok" && r.status !== "toorder") ? "" : " samest") + '" data-act="preq" data-v="' + r.id + '"><b class="pn">' + esc(r.name) + '</b><span class="pfacts"><span class="pv">' + esc(r.vendor) + '</span><span class="pq num">' + labG("Qty") + esc(qtyText(r)) + '</span><span class="pc num r">' + money(total(r)) + '</span><span class="pb' + (r.by === me ? " pbme" : "") + '">' + (r.by === me ? '<span class="dk">You</span><span class="ph">you</span>' : esc(r.by)) + '</span><span class="pd num' + (r.need ? "" : " pnd") + '">' + (r.need ? labG("Need by") + needCell(r) : '<span class="pnodate">No date</span>') + '</span></span><span class="pp">' + priPill(r.pri) + '</span><span class="ps">' + statusPill(r.status) + mv + "</span></button>";
     };
     /* Hill climb r3: the rows go in the order of the flow, each step under one heading row with its name, its count
        and whose move it is, said once. Inside a step the rows keep the urgency order above. */
@@ -481,7 +481,7 @@ function inventory() {
   function nameOf(ns, id) { for (var i = 0; i < ns.length; i++) { if (ns[i].id === id) return ns[i].name; var k = ns[i].kids && nameOf(ns[i].kids, id); if (k) return k; } return ""; }
   var placeTree = '<button data-act="ploc2" data-v="all" aria-pressed="' + (p.loc === "all") + '">' + D.ic("home", 16) + 'Everything<span class="n">' + p.items.length + "</span></button>" + tree(p.places, 0);
   return '<div class="side"><div class="card tight hide-sm"><div class="ltree">' + placeTree + '</div><button class="btn ghost sm">+ Add a place</button></div>' +
-    '<div class="card"><div class="pinvbar"><details class="placepick show-sm-block"><summary>Place: <b>' + esc(p.loc === "all" ? "Everything" : nameOf(p.places, p.loc)) + '</b></summary><div class="ltree">' + placeTree + '</div></details><input id="p-invq" class="inp" data-input="pinvq" placeholder="Find a part" value="' + esc(p.invq) + '" aria-label="Find a part"><button class="chip" data-act="plow" aria-pressed="' + p.low + '">' + (D.ground() ? 'Low stock <span class="tcount">' + lowN + "</span>" : "Low stock (" + lowN + ")") + "</button></div>" +
+    '<div class="card">' + (D.ground() ? '<h2 class="pinvh">Inventory</h2>' : "") + '<div class="pinvbar"><details class="placepick show-sm-block"><summary>Place: <b>' + esc(p.loc === "all" ? "Everything" : nameOf(p.places, p.loc)) + '</b></summary><div class="ltree">' + placeTree + '</div></details><input id="p-invq" class="inp" data-input="pinvq" placeholder="Find a part" value="' + esc(p.invq) + '" aria-label="Find a part"><button class="chip" data-act="plow" aria-pressed="' + p.low + '">' + (D.ground() ? 'Low stock <span class="tcount">' + lowN + "</span>" : "Low stock (" + lowN + ")") + "</button></div>" +
     (rows.length ? '<div class="tablewrap" data-keepscroll="inventory"><table class="stacktbl c3"><thead><tr><th>Part</th><th>Where</th><th>' + (D.ground() ? "On the shelf" : "In store") + '</th><th>On robots</th><th></th></tr></thead><tbody>' + rows.map(function (i) {
       var low = inStore(i) <= i.min, places = i.stock.filter(function (s) { return under(s.place); });
       var home = places.filter(function (s) { return s.place.indexOf("bot") < 0; });

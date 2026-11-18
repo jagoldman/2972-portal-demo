@@ -649,3 +649,31 @@
   /* Pit: the count of checks has its own line above the bar. */
   :root[data-design="c"] .cmp .card.hero > .row.between:has(> .pill) { flex-direction: column; align-items: flex-start; gap: 6px; }
 }
+
+/* ---- Hill climb round 14 ---- */
+:root[data-design="c"] {
+  .nw { white-space: nowrap; }
+  /* Home on a phone never cuts a row's line short: the second half carries the fact (round 14). */
+  @media (max-width: 640px) { .homec .nowrow .rl, .homec .nowrow:not(.nowtall) .rl:not(:has(> .pill)) { display: block; -webkit-line-clamp: unset; overflow: visible; white-space: normal; text-overflow: clip; } }
+  .content .row.between:has(> h2 + .tcount:last-child) { justify-content: flex-start; align-items: baseline; gap: 10px; }
+  /* Schedule and Scouting: the match line sits between the person's card and the rest. */
+  .cmp .card.hero + .evline { margin: 12px 0 4px; }
+  .skmachs { margin-top: 2px; }
+  .card > div > h3:has(+ .skmachs) { margin-top: 16px; font-size: 1.05rem; }
+  .nsame, .nsame b { font-size: .9rem; }
+  @media (max-width: 640px) { .calcx { min-height: 36px; padding: 2px 10px; font-size: .86rem; align-self: center; } }
+}
+
+:root[data-design="c"] {
+  .skperm .chev { margin-left: 6px; color: var(--mute); font-weight: 400; }
+  /* Scouting: minus, the count and plus stay within a thumb's reach at every width. */
+  .cmp .counter { max-width: 300px; }
+  /* Scouting, wide: the same order as on a phone. The answers come first (left), the drawing after (right). */
+  @media (min-width: 1000px) {
+    .scauto { grid-template-columns: minmax(260px, 1fr) minmax(0, 520px); }
+    .scauto > .scpath { grid-column: 2; grid-row: 2 / span 3; }
+    .scauto > .field:not(.scpath) { grid-column: 1; }
+  }
+  .stages small { font-size: .86rem; }
+  @media (max-width: 640px) { .trowx > .due { align-self: start; padding-top: 2px; } }
+}

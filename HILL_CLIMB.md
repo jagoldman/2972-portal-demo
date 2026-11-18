@@ -19,7 +19,8 @@ Every judge in a tier must score every area at the tier's target. Fixes are made
 | 11 | 3 (9.5) | Opus, Grok 4.7 (GPT-6.1 Sol stopped partway: usage limit reached) | 8.1 to 9.1 | 16 of 16 areas under 9.5; Opus 8.3 to 9.0, Grok 4.7 8.1 to 9.1; lowest per area 8.1 to 9.0. Two judges only, so this round is not a full tier-3 round |
 | 12 | 3 (9.5) | Opus, GPT-6.1 Sol, Grok 4.7 | 8.2 to 9.3 | 16 of 16 areas under 9.5; Opus 8.3 to 8.8, Sol 8.4 to 9.3, Grok 4.7 8.2 to 9.2; lowest per area 8.2 to 8.8. Sol found nothing worth changing in 8 areas |
 | 13 | 3 (9.5) | Opus, GPT-6.1 Sol, Grok 4.7 (second try; its first run could not open the images) | 8.2 to 9.3 | 16 of 16 areas under 9.5; Opus 8.5 to 8.8, Sol 8.2 to 9.3, Grok 4.7 8.5 to 9.3; lowest per area 8.2 to 8.8 |
-| 14 | 3 (9.5) | Opus, GPT-6.1 Sol, Grok 4.7 | with the judges | |
+| 14 | 3 (9.5) | Opus, GPT-6.1 Sol, Grok 4.7 | 7.9 to 9.2 | 16 of 16 areas under 9.5; Opus 8.4 to 8.8, Sol 7.9 to 9.2, Grok 4.7 8.2 to 9.2; lowest per area 7.9 to 8.8. A dip caused by a fault the lead introduced in round 13 (see below) |
+| 15 | 3 (9.5) | Opus, GPT-6.1 Sol, Grok 4.7 | with the judges | |
 
 Grok 4.5 was thrown out in rounds 1 and 2: asked to copy exact text from three screenshots, it invented it.
 Grok 4.6 copied the text correctly in round 3 and counts.
@@ -200,3 +201,11 @@ drops (Tools, To order) were faults the lead introduced in round 4 and fixed bef
   one area under 8.4 was the mentor's Home (Sol, 8.2): Approve there did not show the budget. It does now.
 - **A screenshot fault, not a design fault.** Twice Grok said the drill chart's last row had no sizes. The shot
   stopped mid-row at the window's bottom edge; it is a full-page shot from round 14.
+- **A fault the lead introduced in round 13, caught in round 14.** To shorten a mentor's sign-off notes on a phone,
+  every Home row was cut to one line. That hid "Not signed in", "5 people are signed in" and "2 families needed"
+  behind an ellipsis. All three judges marked it and four areas dropped. Home rows wrap in full again, and the
+  brief says nothing on Home is cut short.
+- **The step on a phone request row.** Round 9 hid it under its heading; round 14 said a row scrolled away from its
+  heading then had no status. Every row names its step at every width.
+- **Order of the top of Schedule and Scouting.** They led with the match line; Home leads with the person's card.
+  All three now lead with the person's card.

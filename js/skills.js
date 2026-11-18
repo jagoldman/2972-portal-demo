@@ -552,7 +552,7 @@ function permitsView() {
       var label = g ? PERMIT_WORD[state] : state === "yes" ? "Yes" : state === "training" ? "Training" : "No";
       var cls = state === "yes" ? "ok" : state === "training" ? "warn" : "";
       var tip = tipFor(state, rec);
-      return '<td><button class="pill skperm ' + cls + '" data-act="skpermit" data-st="' + esc(st) + '" data-cat="' + tool.cat + '" data-skill="' + tool.skill + '" data-tip="' + esc(tip) + '">' + label + "</button></td>";
+      return '<td><button class="pill skperm ' + cls + '" data-act="skpermit" data-st="' + esc(st) + '" data-cat="' + tool.cat + '" data-skill="' + tool.skill + '" data-tip="' + esc(tip) + '">' + label + (g ? '<span class="chev" aria-hidden="true">›</span>' : "") + "</button></td>";
     }).join("");
     return "<tr><td><b>" + esc(st) + "</b>" + you + "</td>" + cells + "</tr>";
   }).join("");

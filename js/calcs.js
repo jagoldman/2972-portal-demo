@@ -536,7 +536,7 @@ def({ id: "calc-drill", key: "drill", name: "Drill and tap chart", icon: "cdrill
       return "<tr" + (MOST[r[0]] ? ' class="most"' : "") + '><th scope="row" data-l="Thread"><b>' + esc(r[0]) + "</b>" + (MOST[r[0]] ? '<span class="calctag">Most used on the robot</span>' : "") + "</th>" +
         drillCell(r[1], "Tap drill") + drillCell(r[2], "Close clearance") + drillCell(r[3], "Free clearance") + "</tr>";
     }).join("");
-    var html = rows.length ? '<p class="small mute calcnote">Close clearance is a snug bolt hole. Free clearance is a looser one.</p><table class="calctable"><caption class="vh">Drills for each thread</caption><thead><tr><th scope="col">Thread</th><th scope="col">Tap drill</th><th scope="col">Close clearance</th><th scope="col">Free clearance</th></tr></thead><tbody>' + body + "</tbody></table>" :
+    var html = rows.length ? '<p class="small mute calcnote">Tap drill is the hole you drill before cutting threads. Close clearance is a snug bolt hole. Free clearance is a looser one.</p><table class="calctable"><caption class="vh">Drills for each thread</caption><thead><tr><th scope="col">Thread</th><th scope="col">Tap drill</th><th scope="col">Close clearance</th><th scope="col">Free clearance</th></tr></thead><tbody>' + body + "</tbody></table>" :
       '<p class="empty">No thread matches "' + esc(st.q) + '". Try #10-32, 1/4-20 or M5.</p>';
     var ans = !String(st.q).trim() ? "Type a thread, like #10-32 or M5, to see its drills. The two most used on the robot are marked." :
       !first ? "No thread matches that. Try #10-32, 1/4-20 or M5." :
