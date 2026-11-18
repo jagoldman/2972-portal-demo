@@ -119,7 +119,7 @@ function rowCheck(x) {
   var doing = x.st === "doing";
   return '<button class="tcheck' + (doing ? " doing" : "") + '" data-act="tdone" data-v="' + x.id + '" aria-pressed="' + (x.st === "done") + '" aria-label="' + (doing ? "In progress. Mark done: " : "Done: ") + esc(x.title) + '" data-tip="' + (x.st === "done" ? "Mark this task not done." : doing ? "In progress (the ring); mark this task done when it is finished." : "Mark this task done.") + '">' + D.ic("check", 14) + "</button>";
 }
-function dueTxt(x) { if (!x.due) return '<span class="who due">No date</span>'; var n = days(x.due); return '<span class="who num due' + (n < 0 && x.st !== "done" ? " late" : "") + '">' + (n === 0 ? "Today" : n === 1 ? "Tomorrow" : n < 0 && x.st !== "done" ? Math.abs(n) + "d late" : fmt(x.due, { month: "short", day: "numeric" })) + "</span>"; }
+function dueTxt(x) { if (!x.due) return '<span class="who due">No date</span>'; var n = days(x.due); return '<span class="who num due' + (n < 0 && x.st !== "done" ? " late" + (D.ground() ? " pill bad" : "") : "") + '">' + (n === 0 ? "Today" : n === 1 ? "Tomorrow" : n < 0 && x.st !== "done" ? Math.abs(n) + "d late" : fmt(x.due, { month: "short", day: "numeric" })) + "</span>"; }
 function blockedBy(x) { return x.by.map(task).filter(function (b) { return b && b.st !== "done"; }); }
 function subsOf(x) { return T().list.filter(function (y) { return y.parent === x.id; }); }
 

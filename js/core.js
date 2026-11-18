@@ -209,8 +209,8 @@ function appbar() {
   var cur = D.tile(S.route), here = S.route === "account" ? "Account" : D.isToolRoute(S.route) ? "Tools" : cur ? cur.name : "Gears & Buccaneers";
   return '<header class="appbar"><button class="appsbtn" data-act="apps" aria-expanded="' + !!S.appsOpen + '" aria-label="All apps" data-tip="Every app, tool and team link.">' + D.ic("apps", 20) + "</button>" +
     '<a class="brand" href="' + D.appHref("portal") + '" target="_blank" rel="noopener noreferrer" aria-label="Portal home" data-act="go" data-v="portal"><span class="badge-2972">2972</span></a>' +
-    '<span class="appname">' + esc(here) + '</span><span class="grow"></span>' +
-    (S.mode === "competition" ? '<button class="modechip" data-act="go" data-v="account" aria-label="Competition mode" data-tip="Event apps are showing; change it on your Account page.">Comp<span class="hide-sm">etition mode</span></button>' : "") +
+    '<span class="appname">' + (D.ground() && !cur && S.route === "portal" ? '<span class="hide-sm">' + esc(here) + '</span><span class="show-sm-inline">Home</span>' : esc(here)) + '</span><span class="grow"></span>' +
+    (S.mode === "competition" ? '<button class="modechip" data-act="go" data-v="account" aria-label="Competition mode" data-tip="Event apps are showing; change it on your Account page.">' + (D.ground() ? 'Competition<span class="hide-sm"> mode</span>' : 'Comp<span class="hide-sm">etition mode</span>') + "</button>" : "") +
     '<button class="iconbtn" data-act="bell" aria-expanded="' + !!S.bell + '" aria-label="Notifications" data-tip="What is new for you in every app.">' + D.ic("bell") + (unread ? '<span class="count">' + unread + "</span>" : "") + "</button>" +
     (S.role !== "display" ? '<button class="iconbtn acct" data-act="accountmenu" aria-controls="account-menu" aria-expanded="' + !!S.accountOpen + '" aria-label="Account: ' + esc(D.me().name) + '" data-tip="Your theme, notices and account settings.">' + esc(D.me().name.replace(/^(Ms|Mr|Dr)\. /, "").split(" ").map(function (w) { return w[0]; }).join("").slice(0, 2)) + "</button>" : "") +
     (S.appsOpen ? appsMenu() : "") + (S.bell ? bellPanel() : "") + (S.accountOpen && S.role !== "display" ? accountMenu() : "") + "</header>" +
@@ -352,15 +352,17 @@ function seasonLine() {
 function apiWith(api, fns) { return api && fns.every(function (f) { return typeof api[f] === "function"; }) ? api : null; }
 // One row of the Now list: a title and one muted line that open the owning screen, then at most one action.
 function nowRow(o) {
-  return '<div class="li nowrow"><button class="rowlink" data-act="' + (o.act || "goapp") + '"' + (o.v != null ? ' data-v="' + esc(o.v) + '"' : "") + (o.app ? ' data-app="' + o.app + '"' : "") + (o.tab ? ' data-tab="' + o.tab + '"' : "") + '><span class="rt">' + esc(o.title) + "</span>" + (o.line ? '<span class="rl">' + o.line + "</span>" : "") + "</button>" +
-    (o.mark || "") + (o.btn || '<span class="chev" aria-hidden="true">›</span>') + "</div>";
+  return '<div class="li nowrow"><button class="rowlink" data-act="' + (o.act || "goapp") + '"' + (o.v != null ? ' data-v="' + esc(o.v) + '"' : "") + (o.app ? ' data-app="' + o.app + '"' : "") + (o.tab ? ' data-tab="' + o.tab + '"' : "") + '><span class="rt">' + esc(o.title) + "</span>" + (o.line || o.mark ? '<span class="rl">' + (o.mark ? o.mark + " " : "") + (o.line || "") + "</span>" : "") + "</button>" +
+    (o.btn || '<span class="chev" aria-hidden="true">›</span>') + "</div>";
 }
 /* Now: everything that needs this person, most urgent first, each with its own action (rule 3). The actions call the
    owning app's own function (D.partsApi.approve, D.skillsApi.signOff), so they are not a second way of doing it. */
 function nowRows() {
   var S = D.S, rows = [], api = D.calApi, c = S.cal, staff = D.isStaff(), P = apiWith(D.partsApi, ["needsOk", "approve", "open"]), K = apiWith(D.skillsApi, ["requests", "signOff"]);
-  // A parent's next practice is the first row of "This week" beside this list, so it is not said twice.
-  practiceRows().forEach(function (r) { if (S.role === "parent" && /^Next practice/.test(r.title)) return; rows.push({ app: r.app, tab: r.tab, title: r.title, line: r.line ? esc(r.line) : "", btn: r.btn || "" }); });
+  practiceRows().forEach(function (r) {
+    // A parent's first question is the next practice. When that is today, the row says "today", not the date.
+    if (S.role === "parent" && api && /^Next practice: /.test(r.title) && api.practiceDays(1)[0] && api.practiceDays(1)[0].date === api.TODAYS) r.title = "Practice today";
+    rows.push({ app: r.app, tab: r.tab, title: r.title, line: r.line ? esc(r.line) : "", btn: r.btn || "" }); });
   if (staff) {
     if (P && hasTile("parts")) P.needsOk().forEach(function (r) {
       rows.push({ act: "homereq", v: r.id, title: r.name, line: esc(D.money(r.total) + ", asked by " + r.by) + (r.orderBy ? ', <b class="nowbad">order by ' + esc(api ? api.fmt(r.orderBy) : r.orderBy) + "</b>" : ""),
@@ -404,9 +406,9 @@ function weekRows() {
     var p = api.practiceOn(m.date), o = day(m.date);
     o.what.push((m.kind === "build" ? "Build day" : m.kind === "comp" ? m.name : "Practice") + (p ? ", " + api.span(p) : ""));
     if (m.kind === "comp") return;
-    if (role !== "parent") { var mn = api.mentorsOn(m.date).length; o.facts.push(mn ? '<span>' + plural(mn, "mentor", "mentors") + " coming</span>" : '<span class="wkwarn">No mentors yet</span>'); }
+    if (role !== "parent") { var mn = api.mentorsOn(m.date).length; o.facts.push(mn ? '<span>' + plural(mn, "mentor", "mentors") + " coming</span>" : '<span class="pill warn">No mentors yet</span>'); }
     var sn = api.snacksFor(m.date);
-    if (sn && D.calTab("snacks")) o.facts.push(sn.filled ? "<span>Snacks: " + esc(sn.names.join(" and ")) + "</span>" : '<span class="wkwarn">Needs snacks</span>');
+    if (sn && D.calTab("snacks")) o.facts.push(sn.filled ? "<span>Snacks: " + esc(sn.names.join(" and ")) + "</span>" : '<span class="pill warn">Needs snacks</span>');
   });
   api.eventsIn(today, end, ["outreach", "meeting"]).forEach(function (e) { day(e.date).what.push(e.name); });
   if (role !== "parent" && D.tasksApi) D.tasksApi.milestones(12).forEach(function (m) { if (m.date >= today && m.date <= end) day(m.date).facts.push('<span class="wkdue"><i class="snd" style="background:' + esc(m.color) + '"></i>Due: ' + esc(m.name) + "</span>"); });
@@ -421,7 +423,8 @@ function homeGround() {
   var S = D.S, tiles = D.visibleTiles(), staff = D.isStaff(), role = S.role;
   var main = tiles.filter(isCore), more = tiles.filter(function (t) { return t.more; });
   function link(t) { return '<li><a href="' + D.appHref(t.id) + '" target="_blank" rel="noopener noreferrer"' + D.tileTip(t.id) + '>' + D.ic(t.icon, 16) + esc(t.name) + (t.ext ? " ↗" : "") + "</a></li>"; }
-  function approw(t) { return '<a class="approw" href="' + D.appHref(t.id) + '" target="_blank" rel="noopener noreferrer" aria-label="' + esc(t.name) + ' (opens in a new tab)"' + D.tileTip(t.id) + '><span class="ic">' + D.ic(t.icon, 18) + "</span><b>" + esc(t.name) + (t.ext ? " ↗" : "") + "</b><small>" + esc(SHORT[t.id] || t.desc) + "</small></a>"; }
+  var SHORTER = { calendar: "Practices, attendance, snacks" };
+  function approw(t) { return '<a class="approw" href="' + D.appHref(t.id) + '" target="_blank" rel="noopener noreferrer" aria-label="' + esc(t.name) + ' (opens in a new tab)"' + D.tileTip(t.id) + '><span class="ic">' + D.ic(t.icon, 18) + "</span><b>" + esc(t.name) + (t.ext ? " ↗" : "") + "</b><small>" + esc(SHORTER[t.id] || SHORT[t.id] || t.desc) + "</small></a>"; }
   var d = new Date(2026, 10, 10); try { if (D.calApi && D.calApi.TODAYS) { var q = D.calApi.TODAYS.split("-"); d = new Date(+q[0], +q[1] - 1, +q[2]); } } catch (e) {}
   var date = d.toLocaleDateString("en-US", { weekday: "long", month: "long", day: "numeric" });
   var now = nowRows(), others = role === "student" ? waitingOnOthers() : [];
@@ -430,18 +433,18 @@ function homeGround() {
   if (now.length || !shift) mainCol += '<section class="card nowcard"><h2>Now</h2>' + (now.length ? '<div class="list">' + now.map(nowRow).join("") + "</div>" : '<p class="mute">Nothing needs you right now.</p>') + "</section>";
   if (role === "student" && D.nextUpCard) mainCol += S.eventDay ? '<div class="evcompact">' + D.nextUpCard() + "</div>" : D.nextUpCard();
   if (others.length) mainCol += '<section class="card"><h2>Waiting on others</h2><div class="list">' + others.join("") + "</div></section>";
-  var act = role === "parent" ? "" : '<section class="card"><h2>Recent activity</h2><div class="list">' +
+  var act = role === "parent" ? "" : '<section class="card actcard"><h2>Recent activity</h2><div class="list">' +
     S.activity.slice(0, 4).map(function (a) { return '<div class="li actli"><span class="actapp">' + esc(D.APPNAME[a.app] || "") + '</span><span class="grow"><b>' + esc(a.who) + "</b> " + esc(a.what) + '</span><span class="who">' + esc(a.when) + "</span></div>"; }).join("") + "</div></section>";
   // On an event day the event line takes the season line's place. A student's shift card below already says "you
   // now", so the line leaves that part out for them.
   var shift = role === "student" && S.eventDay && D.myShiftCard;
   var top = S.eventDay && D.eventLine && role !== "parent" ? D.eventLine(shift ? "schedule" : "") : role === "parent" ? "" : seasonLine();
-  return '<div class="content home homeb homec"><div class="homehead"><h1>Hi ' + esc(D.me().short) + '.</h1><p class="homedate">' + esc(date) + "</p></div>" + top + (D.guideCard ? D.guideCard() : "") +
-    '<div class="homecols"><div class="homemain">' + mainCol + '</div><aside class="homeside">' +
-    '<section class="card"><h2>This week</h2>' + weekRows() + "</section>" +
-    '<section class="card"><h2>Apps</h2><div class="applist">' + main.map(approw).join("") + "</div>" +
+  return '<div class="content home homeb homec"><div class="homehead"><h1>Hi ' + esc(D.me().short) + '.</h1><p class="homedate">' + esc(date) + "</p></div>" + top +
+    '<div class="homecols"><div class="homemain">' + mainCol + (D.guideCard ? D.guideCard() : "") + act + '</div><aside class="homeside">' +
+    '<section class="card wkcard"><h2>This week</h2>' + weekRows() + "</section>" +
+    '<section class="card appscard"><h2>Apps</h2><div class="applist">' + main.map(approw).join("") + "</div>" +
     '<div class="homegroups">' + toolsGroup("home") + adminGroup("home", tiles, function (l) { return '<ul class="morelinks">' + l.map(link).join("") + "</ul>"; }) + (more.length ? groupRow("more", "More", more.length, "home", '<ul class="morelinks">' + more.map(link).join("") + "</ul>") : "") + "</div></section>" +
-    act + "</aside></div></div>";
+    "</aside></div></div>";
 }
 D.views.portal = function () {
   var S = D.S, tiles = D.visibleTiles(), staff = D.isStaff();

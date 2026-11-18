@@ -65,15 +65,20 @@
   .pstop { display: flex; flex-wrap: wrap; align-items: center; gap: 4px 8px; margin: 0; color: var(--text-2); }
 
   @media (max-width: 899px) {
-    .ptable.gt .ptr { grid-template-columns: minmax(0, 1fr) auto; min-height: 52px; padding-block: 9px; }
-    /* Folded row: name and status on top, the facts, then whose move on its own line under them. */
+    /* Folded row (hill climb r1): the name; then its state, its priority and whose move it is, side by side; then
+       the facts. Nothing is pushed to the far edge, so each row reads top to bottom. */
+    .ptable.gt .ptr { display: flex; flex-wrap: wrap; align-items: baseline; gap: 2px 12px; min-height: 52px; padding-block: 9px; }
+    .ptable.gt .pn { flex: 1 1 100%; order: 1; }
     .ptable.gt .ps { display: contents; }
-    .ptable.gt .ps .pill { grid-column: 2; grid-row: 1; justify-self: end; }
-    .ptable.gt .ps .move { grid-column: 1 / -1; grid-row: 3; font-size: .86rem; }
-    .ptable.gt .ps .move.mine { font-size: .86rem; }
+    .ptable.gt .ps .pill { order: 2; }
+    .ptable.gt .pp { order: 3; }
+    .ptable.gt .pp:empty { display: none; }
+    .ptable.gt .ps .move { order: 4; font-size: .86rem; }
+    .ptable.gt .pfacts { flex: 1 1 100%; order: 5; }
     .ptable.gt .ppr { display: inline; color: inherit; font-size: inherit; }
     .ptable.gt .pcm { display: inline; }
   }
+
   @media (max-width: 640px) {
     .pshopi { grid-template-columns: minmax(0, 1fr) auto; }
     .pshopi .grow { grid-column: 1 / -1; }
@@ -88,5 +93,23 @@
     .pmore { width: 100%; padding-inline: 8px 4px; }
     .pflow { gap: 10px 12px; }
     .pflow .pf-mine { min-height: 44px; }
+  }
+
+  /* ---------- Hill climb, round 1 ---------- */
+  /* "More" is one of the filters, so it has their shape. */
+  .pmore { border-radius: var(--r-ctl); border-color: var(--line-2); background-color: var(--surface); }
+  .pafter { color: var(--text-2); }
+  .preqsteps b { font-size: .9rem; }
+  .preqsteps small { color: var(--text-2); }
+  @media (max-width: 640px) {
+    /* The steps are one row that slides; "More" and "Only mine" share the row under it. */
+    .pflow { min-width: 0; max-width: 100%; }
+    .pflow > * { min-width: 0; }
+    .psteps { display: flex; flex-wrap: nowrap; max-width: 100%; overflow-x: auto; scrollbar-width: none; grid-template-columns: none; width: 100%; -webkit-mask-image: linear-gradient(to right, #000 calc(100% - 28px), transparent); mask-image: linear-gradient(to right, #000 calc(100% - 28px), transparent); padding-right: 24px; }
+    .psteps::-webkit-scrollbar { display: none; }
+    .psteps .pstep { flex: none; }
+    .psteps .pmore { flex: none; width: auto; }
+    /* The panel's choices share the width evenly and never crowd. */
+    .drawer > .row > .btn { flex: 1 1 auto; }
   }
 }

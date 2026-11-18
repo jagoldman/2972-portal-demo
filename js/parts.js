@@ -11,7 +11,8 @@ function addDays(s, n) { var d = parse(s); return iso(new Date(d.getFullYear(), 
 var LIMIT = 25000;
 // What a budget has left after spent and approved-but-not-ordered requests.
 function budgetLeft(id) { var p = P(), b = BUDGETS.filter(function (x) { return x.id === id; })[0]; if (!b) return null; return b.budget - (p.spent[id] || 0) - p.requests.filter(function (r) { return r.status === "toorder" && r.bud === id; }).reduce(function (a, r) { return a + total(r); }, 0); }
-function budgetEffect(r) { var left = budgetLeft(r.bud); return left == null ? "" : esc(bname(r.bud)) + ": " + money(left) + " left → " + money(left - total(r)) + " after this"; }
+// Ground up puts "left now" and "left after this" on two lines, so a mentor can check both on a phone.
+function budgetEffect(r) { var left = budgetLeft(r.bud); return left == null ? "" : esc(bname(r.bud)) + ": " + money(left) + " left" + (D.ground() ? '<br><span class="pafter">' : " → ") + money(left - total(r)) + " after this" + (D.ground() ? "</span>" : ""); }
 var VURL = { REV: "https://www.revrobotics.com", WCP: "https://wcproducts.com", AndyMark: "https://www.andymark.com", "McMaster-Carr": "https://www.mcmaster.com", "The Thrifty Bot": "https://www.thethriftybot.com", CTRE: "https://store.ctr-electronics.com", Amazon: "https://www.amazon.com" };
 var PRI = { blocking: ["Blocking", "bad"], high: ["High", "warn"], normal: ["Normal", ""], nice: ["Nice to have", ""] };
 var STATUS = { needsok: ["Needs mentor OK", "warn"], toorder: ["To order", ""], ordered: ["Ordered", "info"], arrived: ["Arrived", "ok"], putaway: ["Put away", "ok"], denied: ["Denied", "bad"], cancelled: ["Cancelled", ""] };
@@ -188,7 +189,7 @@ function findBox(q, reqHits) {
   } else if (reqHits) {
     html += '<div class="row pnone"><p>Nothing like “' + esc(q) + '” is in the shop.</p><button class="btn" data-act="pask">Request it</button></div>';
   } else {
-    html += '<div class="pnone pnothing"><p>Nothing like “' + esc(q) + '” is in the shop or on order.</p><div><button class="btn primary" data-act="pask">Request it</button></div></div>';
+    html += '<div class="pnone pnothing"><p>Nothing like “' + esc(q) + '” is in the shop or on order.</p><p class="who">Try a shorter name or the part number.</p><div><button class="btn primary" data-act="pask">Request it</button></div></div>';
   }
   return html;
 }
@@ -344,7 +345,7 @@ function toOrderView() {
     return '<div class="card"><div><div class="row between nowrap pvh"><h2>' + esc(vn) + '</h2><div class="row nowrap">' + (today.length ? '<span class="pill bad">Place today</span>' : "") + '<b class="num">' + money(sub) + '</b></div></div><p class="who">' + esc(tips.join(" · ")) + (VURL[vn] ? ' · <a class="vlink" href="' + VURL[vn] + '" target="_blank" rel="noopener noreferrer">Open ' + esc(vn) + " ↗</a>" : "") + "</p></div>" +
       (v.free ? '<div class="bar"><i' + (sub >= v.free ? ' class="ok"' : "") + ' style="width:' + Math.min(100, D.pct(sub, v.free)) + '%"></i></div>' + nudge : "") +
       '<div class="list">' + lines.map(function (r) { var ob = orderBy(r); return '<div class="li pline"><span class="grow"><b>' + esc(r.name) + '</b><span class="pmeta">' + [r.sku, "Qty " + qtyText(r), bname(r.bud), "for " + r.sub, r.by].map(esc).join(" · ") + (ob ? " · order by " + fmt(ob) : "") + '</span></span><span class="pside"><span class="num">' + money(total(r)) + "</span>" + priPill(r.pri) + "</span></div>"; }).join("") + "</div>" +
-      '<div class="row"><button class="btn' + (today.length ? " primary" : "") + '" data-act="pmarkordered" data-v="' + esc(vn) + '">Mark ordered…</button><button class="btn" data-act="pcopy" data-v="' + esc(vn) + '">' + (vn === "Amazon" ? "Open Share-A-Cart" : "Copy list") + "</button></div></div>";
+      '<div class="row"><button class="btn' + (today.length ? " primary" : "") + '" data-act="pmarkordered" data-v="' + esc(vn) + '">Mark ordered…</button><button class="btn' + (D.ground() ? " ghost" : "") + '" data-act="pcopy" data-v="' + esc(vn) + '">' + (vn === "Amazon" ? "Open Share-A-Cart" : "Copy list") + "</button></div></div>";
   }).join("");
 }
 D.modals.pcopy = function (d) {

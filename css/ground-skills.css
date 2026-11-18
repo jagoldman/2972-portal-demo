@@ -37,4 +37,13 @@
   .skfind { max-width: 320px; }
   .skfind input::-webkit-search-cancel-button { cursor: pointer; }
   @media (max-width: 640px) { .skfind { max-width: none; } }
+
+  /* ---------- Hill climb, round 1 ---------- */
+  /* Your own row in the Students table is tinted, so you find it at once. */
+  .sktable:not(.skperms) tr:has(td:first-child .who) td { background: var(--tint); }
+  /* On a phone the Students table keeps the name and the three totals. The six tree columns are one tap away
+     (a row opens that student's trees), so nothing runs off the screen. */
+  @media (max-width: 640px) {
+    .sktable:not(.skperms) :is(th, td):nth-child(n+2):nth-last-child(n+4) { display: none; }
+  }
 }

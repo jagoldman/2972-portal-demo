@@ -35,8 +35,9 @@
 
 /* Gear stages */
 .calcstages { display: grid; gap: 10px; }
-.calcstage { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 8px 12px; margin: 0; padding: 6px 12px 12px; border: 1px solid var(--line); border-radius: var(--r); min-width: 0; }
-.calcstage legend { padding: 0 4px; font-size: .85rem; font-weight: 650; color: var(--text); }
+/* A stage is a heading and a rule, not a box (hill climb r1). */
+.calcstage { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 8px 12px; margin: 0; padding: 8px 0 4px; border: 0; border-top: 1px solid var(--line); min-width: 0; }
+.calcstage legend { float: left; width: 100%; padding: 0; margin-bottom: 2px; font-size: .9rem; font-weight: 650; color: var(--text); grid-column: 1 / -1; }
 .calcstage .calcx { grid-column: 1 / -1; justify-self: start; }
 .calcadd { justify-self: start; }
 
@@ -114,3 +115,9 @@
   .calcpage .calcseg button, .calcpicks .chip, .calcstage .calcx, .calcpage .btn { min-height: 44px; }
   .field .calcbox input { max-width: none; }
 }
+
+/* "How this is worked out" opens and closes; the plus and minus say so (hill climb r1). */
+.calchow summary { list-style: none; }
+.calchow summary::-webkit-details-marker { display: none; }
+.calchow summary::after { content: "+"; margin-left: auto; width: 24px; text-align: center; font-size: 1.2rem; font-weight: 500; color: var(--mute); }
+.calchow[open] summary::after { content: "\2212"; }
