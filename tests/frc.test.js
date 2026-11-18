@@ -149,6 +149,13 @@ ok("chain: even links", ch.options.every(function (o) { return o.links % 2 === 0
 near("sprocket pitch diameter", F.sprocketPd(0.25, 22), 0.25 / Math.sin(Math.PI / 22), 1e-12);
 near("gear centre 20 DP 14:50", F.gearPair(14, 50, { dp: 20 }, 0.003).center, 1.603, 1e-9);
 
+// A light arm behind a big reduction (found by the GPT review): the step shrinks, the load is not made heavier.
+var stiff = F.drive({ motor: "kraken60", n: 1, ratio: 250, eff: 0.9, statorA: 40 }), Jarm = 1.3766;
+var sw = F.move({ drive: stiff, J: Jarm, x0: 0, goal: 2, V: 12.3, Rbat: 0 });
+near("light load, big reduction: starts at torque / inertia", sw.a[0], stiff.at(0, 12.3, 1).torque / Jarm, 1e-6);
+ok("and arrives without blowing up", sw.reached && sw.time > 0.1 && sw.time < 3 && sw.w.every(function (w) { return isFinite(w) && Math.abs(w) < 100; }), sw.time);
+ok("curves stay a sensible length", sw.t.length < 3000, sw.t.length);
+
 // ---- Findings from the independent review (Opus, 2026-11-18) ----
 // A supply limit must not turn braking into a push.
 var dsl = F.drive({ motor: "kraken60", n: 1, ratio: 1, eff: 1, supplyA: 40 }), brk = dsl.at(300, 12, -1);

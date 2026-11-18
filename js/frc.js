@@ -129,11 +129,18 @@ function moveOnce(o) {
   function cap(tq, s) { if (o.maxTorque == null) return tq; var m = typeof o.maxTorque === "function" ? o.maxTorque(o.x0 + dir * s) : o.maxTorque; return tq > m ? m : tq < -m ? -m : tq; }
   var V0 = o.V == null ? 12.3 : o.V, Rb = o.Rbat == null ? 0.02 : o.Rbat, dt = o.dt || 0.002, tmax = o.tmax || 8;
   var ext = o.ext || function () { return 0; };
+  /* A light load behind a big reduction answers the motor very quickly: its speed settles in J / slope seconds,
+     where slope is how fast the gearbox's torque falls as it speeds up. Steps longer than that make the sums
+     unstable, so the step shrinks to a third of it (the load is never made heavier to suit the step). The curves
+     handed back are still thinned to about one point every 2 ms. */
+  var slope = dr.n * dr.ratio * dr.ratio * dr.eff * dr.motor.kt * dr.motor.ke / dr.motor.R, Jm = Math.min(Jat(0), Jat(dist / 2), Jat(dist));
+  if (slope > 0 && Jm > 0) dt = Math.min(dt, Math.max(Jm / slope / 3, 2e-5));
+  var rec = Math.max(1, Math.round(0.002 / dt)), stepN = 0;
   // Work in s = distance travelled toward the goal, u = speed toward the goal.
   function extS(s, u) { return dir * ext(o.x0 + dir * s, dir * u); }
   // Braking curve: integrate backward in time from rest at the goal with full reverse.
   var bs = [dist], bu = [0], s = dist, u = 0, k = 0, vb = V0;   // braking draws nothing, so the battery is at rest
-  while (o.stop !== false && s > 0 && k++ < 40000) {
+  while (o.stop !== false && s > 0 && k++ < 2000000) {
     var q = dr.at(u, vb, -1), acc = (cap(q.torque, s) + extS(s, u)) / Jat(s);
     if (acc >= 0) break;                 // cannot slow down here: stop building the curve
     u -= acc * dt; s -= u * dt; bs.push(s); bu.push(u);
@@ -149,8 +156,8 @@ function moveOnce(o) {
     var r = dr.at(u, vbat, braking ? -1 : 1), a = (cap(r.torque, s) + extS(s, u)) / Jat(s);
     // Brake one step early rather than one step late: look at where the next step would land.
     if (!braking && bs.length > 1 && s + u * dt >= bs[0] && u + a * dt >= F.interp(bs, bu, s + (u + a * dt) * dt)) { braking = true; vbat = V0; r = dr.at(u, vbat, -1); a = (cap(r.torque, s) + extS(s, u)) / Jat(s); }
-    out.t.push(t); out.x.push(o.x0 + dir * s); out.w.push(dir * u); out.a.push(dir * a);
-    out.statorA.push(Math.abs(r.statorA)); out.supplyA.push(r.supplyA); out.volts.push(vbat);
+    if (stepN++ % rec === 0) { out.t.push(t); out.x.push(o.x0 + dir * s); out.w.push(dir * u); out.a.push(dir * a);
+      out.statorA.push(Math.abs(r.statorA)); out.supplyA.push(r.supplyA); out.volts.push(vbat); }
     peakA = Math.max(peakA, Math.abs(r.statorA)); peakS = Math.max(peakS, r.supplyA); minV = Math.min(minV, vbat); maxW = Math.max(maxW, u);
     u += a * dt; s += u * dt; t += dt;
     if (braking && u <= 0) { out.reached = Math.abs(dist - s) < Math.max(0.03 * dist, 1e-4); out.nearly = !out.reached; break; }
