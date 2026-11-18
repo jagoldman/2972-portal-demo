@@ -167,6 +167,7 @@ function month() {
   var cells = "";
   for (var i = 0; i < 42; i++) {
     var d = new Date(y, m, 1 - first.getDay() + i), s = iso(d);
+    if (D.ground() && i % 7 === 0 && i >= 28 && d.getMonth() !== m) break;
     var evs = c.events.filter(function (e) { return e.date === s || (e.end2 && s >= e.date && s <= e.end2); });
     var hideAuto = evs.some(function (e) { return !e.auto && (e.kind === "build" || e.kind === "off" || e.kind === "comp"); });
     evs = evs.filter(function (e) { return !(hideAuto && e.auto); });

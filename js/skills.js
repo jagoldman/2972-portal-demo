@@ -512,7 +512,7 @@ function groundStudent(me) {
   var n = nextUp(me), cap = readyAll ? n.ready.length : 5, html = "";
   var mach = myMachines(me), cleared = mach.filter(function (m) { return m.state === "yes"; }).length;
   html += '<div class="card skmachines"><div class="row between"><h2>Your machines</h2><span class="who">' + cleared + " of " + mach.length + ' cleared</span></div>' +
-    '<p class="who">Cleared: a mentor signed off your test and your demonstration.</p>' +
+    '<p class="who">Cleared: a mentor signed off the written test and the demonstration.</p>' +
     '<div class="list skmachs">' + mach.map(function (m) { return machineRow(m, me); }).join("") + "</div></div>";
   html += '<div class="card skhalf"><div class="row between"><h2>Finish what you started</h2>' + (n.prog.length ? '<span class="tcount">' + n.prog.length + "</span>" : "") + "</div>" +
     (n.prog.length ? '<div class="list">' + n.prog.map(function (x) { return skillRow(x, "In progress", "warn"); }).join("") + "</div>" : '<p class="mute">Nothing started yet. Pick one from Ready to start.</p>') + "</div>";
@@ -573,7 +573,7 @@ function permitsView() {
       return '<button class="li skmach' + (line ? "" : " noline") + '" data-act="skpermit" data-st="' + esc(st) + '" data-cat="' + tool.cat + '" data-skill="' + tool.skill + '"><b class="skmn">' + esc(tool.name) + "</b>" + permitPill(state) + (line ? '<span class="who skml">' + esc(line) + "</span>" : "") + '<span class="chev" aria-hidden="true">›</span></button>';
     }).join("") + "</div></div>";
   } else body = table;
-  return '<div class="card"><div><h2>Who can use which machine</h2><p class="who skdefs"><span><b>Cleared:</b> the written test and the demonstration are signed off.</span><span><b>In training:</b> started, and may not use it alone yet.</span><span>Choose ' + tapWhat + ' to open that skill.</span></p></div>' + find + body + "</div>";
+  return '<div class="card"><div><h2>Who can use which machine</h2><p class="who skdefs"><span><b>Cleared:</b> a mentor signed off the written test and the demonstration.</span><span><b>In training:</b> started, and may not use it alone yet.</span><span>Choose ' + tapWhat + ' to open that skill.</span></p></div>' + find + body + "</div>";
 }
 function studentPicker() {
   var S = D.S;
@@ -688,6 +688,7 @@ function signoffView() {
        rows drop it. */
     if (g && !can && !pickable) return '<div class="skpick nobox"><b>' + esc(st) + '</b><span class="pill ' + (stt === "complete" ? "ok" : "") + '">' + (stt === "complete" ? "Signed off" : "Not open yet, earlier skills first") + "</span></div>";
     var box = g && !can ? '<span class="skpickno" aria-hidden="true"></span>' : '<button class="bigcheck sm" data-act="skbulkpick" data-v="' + esc(st) + '" aria-pressed="' + !!b.picks[st] + '"' + (can ? "" : " disabled") + ' aria-label="Pick ' + esc(st) + '">' + D.ic("check", 22) + "</button>";
+    if (g && stt === "available") return '<div class="skpick">' + box + "<b>" + esc(st) + "</b></div>";
     return '<div class="skpick">' + box + "<b>" + esc(st) + '</b><span class="pill ' + (stt === "complete" ? "ok" : stt === "locked" ? "" : g && stt === "available" ? "info" : "info") + '">' + ({ complete: g ? "Signed off" : "Done", locked: g ? "Needs earlier skills" : "Locked", requested: "Asked", progress: "In progress", available: g ? "Ready for sign-off" : "Available" })[stt] + "</span></div>";
   }).join("");
   var nobody = g && !pickable ? '<p class="skpicknone">Nobody can be signed off on this skill: everyone has it or it is not open to them yet.</p>' : "";

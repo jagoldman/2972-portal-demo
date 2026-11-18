@@ -50,7 +50,7 @@ D.views.account = function () {
   var mode = '<section class="card"><h2>Build or Competition mode</h2><p class="small mute">Changes which apps show on Home and in the Apps menu.</p><div class="choice"><button data-act="mode" data-v="build" aria-pressed="' + (D.S.mode === "build") + '">' + (D.ground() ? "Build" : "Build mode") + '</button><button data-act="mode" data-v="competition" aria-pressed="' + (D.S.mode === "competition") + '">' + (D.ground() ? "Competition" : "Competition mode") + "</button></div></section>";
   var guide = D.GUIDE && D.GUIDE[D.S.role] ? '<section class="card"><h2>Guided tour</h2><p class="mute">A few short steps on Home that show where to start.</p><div><button class="btn" data-act="guidereplay">Start the tour again</button></div></section>' : "";
   var signin = '<section class="card"><h2>Sign-in</h2><p class="mute">' + (D.ground() ? "" : "You sign in with the team sign-in. ") + (D.ground() ? '<button class="linkbtn" data-act="demosay" data-msg="In the real site this opens the team sign-in page, where you change your password.">Change your password</button> on the team sign-in page.' : "Change your password there.") + "</p></section>";
-  return '<div class="content"><div class="acc"><h1>Account</h1>' + profile + look + mode + guide + notes + signin + "</div></div>";
+  return '<div class="content"><div class="acc"><h1>Account</h1>' + (D.ground() ? profile + notes + look + mode + guide + signin : profile + look + mode + guide + notes + signin) + "</div></div>";
 };
 var A = D.acts;
 A.acdiscord = function () { var a = Acc(); a.discord = !a.discord; D.toast(a.discord ? "Discord linked." : "Discord unlinked."); D.render(); };

@@ -283,6 +283,8 @@ def({ id: "calc-gearbox", key: "gearbox", name: "Gearbox", icon: "cgearbox", lin
     var g = err ? null : M.gearbox(r.m, r.n, stages, r.eff, r.lim), lim = r.lim;
     var rows = [row("Overall ratio", g ? ratioText(g.ratio) : DASH, "to 1"), row("Output free speed", g ? rpm(g.freeRpm) : DASH, "rpm"), row("Output stall torque", g ? sig(g.stall) : DASH, "N·m"),
       row(lim ? "Torque at the " + lim + " A limit" : "Output torque with no limit", g ? sig(lim ? g.limited : g.stall) : DASH, "N·m")];
+    // With a current limit, the torque the gearbox can use comes before the stall figure, so it is the one read first.
+    if (lim) rows.splice(2, 0, rows.pop());
     var html = results(rows);
     if (g) {
       var c = g.curve, tmax = c[0][1], imax = c[0][2], mid = c[Math.round(c.length * 0.55)];

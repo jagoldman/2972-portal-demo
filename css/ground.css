@@ -575,3 +575,33 @@
   :root:is([data-design="b"], [data-design="c"]) .calcin:has(> .calcf:nth-child(7)) { grid-template-columns: repeat(2, minmax(0, 1fr)); column-gap: 16px; align-items: start; }
   :root:is([data-design="b"], [data-design="c"]) .calcin:has(> .calcf:nth-child(7)) > :not(.calcf) { grid-column: 1 / -1; }
 }
+
+/* ---- Hill climb round 12 ---- */
+:root[data-design="c"] {
+  /* A mentor's Now: the group names are headings a scan can stop on. */
+  .nowgroup { color: var(--text); font-size: .95rem; font-weight: 700; }
+  /* Scouting on a phone: the countdown, its label and "+30 s" share one line. */
+  @media (max-width: 640px) {
+    .cmp .timer { grid-template-columns: auto auto 1fr; align-items: baseline; column-gap: 10px; width: 100%; }
+    .cmp .timer .eyebrow, .cmp .timer .big { grid-column: auto; margin: 0; }
+    .cmp .timer .big { font-size: 1.6rem; line-height: 1.2; }
+    .cmp .timer .btn { justify-self: end; grid-column: auto; grid-row: auto; }
+    .checkrow > .btn { margin-block: -8px -6px; }
+  }
+}
+
+:root[data-design="c"] {
+  /* The current app in the Apps menu is a tinted cell, so it reads the same in either column. */
+  .appitem[aria-current="page"] { background: var(--tint-2); box-shadow: none; border-radius: var(--r-ctl); }
+  /* A read notification steps back; an unread one keeps the text colour and its dot. */
+  .nli:not(.unread) .grow { color: var(--text-2); }
+  /* Until a student has signed in, only the Sign in row is tinted; the next task is plain sheet under a line. */
+  .homemain > .nowcard:has(.nowfirst) ~ .card.hero.nextup { margin-top: 0; padding: 14px 0 16px; border: 0; border-top: 1px solid var(--line); background: none; }
+  @media (min-width: 900px) { .cmp .counter { max-width: 300px; } .calcchart { max-width: 480px; } }
+  @media (max-width: 640px) { .acc .li > .btn.sm { flex: 0 0 auto; width: auto; min-width: 0; } }
+}
+
+:root[data-design="c"] {
+  /* Skills: the count of machines sits beside its heading. */
+  .skmachines > .row.between { justify-content: flex-start; align-items: baseline; gap: 12px; }
+}

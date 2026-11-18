@@ -308,3 +308,16 @@
 :root[data-design="c"] {
   @media (min-width: 900px) { .ptable.gt .pth, .ptable.gt .ptr { grid-template-columns: minmax(0, 2fr) minmax(0, .9fr) 6rem 5.5rem minmax(0, .9fr) 10.5rem 5rem 10.5rem; } }
 }
+
+/* ---- Hill climb round 12 ---- */
+:root[data-design="c"] {
+  .ptable.gt .pobrow .nw { white-space: nowrap; }
+  .ppay { margin: 0; color: var(--text-2); font-size: .92rem; }
+}
+:root[data-design="c"] .pwait .btn.pother { min-height: 33px; padding-inline: 12px; font-weight: 650; }
+
+:root[data-design="c"] {
+  .ptable.gt .pobrow .nw { display: block; white-space: nowrap; }
+  /* The decision on "Needs your OK" has full-size buttons. */
+  .pwait > .row .btn, .pwait .btn.pother { min-height: 40px; padding-inline: 14px; }
+}

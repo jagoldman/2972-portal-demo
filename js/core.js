@@ -480,7 +480,7 @@ function homeGround() {
   }).join("") + "</div>" : '<p class="mute">Nothing needs you right now.</p>') + "</section>";
   // At an event the shop task waits: a student in the pit is not sent back to the shop (hill climb r3).
   if (role === "student" && D.nextUpCard && !S.eventDay) mainCol += D.nextUpCard();
-  if (S.eventDay && role !== "parent" && D.eventNext) { var nm = D.eventNext(3); if (nm.length) mainCol += '<section class="card nextcard"><h2>Next for us</h2><div class="list week">' + nm.map(function (m) {
+  if (S.eventDay && role !== "parent" && D.eventNext) { var nm = D.eventNext(4).filter(function (m) { return !m.now; }).slice(0, 3); if (nm.length) mainCol += '<section class="card nextcard"><h2>Next for us</h2><div class="list week">' + nm.map(function (m) {
     return '<button class="li wkrow" data-act="goapp" data-app="pit" data-tab="check"><span class="wkd"><b>Qual ' + m.q + '</b><span class="num">' + esc(m.now ? "Now" : m.time) + '</span></span><span class="grow"><b>' + esc(m.colour + " alliance" + (m.now ? ", on the field" : "")) + '</b><span class="wkfacts"><span>With ' + esc(m.withTeams.join(" and ")) + "</span><span>Against " + esc(m.against.join(", ")) + "</span></span></span></button>"; }).join("") + "</div></section>"; }
   // A parent's two questions are the next practice and the next event. The events get their own short list, so the
   // page is not mostly empty on a laptop and "Next event" is not one lonely row (hill climb r2).
