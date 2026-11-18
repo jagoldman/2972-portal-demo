@@ -37,6 +37,14 @@ ok("two wheels, slower upper: backspin", M.one(with_({ type: "dual", g2: 0.6 }))
 var landed = M.flight(M.setup(with_({ keep: 78 })), F.shot(Object.assign({}, M.setup(with_({ keep: 78 })).sp, { w: 3300 * F.RPM })).v).range / F.FT;
 near("keepFor recovers the keep", M.keepFor(s, landed), 78, 0.11);
 
+// Findings from the independent review: a steep hood still finds its window, and a too-close shot is a wall hit.
+var st70 = M.one(with_({ deg: 70, rpm: 3500 }));
+ok("70 degrees: scores and has a window", st70.meet && st70.meet.hit && st70.aim && st70.rpmLo < 3500 && st70.rpmHi > 3500, st70.aim && st70.rpmLo + ".." + st70.rpmHi);
+ok("fixed hood at 70 degrees: the map finds distances", M.map(with_({ view: "map", deg: 70 }), st70).good.length > 8);
+var wallShot = M.one(with_({ dist: 4.5, rpm: 2650 }));
+ok("4.5 ft at 2,650 rpm hits the wall, not the middle", wallShot.meet && wallShot.meet.wall && !wallShot.meet.hit);
+ok("with a feeder the ball can get more than half", M.one(with_({ vin: 10, keep: 100 })).shot.eff > 0.5);
+
 // Rapid fire: a starved wheel misses later balls; the stock one does not.
 var b = M.burst(with_({ view: "burst" }), r);
 ok("stock burst all in", b.hits === 8 && b.best > 5, b.hits + ", best " + b.best);

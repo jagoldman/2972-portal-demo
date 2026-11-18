@@ -3,14 +3,19 @@
 
    Where the models come from:
    - Motor figures: free speed, stall torque, stall and free current at 12 V, as listed on ReCalc's motor page
-     (reca.lc/motors, from the makers' test data), read 2026-11-17.
+     (reca.lc/motors), read 2026-11-17 and again 2026-11-18. ReCalc marks most rows "data from CTRE" (CTRE's bench
+     tests, which include other makers' motors) and the NEO 550 "data from REV". CTRE's figures for REV's motors
+     differ from REV's own sheet: REV lists the NEO Vortex at 6,784 rpm, 3.6 N m, 211 A and 3.6 A free
+     (docs.revrobotics.com). Under a current limit what matters is torque per amp: 0.0155 N m/A by CTRE's figures
+     and 0.0174 by REV's, a 12% difference. Both are offered ("NEO Vortex" and "NEO Vortex, REV's own figures").
    - Flywheel shot: "Flywheel Shot Analysis: Correction and Extension", Rafi Pedersen, FRC Team 449, May 2026, which
      builds on Dean Brettle's 2023 analysis (FRC Team 199). No slip at exit, rigid ball. The older model most
      calculators use (Team 846, 2012) gives the wheel too little speed loss.
    - Flight: gravity, drag (0.5 rho Cd A v^2) and lift from spin. The lift coefficient is Nathan's fit for a spinning
      ball, CL = 1 / (2.32 + 0.4 / S), S = r w / v (A. Nathan, Am. J. Phys. 76, 2008). Measured on baseballs, so for
      a foam ball it is an estimate.
-   - Belts and chains: the exact length of a loop round two circles; a chain uses its pitch polygon's pitch circle.
+   - Belts: the exact length of a loop round two circles. Chains: the same straight runs, with the wrapped part
+     counted in links (a sprocket holds a polygon of chain, not a circle).
    Everything here is an estimate to design with, not a promise of what the robot will do. */
 (function (root) {
 "use strict";
@@ -43,7 +48,8 @@ var MOTORS = [
   ["kraken60foc", "Kraken X60 (FOC)", 5784, 9.36, 476, 3.5, 1.20],
   ["kraken44", "Kraken X44", 7757, 4.11, 279, 3.2, 0.75],
   ["kraken44foc", "Kraken X44 (FOC)", 7367, 5.01, 329, 3.2, 0.75],
-  ["vortex", "NEO Vortex", 6825, 5.96, 391, 5.4, 1.29],
+  ["vortex", "NEO Vortex (CTRE's test)", 6825, 5.96, 391, 5.4, 1.29],
+  ["vortexrev", "NEO Vortex (REV's sheet)", 6784, 3.6, 211, 3.6, 1.29],
   ["neo", "NEO", 5906, 4.20, 216, 1.8, 1.19],
   ["neo550", "NEO 550", 11710, 1.08, 111, 1.1, 0.56],
   ["falcon", "Falcon 500", 6380, 4.69, 257, 1.5, 1.25],
@@ -73,9 +79,14 @@ F.drive = function (spec) {
     var wm = w * G, e = m.ke * wm, I = ((cmd == null ? 1 : cmd) * V - e) / m.R;
     if (Ls && I > Ls) I = Ls; if (Ls && I < -Ls) I = -Ls;
     var sup = I * (I * m.R + e) / V;
-    if (Lp && sup > Lp) { I = (-e + Math.sqrt(e * e + 4 * m.R * Lp * V)) / (2 * m.R); sup = Lp; }
-    var a = Math.abs(I) - m.freeA, tm = a > 0 ? m.kt * a * (I < 0 ? -1 : 1) : 0;
-    return { torque: tm * n * G * eff, statorA: I, supplyA: Math.max(0, sup) * n };
+    // The supply limit caps what the battery gives while driving. Braking (I < 0) takes nothing from it.
+    if (Lp && I > 0 && sup > Lp) { I = (-e + Math.sqrt(e * e + 4 * m.R * Lp * V)) / (2 * m.R); sup = Lp; }
+    // The free current stands for friction, which always works against the motion: it takes from a driving torque
+    // and adds to a braking one. At rest it only stops a current smaller than itself from moving anything.
+    var tm, a;
+    if (wm > 1e-9) tm = m.kt * (I - m.freeA); else if (wm < -1e-9) tm = m.kt * (I + m.freeA);
+    else { a = Math.abs(I) - m.freeA; tm = a > 0 ? m.kt * a * (I < 0 ? -1 : 1) : 0; }
+    return { torque: tm * n * G * eff, statorA: I, supplyA: (I > 0 ? Math.max(0, sup) : 0) * n };
   };
   /* The battery's voltage while this gearbox pulls on it. Voltage and current depend on each other (more current
      sags the battery, a sagged battery pushes less current), so this solves the pair exactly: a straight formula
@@ -92,6 +103,12 @@ F.drive = function (spec) {
   d.stallTorque = function (V) { return d.at(0, V == null ? 12 : V, 1).torque; };       // N m at the output, with limits
   // Amps per motor and volts needed to hold a steady output torque.
   d.hold = function (torque) { var I = Math.abs(torque) / (n * G * eff * m.kt) + m.freeA; return { statorA: I, volts: I * m.R }; };
+  /* Feedforward, WPILib's way: kG is the volts that balance a steady load, and kS the volts that overcome friction.
+     They are separate numbers. hold() above gives the amps to keep a load from sinking and start it rising, which
+     includes the motor's own friction (its free current); kG leaves that out, and kS is that part alone. A real
+     mechanism's kS is larger (gearbox and bearing friction): measure it. */
+  d.kG = function (torque) { return Math.abs(torque) / (n * G * eff * m.kt) * m.R; };
+  d.kS = m.freeA * m.R;
   // Feedforward estimates for an output inertia J (kg m^2): volts per rad/s and per rad/s^2 at the output.
   d.kV = m.ke * G;
   d.kA = function (J) { return m.R * J / (n * G * eff * m.kt); };
@@ -109,7 +126,7 @@ F.drive = function (spec) {
 F.move = function (o) {
   // A short, quick move can end a few steps short of the goal at the usual step size: try again with finer steps.
   var res = moveOnce(o), dt = o.dt || 0.002, tries = 0;
-  while (!res.reached && res.nearly && tries++ < 3) { dt /= 4; res = moveOnce(Object.assign({}, o, { dt: dt })); }
+  while (!res.reached && res.nearly && tries++ < 4) { dt /= 4; res = moveOnce(Object.assign({}, o, { dt: dt })); }
   return res;
 };
 function moveOnce(o) {
@@ -118,17 +135,25 @@ function moveOnce(o) {
   function cap(tq, s) { if (o.maxTorque == null) return tq; var m = typeof o.maxTorque === "function" ? o.maxTorque(o.x0 + dir * s) : o.maxTorque; return tq > m ? m : tq < -m ? -m : tq; }
   var V0 = o.V == null ? 12.3 : o.V, Rb = o.Rbat == null ? 0.02 : o.Rbat, dt = o.dt || 0.002, tmax = o.tmax || 8;
   var ext = o.ext || function () { return 0; };
+  /* A light load behind a big reduction answers the motor very quickly: its speed settles in J / slope seconds,
+     where slope is how fast the gearbox's torque falls as it speeds up. Steps longer than that make the sums
+     unstable, so the step shrinks to a third of it (the load is never made heavier to suit the step). The curves
+     handed back are still thinned to about one point every 2 ms. */
+  var slope = dr.n * dr.ratio * dr.ratio * dr.eff * dr.motor.kt * dr.motor.ke / dr.motor.R, Jm = Math.min(Jat(0), Jat(dist / 2), Jat(dist));
+  if (slope > 0 && Jm > 0) dt = Math.min(dt, Math.max(Jm / slope / 3, 2e-5));
+  var rec = Math.max(1, Math.round(0.002 / dt)), stepN = 0;
   // Work in s = distance travelled toward the goal, u = speed toward the goal.
   function extS(s, u) { return dir * ext(o.x0 + dir * s, dir * u); }
   // Braking curve: integrate backward in time from rest at the goal with full reverse.
   var bs = [dist], bu = [0], s = dist, u = 0, k = 0, vb = V0;   // braking draws nothing, so the battery is at rest
-  while (o.stop !== false && s > 0 && k++ < 40000) {
+  while (o.stop !== false && s > 0 && k++ < 2000000) {
     var q = dr.at(u, vb, -1), acc = (cap(q.torque, s) + extS(s, u)) / Jat(s);
     if (acc >= 0) break;                 // cannot slow down here: stop building the curve
     u -= acc * dt; s -= u * dt; bs.push(s); bu.push(u);
     if (u > 1e5) break;
   }
   bs.reverse(); bu.reverse();
+  var canBrake = bs.length > 1 || dist === 0;      // false: full reverse cannot slow it at the goal (the load wins)
   var out = { t: [], x: [], w: [], a: [], statorA: [], supplyA: [], volts: [], reached: false };
   var t = 0, vbat = V0, braking = false; s = 0; u = 0;
   var peakA = 0, peakS = 0, minV = V0, maxW = 0;
@@ -137,12 +162,12 @@ function moveOnce(o) {
     var r = dr.at(u, vbat, braking ? -1 : 1), a = (cap(r.torque, s) + extS(s, u)) / Jat(s);
     // Brake one step early rather than one step late: look at where the next step would land.
     if (!braking && bs.length > 1 && s + u * dt >= bs[0] && u + a * dt >= F.interp(bs, bu, s + (u + a * dt) * dt)) { braking = true; vbat = V0; r = dr.at(u, vbat, -1); a = (cap(r.torque, s) + extS(s, u)) / Jat(s); }
-    out.t.push(t); out.x.push(o.x0 + dir * s); out.w.push(dir * u); out.a.push(dir * a);
-    out.statorA.push(Math.abs(r.statorA)); out.supplyA.push(r.supplyA); out.volts.push(vbat);
+    if (stepN++ % rec === 0) { out.t.push(t); out.x.push(o.x0 + dir * s); out.w.push(dir * u); out.a.push(dir * a);
+      out.statorA.push(Math.abs(r.statorA)); out.supplyA.push(r.supplyA); out.volts.push(vbat); }
     peakA = Math.max(peakA, Math.abs(r.statorA)); peakS = Math.max(peakS, r.supplyA); minV = Math.min(minV, vbat); maxW = Math.max(maxW, u);
     u += a * dt; s += u * dt; t += dt;
-    if (braking && u <= 0) { out.reached = Math.abs(dist - s) < Math.max(0.03 * dist, 1e-4); out.nearly = !out.reached && Math.abs(dist - s) < 0.35 * dist; break; }
-    if (s >= (braking ? 1.05 : 1) * dist) { out.reached = true; break; }
+    if (braking && u <= 0) { out.reached = Math.abs(dist - s) < Math.max(0.03 * dist, 1e-4); out.nearly = !out.reached; break; }
+    if (s >= (braking ? 1.05 : 1) * dist) { out.reached = o.stop === false || braking || canBrake; out.cannotStop = !out.reached; break; }
     if (!braking && u <= 0 && t > 0.05 && a <= 0) break;   // stalled: the load is more than the gearbox can move
   }
   out.endW = o.stop === false && out.reached ? dir * u : 0;
@@ -201,9 +226,10 @@ F.wheelFor = function (o, v) { var p = Object.assign({}, o, { w: 1, vIn: 0, wIn:
 /* A burst: n balls, `rate` per second, the wheel driven at full voltage between shots but never above the target.
    Returns [{ t, wBefore, v, spin, wAfter }] and the speed curve { t[], w[] } for a chart. */
 F.burst = function (o) {
-  var dr = o.drive, J = o.shot.Iw, w = o.target, gap = 1 / o.rate, dt = 0.002, shots = [], ct = [0], cw = [w], t = 0;
+  var rate = Math.max(0.2, o.rate || 0), count = Math.max(1, Math.round(o.n) || 1);
+  var dr = o.drive, J = o.shot.Iw, w = o.target, gap = 1 / rate, dt = 0.002, shots = [], ct = [0], cw = [w], t = 0;
   var V0 = o.V == null ? 12.3 : o.V, Rb = o.Rbat == null ? 0.02 : o.Rbat, vbat = V0;
-  for (var i = 0; i < o.n; i++) {
+  for (var i = 0; i < count; i++) {
     var s = F.shot(Object.assign({}, o.shot, { w: w }));
     shots.push({ t: t, wBefore: w, v: s.v, spin: s.spin, wAfter: s.wAfter });
     ct.push(t); cw.push(s.wAfter); w = s.wAfter;
@@ -253,6 +279,8 @@ F.fly = function (o) {
    Returns null when the ball never gets there, else { hit, miss (m: + long or high, - short or low), room (m of
    clearance to the nearer edge; negative = it clips or misses), half (m: how far from the middle the ball's centre
    may cross), entryDeg (below level), t, x, y, speed }.
+   For an opening that faces up, a ball that reaches the near edge below the rim, or brushes the rim on its way,
+   has hit the target's wall: wall is true, and miss counts it as short.
    A ball that comes in at a slant needs more room than its radius: its edge reaches the rim before its centre
    crosses the opening. So the centre must cross r / sin(entry) inside each edge of an opening that faces up, and
    r / cos(entry) inside each edge of one that faces the robot. */
@@ -269,8 +297,13 @@ F.meet = function (pts, target) {
     }
     return null;
   }
+  var nx = target.d - target.w / 2, wall = null;
   for (i = 1; i < pts.length; i++) {
     a = pts[i - 1]; b = pts[i];
+    // On the way: reaching the near edge below the rim is a hit on the wall, and so is brushing the rim itself.
+    if (!wall && a[1] < nx && b[1] >= nx) { f = (nx - a[1]) / ((b[1] - a[1]) || 1e-9); var yw = a[2] + (b[2] - a[2]) * f; if (yw < target.h) wall = { t: a[0] + (b[0] - a[0]) * f, y: yw }; }
+    if (!wall && rr && Math.hypot(b[1] - nx, b[2] - target.h) < rr * 0.98 && b[1] < nx + rr * 0.5 && !(a[2] >= target.h && b[2] < target.h)) wall = { t: b[0], y: b[2] };
+    if (wall) return { hit: false, wall: true, miss: -(target.w / 2 + 0.02 + Math.max(0, target.h - wall.y)), room: -(0.02 + Math.max(0, target.h - wall.y)), half: 0, entryDeg: Math.atan2(-b[4], b[3]) * 180 / Math.PI, t: wall.t, x: nx, y: wall.y, speed: Math.hypot(b[3], b[4]) };
     if (a[2] >= target.h && b[2] < target.h && b[4] < 0) {
       f = (a[2] - target.h) / ((a[2] - b[2]) || 1e-9); var x = a[1] + (b[1] - a[1]) * f, m2 = x - target.d;
       sp = Math.hypot(b[3], b[4]) || 1e-9; half = target.w / 2 - rr / Math.max(0.05, Math.abs(b[4]) / sp);
@@ -286,17 +319,30 @@ F.meet = function (pts, target) {
 F.aim = function (shot, target, vmax, n) {
   vmax = vmax || 45; n = n || 30;
   function at(v) { return F.meet(F.fly(Object.assign({}, shot, { v: v, spin: shot.spinPer != null ? shot.spinPer * v : shot.spin })).pts, target); }
-  // miss(v) rises with speed; below the slowest speed that reaches the target at all it counts as far short.
   // side 0: the middle. side -1: just clearing the near (or lower) edge. side +1: just clearing the far (or upper) edge.
-  function val(v, side) { var m = at(v); if (!m) return -1e3; return side === 0 ? m.miss : side < 0 ? m.miss + m.half : m.miss - m.half; }
-  var v = F.bisect(function (s) { return val(s, 0); }, 0.5, vmax, n);
-  if (v == null) return null;
-  var mm = at(v);
-  // The bisection can land on the speed where the ball first reaches the rim's height, already past the middle.
-  // That is not a shot through the middle, and neither is one too flat to clear the rim.
-  if (!mm || Math.abs(mm.miss) > 0.03 || mm.half <= 0) return null;
-  var lo = F.bisect(function (s) { return val(s, -1); }, 0.5, v, n), hi = F.bisect(function (s) { return val(s, 1); }, v, vmax, n);
-  if (lo == null) lo = v; if (hi == null) hi = v;
+  // Below the slowest speed that reaches the target at all it counts as far short.
+  function val(m, side) { if (!m) return -1e3; return side === 0 ? m.miss : side < 0 ? m.miss + m.half : m.miss - m.half; }
+  /* More speed does not always carry a spinning ball further: a fast, steep, back-spun ball climbs and falls back.
+     So walk up through the speeds in steps, take the FIRST speed at which the ball reaches the middle, and close
+     in on it. Along the way remember the roomiest scoring speed, in case the ball scores without ever crossing
+     the middle (very close to a wide opening). */
+  var step = Math.max(0.25, vmax / 48), prev = null, prevV = 0, v = null, best = null, grid = [], g, m;
+  for (g = step; g <= vmax + 1e-9; g += step) {
+    m = at(g); grid.push([g, m]);
+    if (m && m.hit && (!best || m.room > best[1].room)) best = [g, m];
+    if (v == null && val(m, 0) >= 0 && val(prev, 0) < 0) { v = F.bisect(function (q) { return val(at(q), 0); }, prevV || step / 2, g, n); if (v != null) { var mv = at(v); if (!mv || Math.abs(mv.miss) > 0.03 || mv.half <= 0) v = null; } if (v != null) break; }
+    prev = m; prevV = g;
+  }
+  if (v == null) { if (!best) return null; v = best[0]; }
+  var mm = at(v); if (!mm || !mm.hit) return null;
+  // The edges of the window: walk down, then up, from that speed to the first speed that no longer scores.
+  function edge(dir) {
+    var a = v, b = v, k;
+    for (k = 0; k < 400; k++) { b = a + dir * step; if (b <= 0.05 || b > vmax) return dir < 0 ? Math.max(0.05, b) : vmax; var q = at(b); if (!q || !q.hit) break; a = b; }
+    for (k = 0; k < n; k++) { var mid = (a + b) / 2, r = at(mid); if (r && r.hit) a = mid; else b = mid; }
+    return a;
+  }
+  var lo = edge(-1), hi = edge(1);
   return { v: v, lo: lo, hi: hi, window: hi - lo, meet: mm };
 };
 /* The launch angle that forgives the most speed error at one distance (widest window as a share of the speed),
@@ -364,12 +410,24 @@ F.belt = function (o) {
   out.sort(function (a, b) { return Math.abs(a.err) - Math.abs(b.err); });
   return { pd1: pd1, pd2: pd2, od1: od1, od2: od2, options: out };
 };
+/* The length of chain, in links, round two sprockets c apart. The straight runs follow the pitch circles' common
+   tangents, but on a sprocket the chain sits link by link: a full turn takes n links, which is a little less than
+   the pitch circle's circumference. (Two 16-tooth sprockets and 64 links sit exactly 24 pitches apart.) */
+F.chainLinks = function (pitch, n1, n2, c) {
+  var pd1 = F.sprocketPd(pitch, n1), pd2 = F.sprocketPd(pitch, n2), al = Math.asin(F.clamp((pd1 - pd2) / (2 * c), -1, 1));
+  return 2 * c * Math.cos(al) / pitch + n1 * (Math.PI + 2 * al) / (2 * Math.PI) + n2 * (Math.PI - 2 * al) / (2 * Math.PI);
+};
+F.chainCenter = function (pitch, n1, n2, links) {
+  var pd1 = F.sprocketPd(pitch, n1), pd2 = F.sprocketPd(pitch, n2), lo = Math.abs(pd1 - pd2) / 2 + 1e-9;
+  if (F.chainLinks(pitch, n1, n2, lo) > links) return null;
+  return F.bisect(function (c) { return F.chainLinks(pitch, n1, n2, c) - links; }, lo, links * pitch, 60);
+};
 /* Chains for two sprockets. o: { pitch (in), n1, n2, target (in), extra (in) }. Chains have an even number of links. */
 F.chain = function (o) {
   var pd1 = F.sprocketPd(o.pitch, o.n1), pd2 = F.sprocketPd(o.pitch, o.n2), out = [];
-  var want = F.loopLength(pd1, pd2, Math.max(o.target, Math.abs(pd1 - pd2) / 2 + 0.01)) / o.pitch, lo = Math.max(4, Math.floor(want / 2) * 2 - 4);
+  var want = F.chainLinks(o.pitch, o.n1, o.n2, Math.max(o.target, Math.abs(pd1 - pd2) / 2 + 0.01)), lo = Math.max(4, Math.floor(want / 2) * 2 - 4);
   for (var n = lo; n <= lo + 10; n += 2) {
-    var c = F.loopCenter(pd1, pd2, n * o.pitch); if (c == null || c < (pd1 + pd2) / 2) continue;
+    var c = F.chainCenter(o.pitch, o.n1, o.n2, n); if (c == null || c < (pd1 + pd2) / 2) continue;
     var wr = F.wrap(pd1, pd2, c);
     out.push({ links: n, length: n * o.pitch, center: c + (o.extra || 0), err: c + (o.extra || 0) - o.target, mesh1: Math.floor(o.n1 * wr[0] / (2 * Math.PI)), mesh2: Math.floor(o.n2 * wr[1] / (2 * Math.PI)), gap: c - (pd1 + pd2) / 2 - o.pitch * 0.6 });
   }

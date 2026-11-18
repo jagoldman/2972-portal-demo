@@ -50,6 +50,45 @@ cr.forEach(function (c) { near("crossing times equal at " + c.d.toFixed(2) + " m
 var weak = M.sprint({ drive: F.drive({ motor: "neo550", n: 1, ratio: 1, eff: 0.9, statorA: 5 }), m: m, r: r, grip: 1.1 * m * F.G, drag: 6 * F.LBF, V0: 12.3, Rb: 0.02, tmax: 2 });
 ok("weak drive never goes backward", Math.min.apply(null, weak.v) >= 0);
 
+// Finding 5 (Sol review): top speed is where push equals drag, not wherever an 8 s run has got to.
+// A 200 lb robot on a 10 A limit is still speeding up after 8 s (1.4 ft/s in its last second).
+var slow = M.lane({ motor: "kraken60", n: 4, ratio: 6.75, eff: 0.9, statorA: 10, m: 200 * F.LB, r: r, grip: 1.1 * 200 * F.LB * F.G, drag: 6 * F.LBF, V0: 12.3, Rb: 0.02, dist: 15 * F.FT });
+var so = { drive: slow.drive, m: 200 * F.LB, r: r, grip: 1.1 * 200 * F.LB * F.G, drag: 6 * F.LBF, V0: 12.3, Rb: 0.02 };
+near("top speed: push = drag there", M.force(so, slow.top).net, 0, 0.01);
+ok("top speed above what 8 s reached", slow.top > slow.sim.v[slow.sim.v.length - 1] + 0.3, slow.top + " vs " + slow.sim.v[slow.sim.v.length - 1]);
+ok("just under top speed it still speeds up, just over it slows", M.force(so, slow.top - 0.01).net > 0 && M.force(so, slow.top + 0.01).net < 0);
+// The default lane already levels off in 8 s, so the two agree there.
+near("default: bisection = levelled-off run", A.top, A.sim.v[A.sim.v.length - 1], 1e-4);
+// Hand check with no drag and no sag: top = free speed at 12.3 V less the free current, (12.3 - 2.8 R) / ke / G x r.
+var km = F.motor("kraken60"), hand = (12.3 - km.freeA * km.R) / km.ke / 6.75 * r;
+near("no drag, no sag: top by hand", top.top, hand, hand * 1e-3);
+// The sentence after the winner speaks only to the distance searched, not "any longer run".
+var lt = M.leadText([], 15 * F.FT, 60 * F.FT, "B");
+ok("lead sentence names the distance searched", /up to 60 ft/.test(lt) && !/any longer/.test(lt), lt);
+ok("a crossing past the sprint is named", M.leadText([{ d: 20 * F.FT, ahead: "A" }], 15 * F.FT, 60 * F.FT, "B") === "A is ahead after 20 ft.");
+
+// Finding 10 (Sol review): back-EMF takes the push away sooner on the larger reduction. At the same robot speed the
+// 8.14:1 motors spin faster than the 6.12:1 ones, so with no current limit and no sag a bigger share of their stall
+// push is gone. The notes must say "larger".
+function share(G, v) { var d = F.drive({ motor: "kraken60", n: 4, ratio: G, eff: 0.9 }), o = { drive: d, m: m, r: r, grip: 1e9, drag: 0, V0: 12.3, Rb: 0 }; return M.force(o, v).push / M.force(o, 0).push; }
+ok("larger reduction keeps less of its push at 10 ft/s", share(8.14, 10 * F.FT) < share(6.12, 10 * F.FT), share(8.14, 10 * F.FT) + " vs " + share(6.12, 10 * F.FT));
+var src = require("fs").readFileSync(require("path").join(__dirname, "../js/tool-drive.js"), "utf8");
+ok("notes: sooner on the larger reduction", /sooner on the larger reduction/.test(src) && !/sooner on the smaller reduction/.test(src));
+
+// Fix round 5: the margin is worked out from the times as the boxes show them (1.335 and 1.317 differ by 0.018,
+// though the unrounded times differ by 0.0179); two decimals once the gap is 0.05 s or more.
+var mg = M.margin(1.33531, 1.31740);
+ok("margin from the rounded times", mg.dp === 3 && mg.gap === 0.018 && mg.a === 1.335 && mg.b === 1.317, JSON.stringify(mg));
+ok("margin: two places when 0.05 s or more apart", M.margin(1.444, 1.333).dp === 2 && M.margin(1.444, 1.333).gap === 0.11, JSON.stringify(M.margin(1.444, 1.333)));
+ok("margin: a tie when the shown times match", M.margin(1.3351, 1.3349).tie);
+// The default race (A ahead early, B from about 11 ft): the gap B - A is negative before the crossing and positive after.
+var tc = M.timeAt(A.sim, cr[0].d);
+ok("lead: A ahead before the crossing", M.lead(A.sim, B.sim, tc * 0.5) < 0, M.lead(A.sim, B.sim, tc * 0.5));
+ok("lead: B ahead after it", M.lead(A.sim, B.sim, Math.min(A.time, B.time)) > 0, M.lead(A.sim, B.sim, Math.min(A.time, B.time)));
+near("lead: level at the crossing", M.lead(A.sim, B.sim, tc), 0, 0.01);
+// Battery current from the sag: 12.3 V resting, 7.5 V under load through 0.02 ohm is (12.3 - 7.5) / 0.02 = 240 A.
+near("battery current from the sag", M.batteryAmps(12.3, 7.5, 0.02), 240, 1e-9);
+
 console.log(fails ? fails + " of " + n + " checks failed" : "all " + n + " checks passed");
 console.log("default race: A " + A.time.toFixed(3) + " s, B " + B.time.toFixed(3) + " s; top " + (A.top / F.FT).toFixed(2) + " / " + (B.top / F.FT).toFixed(2) + " ft/s; slip until " + (A.slipV / F.FT).toFixed(2) + " / " + (B.slipV / F.FT).toFixed(2) + " ft/s; min V " + A.minV.toFixed(2) + "; crossings (ft) " + cr.map(function (c) { return (c.d / F.FT).toFixed(1) + c.ahead; }).join(" "));
 if (fails) process.exit(1);

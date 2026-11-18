@@ -4,6 +4,7 @@
 .toollist .toolrow { min-height: 60px; }
 .toollist .toolrow + .toolrow { border-top: 1px solid var(--line); border-radius: 0; }
 .toollist .toolrow .ic { width: 40px; height: 40px; border-radius: 10px; }
+.toolgroup .toolrow .ic svg { width: 22px; height: 22px; }
 
 /* A tool page: a small "All tools" link, the tool's name, then numbered steps. Forms max 720 px. */
 .toolhead { display: grid; gap: 4px; justify-content: stretch; max-width: calc(720px + 2 * var(--gut)); }

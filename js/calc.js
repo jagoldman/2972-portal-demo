@@ -23,12 +23,15 @@ K.result = function (id) { return CACHE[id]; };
 /* ---------- Registering a calculator ---------- */
 /* def: { id (its route and its row in D.TOOLS), defaults: {key: value}, compute(s) -> r,
      stage: { ratio (width / height, default 16/9), narrow (the same on a phone, default at most 1.5),
+              tall: true (a tall subject: on a phone the drawing may take up to 62% of the screen's height, not 46%),
               label (what the drawing shows, for screen readers) } or null,
      controls(s, r) -> html, outs(s, r) -> html, more(s, r) -> html (optional),
      draw(g, s, r, t) (optional; t = seconds into the animation),
      duration(s, r) -> seconds (optional; with it the stage gets Play, a speed switch and a scrubber),
      loop: true (the drawing runs until paused: t just keeps counting, and there is no scrubber),
      autoplay: true (starts playing when the page opens, unless the person asked for reduced motion),
+     rest(s, r) -> seconds (the frame to show when the animation is not playing, for a person who asked for
+       reduced motion and for anyone who has not pressed Play; default: the last frame),
      speed: 0.25 (the playback speed it starts at: 1, 0.25 or 0.05),
      tabs: [[value, label], ...] (a row of views above the drawing; the choice is the state key "view"),
      playLabel: "Fire" (or a function of s), hints(s, r) -> { elementId: text } (small derived lines inside the controls),
@@ -55,8 +58,8 @@ function page(def) {
     '<button class="btn sm ghost" data-act="calcreset" data-tool="' + id + '" data-tip="Put every number back to where it started.">Start over</button></span></div></div>';
   var stage = "";
   if (def.stage) {
-    var dur = def.duration && !def.loop ? def.duration(s, r) : 0, moves = def.duration || def.loop;
-    stage = '<div class="stagewrap" data-area="stage">' + (def.tabs ? '<div class="benchtabs"><span class="seg" role="group" aria-label="View">' + def.tabs.map(function (o) { return '<button data-act="calcseg"' + attr(id, "view") + ' data-v="' + esc(o[0]) + '" aria-pressed="' + (String(s.view) === String(o[0])) + '">' + esc(o[1]) + "</button>"; }).join("") + "</span></div>" : "") + '<div class="stage" style="--ar:' + (def.stage.ratio || 16 / 9) + ";--arn:" + (def.stage.narrow || Math.min(def.stage.ratio || 16 / 9, 1.5)) + '"><canvas id="calc-cv" data-tool="' + id + '" role="img" aria-label="' + esc(def.stage.label || "Drawing") + '"></canvas></div>' +
+    var dur = def.duration && !def.loop ? durOf(def, s, r) : 0, moves = def.duration || def.loop;
+    stage = '<div class="stagewrap" data-area="stage">' + (def.tabs ? '<div class="benchtabs"><span class="seg" role="group" aria-label="View">' + def.tabs.map(function (o) { return '<button data-act="calcseg"' + attr(id, "view") + ' data-v="' + esc(o[0]) + '" aria-pressed="' + (String(s.view) === String(o[0])) + '">' + esc(o[1]) + "</button>"; }).join("") + "</span></div>" : "") + '<div class="stage' + (def.stage.tall ? " tall" : "") + '" style="--ar:' + (def.stage.ratio || 16 / 9) + ";--arn:" + (def.stage.narrow || Math.min(def.stage.ratio || 16 / 9, 1.5)) + '"><canvas id="calc-cv" data-tool="' + id + '" role="img" aria-label="' + esc(def.stage.label || "Drawing") + '"></canvas></div>' +
       (moves ? '<div class="transport"><button class="btn sm' + (def.loop ? "" : " primary") + '" id="calc-play" data-act="calcplay" data-tool="' + id + '">' + playLabel(def, R) + "</button>" +
         (def.loop ? "" : '<input type="range" id="calc-scrub" class="scrub" min="0" max="' + dur.toFixed(3) + '" step="0.001" value="' + Math.min(R.t, dur).toFixed(3) + '" data-input="calcscrub" data-tool="' + id + '" aria-label="Move through the animation">' +
         '<output id="calc-time" class="num ttime">' + R.t.toFixed(2) + ' s</output>') +
@@ -67,6 +70,9 @@ function page(def) {
     '<div class="benchside" data-area="side" data-keepscroll="calcside">' + safe(def.controls, s, r) + "</div>" +
     '<div class="benchmore" data-area="more" id="calc-more">' + (def.more ? safe(def.more, s, r) : "") + "</div></div>";
 }
+// The frame a drawing rests on when it is not played: the tool's own choice (rest), else the end of the animation.
+function restOf(def, s, r) { var d = durOf(def, s, r), q = null; if (def.rest && !(r && r.error)) { try { q = def.rest(s, r); } catch (e) { q = null; } } return q != null && isFinite(q) ? Math.max(0, Math.min(d, q)) : d; }
+function durOf(def, s, r) { if (!def.duration || def.loop || (r && r.error)) return 0; try { var d = def.duration(s, r); return isFinite(d) && d > 0 ? d : 0; } catch (e) { return 0; } }
 function safe(fn, s, r) { if (r && r.error) return '<p class="warnline">This calculator hit a problem: ' + esc(r.error) + "</p>"; try { return fn(s, r) || ""; } catch (e) { if (window.console) console.error(e); return '<p class="warnline">This part could not be drawn.</p>'; } }
 function label(def) { var l = def.playLabel; return (typeof l === "function" ? l(S(def.id)) : l) || "Play"; }
 function playLabel(def, R) { return R.playing ? "Pause" : esc(label(def)); }
@@ -78,10 +84,29 @@ K.refresh = function (id) {
   swap("calc-outs", safe(def.outs, s, r));
   if (def.more) swapMore(safe(def.more, s, r));
   if (def.hints && !(r && r.error)) { var h = def.hints(s, r) || {}; Object.keys(h).forEach(function (k) { var el = document.getElementById(k); if (el) el.textContent = h[k]; }); }
-  if (def.duration && !def.loop) { var sc = document.getElementById("calc-scrub"), dur = def.duration(s, r); if (sc) sc.max = dur.toFixed(3); if (rt(id).t > dur) rt(id).t = dur; }
+  if (def.duration && !def.loop) { var sc = document.getElementById("calc-scrub"), dur = durOf(def, s, r); if (sc) sc.max = dur.toFixed(3); if (rt(id).t > dur) rt(id).t = dur; }
+  markScroll();
   K.redraw(id);
 };
 function swap(elId, html) { var el = document.getElementById(elId); if (el) { D.hideTip && D.hideTip(); el.innerHTML = html; } }
+/* A table or code block wider than a phone scrolls sideways inside its own box. Say so: the box fades at the edge
+   that has more, and a line under it tells the person to swipe. Runs after every draw and on scroll and resize. */
+function edges(el) { el.classList.toggle("more-r", el.scrollLeft + el.clientWidth < el.scrollWidth - 3); el.classList.toggle("more-l", el.scrollLeft > 3); }
+/* On a phone a table becomes a list: each row is a block, and each cell carries its column's name in front of it.
+   The names are copied from the table's own header here; css/calc.css does the rest under 640 px. */
+function labelTables() {
+  document.querySelectorAll(".bench table").forEach(function (t) {
+    var heads = Array.prototype.map.call(t.querySelectorAll("thead th"), function (th) { return th.textContent.trim(); });
+    if (!heads.length) return; t.classList.add("stk");
+    t.querySelectorAll("tbody tr").forEach(function (tr) { Array.prototype.forEach.call(tr.children, function (td, i) { if (heads[i]) td.setAttribute("data-l", heads[i]); else td.removeAttribute("data-l"); }); });
+  });
+}
+// The inputs column scrolls inside itself on a laptop. Say so while there is more below.
+function sideCue() { var el = document.querySelector(".benchside"); if (el) el.classList.toggle("more-b", el.scrollHeight - el.scrollTop - el.clientHeight > 6); }
+function markScroll() { labelTables(); sideCue(); document.querySelectorAll(".bench .scroll, .bench .codeout, .bench .ctable").forEach(function (el) { var wide = el.scrollWidth > el.clientWidth + 3; el.classList.toggle("canscroll", wide); if (wide) edges(el); else el.classList.remove("more-r", "more-l"); }); }
+D.after.push(markScroll);
+window.addEventListener("resize", markScroll);
+document.addEventListener("scroll", function (e) { var t = e.target; if (t && t.classList && t.classList.contains("canscroll")) edges(t); if (t && t.classList && t.classList.contains("benchside")) sideCue(); }, true);
 // The charts and notes: keep any open <details> open across a swap.
 function swapMore(html) { var el = document.getElementById("calc-more"); if (!el) return; D.hideTip && D.hideTip(); el.innerHTML = html; restoreOpen(); }
 function restoreOpen() { var R = rt(D.S.route); document.querySelectorAll("details[data-open]").forEach(function (d) { if (R.open[d.getAttribute("data-open")]) d.open = true; }); }
@@ -103,8 +128,8 @@ K.num = function (id, key, label, o) {
 };
 // A dropdown. options: [[value, label], ...]
 K.pick = function (id, key, label, options, o) {
-  var v = String(S(id)[key]), fid = "c-" + key;
-  return '<div class="cf"><label for="' + fid + '"' + tipAttr(o) + (o && o.tip ? ' class="abbr"' : "") + ">" + esc(label) + '</label><span class="cfv wide"><select id="' + fid + '" class="inp" data-change="calcpick"' + attr(id, key) + ">" +
+  var v = String(S(id)[key]), fid = "c-" + key, long = options.some(function (p) { return String(p[1]).length > 19; });
+  return '<div class="cf' + (long ? " stack long" : "") + '"><label for="' + fid + '"' + tipAttr(o) + (o && o.tip ? ' class="abbr"' : "") + ">" + esc(label) + '</label><span class="cfv wide"><select id="' + fid + '" class="inp" data-change="calcpick"' + attr(id, key) + ">" +
     options.map(function (p) { return '<option value="' + esc(p[0]) + '"' + (String(p[0]) === v ? " selected" : "") + ">" + esc(p[1]) + "</option>"; }).join("") + "</select></span>" + (o && o.hint ? '<small class="cfh">' + esc(o.hint) + "</small>" : "") + "</div>";
 };
 // A segmented choice, for two to four short options.
@@ -177,8 +202,9 @@ K.outs = function (items) {
     return '<div class="out' + (i.state ? " " + i.state : "") + '"><dt' + (i.tip ? ' class="abbr" tabindex="0" data-tip="' + esc(i.tip) + '"' : "") + ">" + esc(i.k) + '</dt><dd><b class="num">' + esc(i.v) + "</b>" + (i.u ? " <span>" + esc(i.u) + "</span>" : "") + (i.sub ? "<small>" + esc(i.sub) + "</small>" : "") + "</dd></div>";
   }).join("") + "</dl>";
 };
-// One plain sentence that says whether the design works. state: "ok" | "warn" | "bad" | "info".
-K.verdict = function (state, text) { return '<p class="verdict ' + state + '"><span class="pill ' + state + '">' + ({ ok: "Works", warn: "Check", bad: "Problem", info: "Note" }[state] || "") + "</span> " + esc(text) + "</p>"; };
+// One plain sentence that says whether the design works. state: "ok" | "warn" | "bad" | "info". The "ok" word is
+// "Works on paper": every answer here is a model's estimate. more: a second, quieter line (what to measure or check).
+K.verdict = function (state, text, more) { return '<p class="verdict ' + state + '"><span class="pill ' + state + '">' + ({ ok: "Works on paper", warn: "Check", bad: "Problem", info: "Note" }[state] || "") + "</span> " + esc(text) + "</p>" + (more ? '<p class="vmore">' + esc(more) + "</p>" : ""); };
 // "How this is worked out": the assumptions, in words a student can check. html is trusted (written in the tool file).
 K.notes = function (html, title) { return '<details class="how" data-open="how"><summary>' + esc(title || "How this is worked out") + '</summary><div class="howbody">' + html + "</div></details>"; };
 /* A block of text to copy into robot code or a notebook, with a Copy button. key: unique on the page. */
@@ -202,7 +228,8 @@ function tickFmt(v, step) { var dp = step >= 1 ? 0 : Math.min(4, Math.ceil(-Math
 /* A line chart. o: { id (unique on the page), title, x: { label, min, max }, y: { label, min, max },
      series: [{ name, pts: [[x, y], ...], color: 1 | 2 | 3 | "mute", dash: true }],
      (the y label is written above the top of the axis, the x label under its right-hand end)
-     marks: [{ x, label }] (upright reference lines), hlines: [{ y, label }] (level reference lines),
+     marks: [{ x, label }] (upright reference lines), hlines: [{ y, label, side: "left", below: true }] (level reference
+     lines; the label sits at the right end above the line unless side or below say otherwise),
      bands: [{ x0, x1, label }] (a shaded range of x), dots: [{ x, y, label }], h (height, default 190), table: false }
    One y axis only: two measures on different scales are two charts. Hover or arrow keys read out every series. */
 K.chart = function (o) {
@@ -226,7 +253,7 @@ K.chart = function (o) {
   g += '<line class="caxis" x1="' + pl + '" x2="' + (W - pr) + '" y1="' + Y(Math.max(y0, 0)).toFixed(1) + '" y2="' + Y(Math.max(y0, 0)).toFixed(1) + '"/>';
   if (o.x && o.x.label) g += '<text class="clabel" x="' + (W - pr) + '" y="' + (H - 4) + '" text-anchor="end">' + esc(o.x.label) + "</text>";
   if (o.y && o.y.label) g += '<text class="clabel" x="4" y="11">' + esc(o.y.label) + "</text>";
-  (o.hlines || []).forEach(function (h) { if (h.y < y0 || h.y > y1) return; g += '<line class="cmark" x1="' + pl + '" x2="' + (W - pr) + '" y1="' + Y(h.y).toFixed(1) + '" y2="' + Y(h.y).toFixed(1) + '"/>' + (h.label ? '<text class="cnote" x="' + (W - pr - 2) + '" y="' + (Y(h.y) - 4).toFixed(1) + '" text-anchor="end">' + esc(h.label) + "</text>" : ""); });
+  (o.hlines || []).forEach(function (h) { if (h.y < y0 || h.y > y1) return; g += '<line class="cmark" x1="' + pl + '" x2="' + (W - pr) + '" y1="' + Y(h.y).toFixed(1) + '" y2="' + Y(h.y).toFixed(1) + '"/>' + (h.label ? '<text class="cnote" x="' + (h.side === "left" ? pl + 3 : W - pr - 2) + '" y="' + (Y(h.y) + (h.below ? 12 : -4)).toFixed(1) + '" text-anchor="' + (h.side === "left" ? "start" : "end") + '">' + esc(h.label) + "</text>" : ""); });
   (o.marks || []).forEach(function (m) { if (m.x < x0 || m.x > x1) return; g += '<line class="cmark" x1="' + X(m.x).toFixed(1) + '" x2="' + X(m.x).toFixed(1) + '" y1="' + pt + '" y2="' + (H - pb) + '"/>' + (m.label ? '<text class="cnote" x="' + (X(m.x) + (X(m.x) > W - 110 ? -4 : 4)).toFixed(1) + '" y="' + (pt + 10) + '"' + (X(m.x) > W - 110 ? ' text-anchor="end"' : "") + ">" + esc(m.label) + "</text>" : ""); });
   series.forEach(function (s, i) {
     var d = "", pen = false;
@@ -394,17 +421,29 @@ function G(ctx, w, h) {
   return g;
 }
 var cur = { id: null, cv: null, ro: null, raf: 0, last: 0 };
+/* A link can carry any number. Hold each one to the limits of the field that shows it, so a zero or a huge value
+   from a hand-edited link cannot freeze or break the page. Returns true when something was changed. */
+function clampToFields(id) {
+  var s = S(id), changed = false;
+  document.querySelectorAll('.benchside input[type="number"][data-input="calc"][data-tool="' + id + '"]').forEach(function (el) {
+    var k = el.dataset.k, v = s[k]; if (typeof v !== "number") return;
+    var lo = el.min !== "" ? +el.min : -Infinity, hi = el.max !== "" ? +el.max : Infinity, c = !isFinite(v) ? (isFinite(lo) ? lo : 0) : Math.min(hi, Math.max(lo, v));
+    if (c !== v) { s[k] = c; changed = true; }
+  });
+  return changed;
+}
 function mount() {
   var cv = document.getElementById("calc-cv");
   if (cur.ro) { cur.ro.disconnect(); cur.ro = null; }
   if (!cv) { if (cur.id) { stop(cur.id); } cur.id = null; cur.cv = null; chartOff(); return; }
   var id = cv.dataset.tool, def = T(id), R = rt(id);
   cur.id = id; cur.cv = cv;
+  if (clampToFields(id)) { D.render(); return; }
   size(cv); restoreOpen();
   if (window.ResizeObserver) { cur.ro = new ResizeObserver(function () { if (size(cv)) K.redraw(id); }); cur.ro.observe(cv.parentNode); }
   if (def.hints) { var hh = def.hints(S(id), CACHE[id]) || {}; Object.keys(hh).forEach(function (k) { var el = document.getElementById(k); if (el) el.textContent = hh[k]; }); }
   if (def.autoplay && !R.played && !K.reduced() && (def.duration || def.loop)) { R.played = true; R.t = 0; play(id); }
-  else if (def.duration && !def.loop && !R.played) { R.played = true; R.t = def.duration(S(id), CACHE[id]); }
+  else if (def.duration && !def.loop && !R.played) { R.played = true; R.t = restOf(def, S(id), CACHE[id]); }
   K.redraw(id);
   if (R.playing && !cur.raf) loop();
   var pb = document.getElementById("calc-play"); if (pb) pb.textContent = R.playing ? "Pause" : label(def);
@@ -435,7 +474,7 @@ function loop() {
     var id = cur.id, def = id && T(id), R = id && rt(id); cur.raf = 0;
     if (!def || !R || !R.playing || D.S.route !== id) return;
     var dt = Math.min(0.05, (now - cur.last) / 1000); cur.last = now; R.t += dt * R.speed;
-    var dur = def.duration && !def.loop ? def.duration(S(id), CACHE[id]) : Infinity;
+    var dur = def.duration && !def.loop ? durOf(def, S(id), CACHE[id]) : Infinity;
     if (R.t >= dur) { R.t = dur; R.playing = false; }
     K.redraw(id); transport(id);
     if (R.playing) cur.raf = requestAnimationFrame(step); else { var b = document.getElementById("calc-play"); if (b) b.textContent = label(def); if (def.onEnd) def.onEnd(S(id), CACHE[id]); }
@@ -443,7 +482,7 @@ function loop() {
   cur.raf = requestAnimationFrame(step);
 }
 function transport(id) { var R = rt(id), sc = document.getElementById("calc-scrub"), tm = document.getElementById("calc-time"); if (sc && document.activeElement !== sc) sc.value = R.t.toFixed(3); if (tm) tm.textContent = R.t.toFixed(2) + " s"; }
-function play(id) { var R = rt(id), def = T(id), dur = def.duration && !def.loop ? def.duration(S(id), CACHE[id]) : Infinity; if (R.t >= dur - 1e-6) R.t = 0; R.playing = true; if (!cur.raf) loop(); }
+function play(id) { var R = rt(id), def = T(id), dur = def.duration && !def.loop ? durOf(def, S(id), CACHE[id]) : Infinity; if (R.t >= dur - 1e-6) R.t = 0; R.playing = true; if (!cur.raf) loop(); }
 function stop(id) { var R = RT[id]; if (R) R.playing = false; if (cur.raf) { cancelAnimationFrame(cur.raf); cur.raf = 0; } }
 K.play = function (id, from) { if (from != null) rt(id).t = from; play(id); var b = document.getElementById("calc-play"); if (b) b.textContent = "Pause"; };
 K.pause = function (id) { stop(id); var b = document.getElementById("calc-play"); if (b) b.textContent = label(T(id)); };

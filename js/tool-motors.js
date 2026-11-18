@@ -27,6 +27,12 @@ if (typeof module !== "undefined" && module.exports) { module.exports = M; retur
 
 /* ---------- The calculator ---------- */
 var K = D.calc, ID = "tool-motors";
+// On a phone the side-by-side table comes before the four charts: it answers the question the charts explain.
+if (!document.getElementById("t-motors-css")) {
+  var st = document.createElement("style"); st.id = "t-motors-css";
+  st.textContent = ".t-motors-cap{margin:2px 0 4px;max-width:60ch}.t-motors-charts{display:grid;gap:16px}@media (max-width:640px){.t-motors-tab{order:-1}}";
+  document.head.appendChild(st);
+}
 var LIST = F.MOTORS.map(function (m) { return [m.id, m.name]; });
 
 function slots(s) {
@@ -34,6 +40,32 @@ function slots(s) {
     .filter(function (q) { return q.id !== "none" && F.MOTORS.some(function (m) { return m.id === q.id; }); });
 }
 function nameOf(q) { return (q.n > 1 ? q.n + " × " : "") + F.motor(q.id).name; }
+// A short name for chart legends, so a legend fits on one line ("X60", "Vortex (CTRE)"); the table keeps full names.
+var SHORT = { kraken60: "X60", kraken60foc: "X60 FOC", kraken44: "X44", kraken44foc: "X44 FOC", vortex: "Vortex (CTRE)", vortexrev: "Vortex (REV)", neo: "NEO", neo550: "NEO 550", falcon: "Falcon", minion: "Minion", pulsar: "Pulsar", cim: "CIM", "775pro": "775pro" };
+function shortOf(q) { return (q.n > 1 ? q.n + " × " : "") + (SHORT[q.id] || F.motor(q.id).name); }
+/* Put each level line's label where no curve, dot or other label is: right end above the line, then the left end,
+   then below. Works in the kit's chart coordinates (480 by 190; 46 px left, 14 right, 24 top, 34 bottom). */
+function placeLabels(o) {
+  var W = 480, H = 190, pl = 46, pr = 14, pt = 24, pb = 34, x0 = o.x.min, x1 = o.x.max, y0 = o.y.min, y1 = o.y.max, taken = [];
+  function X(x) { return pl + (x - x0) / (x1 - x0) * (W - pl - pr); } function Y(y) { return H - pb - (y - y0) / (y1 - y0) * (H - pt - pb); }
+  var pts = []; o.series.forEach(function (sr) { for (var i = 0; i < sr.pts.length; i++) { var p = sr.pts[i], q = sr.pts[i + 1]; if (!isFinite(p[1])) continue; pts.push([X(p[0]), Y(p[1])]); if (q && isFinite(q[1])) for (var k = 1; k < 4; k++) pts.push([X(p[0] + (q[0] - p[0]) * k / 4), Y(p[1] + (q[1] - p[1]) * k / 4)]); } });
+  (o.dots || []).forEach(function (d) { var dx = X(d.x), dy = Y(d.y); taken.push([dx - 6, dy - 6, dx + 6, dy + 6]); if (d.label) taken.push([dx + 5, dy - 18, dx + 9 + d.label.length * 6.6, dy - 2]); });
+  (o.hlines || []).forEach(function (h) {
+    if (!h.label || h.y < y0 || h.y > y1) return;
+    var w = h.label.length * 6.6 + 4, yl = Y(h.y), best = null;
+    [["right", false], ["left", false], ["right", true], ["left", true]].some(function (cand) {
+      var bx = cand[0] === "left" ? [pl + 1, pl + 3 + w] : [W - pr - w - 2, W - pr], by = cand[1] ? [yl - 2, yl + 15] : [yl - 15, yl + 2];   // a curve touching the line counts too
+      var box = [bx[0] - 2, by[0] - 1, bx[1] + 2, by[1] + 1];
+      var hit = pts.some(function (p) { return p[0] >= box[0] && p[0] <= box[2] && p[1] >= box[1] && p[1] <= box[3]; }) ||
+        taken.some(function (b) { return b[0] < box[2] && b[2] > box[0] && b[1] < box[3] && b[3] > box[1]; });
+      if (!hit) { best = { side: cand[0], below: cand[1], box: box }; return true; }
+      return false;
+    });
+    if (best) { h.side = best.side; h.below = best.below; taken.push(best.box); }
+  });
+  return o;
+}
+
 
 K.tool({
   id: ID,
@@ -71,13 +103,14 @@ K.tool({
 
   outs: function (s, r) {
     var L = r.list; if (!L.length) return K.verdict("info", "Pick at least one motor.");
-    var lim = s.statorA > 0 ? "under a " + s.statorA + " A limit" : "with no current limit";
+    var lim = "at " + K.fix(s.volts, 1) + " V " + (s.statorA > 0 ? "under a " + s.statorA + " A limit" : "with no current limit");
     var by = L.slice().sort(function (a, b) { return b.peak.power * b.n - a.peak.power * a.n; }), top = by[0], next = by[1];
-    var text = top.name + " gives the most power " + lim + ": " + K.n(top.peak.power * top.n, 0) + " W at " + K.n(top.peak.rpm, 0) + " rpm";
+    var text = top.name + " gives the most power in total " + lim + ": " + K.n(top.peak.power * top.n, 0) + " W at " + K.n(top.peak.rpm, 0) + " rpm";
     if (next) { var more = top.peak.power * top.n / (next.peak.power * next.n) - 1; text += more < 0.005 ? ", the same as " + next.name + "." : ", " + K.n(more * 100, 0) + "% more than " + next.name + "."; }
     else text += ".";
     var perLb = L.slice().sort(function (a, b) { return b.peak.power / b.m.lb - a.peak.power / a.m.lb; })[0];
     if (L.length > 1 && perLb !== top) text += " Per pound, " + perLb.m.name + " leads.";
+    text += " A mechanism only gets that power if it is geared so the motor runs near that speed.";
     return K.verdict("info", text) +
       K.outs(L.map(function (q) { return { k: q.name, v: K.n(q.peak.power * q.n, 0), u: "W", sub: "peak at " + K.n(q.peak.rpm, 0) + " rpm", tip: "The most mechanical power " + (q.n > 1 ? "these motors give" : "this motor gives") + " " + lim + " at " + K.fix(s.volts, 1) + " V." }; })) +
       K.outs(L.map(function (q) { var T = q.limT * q.n; return { k: "Torque, " + (q.n > 1 ? q.n + " × " : "") + q.m.name, v: K.n(T, 2), u: "N m", sub: K.n(T / (F.LBF * F.IN), 1) + " lb in from a standstill" }; }));
@@ -87,14 +120,22 @@ K.tool({
     var L = r.list; if (!L.length) return "";
     var xmax = Math.max.apply(null, L.map(function (q) { return q.free; }));
     var X = { label: "speed (rpm)", name: "Speed", unit: "rpm", min: 0, max: xmax };
-    function ser(key) { return L.map(function (q) { return { name: q.name, pts: q[key], color: q.i + 1 }; }); }
-    var limLine = s.statorA > 0 ? [{ y: s.statorA, label: "Stator limit " + s.statorA + " A" }] : [];
-    var out = '<div class="chartrow">' +
-      K.chart({ id: "motors-tq", title: "Torque", x: X, y: { label: "torque (N m)", unit: "N m", min: 0 }, series: ser("tq") }) +
-      K.chart({ id: "motors-amp", title: "Current from the battery, each motor", x: X, y: { label: "supply current (A)", unit: "A", min: 0 }, series: ser("amp"), hlines: limLine }) + "</div>" +
+    function ser(key) { return L.map(function (q) { return { name: shortOf(q), pts: q[key], color: q.i + 1 }; }); }
+    var limLine = s.statorA > 0 ? [{ y: s.statorA, label: "stator limit " + s.statorA + " A (motor current)" }] : [];
+    function top(key, extra) { var m = extra || 0; L.forEach(function (q) { q[key].forEach(function (p) { if (p[1] > m) m = p[1]; }); }); return m; }
+    // The knee: where the current limit stops holding torque flat, marked for the first motor.
+    var q0 = L[0], knee = q0.peak.knee != null && q0.peak.knee / F.RPM < q0.free ? [{ x: q0.peak.knee / F.RPM, y: q0.limT * q0.n, label: "limit stops here" }] : [];
+    // Torque: headroom above the curves for the band's name; the band is the first motor's flat part.
+    var tq = { id: "motors-tq", title: "Torque", x: X, y: { label: "torque (N m)", unit: "N m", min: 0, max: top("tq") * 1.4 }, series: ser("tq"), dots: knee,
+      bands: knee.length ? [{ x0: 0, x1: knee[0].x, label: "the current limit holds torque flat" + (L.length > 1 ? " (" + shortOf(q0) + ")" : "") }] : [] };
+    var amp = placeLabels({ id: "motors-amp", title: "Current from the battery, each motor", x: X, y: { label: "supply current (A)", unit: "A", min: 0, max: Math.ceil(top("amp", s.statorA) * 1.15 / 10) * 10 }, series: ser("amp"), hlines: limLine });
+    var cap = '<p class="mute small t-motors-cap">Dashed: the stator limit, on the current in the motor itself. The lines are battery current, which is lower than motor current at low speed.</p>';
+    var out = '<div class="t-motors-charts"><div class="chartrow">' +
+      K.chart(tq) +
+      K.chart(amp).replace("</figcaption>", "</figcaption>" + (s.statorA > 0 ? cap : "")) + "</div>" +
       '<div class="chartrow">' +
       K.chart({ id: "motors-pw", title: "Power out", x: X, y: { label: "power (W)", unit: "W", min: 0 }, series: ser("pw"), dots: L.map(function (q) { return { x: q.peak.rpm, y: q.peak.power * q.n }; }) }) +
-      K.chart({ id: "motors-eff", title: "Efficiency", x: X, y: { label: "efficiency (%)", unit: "%", min: 0, max: 100 }, series: ser("eff") }) + "</div>";
+      K.chart({ id: "motors-eff", title: "Efficiency", x: X, y: { label: "efficiency (%)", unit: "%", min: 0, max: 100 }, series: ser("eff") }) + "</div></div>";
     var rowsT = [
       ["Free speed", function (q) { return K.n(q.free, 0) + " rpm"; }],
       ["Stall torque, no limit", function (q) { return K.n(q.stallT * q.n, 2) + " N m"; }],
@@ -104,15 +145,16 @@ K.tool({
       ["Best efficiency", function (q) { return K.n(q.bestEff[1], 0) + "% at " + K.n(q.bestEff[0], 0) + " rpm"; }],
       ["Weight", function (q) { return K.n(q.m.lb * q.n, 2) + " lb"; }],
       ["Peak power per pound", function (q) { return K.n(q.peak.power / q.m.lb, 0) + " W/lb"; }]];
-    out += '<section class="ctab"><h2>Side by side at ' + K.fix(s.volts, 1) + " V" + (s.statorA > 0 ? ", " + s.statorA + " A limit" : ", no limit") + '</h2><div class="scroll"><table><thead><tr><th></th>' + L.map(function (q) { return '<th class="r">' + D.esc(q.name) + "</th>"; }).join("") + "</tr></thead><tbody>" +
+    out += '<section class="ctab t-motors-tab"><h2>Side by side at ' + K.fix(s.volts, 1) + " V" + (s.statorA > 0 ? ", " + s.statorA + " A limit" : ", no limit") + '</h2><div class="scroll"><table><thead><tr><th></th>' + L.map(function (q) { return '<th class="r">' + D.esc(q.name) + "</th>"; }).join("") + "</tr></thead><tbody>" +
       rowsT.map(function (row) { return "<tr><td>" + row[0] + "</td>" + L.map(function (q) { return '<td class="r num">' + row[1](q) + "</td>"; }).join("") + "</tr>"; }).join("") + "</tbody></table></div>" +
-      '<p class="mute small">Stall torque and stall current are with no limit, scaled to this voltage. Torque, power and weight are for all the motors in a row together; current is for each one.</p></section>';
+      '<p class="mute small">Figures are the ones ReCalc lists, mostly from bench tests by CTRE. There are two rows for the NEO Vortex because the sources disagree: "NEO Vortex (CTRE\'s test)" is CTRE\'s bench test, and "NEO Vortex (REV\'s sheet)" is REV\'s own data sheet, which gives it less stall torque and more torque per amp. Choose one of each to see the difference. Stall torque and stall current are with no limit, scaled to this voltage. Torque, power and weight are for all the motors in a row together; current is for each one.</p></section>';
     out += K.notes("<p>A DC motor's torque falls in a straight line from stall to free speed, and the current it draws falls with it. Power out is torque times speed, so without a limit it peaks at half the free speed. Each motor here is worked out from four figures: free speed, stall torque, stall current and free current at 12 V.</p>" +
       '<p class="eq">current = (volts − speed × kₑ) ÷ R,  torque = kₜ × (current − free current)</p>' +
+      "<p>Here volts means the voltage the controller puts across the motor, not the battery's. With no limit, or above the knee, the controller passes on the full battery voltage. Below the knee it lowers the voltage until the current equals the limit, which is how a stator limit holds the current, and the torque, flat.</p>" +
       '<p class="eq">power = torque × speed,  efficiency = power ÷ (battery volts × battery current)</p>' +
       "<p>A stator limit caps the current in the motor's windings. Below the knee, where the motor would draw more than the limit, torque is held flat; above it, the motor runs on its natural line. Peak power moves to the knee when the knee is past half the free speed, which is why a tighter limit lowers the peak and moves it to a higher speed.</p>" +
       "<p>The current from the battery is lower than the stator current at low speed, because the controller turns the battery's voltage down. With a limit, the battery current curve therefore starts low, rises to the knee and then falls. Power in is battery volts times battery current, and the windings lose current² × R as heat.</p>" +
-      "<p>Figures are the makers' test data as listed on ReCalc's motor page (reca.lc/motors), read 2026-11-17, kept in <code>js/frc.js</code>. The model leaves out heating (a hot motor is weaker), friction that changes with speed, and the controller's own losses. It is a guide for choosing, not a dyno.</p>");
+      "<p>Motor figures are as ReCalc lists them on its motor page (reca.lc/motors, read 2026-11-17), from CTRE's and REV's test data. The NEO Vortex has two rows because the two sources disagree by about 12% in torque per amp: CTRE's bench test, and REV's own data sheet. Neither is wrong; they were measured differently, so compare the two if a design is close. The model leaves out heating (a hot motor is weaker), friction that changes with speed, and the controller's own losses. It is a guide for choosing, not a dyno.</p>");
     return out;
   }
 });

@@ -36,5 +36,14 @@ same("nearest metric to #7 (0.2010)", M.nearMm(0.2010).name, "5.1 mm");
 same("nearest fractional to 0.25", M.nearFrac(0.25).name, "1/4 in");
 ok("number and letter drills", M.isNumLetter("#7") && M.isNumLetter("F") && !M.isNumLetter("5/16") && !M.isNumLetter("2.5 mm"));
 
+// Round 6: is the nearest drill a fair stand-in? Within 0.004 in it is; further off it is not.
+var nv = M.nearVerdict(13 / 64, 0.2010);
+ok("13/64 for a #7 is 0.0021 in bigger and fine", Math.abs(nv.off - 0.0021) < 1e-4 && nv.bigger && nv.ok, JSON.stringify(nv));
+var nm = M.nearVerdict(5.1 / 25.4, 0.2010);
+ok("5.1 mm for a #7 is 0.0002 in smaller and fine", Math.abs(nm.off - 0.0002) < 1e-4 && !nm.bigger && nm.ok, JSON.stringify(nm));
+var n29 = M.nearVerdict(9 / 64, 0.1360);
+ok("9/64 for a #29 is 0.0046 in bigger: too far", Math.abs(n29.off - 0.0046) < 1e-4 && !n29.ok, JSON.stringify(n29));
+ok("exactly 0.004 in off is still fine", M.nearVerdict(0.204, 0.200).ok);
+
 console.log(fails ? fails + " of " + n + " checks failed" : "all " + n + " checks passed");
 process.exit(fails ? 1 : 0);

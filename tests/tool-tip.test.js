@@ -45,5 +45,51 @@ ok("default stop leans on the bumper", lean.bumper, lean.maxPhi * 180 / Math.PI)
 ok("tilt about the wheels stops at the bumper angle", lean.phi.every(function (f, i) { return lean.piv[i] !== 1 || f <= bAng + 0.01; }));
 ok("ends back on its wheels", lean.phi[lean.phi.length - 1] === 0 && lean.piv[lean.piv.length - 1] === 1);
 ok("hard long stop ends resting on the bumper face or mast", fall.piv[fall.piv.length - 1] >= 3);
+
+// Finding 1 (Sol review): test the resultant against both contact points before any stable verdict.
+// Mechanism and chassis both 15 in behind the middle on a 22 in wheelbase: the centre of gravity is 4 in behind the
+// rear wheel, so it tips backward standing still (it used to say "the wheels slide before it can tip").
+var backHeavy = Object.assign({}, dflt, { x1: -15, x2: -15 });
+near("back-heavy: weight 4 in behind the rear wheel", M.landing(backHeavy, 0), -15, 1e-12);
+ok("back-heavy: tips backward standing still", M.judge(backHeavy, 0).kind === "back", M.judge(backHeavy, 0).kind);
+ok("back-heavy: braking does not make it safe", M.judge(backHeavy, 0.8).kind === "back");
+// Mechanism up at 100 in, pointing up a 30 degree ramp: past its rearward static tip angle (26.8 degrees), so it tips
+// backward standing still (it used to say "Holds").
+var steep = Object.assign({}, dflt, { h2: 100, ramp: -30 });
+ok("steep ramp: past the rearward static angle", M.limits(steep).staticR < 30, M.limits(steep).staticR);
+ok("steep ramp: tips backward standing still", M.judge(steep, 0).kind === "back", M.judge(steep, 0).kind);
+// Pointing down a slope steeper than the forward static angle: tips forward standing still.
+ok("downhill past static angle: tips forward", M.judge(Object.assign({}, simple, { ramp: L.staticF + 1 }), 0).kind === "front");
+// Centre of gravity just ahead of the front wheel, but pointing up a 30 degree ramp: the weight lands inside, so it stands.
+var upFront = Object.assign({}, simple, { x1: 12, ramp: -30 });
+ok("ahead of the front wheel but up a ramp: stands", ["holds", "slides", "tips"].indexOf(M.judge(upFront, 0).kind) >= 0, M.judge(upFront, 0).kind);
+// The ordinary cases keep their verdicts.
+ok("default at 0.5 g: holds", M.judge(dflt, 0.5).kind === "holds", M.judge(dflt, 0.5).kind);
+ok("simple (grip 1.0 < 1.1): slides", M.judge(simple, 0.8).kind === "slides");
+ok("default above its threshold: tips", M.judge(dflt, Ld.tipBrake + 0.05).kind === "tips");
+near("judge caps braking at the tread", M.judge(simple, 1.3).brake, 1.0, 1e-12);
+
+// Finding 3 (Sol review): the hand-over keeps angular momentum about the new contact point (perfectly plastic hit).
+// Hand-worked: a point mass (I = 0) 1 in above the old point P = (0, 0) lands on Q = (1, 0): (G - Q) . (G - P) = 1,
+// |G - Q|^2 = 2, so it turns at half the rate. (The old rule, 0.5 w Iold / Inew, gave a quarter.)
+near("hand-over, point mass", M.handover(2, 0, 1, [0, 1], [0, 0], [1, 0]), 1, 1e-12);
+// A body with inertia about its centre: I = 3, m = 1: (3 + 1) / (3 + 2) = 0.8.
+near("hand-over, with inertia", M.handover(1, 3, 1, [0, 1], [0, 0], [1, 0]), 0.8, 1e-12);
+// If it would turn back the other way, the old point is pressed into the floor and it stops: a low G = (0.5, 0.1)
+// between P and Q gives (G - Q) . (G - P) = -0.24 < 0.
+ok("hand-over never reverses", M.handover(1, 0, 1, [0.5, 0.1], [0, 0], [1, 0]) === 0);
+// In the default stop, the robot's hand-over onto the bumper matches that formula and loses energy.
+var hb = lean.hand.filter(function (h) { return h.to === 2; })[0], cd = M.cg(dflt);
+var Ic = 105 * ((30 * 30 + 12 * 12) / 12 + sq(0 - cd.x) + sq(7 - cd.h)) + 22 * (sq(4 - cd.x) + sq(52 - cd.h));
+function sq(x) { return x * x; }
+function Ip(p) { return Ic + 127 * (sq(cd.x - p[0]) + sq(cd.h - p[1])); }
+ok("default stop hands over to the bumper", !!hb);
+var Gd = [cd.x, cd.h], Pw = [11, 0], Qb = [17, 2];
+near("bumper hand-over by angular momentum", hb.w1, hb.w0 * (Ic + 127 * ((Gd[0] - 17) * (Gd[0] - 11) + (Gd[1] - 2) * Gd[1])) / Ip(Qb), 1e-9);
+ok("the hit loses energy", Ip(Qb) * hb.w1 * hb.w1 <= Ip(Pw) * hb.w0 * hb.w0 + 1e-9);
+// Fix round 5: the drawing rests on the moment of greatest tilt when the rear lifts, and on the end when it does not.
+var tsim = { t: [0, 0.1, 0.2, 0.3], phi: [0, 0.2, 0.33, 0.1], lifted: true };
+ok("worst tilt frame", M.worstT(tsim) === 0.2, M.worstT(tsim));
+ok("no tilt: no rest frame (the page rests on the end)", M.worstT({ t: [0, 1], phi: [0, 0], lifted: false }) === null);
 console.log(fails ? fails + " of " + n + " checks failed" : "all " + n + " checks passed");
 if (fails) process.exit(1);

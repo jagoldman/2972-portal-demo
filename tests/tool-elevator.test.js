@@ -59,6 +59,25 @@ ok("too weak stalls", !weak.reached && weak.needRatio > 1, weak.needRatio);
 // A short travel still arrives (finer steps for quick moves).
 ok("6 in of travel arrives", M.compute(Object.assign({}, base, { travel: 6 })).reached);
 
+// Finding 4 (Sol review): no mass floor. The default (2 stages, cascade) at 40:1 with 6 in of travel is a light load
+// behind a big reduction: with its real mass it takes about 0.152 s up (the floor made it 0.172 s).
+var short40 = M.compute(Object.assign({}, base, { stages: 2, ratio: 40, travel: 6 }));
+near("40:1, 6 in: 0.152 s up", short40.timeUp, 0.152, 0.002);
+ok("no mass floor or re-run helper left", M.settle === undefined);
+// The simulation's mass is the feedforward's: the first step's acceleration is (pull at the limit - weight) / mass.
+var m40 = short40.mod.mass(0), pull = short40.avail / short40.rS;
+near("starts at (pull - load) / mass", short40.up.acc[0], (pull - short40.mod.load(0)) / m40, 1e-6);
+near("kA from that same mass", short40.kA, M.driveOf(Object.assign({}, base, { ratio: 40 })).kA(m40 * short40.rS * short40.rS) / (short40.rS * short40.gain), 1e-12);
+
+// Finding 6 (Sol review): continuous rigging gives kA for each section, as it does kG; the single kA is the last one.
+var cont = M.compute(Object.assign({}, base, { stages: 2, rig: "continuous" })), dc = M.driveOf(base), rr = cont.rS;
+ok("continuous: kA per section", Array.isArray(cont.kAs) && cont.kAs.length === 3, cont.kAs);
+// By hand: the carriage alone, then with one stage, then two: kA = R m r / (n G eff kt).
+[14, 19, 24].forEach(function (lb, i) { near("continuous kA, section " + (i + 1), cont.kAs[i], dc.kA(lb * F.LB * rr * rr) / rr, 1e-12); });
+near("the single kA is the last section's", cont.kA, cont.kAs[2], 1e-15);
+ok("each section's kA grows", cont.kAs[0] < cont.kAs[1] && cont.kAs[1] < cont.kAs[2]);
+ok("cascade has one kA", M.compute(Object.assign({}, base, { stages: 2 })).kAs === undefined);
+
 // Every slider and field at its ends: nothing throws and the answers are numbers or Infinity, never NaN.
 var ends = { stages: [1, 3], rig: ["cascade", "continuous"], travel: [6, 100], carLb: [0.5, 60], stageLb: [0, 25], motors: [1, 8], ratio: [0.05, 50], statorA: [5, 200], eff: [30, 100], spool: [0.25, 4], tilt: [0, 80], spring: [0, 80], vbat: [10, 13.5], rbat: [0, 0.1] };
 var bad = [];
@@ -70,6 +89,32 @@ Object.keys(ends).forEach(function (k) { ends[k].forEach(function (v) { ["cascad
   if (!isFinite(r.duration) || r.duration <= 0) bad.push(k + "=" + v + " duration " + r.duration);
 }); }); });
 ok("extremes: no NaN, no throw", !bad.length, bad.join("; "));
+
+// Fix round 5, item 15: kG balances gravity alone and kS is the motor's own friction; the holding current is both.
+// Double the carriage and the stages (no spring), double the rope force, double kG; kS stays.
+var kg1 = M.compute(Object.assign({}, base, { stages: 2 })), kg2 = M.compute(Object.assign({}, base, { stages: 2, carLb: 28, stageLb: 10 }));
+near("kG doubles with the load", kg2.kG / kg1.kG, 2, 1e-9);
+near("kS does not change with the load", kg2.kS, kg1.kS, 1e-15);
+var mk = F.motor("kraken60");
+near("kS = free current x resistance", kg1.kS, mk.freeA * mk.R, 1e-12);
+// By hand, cascade with one stage: kG = (13.24 A - 2.8 A) x (12 / 374 ohm) = 10.44 x 0.032086 = 0.3350 V.
+near("kG by hand (one stage, cascade)", rc.kG, (rc.hold.statorA - free) * 12 / 374, 1e-9);
+near("kG, rounded hand figure", rc.kG, 0.335, 0.001);
+near("holding volts = kG + kS", rc.hold.volts, rc.kG + rc.kS, 1e-12);
+// Continuous: each section's kG is in proportion to its rope force (carriage 14, then 19, then 24 lb).
+near("continuous kG per section in proportion to the load", cont.kGs[2] / cont.kGs[0], 24 / 14, 1e-9);
+// Item 16: the speed going up never passes the motors' no-load speed at the battery's resting voltage, whenever the
+// load resists going up. (A spring stronger than the weight it carries pulls the lift up faster than that; case 5.)
+[base, Object.assign({}, base, { stages: 2 }), Object.assign({}, base, { rig: "continuous", stages: 3 }), Object.assign({}, base, { ratio: 3, carLb: 2, travel: 100 }), Object.assign({}, base, { spring: 8, carLb: 10 })].forEach(function (o, i) {
+  var q = M.compute(o), lim = M.driveOf(o).freeSpeed(o.vbat) * q.rS * q.gain;
+  ok("case " + i + ": top speed going up <= no-load speed", q.topV <= lim + 1e-9, q.topV + " > " + lim);
+  near("case " + i + ": freeV is that no-load speed", q.freeV, lim, 1e-12);
+});
+// Item 1: the sweep says when the best reduction is at an end of the range tried.
+var fast = M.compute(Object.assign({}, base, { carLb: 2, stageLb: 1, stages: 1, ratio: 9 }));
+ok("light lift: best at the low end of the sweep", fast.bestEnd === "lo" && Math.abs(fast.best[0] - 3) < 1e-9, fast.best && fast.best[0]);
+var over = M.compute(Object.assign({}, base, { spring: 20, carLb: 10 }));
+ok("case 5: a spring stronger than the weight lifts faster than no-load, and the page knows", over.mod.load(0) < 0 && over.topV > over.freeV, over.topV);
 
 console.log(fails ? fails + " of " + n + " checks failed" : "all " + n + " checks passed");
 process.exit(fails ? 1 : 0);

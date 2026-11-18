@@ -31,5 +31,27 @@ ok("light load fine", light.margin > 1 && light.marginA > 0);
 var none = M.power([], o);
 ok("no rows", none.I === 0 && none.V === 12.5 && none.worst === -1);
 
+// Finding 9 (Sol review): 101% of the main breaker is not "trips if it lasts many seconds". Up to 150% the words say it
+// is above its rating and to check the trip curve; the firm words about tripping start at twice the rating.
+var p101 = M.power([{ name: "Drive", n: 1, a: 121.2 }], o);
+near("121.2 A is 101% of 120 A", p101.share, 1.01, 1e-12);
+var w101 = M.breakerNote(p101.share);
+ok("101%: above its rating, check the trip curve", /above its rating/.test(w101) && /trip curve/.test(w101) && !/trips/.test(w101), w101);
+ok("150%: still the soft words", /trip curve/.test(M.breakerNote(1.5)), M.breakerNote(1.5));
+ok("at or under 100%: carries it all match", /carries this all match/.test(M.breakerNote(1)));
+ok("over 200%: it may trip, never a certainty", /it may trip/.test(M.breakerNote(2.01)), M.breakerNote(2.01));
+ok("branch at 101%: above its rating, no trip words", M.branchNote(40.4 / 40) === ", above its rating", M.branchNote(1.01));
+ok("branch at 250%: can trip in seconds", M.branchNote(2.5) === ", can trip in seconds");
+ok("branch at its rating: nothing", M.branchNote(1) === "");
+
+// Fix round 5: the verdict names the largest row, its share and the number to lower (the default: Drive, 4 x 40 A).
+var dflt = M.power([{ name: "Drive", n: 4, a: 40 }, { name: "Shooter", n: 2, a: 25 }, { name: "Intake", n: 1, a: 20 }, { name: "Elevator hold", n: 2, a: 10 }, { name: "Everything else", n: 1, a: 8 }], { rest: 12.5, rbat: 0.015, rwire: 0.006, brown: 6.8, main: 120 });
+ok("lever sentence", M.lever(dflt.rows[dflt.worst], dflt.I) === "Drive is the largest draw (160 A of 258 A): cutting what each of its motors draws from the battery (40 A here) helps most. A supply current limit in the motor controller does that.", M.lever(dflt.rows[dflt.worst], dflt.I));
+var src = require("fs").readFileSync(require("path").join(__dirname, "../js/tool-power.js"), "utf8");
+ok("breaker timing called a rough guide, with the trip curve named", /rough guide/.test(src) && /trip curve/.test(src) && !/carries its rating all day/.test(src));
+
+// Round 6: twice the rating is where the tile turns red, so the words change there too, not just above it.
+ok("200%: the same words as above it", M.breakerNote(2) === M.breakerNote(2.5), M.breakerNote(2));
+ok("199%: the softer words", M.breakerNote(1.99) !== M.breakerNote(2));
 console.log(fails ? fails + " of " + n + " checks failed" : "All " + n + " checks passed");
 process.exit(fails ? 1 : 0);
