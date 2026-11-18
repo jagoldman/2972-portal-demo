@@ -109,5 +109,13 @@ near("height for accelerating, by hand", hb, (11 + 88 / 127) / 0.8 * 127 / 22 - 
 var Lf = M.limits(dflt);
 near("tan(static forward angle) = braking that tips it", Math.tan(Lf.staticF * Math.PI / 180), Lf.tipBrake, 1e-9);
 near("tan(static backward angle) = acceleration that tips it", Math.tan(Lf.staticR * Math.PI / 180), Lf.tipAccel, 1e-9);
+// Round 9: "just over" under 5% (0.80 against 0.79 g is 1.3% over), "over" past it (0.80 against 0.70 g).
+ok("just over", M.overWords(0.8, 0.79) === "just over" && M.overWords(0.8, 0.7) === "over");
+// The tilt chart's marks, from a stop that lifts the rear and hands over to the bumper: the peak is where it starts
+// leaning on the bumper, and it is back on its wheels after that.
+var sim9 = M.stop(Object.assign({}, dflt, { L: 33, H: 12, bumpX: 17, bBot: 2, bTop: 7, mastX: 8.5, mastTop: 57 }), 0.8, 180, 2), tmk = M.tiltMarks(sim9);
+ok("tilt marks: lifts and comes back", tmk && tmk.backT != null && tmk.backT > tmk.peakT, JSON.stringify(tmk));
+ok("tilt marks: peak is the most tilt (sampled frames, within half a degree)", tmk && Math.abs(tmk.peakDeg - sim9.maxPhi * 180 / Math.PI) < 0.5);
+ok("tilt marks: none when it does not lift", M.tiltMarks({ lifted: false }) === null);
 console.log(fails ? fails + " of " + n + " checks failed" : "all " + n + " checks passed");
 if (fails) process.exit(1);

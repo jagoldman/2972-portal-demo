@@ -54,7 +54,7 @@ function toolList() {
   var quick = q ? [] : ["tool-holes", "tool-units", "tool-spacing"].map(D.tool).filter(function (t) { return t && tools.indexOf(t) >= 0; });
   // They are short links worded as the question, not a second set of cards: every tool has one card, in its group.
   var ask = { "tool-holes": "Drill and tap sizes", "tool-units": "Convert a unit", "tool-spacing": "Belt and gear centres" };
-  return (quick.length ? '<nav class="toolquick" id="tg-quick" aria-label="Quick answers at the bench"><span class="tql">Quick answers at the bench</span>' + quick.map(function (t) { return '<a class="tqa" href="#' + t.id + '" data-act="go" data-v="' + t.id + '">' + D.ic(t.icon, 16) + "<span>" + ask[t.id] + "</span></a>"; }).join("") + "</nav>" : "") +
+  return (quick.length ? '<nav class="toolquick" id="tg-quick" aria-label="Quick answers at the bench"><span class="tql">Quick answers at the bench</span>' + quick.map(function (t) { return '<a class="tqa" href="#' + t.id + '" data-act="go" data-v="' + t.id + '">' + D.ic(t.icon, 16) + "<span><b>" + ask[t.id] + "</b><small>" + esc(t.name) + "</small></span></a>"; }).join("") + "</nav>" : "") +
     // On a phone, links that jump to each group. They come after the quick answers, which a student wants first.
     (q ? "" : '<nav class="tooljump chips" aria-label="Jump to a group"><span class="tjl">Jump to</span>' + D.TOOL_GROUPS.filter(function (g) { return tools.some(function (t) { return t.group === g[0]; }); }).map(function (g) { return '<button class="chip" data-act="tooljump" data-v="' + g[0] + '">' + esc(g[1]) + "</button>"; }).join("") + "</nav>") +
     D.TOOL_GROUPS.map(function (g) {

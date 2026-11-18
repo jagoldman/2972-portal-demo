@@ -225,7 +225,7 @@ K.tool({
     v.push({ k: "Spin", v: K.n(Math.abs(sh.spin) / RPM, 0), u: "rpm", sub: Math.abs(sh.spin) < 1 ? "none" : sh.spin > 0 ? "backspin" : "topspin" });
     v.push({ k: "Highest point", v: K.fix(r.fl.apex[1] / FT, 1), u: "ft" });
     if (m && !m.wall) v.push({ k: m.entryDeg < 0 ? "Still rising at" : "Enters at", v: K.fix(Math.abs(m.entryDeg), 0), u: "°", sub: "after " + K.fix(m.t, 2) + " s in the air", tip: "How steeply the ball is falling as it reaches the opening. Steeper leaves more room front to back on an opening that faces up." });
-    var w2 = [{ k: "Wheel after the shot", v: rpmTxt(sh.wAfter / RPM), u: "rpm", sub: "down " + rpmTxt(Math.round(s.rpm / 10) * 10 - Math.round(sh.wAfter / RPM / 10) * 10) + " (" + K.fix(sh.drop / (r.w || 1) * 100, 1) + "%)" + (r.aim && sh.wAfter / RPM < r.rpmLo && m && m.hit ? ": under the " + rpmTxt(r.rpmLo) + " a shot needs" : ": a normal dip"), state: r.aim && sh.wAfter / RPM < r.rpmLo && m && m.hit ? "warn" : "" },
+    var w2 = [{ k: "Wheel after the shot", v: rpmTxt(sh.wAfter / RPM), u: "rpm", sub: "down " + rpmTxt(Math.round(s.rpm / 10) * 10 - Math.round(sh.wAfter / RPM / 10) * 10) + " (" + K.fix(sh.drop / (r.w || 1) * 100, 1) + "%)" + (r.aim && sh.wAfter / RPM < r.rpmLo && m && m.hit ? "; the next ball waits for it (Rapid fire)" : ": a normal dip") },
       { k: "Back to speed in", v: r.recov.time === Infinity ? "never" : K.fix(r.recov.time, 2), u: r.recov.time === Infinity ? "" : "s", sub: r.recov.time < Infinity && r.recov.time > 0 ? "wheel alone, " + Math.max(1, s.motors) + " motor" + (s.motors > 1 ? "s" : "") + " at " + s.statorA + " A; not a feed rate" : "", state: r.recov.time === Infinity ? "bad" : "" },
       { k: "Spin-up from rest", v: cannot ? "never" : K.fix(r.spinup.time, 2), u: cannot ? "" : "s", state: cannot ? "bad" : "" },
       { k: "Energy into the ball", v: K.fix(sh.eBall, 1), u: "J", sub: Math.round(sh.eff * 100) + "% of what the wheel gave up", tip: "A wheel-and-hood shooter fed a ball at rest can pass on at most half of the energy the wheel loses. The rest goes into heat and squashing the ball. A feeder that pushes the ball in raises the share." }];
@@ -288,7 +288,7 @@ function burstOuts(s, r) {
     { k: "Balls that score", v: b.hits + " of " + n, state: state === "ok" ? "" : state },
     { k: "Wheel as the last ball enters", v: rpmTxt(last.wBefore / RPM), u: "rpm", sub: K.fix((1 - last.wBefore / r.w) * 100, 1) + "% under the set speed; that ball drops it to " + rpmTxt(last.wAfter / RPM) },
     { k: "Last ball leaves at", v: K.fix(last.v / FT, 1), u: "ft/s", sub: "first: " + K.fix(b.shots[0].v / FT, 1) + " ft/s" },
-    { k: "Fastest rate that scores them all", v: b.best == null ? "–" : b.best >= 20 ? "Feeder sets it" : K.fix(Math.floor(b.best * 10) / 10, 1), u: b.best >= 20 ? "" : "a second", sub: b.best >= 20 ? "the wheel still scores at 20 a second, the fastest tried" : "for these " + n + " balls; a real feeder may be slower" },
+    { k: "Fastest rate that scores them all", v: b.best == null ? "–" : b.best >= 20 ? "20+" : K.fix(Math.floor(b.best * 10) / 10, 1), u: "a second", sub: b.best >= 20 ? "20 is the fastest tried: the feeder is the limit, not the wheel" : "for these " + n + " balls; a real feeder may be slower" },
     { k: "One ball costs the wheel", v: K.fix(r.shot.drop / (r.w || 1) * 100, 1), u: "%", sub: "and takes " + (r.recov.time === Infinity ? "forever" : K.fix(r.recov.time, 2) + " s") + " to win back" }]);
 }
 function burstMore(s, r) {
@@ -322,7 +322,7 @@ function mapMore(s, r) {
     (s.hood === "adj" ? K.chart({ id: "sh-a", title: "Hood angle for each distance (°)", x: { label: "feet from the target", name: "From", unit: "ft" }, y: { unit: "°", min: s.degLo - 2, max: s.degHi + 2 }, series: [{ name: "Launch angle", pts: g.map(function (x) { return [x.d, x.deg]; }), color: 1 }] }) :
       K.chart({ id: "sh-e", title: "How steeply it arrives (° below level)", x: { label: "feet from the target", name: "From", unit: "ft" }, y: { unit: "°" }, series: [{ name: "Entry angle", pts: g.map(function (x) { return [x.d, x.entry]; }), color: 1 }] })) + "</div>";
   var rows = g.filter(function (x, i) { return i % 2 === 0 || i === g.length - 1; });
-  var table = '<section class="ctab"><h2>The table (every other distance)</h2><p class="small mute">' + r.map.rows.length + " distances were checked. The table and the code show every other one, about " + K.fix((s.dfar - Math.min(s.dnear, s.dfar - 1)) / (r.map.rows.length - 1) * 2, 1) + " ft apart.</p>" + '<div class="scroll"><table><thead><tr><th class="r">Distance</th>' + (s.hood === "adj" ? '<th class="r">Angle</th>' : "") + '<th class="r">Wheel speed</th><th class="r">May be off by</th><th class="r">In the air</th><th class="r">Arrives at</th></tr></thead><tbody>' +
+  var table = '<section class="ctab"><h2>The table (' + rows.length + " of " + r.map.rows.length + ' distances shown)</h2><p class="small mute">' + r.map.rows.length + " distances were checked. The table and the code show every other one, about " + K.fix((s.dfar - Math.min(s.dnear, s.dfar - 1)) / (r.map.rows.length - 1) * 2, 1) + " ft apart.</p>" + '<div class="scroll"><table><thead><tr><th class="r">Distance</th>' + (s.hood === "adj" ? '<th class="r">Angle</th>' : "") + '<th class="r">Wheel speed</th><th class="r">May be off by</th><th class="r">In the air</th><th class="r">Arrives at</th></tr></thead><tbody>' +
     rows.map(function (x) { return '<tr class="' + (x === r.map.sweet ? "pick" : "") + '"><td class="r num">' + K.fix(x.d, 1) + " ft</td>" + (s.hood === "adj" ? '<td class="r num">' + K.fix(x.deg, 0) + "°</td>" : "") + '<td class="r num">' + rpmTxt(x.rpm) + ' rpm</td><td class="r num">±' + K.fix((x.hi - x.lo) / 2 / x.rpm * 100, 1) + '%</td><td class="r num">' + K.fix(x.time, 2) + ' s</td><td class="r num">' + K.fix(x.entry, 0) + "°</td></tr>"; }).join("") + "</tbody></table></div></section>";
   var code = "// Distance to the middle of the target (metres) -> wheel speed (rpm)" + (s.hood === "adj" ? " and hood angle (degrees)" : "") + ".\n// These are calculated, not measured. Shoot from each distance, then replace each line with what scored.\n" +
     "// Every other tested distance, " + K.fix((s.dfar - Math.min(s.dnear, s.dfar - 1)) / (r.map.rows.length - 1) * 2 * FT, 2) + " m apart" + (g.length % 2 === 0 ? " (the last row is the farthest tested, half a step on)" : "") + ". The map fills in between.\n" +
@@ -336,7 +336,7 @@ function moveOuts(s, r) {
   if (!mv) return K.verdict("bad", "This distance is outside the range that can be scored from. Open Every distance to see the range.");
   if (mv.out) return K.verdict("bad", "At this speed the shot would have to come from a distance this shooter cannot score from. Slow down or move.");
   var L = mv.lead, side = L.leadDeg < -0.05 ? "left" : L.leadDeg > 0.05 ? "right" : "", still = Math.abs(s.vtoward) < 0.01 && Math.abs(s.vacross) < 0.01;
-  var text = still ? "Standing still, aim straight at the target." : "Aim " + (side ? K.fix(Math.abs(L.leadDeg), 1) + "° to the " + side + " of the target, as the robot faces it," : "straight at it") + " and shoot as if it were " + K.fix(L.d / FT, 1) + " ft away: that takes " + rpmTxt(mv.rpm) + " rpm at the wheel, against " + rpmTxt(mv.rpmStill) + " for the same shot standing still. Aiming straight at it would miss by " + K.fix(mv.missNoLead / FT, 1) + " ft.";
+  var text = still ? "Standing still, aim straight at the target." : "Aim " + (side ? K.fix(Math.abs(L.leadDeg), 1) + "° to the " + side + " of the target, as the robot faces it," : "straight at it") + " and set the wheel as for a standing shot from " + K.fix(L.d / FT, 1) + " ft: " + rpmTxt(mv.rpm) + " rpm, against " + rpmTxt(mv.rpmStill) + " standing still. Aiming straight at it would miss by " + K.fix(mv.missNoLead / FT, 1) + " ft.";
   return K.verdict(still ? "info" : "ok", text, still ? "" : "The launcher's throw plus the robot's own speed gives the ball's path, which is why it points off to one side. A first setting to tune on the field: the lead is exact only without air, and the robot is taken to hold a steady speed.") + K.outs([
     { k: "Turn the aim", v: K.fix(Math.abs(L.leadDeg), 1), u: "°", sub: side ? "to the " + side : "none" },
     { k: "Shoot as if from", v: K.fix(L.d / FT, 1), u: "ft", sub: "really " + K.fix(s.dist, 1) + " ft" },
@@ -451,7 +451,7 @@ function closeUp(g, s, r, phase, rpmNow, tShow) {
     g.text(U.dual ? "wheels" : "wheel", W[0], W[1] + U.rw * k + 12 < y0 + size - 16 ? W[1] + U.rw * k + 12 : W[1] - U.rw * k - 5, { size: 10.5, color: c.mute, align: "center", halo: false });
   }
   // Two arrows to the same scale: the rim's speed where it touches the ball, and the ball's own speed.
-  var rim = rpmNow * RPM * U.rw, al = size * 0.42, ct = P([U.rw * Math.cos(a1), U.rw * Math.sin(a1)]), bl = r.shot.v / (rim || 1) * al;
+  var rim = (r.wThen || rpmNow * RPM) * U.rw, al = size * 0.42, ct = P([U.rw * Math.cos(a1), U.rw * Math.sin(a1)]), bl = r.shot.v / (rim || 1) * al;
   g.arrow(ct[0], ct[1], ct[0] + u[0] * al, ct[1] + u[1] * al, { color: c.s2, width: 2.5, head: 8 });
   g.arrow(E[0], E[1], E[0] + u[0] * bl, E[1] + u[1] * bl, { color: c.s1, width: 2.5, head: 8 });
   g.ctx.restore();
@@ -459,7 +459,7 @@ function closeUp(g, s, r, phase, rpmNow, tShow) {
   var rx = La.strip ? x0 + size + 12 : x0, ty = La.strip ? y0 + 12 : y0 + size + 18, small = La.strip || cw < 170, sz = small ? 11 : 12, lh = small ? 15 : 17, yEnd = La.strip ? La.top : g.h;
   function row(label, val, key, col) { if (ty > yEnd - 4) return; var lx = rx + 2; if (key) { g.line(lx, ty - 4, lx + 10, ty - 4, { color: key, width: 2.5, cap: "butt" }); lx += 15; } g.text(label, lx, ty, { size: sz, color: c.mute, halo: false }); g.text(val, cw - 6, ty, { size: sz, weight: 700, align: "right", color: col || c.text, halo: false }); ty += lh; }
   row(small ? "Wheel" : r.afterBall ? "Wheel now" : r.ballLabel ? "Wheel, at " + K.fix(tShow, 2) + " s" : "Wheel, now", rpmTxt(rpmNow) + " rpm", null, rpmNow < s.rpm * 0.995 ? c.warn : null);
-  row(small ? "Rim" : "Rim speed", K.fix(rim / FT, 1) + " ft/s", c.s2);
+  row(r.afterBall ? (small ? "Rim then" : "Rim as ball " + r.afterBall + " left") : small ? "Rim" : "Rim speed", K.fix(rim / FT, 1) + " ft/s", c.s2);
   row(r.ballLabel ? (small ? r.ballLabel[0] : r.ballLabel[1]) : small ? "Ball" : "Ball leaves at", K.fix(r.shot.v / FT, 1) + " ft/s", c.s1);
   row("Spin", K.n(Math.abs(r.shot.spin) / RPM, 0) + " rpm");
   // Where the energy the wheel lost went: into the ball's flight, into its spin, and wasted.
@@ -498,13 +498,14 @@ function drawSide(g, s, r, t) {
   var tNow = t, rpmNow, phase;
   if (burst) {
     var B = r.burst; rpmNow = F.interp(B.t, B.w, t) / RPM; phase = 1.01;
+    var allDone = B.shots.every(function (sh) { return t - sh.t - r.tc > sh.pc.t[sh.pc.t.length - 1]; });
     B.shots.forEach(function (sh, i) {
       var tf = t - sh.t - r.tc; if (t - sh.t >= 0 && t - sh.t < r.tc) phase = (t - sh.t) / r.tc;
       if (tf < 0) return;
       var endT = sh.pc.t[sh.pc.t.length - 1], shown = sh.path.filter(function (p) { return p[0] <= tf; });
       pathLine(g, V, shown, { color: sh.hit ? c.ok : c.bad, width: tf > endT ? (sh.hit ? 2.25 : 1.25) : 2 });
       if (tf <= endT) { var bxN = V.X(F.interp(sh.pc.t, sh.pc.x, tf)), byN = V.Y(F.interp(sh.pc.t, sh.pc.y, tf)), brN = Math.max(3, V.L(tg.r)); g.ball(bxN, byN, brN, -spinK(r.w) * sh.spin * tf, {}); if (tf > 0.06) g.text(String(i + 1), bxN + brN + 3, byN - brN + 2, { size: 10.5, weight: 700, color: sh.hit ? c.ok : c.bad }); }
-      else if (!sh.hit) { var e = sh.path[sh.path.length - 1]; g.circle(V.X(e[1]), V.Y(e[2]), 3.5, { fill: c.bad, stroke: null }); if (g.w > 520) g.text(String(i + 1), V.X(e[1]) - 8, V.Y(e[2]) + 4, { align: "right", size: 10.5, weight: 700, color: c.bad }); }
+      else if (!sh.hit) { var e = sh.path[sh.path.length - 1]; g.circle(V.X(e[1]), V.Y(e[2]), 3.5, { fill: c.bad, stroke: null }); if (g.w > 520 && allDone) g.text(String(i + 1), V.X(e[1]) - 8, V.Y(e[2]) + 4, { align: "right", size: 10.5, weight: 700, color: c.bad }); }
     });
     var bl = r.burst.hits + " of " + r.burst.shots.length + " go in", inHub = tg.kind !== "front" && V.L(tg.w * 1.13) > g.textWidth(bl, { weight: 700 }) + 10 && V.L(tg.h) > 90;
     if (inHub) g.text(bl, V.X(tg.d), V.Y(tg.h * 0.34), { align: "center", weight: 700, color: hitState === "ok" ? c.ok : c.warn, halo: false });
@@ -527,6 +528,7 @@ function drawSide(g, s, r, t) {
     g.arc(V.X(0), V.Y(s.h0 * IN), 26, -th, 0, { color: c.mute, width: 1 }); g.line(V.X(0), V.Y(s.h0 * IN), V.X(0) + 34, V.Y(s.h0 * IN), { color: c.mute, width: 1 });
     g.text(K.fix(s.deg, 0) + "°", V.X(0) + 32, V.Y(s.h0 * IN) - 9, { color: c.text2, size: 11, weight: 600 });
     g.circle(hx, hy, 5, { fill: c.surface, stroke: c.accent, width: 2 });
+    if (g.w > 520 && !K.playing(ID)) g.text("drag to aim", hx - 10, hy + 3, { align: "right", size: 10.5, color: c.accent });
     // Apex, entry and the verdict at the target.
     var ap = r.fl.apex, apOn = m && m.wall ? false : !m || !m.hit || ap[0] < m.x;
     if (apOn && g.w > 420 && !(flying && Math.hypot(bxs - V.X(ap[0]), bys - V.Y(ap[1])) < 46)) { g.line(V.X(ap[0]), V.Y(ap[1]) - 4, V.X(ap[0]), V.Y(ap[1]) - 16, { color: c.mute, width: 1 }); g.text("top of the arc, " + K.fix(ap[1] / FT, 1) + " ft up", V.X(ap[0]), V.Y(ap[1]) - 20, { align: "center", color: c.text2, size: 11, weight: 600 }); }
@@ -541,7 +543,7 @@ function drawSide(g, s, r, t) {
   g.dim(V.X(0), V.Y(0) + 20, V.X(tg.d), V.Y(0) + 20, K.fix(s.dist, 1) + " ft", 0, { side: "below" });
   // In a burst the close-up follows the ball that left most recently, so its numbers go with the wheel speed shown.
   var rC = r;
-  if (burst) { var curI = -1; r.burst.shots.forEach(function (sh, i) { if (t >= sh.t) curI = i; }); if (curI >= 0) { var cs = r.burst.shots[curI]; rC = Object.assign({}, r, { ballLabel: ["Ball " + (curI + 1), "Ball " + (curI + 1) + " left at"], afterBall: curI + 1, shot: Object.assign({}, r.shot, { v: cs.v, spin: cs.spin, eWheel: 0.5 * r.U.Iw * (cs.wBefore * cs.wBefore - cs.wAfter * cs.wAfter) }) }); } }
+  if (burst) { var curI = -1; r.burst.shots.forEach(function (sh, i) { if (t >= sh.t) curI = i; }); if (curI >= 0) { var cs = r.burst.shots[curI]; rC = Object.assign({}, r, { ballLabel: ["Ball " + (curI + 1), "Ball " + (curI + 1) + " left at"], afterBall: curI + 1, wThen: cs.wBefore, shot: Object.assign({}, r.shot, { v: cs.v, spin: cs.spin, eWheel: 0.5 * r.U.Iw * (cs.wBefore * cs.wBefore - cs.wAfter * cs.wAfter) }) }); } }
   closeUp(g, s, rC, phase, rpmNow, tNow);
 }
 function hit(x, y, s) {
@@ -628,9 +630,11 @@ function drawMove(g, s, r, t) {
   g.ball(V.X(vx * ts), V.Y(-d + (hvS + vy) * ts), rb, 0, { fill: c.sheet, stroke: c.warn });
   var e = [hv * Math.cos(aim) + vx, hv * Math.sin(aim) + vy];
   if (tl < L.time) g.ball(V.X(e[0] * tl), V.Y(-d + e[1] * tl), rb, 0, {});
-  g.text(tl >= L.time ? (mv.side && mv.side.meet && mv.side.meet.hit ? "in, " + inch(mv.side.meet.room) + " to spare" : "arrives") : "", V.X(0), V.Y(tw / 2) - 8, { align: "center", color: c.ok, weight: 700 });
+  g.text(tl >= L.time ? (mv.side && mv.side.meet && mv.side.meet.hit ? (g.w > 520 ? "in, " + inch(mv.side.meet.room) + " to spare" : "in") : "arrives") : "", V.X(0), V.Y(tw / 2) - 8, { align: "center", color: c.ok, weight: 700 });
   // Inset: the same shot from the side, so it is plain that it still goes in.
-  if (mv.side) {
+  // On a phone the side view is too small to read, so the phone gets its answer as a line of words.
+  if (mv.side && g.w <= 520) g.text("From the side: " + (mv.side.meet && mv.side.meet.hit ? "in, " + inch(mv.side.meet.room) + " to spare" : "misses"), 10, g.h - 10, { size: 11, weight: 700, color: mv.side.meet && mv.side.meet.hit ? c.ok : c.warn });
+  if (mv.side && g.w > 520) {
     var big = g.w > 520, iw = big ? F.clamp(g.w * 0.3, 220, 250) : Math.min(170, g.w * 0.46), ih = iw * (big ? 0.62 : 0.56), top2 = big ? 46 : 34, ix = 10, iy = g.h - ih - 10, sd = mv.side, tgs = sd.target;
     g.rect(ix, iy, iw, ih, { fill: c.surface, stroke: c.line2, width: 1 });
     var k2 = Math.min((iw - 20) / (tgs.d + tgs.w * 0.7 + 0.6), (ih - top2) / (Math.max(sd.apex[1], tgs.h) + 0.2)), X2 = function (x) { return ix + 12 + (x + 0.3) * k2; }, Y2 = function (y) { return iy + ih - 8 - y * k2; };

@@ -92,6 +92,15 @@ M.compare = function (o) {
   var ok = rows.filter(function (q) { return q.sf >= 3; });
   return { rows: rows, best: ok.length ? ok[0].id : null };
 };
+/* How much to enlarge the bend so it shows: the largest round factor (1, 2, 3, 4, 5, 10, 20, 30, 40, 50, 100 ...) that
+   draws it no deeper than 15% of the beam's length. 1 when it already shows. From the inputs alone, so every screen
+   draws the same factor. */
+M.bendScale = function (delta, L) {
+  if (!(delta > 0) || !(L > 0)) return 1;
+  var want = 0.15 * L / delta, q = [1000, 500, 300, 200, 100, 50, 40, 30, 20, 10, 5, 4, 3, 2, 1];
+  for (var i = 0; i < q.length; i++) if (q[i] <= want) return q[i];
+  return 1;
+};
 // The grid behind the beam: 1 in squares up to 40 in, 2 in up to 80 in, then 6 in. It depends on the length alone.
 M.gridStep = function (L) { return L <= 40 ? 1 : L <= 80 ? 2 : 6; };
 // When the stress is a sliver against yield, the cross-section's stress drawing is enlarged by this much (1 = true).
@@ -141,6 +150,7 @@ function ease(u) { u = F.clamp(u, 0, 1); return u * u * (3 - 2 * u); }
 (function () {
   var st = document.createElement("style");
   st.textContent = ".t-beam-cap { margin: 0; font-size: .8rem; color: var(--mute); } .t-beam-cmp .t-beam-cap { margin-bottom: 6px; } .t-beam-cmp td:first-child { white-space: normal; min-width: 12em; } .t-beam-best { display: block; margin-top: 2px; font-size: .8rem; font-weight: 600; color: var(--ok); white-space: normal; } .t-beam-cmp td.t-beam-bad { color: var(--bad); font-weight: 700; } .t-beam-cmp td.t-beam-warn { color: var(--warn); font-weight: 700; }";
+  st.textContent += "@media (max-width: 640px) { .bench[data-calc=\"tool-beam\"] .outs > .out:last-child:nth-child(odd) { grid-column: 1 / -1; } }";   // no card alone beside an empty cell
   document.head.appendChild(st);
 })();
 
@@ -192,8 +202,8 @@ K.tool({
   },
 
   more: function (s, r) {
-    var defl = K.chart({ id: "beam-defl", title: "Deflection along the beam, true size", x: { label: "along the beam, in", name: "At", unit: "in", min: 0, max: s.L }, y: { label: "deflection, in", unit: "in" },
-      series: [{ name: "Deflection", pts: r.curve, color: 1 }], dots: s.P > 0 ? [{ x: r.xmax, y: -r.delta, label: K.fix(r.delta, 3) + " in" }] : [] });
+    var defl = K.chart({ id: "beam-defl", title: "Deflection along the beam, true size", note: s.P > 0 ? "Most: " + inch(r.delta) + " " + where(s.hold) + " (the dot)." : "", x: { label: "along the beam, in", name: "At", unit: "in", min: 0, max: s.L }, y: { label: "deflection, in", unit: "in" },
+      series: [{ name: "Deflection", pts: r.curve, color: 1 }], dots: s.P > 0 ? [{ x: r.xmax, y: -r.delta }] : [] });
     // The axis runs to yield (or past the peak when it yields), so the curve reads against yield; the peak is marked
     // with its share of yield.
     var ref, peak = r.stress, ytop = M.niceTop(Math.max(r.mat.yld * 1.05, peak * 1.15)), at = s.hold === "cant" ? "at the wall" : s.hold === "simple" ? "at the middle" : "at the middle and ends";
@@ -209,7 +219,7 @@ K.tool({
       '<div class="scroll"><table><thead><tr><th>Section</th><th class="r">Bend</th><th class="r">Safety factor</th><th class="r">Weight</th><th></th></tr></thead><tbody>' +
       cmp.rows.map(function (q) {
         var on = q.id === cur, best = q.id === cmp.best, sfc = q.sf < 1 ? "bad" : q.sf < 3 ? "warn" : "";
-        return '<tr class="' + (on ? "pick" : "") + '"><td>' + esc(q.name) + (best ? '<small class="t-beam-best">Lightest with a safety factor of 3; it bends ' + K.fix(q.delta, 2) + " in</small>" : "") + '</td><td class="r num">' + (q.big ? "too far" : inch(q.delta)) + '</td><td class="r num' + (sfc ? " t-beam-" + sfc : "") + '">' + (isFinite(q.sf) ? K.fix(q.sf, 1) : "–") + '</td><td class="r num">' + K.fix(q.weight, 2) + ' lb</td><td class="r">' +
+        return '<tr class="' + (on ? "pick" : "") + '"><td>' + esc(q.name) + (best ? '<small class="t-beam-best">Lightest with a safety factor of 3; it bends ' + K.fix(q.delta, 2) + " in</small>" : "") + '</td><td class="r num">' + (q.sf < 1 ? "yields" : q.big ? "too far" : inch(q.delta)) + '</td><td class="r num' + (sfc ? " t-beam-" + sfc : "") + '">' + (isFinite(q.sf) ? K.fix(q.sf, 1) : "–") + '</td><td class="r num">' + K.fix(q.weight, 2) + ' lb</td><td class="r">' +
           (on ? '<span class="pill ok">In the drawing</span>' : '<button class="btn sm" data-act="beamuse" data-v="' + q.id + '">Use this one</button>') + "</td></tr>";
       }).join("") + "</tbody></table></div>" + (cmp.best ? "" : '<p class="t-beam-cap">None of these keeps a safety factor of 3 here. Shorten the span, support both ends, or use steel.</p>') + "</section>";
     return '<div class="chartrow">' + defl + str + "</div>" + tab + K.notes(
@@ -233,7 +243,7 @@ K.tool({
     var frac = ease(t / DUR), P = s.P * frac, loading = frac < 0.999 && s.P > 0;
     /* Two areas: the beam, and the cross-section (a column at the right on a laptop; a short strip along the bottom
        on a phone, so the beam gets most of the phone's stage). */
-    var panH = narrow ? Math.min(150, Math.round(H * 0.4)) : H;
+    var panH = narrow ? Math.min(168, Math.round(H * 0.42)) : H;
     var pan = narrow ? { x: 0, y: H - panH, w: W, h: panH } : { x: W - F.clamp(W * 0.3, 210, 290), y: 0, w: 0, h: H };
     if (!narrow) pan.w = W - pan.x;
     // Room at the free end for the whole bend label ("really 0.121 in"), so it is never cut off.
@@ -249,8 +259,10 @@ K.tool({
     g.ctx.save(); g.ctx.beginPath(); g.ctx.rect(0, 0, narrow ? W : pan.x, narrow ? pan.y : H); g.ctx.clip(); g.grid(V, step, ""); g.ctx.restore();
     // How much to enlarge the bend so it shows: on a phone, a little more of the room under the beam.
     var below = s.hold === "simple" ? 26 : s.hold === "cant" && narrow ? 30 : 14;
-    var room = bot - (cy + th / 2) - below, dpx = r.delta * k, f = 1, fill = narrow ? 0.72 : 0.6;
-    if (dpx > 0 && (dpx < 0.25 * room || dpx > 0.9 * room)) { var want = fill * room / dpx; f = want >= 1 ? NICE.filter(function (n) { return n <= want; })[0] : want; }
+    // The bend's enlargement depends on the inputs alone (the same on a phone and a laptop); it is cut down only when the
+    // enlarged bend would not fit the room under the beam.
+    var room = bot - (cy + th / 2) - below, f = M.bendScale(r.delta, L);
+    if (r.delta * k * f > 0.9 * room && r.delta > 0) { var fit = 0.9 * room / (r.delta * k); f = fit >= 1 ? NICE.filter(function (n) { return n <= fit; })[0] : fit; }
     function yAt(x) { return cy + M.deflect(s.hold, P, L, r.EI, x) * k * f; }
     // The beam unloaded, as a ghost.
     g.rect(V.X(0), cy - th / 2, L * k, th, { stroke: c.ghost, width: 1, dash: [5, 4] });
@@ -267,6 +279,20 @@ K.tool({
     g.line(top1[0][0], top1[0][1], bot1[0][0], bot1[0][1], { color: c.partLine, width: 1.25 }); g.line(top1[N][0], top1[N][1], bot1[N][0], bot1[N][1], { color: c.partLine, width: 1.25 });
     if (!sec.solid && sec.shape !== "round" && th > 14) {             // the walls inside, as hidden lines
       var wi = sec.t * k; if (wi > 2) { g.path(top1.map(function (p) { return [p[0], p[1] + wi]; }), { color: c.partLine, width: 1, dash: [4, 3] }); g.path(bot1.map(function (p) { return [p[0], p[1] - wi]; }), { color: c.partLine, width: 1, dash: [4, 3] }); }
+    }
+    // The faces, named on the tube itself where it bends most (near the wall, or a third of the way in): which one is
+    // stretched and which squeezed, from the sign of the bending moment there.
+    var faceBotY = -1;
+    if (s.P > 0) {
+      var fxx = s.hold === "cant" ? 0.24 * L : s.hold === "simple" ? 0.2 * L : 0.3 * L, mo = M.moment(s.hold, s.P, L, fxx), topSt = mo < 0;
+      var fo = { size: 12, weight: 600, color: c.text2, align: "center" }, t1 = "top " + (topSt ? "stretched" : "squeezed"), t2 = "bottom " + (topSt ? "squeezed" : "stretched");
+      // Clear of the supports at the ends, and (resting on or held at both ends) left of the middle, where the bend's figure is.
+      var hw = Math.max(g.textWidth(t1, fo), g.textWidth(t2, fo)) / 2 + 4, fpx = Math.max(V.X(0) + 24 + hw, Math.min(V.X(L) - 10 - hw, V.X(fxx)));
+      if (s.hold !== "cant") fpx = Math.max(V.X(0) + 24 + hw, Math.min(fpx, V.X(L / 2) - 8 - hw));
+      // Each word clears the beam (and the unloaded outline) all along its own width.
+      var hiY = cy, loY = cy; for (var q2 = 0; q2 <= 8; q2++) { var xx = F.clamp(V.ux(fpx - hw + 2 * hw * q2 / 8), 0, L), yy = yAt(xx); hiY = Math.min(hiY, yy); loY = Math.max(loY, yy); }
+      g.text(t1, fpx, hiY - th / 2 - 8, fo);
+      g.text(t2, fpx, loY + th / 2 + 17, fo); faceBotY = loY + th / 2 + 17;
     }
     // Supports.
     var sh = Math.max(th + 40, 64);
@@ -295,13 +321,16 @@ K.tool({
     // The bend, dimensioned in true inches: the same figure, to the same places, as the Deflection answer.
     var dTrue = M.deflect(s.hold, P, L, r.EI, xl), dDraw = dTrue * k * f, lab = "really " + inch(dTrue);
     if (s.hold === "cant") {                       // beside the free end, or under it on a phone
-      if (dDraw > 10) g.dim(lx + 12, cy, lx + 12, cy + dDraw, narrow ? "" : lab, 0, { side: "right", color: c.text2 });
-      if (s.P > 0 && (narrow || dDraw <= 10)) g.text((dDraw > 10 ? "" : "Bends ") + lab, lx + 14, cy + dDraw + th / 2 + 18, { color: c.text2, weight: 600, align: "right" });
+      if (dDraw > 16) g.dim(lx + 12, cy, lx + 12, cy + dDraw, narrow ? "" : lab, 0, { side: "right", color: c.text2 });
+      if (s.P > 0 && (narrow || dDraw <= 16)) g.text((dDraw > 16 ? "" : "Bends ") + lab, lx + 14, cy + dDraw + th / 2 + 18, { color: c.text2, weight: 600, align: "right" });
     } else if (s.P > 0) {                          // under the middle: from where the bottom face was to where it is
       var yb0 = cy + th / 2;
-      if (dDraw > 10) g.dim(lx + 16, yb0, lx + 16, yb0 + dDraw, "", 0, { color: c.text2 });
+      if (dDraw > 16) g.dim(lx + 16, yb0, lx + 16, yb0 + dDraw, "", 0, { color: c.text2 });
       var ry0 = yb0 + dDraw + (s.hold === "simple" && L * k < 80 ? 40 : 16) + (P > r.Pyield ? 10 : 0);
-      g.text((dDraw > 10 ? "" : "Bends ") + lab, lx, ry0, { color: c.text2, weight: 600, align: "center" });
+      // Under the low point, starting just right of the middle (the face label keeps to the left of it).
+      var bt = (dDraw > 16 ? "" : "Bends ") + lab, btw = g.textWidth(bt, { weight: 600 });
+      if (lx + 6 + btw <= V.X(L) - 24) g.text(bt, lx + 6, ry0, { color: c.text2, weight: 600 });
+      else g.text(bt, lx, Math.max(ry0, faceBotY + 18), { color: c.text2, weight: 600, align: "center" });   // no room: a line lower, centred
       if (P > r.Pyield) g.text("Yields here (circled)", lx, ry0 + 17, { color: c.bad, weight: 700, align: "center" });
     }
     g.dim(V.X(0), (narrow ? pan.y : H) - 14, V.X(L), (narrow ? pan.y : H) - 14, K.n(L, 2) + " in", 0);
@@ -344,9 +373,9 @@ function section(g, s, r, pan, narrow, kBeam, frac) {
   var c = g.c, sec = r.sec;
   g.rect(pan.x, pan.y, pan.w, pan.h, { fill: c.sheet, stroke: null });
   if (narrow) g.line(0, pan.y, g.w, pan.y, { color: c.line, width: 1 }); else g.line(pan.x, 0, pan.x, g.h, { color: c.line, width: 1 });
-  var boxW = narrow ? Math.min(80, pan.w * 0.21) : pan.w * 0.3, boxH = narrow ? pan.h - 70 : Math.min(pan.h * 0.34, 124);
+  var boxW = narrow ? Math.min(80, pan.w * 0.21) : pan.w * 0.24, boxH = narrow ? pan.h - 98 : Math.min(pan.h * 0.34, 124);
   var ks = Math.min(boxW / sec.B, boxH / sec.H), bw = sec.B * ks, bh = sec.H * ks;
-  var cx = narrow ? 44 + bw / 2 : pan.x + 46 + bw / 2, cy = narrow ? pan.y + 40 + boxH / 2 : pan.y + 56 + boxH / 2;
+  var cx = narrow ? Math.max(44, 30 + g.textWidth(frac2(sec.H) + " in", { size: 12, weight: 600 })) + bw / 2 : pan.x + 46 + bw / 2, cy = narrow ? pan.y + 64 + boxH / 2 : pan.y + 72 + boxH / 2;
   g.text(narrow ? "Cross-section" : "Cross-section, enlarged", narrow ? 12 : pan.x + 12, pan.y + 18, { weight: 600, size: 12 });
   if (sec.shape === "round") {
     g.circle(cx, cy, bw / 2, { fill: c.part, stroke: c.partLine, width: 1.25 });
@@ -356,8 +385,8 @@ function section(g, s, r, pan, narrow, kBeam, frac) {
     if (!sec.solid) { var tw = sec.t * ks; g.rect(cx - bw / 2 + tw, cy - bh / 2 + tw, bw - 2 * tw, bh - 2 * tw, { fill: c.sheet, stroke: c.partLine, width: 1.25 }); }
   }
   // Dimensions.
-  g.dim(cx - bw / 2, cy + bh / 2 + 10, cx + bw / 2, cy + bh / 2 + 10, frac2(sec.B) + " in", 0, { side: "below", size: 11 });
-  g.dim(cx - bw / 2 - 12, cy + bh / 2, cx - bw / 2 - 12, cy - bh / 2, frac2(sec.H) + " in", 0, { side: "left", size: 11 });
+  g.dim(cx - bw / 2, cy + bh / 2 + 10, cx + bw / 2, cy + bh / 2 + 10, frac2(sec.B) + " in", 0, { side: "below", size: 12 });
+  g.dim(cx - bw / 2 - 12, cy + bh / 2, cx - bw / 2 - 12, cy - bh / 2, frac2(sec.H) + " in", 0, { side: "left", size: 12 });
   /* The stress across the depth, as a small chart on its side: zero on the neutral axis, the red dashes at yield
      either side (squeezed one way, stretched the other), and the wedge reaching out to this load's stress. */
   // A sliver of stress is drawn enlarged, by a stated factor, as the bend is; the ticks then mark a share of yield.
@@ -372,29 +401,31 @@ function section(g, s, r, pan, narrow, kBeam, frac) {
     g.poly([[sx, cy], [sx - d * wv, cy + bh / 2], [sx, cy + bh / 2]], { fill: col, stroke: null });
   }
   // The scale under it: yield, 0, yield; and which side is squeezed and which stretched.
-  var sy = cy + bh / 2 + 15, ss = { size: 10, weight: 600, align: "center" };
+  var sy = cy + bh / 2 + 15, ss = { size: 12, weight: 600, align: "center" };
   var tick = zoom > 1 ? K.n(100 / zoom, 0) + "%" : "yield", tc = zoom > 1 ? c.text2 : c.bad;
   g.text(tick, sx - lim, sy, Object.assign({ color: tc }, ss)); g.text("0", sx, sy, Object.assign({ color: c.text2 }, ss)); g.text(tick, sx + lim, sy, Object.assign({ color: tc }, ss));
-  if (zoom > 1) { var zt = "stress drawn " + zoom + "×; ticks: % of yield", tw0 = g.textWidth(narrow ? "Cross-section" : "Cross-section, enlarged", { weight: 600, size: 12 }); if (narrow) g.text(zt, 12 + tw0 + 10, pan.y + 18, { size: 11, color: c.mute }); else g.text(zt, pan.x + 12, pan.y + 34, { size: 11, color: c.mute }); }
-  g.text("squeezed", sx - 4, cy - bh / 2 - 8, { size: 10, color: c.text2, align: "right" }); g.text("stretched", Math.min(sx + 4, pan.x + pan.w - 6 - g.textWidth("stretched", { size: 10 })), cy - bh / 2 - 8, { size: 10, color: c.text2 });
+  if (zoom > 1) { var zt = "stress drawn " + zoom + "×; ticks: % of yield", tw0 = g.textWidth(narrow ? "Cross-section" : "Cross-section, enlarged", { weight: 600, size: 12 }); if (narrow) g.text(zt, 12 + tw0 + 10, pan.y + 18, { size: 12, color: c.mute }); else g.text(zt, pan.x + 12, pan.y + 34, { size: 12, color: c.mute }); }
+  // Which side of the scale is which, on two heights so neither word runs into the other.
+  g.text("squeezed", sx - 4, cy - bh / 2 - 22, { size: 12, color: c.text2, align: "right" }); g.text("stretched", Math.min(sx + 4, pan.x + pan.w - 12 - g.textWidth("stretched", { size: 12 })), cy - bh / 2 - 8, { size: 12, color: c.text2 });
   // The neutral axis named on its own line, at its right-hand end; the wall named beside the section.
-  var nax = sx + lim + 7, naw = g.textWidth("neutral axis", { size: 10, weight: 600 });
+  var nax = sx + lim + 7, naw = g.textWidth("neutral axis", { size: 12, weight: 600 });
   // Where it fits: at the line's right-hand end, else inside the section just above the line, else in the lines below.
   // At the line's right-hand end where it fits; on a laptop's narrow panel, as a key under the picture: a sample of
   // the dash-dot line and its name, with the wall thickness beside it.
-  var naxis = nax + naw < pan.x + pan.w - 4;
-  if (naxis) g.text("neutral axis", nax, cy, { size: 10, weight: 600, color: c.accent, base: "middle" });
+  var naxis = !narrow && nax + naw < pan.x + pan.w - 4;
+  if (naxis) g.text("neutral axis", nax, cy, { size: 12, weight: 600, color: c.accent, base: "middle" });
   if (!narrow) {
     var ky = sy + 30, kx = pan.x + 12;
-    if (!naxis) { g.line(kx, ky - 4, kx + 22, ky - 4, { color: c.accent, width: 1.25, dash: [8, 3, 2, 3] }); g.text("neutral axis, no stress", kx + 28, ky, { size: 10, weight: 600, color: c.accent }); naxis = true; ky += 16; }
-    if (!sec.solid) g.text("wall " + frac2(sec.t) + " in", kx, ky, { size: 10, color: c.mute });
+    if (!naxis) { g.line(kx, ky - 4, kx + 22, ky - 4, { color: c.accent, width: 1.25, dash: [8, 3, 2, 3] }); g.text("neutral axis, no stress", kx + 28, ky, { size: 12, weight: 600, color: c.accent }); naxis = true; ky += 16; }
+    if (!sec.solid) g.text("wall " + frac2(sec.t) + " in", kx, ky, { size: 12, color: c.mute });
   }
-  var lab = narrow ? Math.max(sx + lim + 14, sx + 14 + g.textWidth("stretched", { size: 10 })) : pan.x + 12, ly = narrow ? pan.y + 38 : sy + 70, maxW = (narrow ? g.w : pan.x + pan.w) - lab - 8;
+  var lab = narrow ? Math.max(sx + lim + 14, sx + 14 + g.textWidth("stretched", { size: 12 })) : pan.x + 12, ly = narrow ? pan.y + 44 : sy + 70, maxW = (narrow ? g.w : pan.x + pan.w) - lab - 8;
   // One line each: where, which face is stretched, the stress, and its share of yield.
   var where = s.hold === "cant" ? "At the wall, most stressed" : s.hold === "simple" ? "At the middle, most stressed" : "At the middle and the held ends";
   var rows = [[where, { color: c.accent, size: 12, weight: 700 }],
     [fc.swap ? (topSq ? "Middle: top squeezed; ends: top stretched" : "Middle: top stretched; ends: top squeezed") : "Top " + (topSq ? "squeezed" : "stretched") + ", bottom " + (topSq ? "stretched" : "squeezed"), { color: c.text2, size: 12 }],
     [K.n(r.stress * frac, 0) + " psi, " + K.n(share * 100, 0) + "% of yield", { color: share >= 1 ? c.bad : c.text, size: 12, weight: 600 }]];
+  if (narrow) rows.push(["Dash-dot: neutral axis, no stress", { color: c.accent, size: 12, weight: 600 }]);
   // Each label wrapped to the room beside the section, so nothing runs off a phone's edge.
   var y = ly, lh = narrow ? 15 : 17;
   rows.forEach(function (row) {

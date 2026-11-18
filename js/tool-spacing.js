@@ -66,7 +66,7 @@ K.tool({
     var teeth = K.num(ID, "n1", "Driving " + word, { unit: "teeth", min: 8, max: 120, step: 1, slider: true, tip: "The one the motor turns." }) + K.num(ID, "n2", "Driven " + word, { unit: "teeth", min: 8, max: 120, step: 1, slider: true });
     var space = s.kind === "gear" ?
       K.num(ID, "gwant", "Distance you already have", { unit: "in", min: 0, max: 12, step: 0.001, hint: "Holes already drilled? Type their spacing to see which gear pairs mesh there, and how much slack each has. Leave 0 otherwise.", tip: "The table under the answers lists pairs of common gears whose centre distance is nearest this." }) +
-      K.num(ID, "gextra", "Extra spacing", { unit: "in", min: 0, max: 0.02, step: 0.001, hint: "Added so the teeth do not bind (backlash). Not used when you give a distance above: the slack is then whatever your holes leave.", tip: "Added to the exact distance so the teeth do not bind. 0.003 in is a common choice for 20 DP gears in a plate cut on a router." }) :
+      (s.gwant > 0 ? '<p class="cfh">Extra spacing is not used while a distance is typed: the slack is whatever your holes leave. Set the distance to 0 to get it back.</p>' : K.num(ID, "gextra", "Extra spacing", { unit: "in", min: 0, max: 0.02, step: 0.001, hint: "Added so the teeth do not bind (backlash).", tip: "Added to the exact distance so the teeth do not bind. 0.003 in is a common choice for 20 DP gears in a plate cut on a router." })) :
       K.num(ID, "target", "Wanted centre distance", { unit: "in", min: 1, max: 40, step: 0.001, slider: true, tip: "Roughly where you want the two shafts. The calculator finds the real distances a stock belt or a whole number of links gives." }) +
       (s.kind === "belt" ? K.num(ID, "extra", "Extra spacing", { unit: "in", min: -0.02, max: 0.05, step: 0.001, hint: "Added to the exact distance. 0 suits most belts.", tip: "Added to the exact distance. Leave at 0 for a belt on fixed centres unless your pulleys run tight." }) :
         K.num(ID, "cextra", "Extra spacing", { unit: "in", min: 0, max: 0.06, step: 0.001, hint: "Added so the chain goes on.", tip: "Added to the exact distance so the chain goes on. 0.018 in is a common choice for #25 chain." }));
@@ -93,25 +93,25 @@ K.tool({
     if (!r.sel) return K.verdict("bad", "No " + (s.kind === "belt" ? "belt" : "chain") + " fits these two at that distance. Move them further apart.");
     var o = r.sel, word = s.kind === "belt" ? o.teeth + "-tooth belt" : o.links + "-link chain", off = o.err, small = Math.min(o.mesh1, o.mesh2);
     // The green word is for a loop that gives the distance asked for. One that cannot is a note: it works, at another distance.
-    var state = small < 6 && s.kind === "belt" ? "warn" : Math.abs(off) > 0.01 ? "info" : "ok";
+    var few = small < 6 && s.kind === "belt", state = few || Math.abs(off) > 0.01 ? "warn" : "ok";
     var text = (Math.abs(off) < 0.0005 ? "A " + word + " fits at " + K.fix(o.center, 3) + " in, exactly what you wanted." : Math.abs(off) <= 0.01 ? "A " + word + " fits at " + K.fix(o.center, 3) + " in, " + K.fix(Math.abs(off), 3) + " in " + (off > 0 ? "more" : "less") + " than you wanted." : "No stock " + (s.kind === "belt" ? "belt" : "chain length") + " gives " + K.fix(s.target, 3) + " in. The nearest, a " + word + ", puts the centres at " + K.fix(o.center, 3) + " in, " + K.fix(Math.abs(off), 3) + " in " + (off > 0 ? "more" : "less") + ".") +
-      (state === "warn" ? " Only " + small + " teeth grip the small pulley. A common rule of thumb is six or more; fewer can skip under load." : "");
-    return K.verdict(state, text, Math.abs(off) < 0.0005 ? "" : "With fixed holes, drill them " + K.fix(o.center, 3) + " in apart, not " + K.fix(s.target, 3) + "." + (off < 0 ? " This loop is too short to reach " + K.fix(s.target, 3) + " in. To keep that distance, take the next longer one in the table and use a tensioner to take up its slack." : " To keep " + K.fix(s.target, 3) + " in with this loop, add a tensioner to take up the slack.") + " Before drilling fixed holes, check the maker's tolerance on centre distance, or leave a slot.") + K.outs([
+      (few ? " Only " + small + " teeth grip the small pulley. A common rule of thumb is six or more; fewer can skip under load." : "");
+    return K.verdict(state, text, Math.abs(off) < 0.0005 ? "" : "With fixed holes, drill them " + K.fix(o.center, 3) + " in apart. To keep " + K.fix(s.target, 3) + " in, " + (off < 0 ? "take the next longer " + (s.kind === "belt" ? "belt" : "chain") + " in the table and add a tensioner" : "add a tensioner to take up this one's slack") + ". Check the maker's tolerance before drilling, or leave a slot.") + K.outs([
       { k: "Centre distance", v: K.fix(o.center, 3), u: "in", sub: K.fix(o.center * 25.4, 2) + " mm" },
       { k: s.kind === "belt" ? "Belt" : "Chain", v: String(r.count), u: s.kind === "belt" ? "teeth" : "links", sub: K.fix(o.length, 2) + " in long" },
       { k: "Ratio", v: K.fix(r.ratio, 3), u: ": 1", sub: rtxt, tip: "Driven teeth divided by driving teeth." },
-      { k: "Teeth gripped", v: o.mesh1 + " and " + o.mesh2, sub: "on the " + s.n1 + "T driving " + (s.kind === "belt" ? "pulley" : "sprocket") + " and the " + s.n2 + "T driven one" + (s.kind === "belt" ? ". Six or more is a rule of thumb" : ""), state: state === "warn" ? "warn" : "", tip: "How many teeth the belt or chain wraps on each wheel. Few teeth on a small pulley is where belts skip." },
-      { k: "Gap between them", v: K.fix(o.gap, 2), u: "in", sub: "between their outer edges, about", state: o.gap < 0.05 ? "warn" : "", tip: "Clear space between the two wheels' outer edges." }]);
+      { k: "Teeth gripped", v: o.mesh1 + " and " + o.mesh2, sub: "on the " + s.n1 + "T and the " + s.n2 + "T" + (s.kind === "belt" ? "; six or more is the rule of thumb" : ""), state: few ? "warn" : "", tip: "How many teeth the belt or chain wraps on each wheel. Few teeth on a small pulley is where belts skip." },
+      { k: "Gap between them", v: K.fix(o.gap, 2), u: "in", sub: "roughly, between their outer edges", state: o.gap < 0.05 ? "warn" : "", tip: "Clear space between the two wheels' outer edges." }]);
   },
 
   more: function (s, r) {
     var out = "";
     if (s.kind !== "gear" && r.options && r.options.length) {
-      var unit = s.kind === "belt" ? "teeth" : "links";
-      out += '<section class="ctab"><h2>' + (s.kind === "belt" ? "Belts" : "Chains") + ' near that distance</h2><div class="scroll"><table><thead><tr><th>' + (s.kind === "belt" ? "Belt" : "Chain") + '</th><th class="r">Length</th><th class="r">Centre distance</th><th class="r">Against wanted</th><th class="r">Teeth gripped</th><th></th></tr></thead><tbody>' +
+      var unit = s.kind === "belt" ? "teeth" : "links", grips = r.options.some(function (o) { return o.mesh1 !== r.options[0].mesh1 || o.mesh2 !== r.options[0].mesh2; });
+      out += '<section class="ctab"><h2>' + (s.kind === "belt" ? "Belts" : "Chains") + ' near that distance</h2><div class="scroll"><table><thead><tr><th>' + (s.kind === "belt" ? "Belt" : "Chain") + '</th><th class="r">Length</th><th class="r">Centre distance</th><th class="r">Against wanted</th>' + (grips ? '<th class="r">Teeth gripped</th>' : "") + '<th></th></tr></thead><tbody>' +
         r.options.map(function (o) {
           var n = o.teeth || o.links, on = r.sel === o;
-          return '<tr class="' + (on ? "pick" : "") + '"><td>' + n + " " + unit + '</td><td class="r num">' + K.fix(o.length * 25.4, 0) + " mm, " + K.fix(o.length, 2) + ' in</td><td class="r num">' + K.fix(o.center, 3) + ' in</td><td class="r num">' + (o.err >= 0 ? "+" : "−") + K.fix(Math.abs(o.err), 3) + ' in</td><td class="r num">' + o.mesh1 + " and " + o.mesh2 + '</td><td class="r">' + (on ? '<span class="pill ok">In the drawing</span>' : '<button class="btn sm" data-act="spuse" data-v="' + n + '">Use this one</button>') + "</td></tr>";
+          return '<tr class="' + (on ? "pick" : "") + '"><td>' + n + " " + unit + '</td><td class="r num">' + K.fix(o.length * 25.4, 0) + " mm, " + K.fix(o.length, 2) + ' in</td><td class="r num">' + K.fix(o.center, 3) + ' in</td><td class="r num">' + (o.err >= 0 ? "+" : "−") + K.fix(Math.abs(o.err), 3) + ' in</td>' + (grips ? '<td class="r num">' + o.mesh1 + " and " + o.mesh2 + "</td>" : "") + '<td class="r">' + (on ? '<span class="pill ok">In the drawing</span>' : '<button class="btn sm" data-act="spuse" data-v="' + n + '">Use this one</button>') + "</td></tr>";
         }).join("") + "</tbody></table></div>" +
         '<div class="row"><button class="btn sm" data-act="spfind">' + D.ic("search", 16) + " Find it in inventory</button></div></section>";
     }
@@ -143,7 +143,8 @@ K.tool({
   draw: function (g, s, r, t) {
     var c = g.c, C = r.center; if (!(C > 0)) { g.text("Nothing to draw yet.", 16, 28, { color: c.mute }); return; }
     var R1 = r.od1 / 2, R2 = r.od2 / 2, big = Math.max(R1, R2), m = big * 0.12 + 0.15;
-    var V = g.view({ x0: -R1 - m, x1: C + R2 + m, y0: -big - m, y1: big + m }, { l: 14, r: 14, t: s.kind === "gear" && s.gwant > 0 ? (g.w > 520 ? 46 : 62) : 28, b: 52 }, "middle");
+    var offWant = s.kind !== "gear" && r.sel && Math.abs(s.target - C) > 0.0005;
+    var V = g.view({ x0: -R1 - m, x1: C + R2 + m, y0: -big - m, y1: big + m }, { l: 14, r: 14, t: (s.kind === "gear" && s.gwant > 0) || offWant ? (g.w > 520 ? 46 : 62) : 28, b: 52 }, "middle");
     g.grid(V, 1, g.w > 520 ? "1 in squares" : "");
     var x1 = V.X(0), x2 = V.X(C), y = V.Y(0), p1 = V.L(r.pd1 / 2), p2 = V.L(r.pd2 / 2);
     var speed = 0.9, a1 = t * speed, a2;               // the driving wheel's angle (radians, clockwise on screen)
@@ -192,29 +193,30 @@ K.tool({
     g.dim(x1, by + 30, x2, by + 30, K.fix(C, 3) + " in" + (!have ? " centre to centre" : r.fitsNow ? ", your holes" : ", where this pair meshes"), 0, { side: "below" });
     // The note about the holes is a key line under the heading, clear of the gears; the cross marks the hole itself.
     if (have && r.fitsNow) g.text("On your holes, with " + K.fix(r.slack, 3) + " in of slack", 12, 36, { color: c.ok, size: 11, weight: 700 });
-    if (have && !r.fitsNow) {
-      var hx = V.X(s.gwant), far = r.slack > 0, cross = function (x, yy, k) { g.line(x, yy - k, x, yy + k, { color: c.bad, width: 2 }); g.line(x - k, yy, x + k, yy, { color: c.bad, width: 2 }); };
+    // A hole or a wanted distance that this pair or loop does not land on. The gap is small at true scale, so the
+    // place is marked with a cross, named in a key line under the heading, and shown enlarged in a round detail.
+    function offMark(want, gap, col, l1, l2, nameA, nameB) {
+      var hx = V.X(want), far = gap > 0, cross = function (x, yy, k) { g.line(x, yy - k, x, yy + k, { color: col, width: 2 }); g.line(x - k, yy, x + k, yy, { color: col, width: 2 }); };
       cross(hx, y, 10); cross(18, 36, 5);
-      // The gap between the gear's centre and the hole is small at true scale, so a round detail beside the gears
-      // shows the two points enlarged, with the distance between them.
-      if (g.w > 520) {
-        var gapPx = Math.abs(hx - x2), Z = Math.max(1, Math.min(12, Math.round(34 / Math.max(gapPx, 1)))), zr = 46, zx = Math.min(g.w - zr - 16, V.X(C) + p2 + zr + 40), zy = y - zr * 0.2, off = Math.min(zr - 12, gapPx * Z) * (far ? 1 : -1);
-        if (zx - zr > V.X(C) + p2 + 8) {
-          g.circle(zx, zy, zr, { fill: c.surface, stroke: c.line2, width: 1 });
-          g.line(hx + 11, y, zx - zr, zy, { color: c.line2, width: 1, dash: [3, 3] });
-          var ax = zx - off / 2, bx = zx + off / 2;
-          g.circle(ax, zy, 3.5, { fill: c.text, stroke: null }); cross(bx, zy, 7);
-          g.line(ax, zy + 16, bx, zy + 16, { color: c.bad, width: 1.5 }); g.line(ax, zy + 11, ax, zy + 21, { color: c.bad, width: 1.5 }); g.line(bx, zy + 11, bx, zy + 21, { color: c.bad, width: 1.5 });
-          g.text(K.fix(Math.abs(r.slack), 3) + " in", zx, zy + 33, { align: "center", color: c.bad, size: 11, weight: 700 });
-          g.text("gear's centre", ax, zy - 12, { align: far ? "right" : "left", color: c.text2, size: 10.5 });
-          g.text("your hole", bx, zy - 24, { align: far ? "left" : "right", color: c.bad, size: 10.5, weight: 600 });
-          g.text("enlarged " + Z + "×", zx, zy + zr + 14, { align: "center", color: c.mute, size: 10.5 });
-        }
+      var wideG = g.w > 520, gapPx = Math.abs(hx - x2), Z = Math.max(1, Math.min(12, Math.round(34 / Math.max(gapPx, 1)))), zr = wideG ? 46 : 38, edge = V.X(C) + Math.max(p2, V.L(r.od2 / 2)), zx = wideG ? Math.min(g.w - zr - 16, edge + zr + 40) : g.w - zr - 14, zy = wideG ? y - zr * 0.2 : 62 + zr + 6, off = Math.min(zr - 12, gapPx * Z) * (far ? 1 : -1);
+      if (wideG ? zx - zr > edge + 8 : zy + zr + 18 < y - (edge - V.X(C)) - 4 || zx - zr > edge + 6) {
+        g.circle(zx, zy, zr, { fill: c.surface, stroke: c.line2, width: 1 });
+        g.line(hx + 11, y, zx - zr, zy, { color: c.line2, width: 1, dash: [3, 3] });
+        var ax = zx - off / 2, bx = zx + off / 2;
+        g.circle(ax, zy, 3.5, { fill: c.text, stroke: null }); cross(bx, zy, 7);
+        g.line(ax, zy + 16, bx, zy + 16, { color: col, width: 1.5 }); g.line(ax, zy + 11, ax, zy + 21, { color: col, width: 1.5 }); g.line(bx, zy + 11, bx, zy + 21, { color: col, width: 1.5 });
+        g.text(K.fix(Math.abs(gap), 3) + " in", zx, zy + 33, { align: "center", color: col, size: 11, weight: 700 });
+        var gcW = g.textWidth(nameA, { size: 10.5 }), gcL = far ? ax - gcW : ax; gcL = Math.max(4, Math.min(gcL, g.w - 4 - gcW));
+        g.text(nameA, gcL, zy - 12, { align: "left", color: c.text2, size: 10.5 });
+        var yhW = g.textWidth(nameB, { size: 10.5, weight: 600 }), yhL = far ? bx : bx - yhW; yhL = Math.max(4, Math.min(yhL, g.w - 4 - yhW));
+        g.text(nameB, yhL, zy - 24, { align: "left", color: col, size: 10.5, weight: 600 });
+        g.text("enlarged " + Z + "×", zx, zy + zr + 14, { align: "center", color: c.mute, size: 10.5 });
       }
-      var l1 = "your second hole, " + K.fix(s.gwant, 3) + " in:", l2 = K.fix(Math.abs(r.slack), 3) + " in " + (far ? "further out than this pair reaches" : "closer in than this pair needs");
-      if (g.w > 520) g.text(l1 + " " + l2, 30, 36, { color: c.bad, size: 11, weight: 700 });
-      else { g.text(l1, 30, 36, { color: c.bad, size: 11, weight: 700 }); g.text(l2, 30, 50, { color: c.bad, size: 11, weight: 700 }); }
+      if (g.w > 520) g.text(l1 + " " + l2, 30, 36, { color: col, size: 11, weight: 700 });
+      else { g.text(l1, 30, 36, { color: col, size: 11, weight: 700 }); g.text(l2, 30, 50, { color: col, size: 11, weight: 700 }); }
     }
+    if (have && !r.fitsNow) offMark(s.gwant, r.slack, c.bad, "your second hole, " + K.fix(s.gwant, 3) + " in:", K.fix(Math.abs(r.slack), 3) + " in " + (r.slack > 0 ? "further out than this pair reaches" : "closer in than this pair needs"), "gear's centre", "your hole");
+    if (offWant) offMark(s.target, s.target - C, c.warn, "where you wanted it, " + K.fix(s.target, 3) + " in:", K.fix(Math.abs(s.target - C), 3) + " in " + (s.target > C ? "further out than this " + (s.kind === "belt" ? "belt" : "chain") + " reaches" : "closer in than this " + (s.kind === "belt" ? "belt" : "chain") + " sits"), "its centre", "wanted");
     // Name each wheel and show which way it turns.
     [[x1, "driving", 1], [x2, "driven", s.kind === "gear" ? -1 : 1]].forEach(function (q) {
       var rr = Math.max(9, Math.min(V.L(big) * 0.5, 20)), a0 = -2.5, a1 = -0.9, tip = q[2] > 0 ? a1 : a0, tx = q[0] + rr * Math.cos(tip), ty2 = y + rr * Math.sin(tip), tang = tip + q[2] * Math.PI / 2;

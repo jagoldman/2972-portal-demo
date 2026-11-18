@@ -105,5 +105,13 @@ ok("compare: nothing lighter keeps 3", cmp.rows.filter(function (q) { return q.w
 ok("compare: an impossible load has no best", M.compare({ mat: M.mat("pc"), L: 96, P: 500, hold: "cant", way: "tall" }).best === null);
 ok("compare: the flat way is weaker for a 2x1", M.compare({ mat: M.mat("al"), L: 30, P: 25, hold: "cant", way: "flat" }).rows.filter(function (q) { return q.id === "r2x1_16"; })[0].sf < r21.sf);
 
+// Round 9: one rule for the bend's enlargement, from the inputs alone. Default: 0.121 in on 30 in; 15% of 30 in is
+// 4.5 in, 4.5 / 0.121 = 37, so 30 times. A bend already 15% of the length or more is drawn true.
+near("bend drawn 30x by default", M.bendScale(0.1212, 30), 30, 0);
+near("a big bend is drawn true", M.bendScale(3, 30), 1, 0);
+near("a tiny bend is drawn larger", M.bendScale(0.001, 30), 1000, 0);
+near("no bend is drawn true", M.bendScale(0, 30), 1, 0);
+ok("the factor never draws it past 15% of the length", [0.0005, 0.003, 0.02, 0.1, 0.5, 1.5].every(function (d) { return d * M.bendScale(d, 30) <= 0.15 * 30 + 1e-9; }));
+
 console.log(fails ? fails + " of " + n + " checks failed" : "all " + n + " checks passed");
 process.exit(fails ? 1 : 0);

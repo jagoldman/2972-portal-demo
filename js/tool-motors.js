@@ -28,9 +28,9 @@ if (typeof module !== "undefined" && module.exports) { module.exports = M; retur
 function drawCurve(g, s, r, t) {
   var c = g.c, q = r.list[0]; if (!q) { g.text("Pick a motor.", 16, 28, { color: c.mute }); return; }
   var mc = c["s" + (q.i + 1)] || c.s1;     // the motor's own colour, as in the charts below
-  var phone = g.w < 520, V = s.volts, L = s.statorA, n = q.n, free = q.free, wf = free * F.RPM;
-  var Tlim = q.limT * n, Tst = q.stallT * n, limited = L > 0 && Tst > Tlim * 1.001;
-  var ymax = limited ? Math.min(Tst, Tlim * 1.75) * 1.08 : Tst * 1.1;
+  var phone = g.w < 520, V = s.volts, L = s.statorA, n = q.n, free = Math.max.apply(null, r.list.map(function (o) { return o.free; })), wf = q.free * F.RPM;
+  var Tlim = q.limT * n, Tst = q.stallT * n, limited = L > 0 && Tst > Tlim * 1.001, others = r.list.slice(1);
+  var tops = r.list.map(function (o) { return o.limT * o.n; }), ymax = limited ? Math.max(Math.min(Tst, Tlim * 1.75), Math.max.apply(null, tops) * 1.3) * 1.08 : Math.max(Tst, Math.max.apply(null, r.list.map(function (o) { return o.stallT * o.n; }))) * 1.1;
   var pl = phone ? 40 : 54, pr = phone ? 16 : 24, pt = 72, pb = 34, x0 = pl, x1 = g.w - pr, y0 = g.h - pb, y1 = pt;
   function X(rpm) { return x0 + (x1 - x0) * rpm / free; } function Y(T) { return y0 - (y0 - y1) * Math.min(T, ymax) / ymax; }
   // Grid and axes.
@@ -44,31 +44,52 @@ function drawCurve(g, s, r, t) {
   // The power hump, shaded under the axis at its own scale (its peak reaches 60% of the height).
   var N = 120, pts = [], Pk = q.peak.power * n, hump = [[X(0), y0]];
   for (var i = 0; i <= N; i++) { var w = wf * i / N, a = M.at(q.id, V, L, w); pts.push([X(w / F.RPM), Y(a.torque * n)]); hump.push([X(w / F.RPM), y0 - (y0 - y1) * 0.6 * Math.max(0, a.power * n) / Pk]); }
-  hump.push([X(free), y0]);
+  hump.push([X(q.free), y0]);
   g.ctx.globalAlpha = 0.12; g.poly(hump, { fill: mc, stroke: null, close: true }); g.ctx.globalAlpha = 1;
-  // Named inside the shaded hump, low down where no line runs.
-  g.text(phone ? "power, own scale: peak " + K.n(Pk, 0) + " W" : "shaded: power, drawn to its own scale (peak " + K.n(Pk, 0) + " W at " + K.n(q.peak.rpm, 0) + " rpm)", X(free * 0.5), y0 - 12, { align: "center", size: 11, weight: 700, color: c.text2 });
+  // Named inside the shaded hump, low down where no line runs; its peak marked with its value.
+  if (phone) { g.text("shaded: power, own scale:", x0 + 8, y0 - 26, { size: 11, weight: 700, color: c.text2 }); g.text("read only its shape and peak", x0 + 8, y0 - 12, { size: 11, weight: 700, color: c.text2 }); }
+  else g.text("shaded: power, drawn to its own scale: read only its shape and peak", x0 + 8, y0 - 12, { size: 11, weight: 700, color: c.text2 });
+  var hpx = X(q.peak.rpm), hpy = y0 - (y0 - y1) * 0.6;
+  g.circle(hpx, hpy, 4, { fill: mc, stroke: c.sheet, width: 1.5 });
+  // End the label left of the dashed no-limit line where it crosses the label's height.
+  var pend = hpx - 9;
+  if (limited) { var lyT = (y0 - (hpy - 13)) / (y0 - y1) * ymax, lx = X(q.free * (1 - lyT / Tst)); pend = Math.min(pend, lx - 8); }
+  g.text("power peak " + K.n(Pk, 0) + " W", pend, hpy - 9, { align: "right", size: 11, weight: 700, color: mc });
   // With no limit: the straight line from stall torque, dashed, cut where it leaves the top.
   if (limited) {
-    var xs = free * (1 - ymax / Tst);
-    g.line(X(Math.max(0, xs)), Y(ymax), X(free), Y(0), { color: c.mute, width: 1.5, dash: [5, 4] });
+    var xs = q.free * (1 - ymax / Tst);
+    g.line(X(Math.max(0, xs)), Y(ymax), X(q.free), Y(0), { color: c.mute, width: 1.5, dash: [5, 4] });
     g.text(phone ? "no limit" : "with no limit: " + K.fix(Tst, 2) + " N m at standstill, off the top", X(Math.max(0, xs)) - 8, Y(ymax) + 2, { align: "right", size: 11, color: c.mute, base: "top" });
   }
-  // The motor's line, with the limit.
+  // The other motors: thin lines in their own colours, each named where it falls, right of the line.
+  var nameYs = [], nameX = 0;
+  others.forEach(function (o) {
+    var oc = c["s" + (o.i + 1)] || c.s2, op = [], ow = o.free * F.RPM, Tm = o.limT * o.n;
+    for (var j = 0; j <= N; j++) { var w2 = ow * j / N; op.push([X(w2 / F.RPM), Y(M.at(o.id, V, L, w2).torque * o.n)]); }
+    g.path(op, { color: oc, width: 1.75 });
+    // Named on its flat part near the left: above the line where nothing else is within a label's height, else below.
+    var on = shortOf(o), oy = Y(Tm), flats = r.list.filter(function (p2) { return p2 !== o; }).map(function (p2) { return Y(p2.limT * p2.n); });
+    var above = !flats.some(function (fy) { return fy < oy && fy > oy - 18; }) && !nameYs.some(function (ny) { return Math.abs(ny - (oy - 8)) < 14; });
+    var ny2 = above ? oy - 8 : oy + 14; nameYs.push(ny2);
+    g.text(on, x0 + 10 + nameX, ny2, { base: "middle", size: 11, weight: 700, color: oc }); nameX += g.textWidth(on, { size: 11, weight: 700 }) + 14;
+  });
+  // The first motor's line, with the limit.
   g.path(pts, { color: mc, width: 3 });
   if (limited) {
     var kr = q.peak.knee / F.RPM, kx = X(kr), ky = Y(Tlim);
-    g.text(phone ? "limit holds torque" : "the current limit holds torque here", x0 + (kx - x0) * 0.4, ky - 9, { align: "center", size: 11, weight: 700, color: mc });
+    g.text("the current limit holds torque here", x0 + (kx - x0) * 0.4, ky - 9, { align: "center", size: 11, weight: 700, color: mc });
     g.line(kx, ky, kx, y0, { color: c.mute, width: 1, dash: [3, 3] });
     g.circle(kx, ky, 5, { fill: c.sheet, stroke: mc, width: 2.5 });
     // The knee's words in two lines, left of its drop line and well below the flat part.
-    var k1 = "knee, " + K.n(kr, 0) + " rpm", k2 = phone ? "" : "above this the limit no longer matters";
-    g.text(k1, kx - 10, ky + 24, { align: "right", size: 11, weight: 700, color: c.text2 });
-    if (k2) g.text(k2, kx - 10, ky + 39, { align: "right", size: 11, weight: 600, color: c.text2 });
+    var k1 = "knee, " + K.n(kr, 0) + " rpm", k2 = "above this the limit no longer matters", kb = ky;
+    others.forEach(function (o) { var fy = Y(o.limT * o.n); if (fy > kb && fy < ky + 60) kb = fy; });
+    g.text(k1, kx - 10, kb + 22, { align: "right", size: 11, weight: 700, color: c.text2 });
+    g.text(k2, kx - 10, kb + 37, { align: "right", size: 11, weight: 600, color: c.text2 });
   }
-  g.text("free " + K.n(free, 0), X(free), y0 + 16, { align: "right", size: 10, weight: 700, color: c.text2 });
-  // The dot and its read-out.
-  var wt = wf * F.clamp(t / 4, 0, 1), at = M.at(q.id, V, L, wt), dx = X(wt / F.RPM), dy = Y(at.torque * n);
+  if (!others.length) g.text("free " + K.n(q.free, 0), X(q.free), y0 + 16, { align: X(q.free) > x1 - 30 ? "right" : "center", size: 10, weight: 700, color: c.text2 });
+  // The dots: all at the same speed, sweeping from standstill to the fastest free speed. The read-out is the first motor.
+  var rpmNow = free * F.clamp(t / 4, 0, 1), wt = Math.min(rpmNow, q.free) * F.RPM, at = M.at(q.id, V, L, wt), dx = X(wt / F.RPM), dy = Y(at.torque * n);
+  others.forEach(function (o) { var w3 = Math.min(rpmNow, o.free) * F.RPM; g.circle(X(w3 / F.RPM), Y(M.at(o.id, V, L, w3).torque * o.n), 4.5, { fill: c["s" + (o.i + 1)] || c.s2, stroke: c.sheet, width: 1.5 }); });
   g.line(dx, dy, dx, y0, { color: c.accent, width: 1 });
   g.circle(dx, dy, 6, { fill: c.accent, stroke: c.sheet, width: 2 });
   g.text(q.name + " at " + K.fix(V, 1) + " V, " + (L > 0 ? L + " A limit" : "no limit"), 12, 18, { weight: 700 });
@@ -162,7 +183,7 @@ K.tool({
   stage: { ratio: 2.3, narrow: 1.05, label: "The first motor's torque against speed: the flat part the current limit holds, the knee, free speed, and its power shaded underneath. Play moves a dot from standstill to free speed." },
   duration: function () { return 4; },
   // Rest on the moment of peak power, the speed a mechanism should be geared for.
-  rest: function (s, r) { var q = r.list[0]; return q ? 4 * Math.min(1, q.peak.rpm / q.free) : 0; },
+  rest: function (s, r) { var q = r.list[0], fm = Math.max.apply(null, r.list.map(function (o) { return o.free; }).concat([1])); return q ? 4 * Math.min(1, q.peak.rpm / fm) : 0; },
   draw: function (g, s, r, t) { drawCurve(g, s, r, t); },
 
   compute: function (s) {
@@ -204,7 +225,7 @@ K.tool({
     var perLb = L.slice().sort(function (a, b) { return b.peak.power / b.m.lb - a.peak.power / a.m.lb; })[0];
     if (L.length > 1 && perLb !== top) text += " Per pound, " + perLb.m.name + " leads.";
     text += " A mechanism only gets that power if it is geared so the motor runs near that speed.";
-    return '<p class="mute small t-motors-play">Play moves the dot along this motor\'s curve.</p>' + K.verdict("info", text) +
+    return '<p class="mute small t-motors-play">Play moves a dot along each motor\'s curve; the read-out above is the first motor.</p>' + K.verdict("info", text) +
       K.outs(L.map(function (q) { return { k: q.name, v: K.n(q.peak.power * q.n, 0), u: "W", sub: "peak at " + K.n(q.peak.rpm, 0) + " rpm", tip: "The most mechanical power " + (q.n > 1 ? "these motors give" : "this motor gives") + " " + lim + " at " + K.fix(s.volts, 1) + " V." }; })) +
       K.outs(L.map(function (q) { var T = q.limT * q.n; return { k: "Torque, " + (q.n > 1 ? q.n + " × " : "") + q.m.name, v: K.n(T, 2), u: "N m", sub: K.n(T / (F.LBF * F.IN), 1) + " lb in from a standstill, " + (s.statorA > 0 ? "at the " + s.statorA + " A limit" : "with no limit") }; }));
   },
@@ -234,7 +255,7 @@ K.tool({
     var rowsT = [
       ["Free speed", function (q) { return K.n(q.free, 0) + " rpm"; }],
       ["Stall torque, no limit", function (q) { return K.n(q.stallT * q.n, 2) + " N m"; }],
-      ["Stall current, each", function (q) { return K.n(q.stallA, 0) + " A"; }],
+      ["Stall current, each, no limit", function (q) { return K.n(q.stallA, 0) + " A"; }],
       ["Torque from a standstill", function (q) { return K.n(q.limT * q.n, 2) + " N m"; }],
       ["Peak power", function (q) { return K.n(q.peak.power * q.n, 0) + " W at " + K.n(q.peak.rpm, 0) + " rpm"; }],
       ["Best efficiency", function (q) { return K.n(q.bestEff[1], 0) + "% at " + K.n(q.bestEff[0], 0) + " rpm"; }],
@@ -242,7 +263,7 @@ K.tool({
       ["Peak power per pound", function (q) { return K.n(q.peak.power / q.m.lb, 0) + " W/lb"; }]];
     out += '<section class="ctab t-motors-tab"><h2>Side by side at ' + K.fix(s.volts, 1) + " V" + (s.statorA > 0 ? ", " + s.statorA + " A limit" : ", no limit") + '</h2><div class="scroll"><table><thead><tr><th></th>' + L.map(function (q) { return '<th class="r">' + D.esc(q.name) + "</th>"; }).join("") + "</tr></thead><tbody>" +
       rowsT.map(function (row) { return "<tr><td>" + row[0] + "</td>" + L.map(function (q) { return '<td class="r num">' + row[1](q) + "</td>"; }).join("") + "</tr>"; }).join("") + "</tbody></table></div>" +
-      '<p class="mute small">Figures are the ones ReCalc lists, mostly from bench tests by CTRE. There are two rows for the NEO Vortex because the sources disagree: "NEO Vortex (CTRE\'s test)" is CTRE\'s bench test, and "NEO Vortex (REV\'s sheet)" is REV\'s own data sheet, which gives it less stall torque and more torque per amp. Choose one of each to see the difference. Stall torque and stall current are with no limit, scaled to this voltage. Torque, power and weight are for all the motors in a row together; current is for each one.</p></section>';
+      '<p class="mute small">Figures as ReCalc lists them. Two rows for the NEO Vortex: <span class="abbr" tabindex="0" data-tip="' + D.esc("\"NEO Vortex (CTRE's test)\" is CTRE's bench test, and \"NEO Vortex (REV's sheet)\" is REV's own data sheet, which gives it less stall torque and more torque per amp. Choose one of each to compare. Stall torque and stall current are with no limit, scaled to this voltage.") + '">CTRE\'s test and REV\'s sheet disagree</span>. Torque, power and weight are for all the motors in a row; current is for each one.</p></section>';
     out += K.notes("<p>A DC motor's torque falls in a straight line from stall to free speed, and the current it draws falls with it. Power out is torque times speed, so without a limit it peaks at half the free speed. Each motor here is worked out from four figures: free speed, stall torque, stall current and free current at 12 V.</p>" +
       '<p class="eq">current = (volts − speed × kₑ) ÷ R,  torque = kₜ × (current − free current)</p>' +
       "<p>Here volts means the voltage the controller puts across the motor, not the battery's. With no limit, or above the knee, the controller passes on the full battery voltage. Below the knee it lowers the voltage until the current equals the limit, which is how a stator limit holds the current, and the torque, flat.</p>" +

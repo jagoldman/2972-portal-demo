@@ -120,5 +120,14 @@ near("friction torque by hand (N m)", r80.fricT, 7.16 / 371.2 * 2.8 * 80 * 0.9, 
 near("braking at the limit by hand, 526 lb in", (r80.avail + 2 * r80.fricT) / LBIN, 526, 0.5);
 near("limit figure by hand, 457 lb in", r80.avail / LBIN, 457, 0.5);
 
+// Round 9, item 3: the arm's current with its sign (plus turns the arm up). Out from -60 to 80: plus at the start,
+// minus while it brakes at the end; size always matches the record.
+var r9 = M.compute(Object.assign({}, s, { ratio: 80 })), w9 = 0;
+for (var j9 = 0; j9 < r9.A.length; j9++) w9 = Math.max(w9, Math.abs(Math.abs(r9.AS[j9]) - r9.A[j9]));
+near("arm: signed size matches the record", w9, 0, 0.06);
+ok("arm: plus at the start of the swing up", r9.AS[1] > 0, r9.AS[1]);
+var kb = r9.T.findIndex(function (t) { return t >= M.reverseAt(r9.go) + 0.002; });
+ok("arm: minus while braking at the end", r9.AS[kb] < 0, r9.AS[kb]);
+
 console.log(fails ? fails + " of " + n + " checks failed" : "all " + n + " checks passed");
 process.exit(fails ? 1 : 0);

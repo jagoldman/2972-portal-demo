@@ -71,13 +71,10 @@ var under = { tanks: 1, ml: 574, stored: 40, work: 60, cfm: 0, match: 160, cyls:
 ok("stored under working: Infinity", M.tanksNeeded(under) === Infinity);
 ok("stored under working: will not fix it", /will not fix/.test(M.needText(Infinity, 1, 0)));
 ok("a number: how many more", M.needText(5, 2, 0) === "It would take 5 tanks of this size (3 more), or a compressor on the robot.", M.needText(5, 2, 0));
-// Round 8: the tank chart's scale marks 0, working and stored. yTicks swaps the kit's round ticks for those values.
-var svg = '<svg><line class="cgrid" x1="46" x2="466" y1="10" y2="10"/><text class="ctick" x="40" y="14" text-anchor="end">50</text><line class="caxis" x1="46"/></svg>';
-var out = M.yTicks(svg, [0, 60, 120], 144, 160);
-ok("yTicks: the kit's 50 is gone", out.indexOf(">50<") < 0, out);
-ok("yTicks: 0, 60 and 120 are there", [">0<", ">60<", ">120<"].every(function (v) { return out.indexOf(v) >= 0; }), out);
-// 60 psi on a 0 to 144 scale in a 160 px chart (top 24, bottom 34): 160 - 34 - 60 / 144 x 102 = 83.5 px from the top.
-ok("yTicks: 60 sits at 83.5 px", out.indexOf('y1="83.5"') >= 0, out);
+// The tank chart's y ticks (now placed by the kit): 0, the working pressure and the stored pressure, once each.
+ok("tank ticks: 0, working, stored", JSON.stringify(M.tankTicks({ work: 60, stored: 120 })) === "[0,60,120]");
+ok("tank ticks: stored = working shows once", JSON.stringify(M.tankTicks({ work: 60, stored: 60 })) === "[0,60]");
+ok("tank ticks: follow what is typed", JSON.stringify(M.tankTicks({ work: 45, stored: 100 })) === "[0,45,100]");
 
 console.log(fails ? fails + " of " + n + " checks failed" : "all " + n + " checks passed");
 process.exit(fails ? 1 : 0);
