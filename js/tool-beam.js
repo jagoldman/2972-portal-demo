@@ -150,7 +150,6 @@ function ease(u) { u = F.clamp(u, 0, 1); return u * u * (3 - 2 * u); }
 (function () {
   var st = document.createElement("style");
   st.textContent = ".t-beam-cap { margin: 0; font-size: .8rem; color: var(--mute); } .t-beam-cmp .t-beam-cap { margin-bottom: 6px; } .t-beam-cmp td:first-child { white-space: normal; min-width: 12em; } .t-beam-best { display: block; margin-top: 2px; font-size: .8rem; font-weight: 600; color: var(--ok); white-space: normal; } .t-beam-cmp td.t-beam-bad { color: var(--bad); font-weight: 700; } .t-beam-cmp td.t-beam-warn { color: var(--warn); font-weight: 700; }";
-  st.textContent += "@media (max-width: 640px) { .bench[data-calc=\"tool-beam\"] .outs > .out:last-child:nth-child(odd) { grid-column: 1 / -1; } }";   // no card alone beside an empty cell
   document.head.appendChild(st);
 })();
 
@@ -202,7 +201,7 @@ K.tool({
   },
 
   more: function (s, r) {
-    var defl = K.chart({ id: "beam-defl", title: "Deflection along the beam, true size", note: s.P > 0 ? "Most: " + inch(r.delta) + " " + where(s.hold) + " (the dot)." : "", x: { label: "along the beam, in", name: "At", unit: "in", min: 0, max: s.L }, y: { label: "deflection, in", unit: "in" },
+    var defl = K.chart({ id: "beam-defl", title: "Deflection along the beam (real, not exaggerated)", note: s.P > 0 ? "Most: " + inch(r.delta) + " " + where(s.hold) + " (the dot)." : "", x: { label: "along the beam, in", name: "At", unit: "in", min: 0, max: s.L }, y: { label: "deflection, in", unit: "in" },
       series: [{ name: "Deflection", pts: r.curve, color: 1 }], dots: s.P > 0 ? [{ x: r.xmax, y: -r.delta }] : [] });
     // The axis runs to yield (or past the peak when it yields), so the curve reads against yield; the peak is marked
     // with its share of yield.
@@ -244,7 +243,7 @@ K.tool({
     /* Two areas: the beam, and the cross-section (a column at the right on a laptop; a short strip along the bottom
        on a phone, so the beam gets most of the phone's stage). */
     var panH = narrow ? Math.min(168, Math.round(H * 0.42)) : H;
-    var pan = narrow ? { x: 0, y: H - panH, w: W, h: panH } : { x: W - F.clamp(W * 0.3, 210, 290), y: 0, w: 0, h: H };
+    var pan = narrow ? { x: 0, y: H - panH, w: W, h: panH } : { x: W - F.clamp(W * 0.36, 250, 320), y: 0, w: 0, h: H };
     if (!narrow) pan.w = W - pan.x;
     // Room at the free end for the whole bend label ("really 0.121 in"), so it is never cut off.
     var finalLab = "really " + inch(r.delta), labW = g.textWidth(finalLab, { size: 12, weight: 600 });
@@ -373,9 +372,11 @@ function section(g, s, r, pan, narrow, kBeam, frac) {
   var c = g.c, sec = r.sec;
   g.rect(pan.x, pan.y, pan.w, pan.h, { fill: c.sheet, stroke: null });
   if (narrow) g.line(0, pan.y, g.w, pan.y, { color: c.line, width: 1 }); else g.line(pan.x, 0, pan.x, g.h, { color: c.line, width: 1 });
-  var boxW = narrow ? Math.min(80, pan.w * 0.21) : pan.w * 0.24, boxH = narrow ? pan.h - 98 : Math.min(pan.h * 0.34, 124);
+  // Room for the height label on the left, and on the right for the stress scale (its gap, two halves and "yield").
+  var Lh = Math.max(44, 30 + g.textWidth(frac2(sec.H) + " in", { size: 12, weight: 600 }));
+  var boxW = narrow ? Math.min(80, pan.w * 0.21) : Math.max(24, Math.min(pan.w * 0.24, pan.w - Lh - 36 - 68 - 34)), boxH = narrow ? pan.h - 116 : Math.min(pan.h * 0.34, 124);
   var ks = Math.min(boxW / sec.B, boxH / sec.H), bw = sec.B * ks, bh = sec.H * ks;
-  var cx = narrow ? Math.max(44, 30 + g.textWidth(frac2(sec.H) + " in", { size: 12, weight: 600 })) + bw / 2 : pan.x + 46 + bw / 2, cy = narrow ? pan.y + 64 + boxH / 2 : pan.y + 72 + boxH / 2;
+  var cx = (narrow ? 0 : pan.x) + Lh + bw / 2, cy = narrow ? pan.y + 64 + boxH / 2 : pan.y + 72 + boxH / 2;
   g.text(narrow ? "Cross-section" : "Cross-section, enlarged", narrow ? 12 : pan.x + 12, pan.y + 18, { weight: 600, size: 12 });
   if (sec.shape === "round") {
     g.circle(cx, cy, bw / 2, { fill: c.part, stroke: c.partLine, width: 1.25 });
@@ -390,7 +391,7 @@ function section(g, s, r, pan, narrow, kBeam, frac) {
   /* The stress across the depth, as a small chart on its side: zero on the neutral axis, the red dashes at yield
      either side (squeezed one way, stretched the other), and the wedge reaching out to this load's stress. */
   // A sliver of stress is drawn enlarged, by a stated factor, as the bend is; the ticks then mark a share of yield.
-  var zoom = M.stressZoom(r.share), lim = narrow ? 26 : 34, sx = cx + bw / 2 + 20 + lim, share = r.share * frac, wv = lim * Math.min(share * zoom, 1.15);
+  var zoom = M.stressZoom(r.share), lim = narrow ? 26 : 34, sx = cx + bw / 2 + (narrow ? 46 : 36) + lim, share = r.share * frac, wv = lim * Math.min(share * zoom, 1.15);
   var fc = M.faces(s.hold, s.P, s.L), topSq = fc.topSqueezed;   // from the moment's sign at the most-stressed point
   g.line(cx - bw / 2 - 6, cy, sx + lim + 4, cy, { color: c.accent, width: 1.25, dash: [8, 3, 2, 3] });
   g.line(sx, cy - bh / 2 - 2, sx, cy + bh / 2 + 2, { color: c.text2, width: 1 });
@@ -401,12 +402,15 @@ function section(g, s, r, pan, narrow, kBeam, frac) {
     g.poly([[sx, cy], [sx - d * wv, cy + bh / 2], [sx, cy + bh / 2]], { fill: col, stroke: null });
   }
   // The scale under it: yield, 0, yield; and which side is squeezed and which stretched.
-  var sy = cy + bh / 2 + 15, ss = { size: 12, weight: 600, align: "center" };
+  var sy = cy + bh / 2 + 32, ss = { size: 12, weight: 600, align: "center" };
   var tick = zoom > 1 ? K.n(100 / zoom, 0) + "%" : "yield", tc = zoom > 1 ? c.text2 : c.bad;
   g.text(tick, sx - lim, sy, Object.assign({ color: tc }, ss)); g.text("0", sx, sy, Object.assign({ color: c.text2 }, ss)); g.text(tick, sx + lim, sy, Object.assign({ color: tc }, ss));
-  if (zoom > 1) { var zt = "stress drawn " + zoom + "×; ticks: % of yield", tw0 = g.textWidth(narrow ? "Cross-section" : "Cross-section, enlarged", { weight: 600, size: 12 }); if (narrow) g.text(zt, 12 + tw0 + 10, pan.y + 18, { size: 12, color: c.mute }); else g.text(zt, pan.x + 12, pan.y + 34, { size: 12, color: c.mute }); }
-  // Which side of the scale is which, on two heights so neither word runs into the other.
-  g.text("squeezed", sx - 4, cy - bh / 2 - 22, { size: 12, color: c.text2, align: "right" }); g.text("stretched", Math.min(sx + 4, pan.x + pan.w - 12 - g.textWidth("stretched", { size: 12 })), cy - bh / 2 - 8, { size: 12, color: c.text2 });
+  if (zoom > 1) { var zt = "ticks: % of yield", tw0 = g.textWidth(narrow ? "Cross-section" : "Cross-section, enlarged", { weight: 600, size: 12 }); if (narrow) g.text(zt, 12 + tw0 + 10, pan.y + 18, { size: 12, color: c.mute }); else g.text(zt, pan.x + 12, pan.y + 34, { size: 12, color: c.mute }); }
+  // Each face's word beside its own end of the triangle: the top's above it, the bottom's below it, each on the side
+  // its wedge points to.
+  var dd = topSq ? -1 : 1, tTop = topSq ? "squeezed" : "stretched", tBot = topSq ? "stretched" : "squeezed", lo = { size: 12, color: c.text2, weight: 600 };
+  g.text(tTop, dd > 0 ? Math.min(sx + 3, pan.x + pan.w - 8 - g.textWidth(tTop, lo)) : sx - 3, cy - bh / 2 - 7, Object.assign({ align: dd > 0 ? "left" : "right" }, lo));
+  g.text(tBot, dd > 0 ? sx - 3 : Math.min(sx + 3, pan.x + pan.w - 8 - g.textWidth(tBot, lo)), cy + bh / 2 + 16, Object.assign({ align: dd > 0 ? "right" : "left" }, lo));
   // The neutral axis named on its own line, at its right-hand end; the wall named beside the section.
   var nax = sx + lim + 7, naw = g.textWidth("neutral axis", { size: 12, weight: 600 });
   // Where it fits: at the line's right-hand end, else inside the section just above the line, else in the lines below.
@@ -425,7 +429,7 @@ function section(g, s, r, pan, narrow, kBeam, frac) {
   var rows = [[where, { color: c.accent, size: 12, weight: 700 }],
     [fc.swap ? (topSq ? "Middle: top squeezed; ends: top stretched" : "Middle: top stretched; ends: top squeezed") : "Top " + (topSq ? "squeezed" : "stretched") + ", bottom " + (topSq ? "stretched" : "squeezed"), { color: c.text2, size: 12 }],
     [K.n(r.stress * frac, 0) + " psi, " + K.n(share * 100, 0) + "% of yield", { color: share >= 1 ? c.bad : c.text, size: 12, weight: 600 }]];
-  if (narrow) rows.push(["Dash-dot: neutral axis, no stress", { color: c.accent, size: 12, weight: 600 }]);
+  if (narrow) { rows.push(["Dash-dot: no stress", { color: c.accent, size: 12, weight: 600 }]); if (!sec.solid) rows.push(["Wall " + frac2(sec.t) + " in", { color: c.mute, size: 12 }]); }
   // Each label wrapped to the room beside the section, so nothing runs off a phone's edge.
   var y = ly, lh = narrow ? 15 : 17;
   rows.forEach(function (row) {

@@ -104,7 +104,7 @@ var def = {
     // pickers first); on a laptop it stays with the answers.
     if (r && r.head == null) def.outs(s, r);
     if (r && r.head) html += '<p class="t-holes-ans">' + esc(r.head) + "</p>";
-    return K.group(ID, "what", "Hole", html) + K.group(ID, "find", "Find in the table", findBox(s, "holes-find", "t-holes-find t-holes-find-l"));
+    return K.group(ID, "what", "Hole", html);
   },
 
   outs: function (s, r) {
@@ -135,7 +135,7 @@ var def = {
       if (r.other) items.push({ k: r.other.name, v: r.other.drill ? r.other.drill.replace(/ mm$/, "") : r.other.hole.toFixed(3), u: r.other.drill ? (/ mm$/.test(r.other.drill) ? "mm" : "") : "in", sub: in4(r.other.hole) });
       if (s.kind === "print") items.push({ k: "Hole you want", v: (r.want * 25.4).toFixed(1), u: "mm", sub: r.screw + " close fit" });
       if (r.major && items.length < 5) items.push({ k: s.kind === "press" ? "Part size" : s.kind === "rivet" ? "Rivet" : "Screw", v: r.major.toFixed(3), u: "in", sub: s.kind === "press" ? "outside diameter" : "nominal (major) diameter, " + mm2(r.major) });
-      tip = s.kind === "tap" ? "Rule of thumb: thread at least 1.5 diameters deep in aluminium, about " + (1.5 * r.major).toFixed(2) + " in for this screw. That needs a plate that thick; in a thinner one, put a nut or a threaded insert behind it. Use cutting fluid and back the tap off every turn or so." :
+      tip = s.kind === "tap" ? "Rule of thumb: thread at least 1.5 diameters deep in aluminium, about " + (1.5 * r.major).toFixed(2) + " in for this screw. That needs a plate that thick; in a thinner one, put a nut or a threaded insert behind it." :
         s.kind === "clear" ? "Rule of thumb: close fit when the holes must line up exactly; free fit when several holes share one part and may be a little off." :
         s.kind === "rivet" ? "Rule of thumb: keep the hole at least two rivet diameters from an edge, and pick a rivet whose grip covers the total thickness (it says on the box)." :
         s.kind === "press" ? "Rule of thumb only: measure your bearing and cut a test hole in scrap first. Machines, tools and bearings differ by more than 0.001 in." :
@@ -145,7 +145,7 @@ var def = {
       s.kind === "rivet" ? "Use the named drill when you can: a bigger drill lets the rivet work loose, and a smaller one will not take it." :
       "Use the named drill when you can: a bigger drill gives a looser fit, and a smaller one may not let the screw through.";
     r.head = head;
-    return h + K.verdict("info", head, tip) + K.outs(items) + (swap ? '<p class="t-holes-tip">' + esc(swap) + "</p>" : "") + "</div>";
+    return h + K.verdict("info", head, tip) + (s.kind === "tap" ? '<p class="vmore">Tapping: use cutting fluid, and back the tap off every turn or so.</p>' : "") + K.outs(items) + (swap ? '<p class="t-holes-tip">' + esc(swap) + "</p>" : "") + "</div>";
   },
 
   more: function (s, r) {
@@ -184,7 +184,7 @@ var def = {
       rows = M.PRESS.map(function (t, k) { return tr(k, [t[0], t[1] == null ? "Part's own bore" : t[1].toFixed(3) + " in", t[2] == null ? "Part's own bore" : t[2].toFixed(3) + " in"], [t[0], t[1] == null ? "part's own bore" : "slip " + t[1].toFixed(3), t[2] == null ? "" : "press " + t[2].toFixed(3)]); });
     }
     var title = { tap: "Tap drills", clear: "Clearance holes", rivet: "Blind rivets", press: "Press and slip fits (rules of thumb)", print: "3D-printed holes (starting points)" }[s.kind];
-    out += '<section class="ctab t-holes-tab"><h2>' + title + "</h2>" + findBox(s, "holes-find2", "t-holes-find t-holes-find-p") +
+    out += '<section class="ctab t-holes-tab"><h2>' + title + "</h2>" + findBox(s, "holes-find", "t-holes-find") +
       '<p class="t-holes-none" id="holes-none" hidden></p><p class="t-holes-cue">Tap a row to draw it.</p><div class="t-holes-list" id="holes-list">' + list.join("") + '</div><div class="scroll"><table><thead><tr>' + head.map(function (x, j) { return "<th" + (j ? ' class="r"' : "") + ">" + x + "</th>"; }).join("") + "<th></th></tr></thead><tbody>" + rows.join("") + "</tbody></table></div></section>";
     out += K.notes(
       "<p>A tapped hole is drilled smaller than the screw, so the tap can cut the thread into the wall. The tap drill leaves about three quarters of a full thread, which is nearly as strong as a full one and much easier to tap. A clearance hole is drilled a little larger than the screw so it passes through.</p>" +
@@ -234,7 +234,6 @@ function F_clamp(x, a, b) { return x < a ? a : x > b ? b : x; }
     "@media (max-width: 900px) { .t-holes-ans { display: block; } .t-holes > .verdict { display: none; } .t-holes > .vmore { margin-top: 0; } }" +
     ".t-holes-tab tr.t-holes-grp th { padding: 10px 0 4px; font-size: .78rem; font-weight: 700; color: var(--mute); text-align: left; border-bottom: 1px solid var(--line); background: none; }" +
     ".t-holes-grp[hidden], tr.t-holes-grp[hidden] { display: none; } p.t-holes-grp { margin: 8px 0 0; font-size: .78rem; font-weight: 700; color: var(--mute); }" +
-    ".t-holes-find-p { display: none !important; } @media (max-width: 900px) { .t-holes-find-p { display: grid !important; } .bench[data-calc=\"tool-holes\"] .benchside details.cg[data-open=\"g-find\"], .bench[data-calc=\"tool-holes\"] .benchside section.cg:has(.t-holes-find-l) { display: none; } }" +
     ".t-holes-list, .t-holes-cue { display: none; } .t-holes-cue { margin: 0; font-size: .85rem; color: var(--text-2); }" +
     ".t-holes-go { margin-left: 2px; padding: 3px 10px; border: 1px solid var(--line-2); border-radius: 999px; font-size: .8rem; font-weight: 600; color: var(--accent) !important; }" +
     ".t-holes-row { display: flex; align-items: center; gap: 12px; width: 100%; min-height: 44px; padding: 6px 4px; border: 0; border-bottom: 1px solid var(--line); background: none; color: var(--text); font: inherit; text-align: left; cursor: pointer; }" +
@@ -242,7 +241,6 @@ function F_clamp(x, a, b) { return x < a ? a : x > b ? b : x; }
     ".t-holes-row.on { background: var(--tint); box-shadow: inset 3px 0 0 var(--accent); padding-left: 10px; } .t-holes-row .pill { margin-left: 2px; }" +
     "@media (max-width: 900px) { .t-holes-bench.content.bench { grid-template-areas: \"side\" \"stage\" \"outs\" \"more\"; } }" +
     "@media (max-width: 640px) { .t-holes-list { display: grid; } .t-holes-cue { display: block; } .t-holes-tab .scroll { display: none; } .t-holes-find .inp { min-height: 44px; } .t-holes-find { max-width: none; } }";
-  st.textContent += "@media (max-width: 640px) { .bench[data-calc=\"tool-holes\"] .outs > .out:last-child:nth-child(odd) { grid-column: 1 / -1; } }";   // no card alone beside an empty cell
   document.head.appendChild(st);
 })();
 
@@ -252,10 +250,10 @@ function drawHoles(g, s, r) {
   var kind = s.kind, hex = kind === "press" && r.hex, insert = kind === "print" && r.insert;
   var D0 = insert ? 0.2 : hex ? 0.5 : r.hole, Dm = insert ? 0.16 : r.major || D0;            // hole and part sizes, in
   var big = Math.max(D0, Dm);
-  // Plates (in): thickness, and how many.
-  var T = kind === "tap" ? Math.max(0.25, Math.ceil(1.5 * Dm * 16) / 16) : kind === "rivet" ? 0.25 : kind === "press" ? 0.3125 : 0.25;
+  // Plates (in): thickness, and how many. A tapped plate is drawn as thick as the depth the rule asks for (1.5 diameters), and the screw stops at its underside.
+  var T = kind === "tap" ? 1.5 * Dm : kind === "rivet" ? 0.25 : kind === "press" ? 0.3125 : 0.25;
   var half = Math.max(big * 1.7, 0.32);              // half the plate width shown in each view
-  var head = kind === "press" ? 0.03 : 0.75 * Dm, below = kind === "tap" || kind === "clear" || kind === "print" ? 0.35 * Dm + 0.05 : kind === "rivet" ? 0.6 * Dm : 0.03;
+  var head = kind === "press" ? 0.03 : 0.75 * Dm, below = kind === "tap" ? 0 : kind === "clear" || kind === "print" ? 0.35 * Dm + 0.05 : kind === "rivet" ? 0.6 * Dm : 0.03;
   var gap = big * 1.2, W = 4 * half + gap, Hh = head + T + below;
   var V = g.view({ x0: -half, x1: W - half, y0: -T - below, y1: head }, { l: 20, r: kind === "tap" ? (narrow ? 70 : 110) : 20, t: 112, b: kind === "tap" ? 64 : 56 }, "middle");
   var step = [0.05, 0.1, 0.25, 0.5].filter(function (q) { return V.L(q) >= 14; })[0] || 0.5;

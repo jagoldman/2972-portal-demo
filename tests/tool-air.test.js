@@ -76,5 +76,12 @@ ok("tank ticks: 0, working, stored", JSON.stringify(M.tankTicks({ work: 60, stor
 ok("tank ticks: stored = working shows once", JSON.stringify(M.tankTicks({ work: 60, stored: 60 })) === "[0,60]");
 ok("tank ticks: follow what is typed", JSON.stringify(M.tankTicks({ work: 45, stored: 100 })) === "[0,45,100]");
 
+// Round 10: bores and strokes as vendors name them, a fraction with its decimal.
+ok("1.0625 in", M.inFrac(1.0625) === "1-1/16 in (1.0625)", M.inFrac(1.0625));
+ok("0.75 in", M.inFrac(0.75) === "3/4 in (0.75)", M.inFrac(0.75));
+ok("2 in", M.inFrac(2) === "2 in", M.inFrac(2));
+ok("0.3125 in", M.inFrac(0.3125) === "5/16 in (0.3125)", M.inFrac(0.3125));
+ok("not a fraction stays a decimal", M.inFrac(0.81) === "0.81 in", M.inFrac(0.81));
+
 console.log(fails ? fails + " of " + n + " checks failed" : "all " + n + " checks passed");
 process.exit(fails ? 1 : 0);
