@@ -53,6 +53,7 @@
 
   /* Now: a row is a title that opens the thing, a mark, and at most one action. */
   .nowcard { border-top: 0 !important; }
+  .homecols .card.hero + .card { border-top: 0; }
   .nowrow { flex-wrap: nowrap; gap: 10px; }
   .nowrow .rowlink { display: grid; grid-template-columns: minmax(0, 1fr); gap: 0; }
   .nowrow .rl { font-size: .9rem; }
