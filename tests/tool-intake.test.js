@@ -74,5 +74,13 @@ near("reduction for 2.2x, rounded hand figure", p.ratioGood, 2.564, 0.001);
   near("piece " + sz.piece + " in: at first touch it moves along the floor (x)", dir[0], -1, 1e-12);
   near("piece " + sz.piece + " in: and not up or down", dir[1], 0, 1e-12);
 });
+// Round 8, item 12: a level line's name keeps clear of the curves, of the dot that marks yours and of the other name.
+// A flat curve at 10 across the chart (y top 30): the name of a line at 10.5 cannot sit just above or below it.
+var flat = [[1, 10], [10, 10]], av = [[200, 60, 216, 76]], n1 = M.place("drive speed", 12, [1, 10], 30, [flat], av), n2 = M.place("2 × drive speed", 12.6, [1, 10], 30, [flat], av);
+ok("two names, two boxes remembered (plus the dot)", av.length === 3);
+function boxOf(i) { return av[i]; }
+ok("the two names do not overlap", !(boxOf(1)[0] < boxOf(2)[2] && boxOf(1)[2] > boxOf(2)[0] && boxOf(1)[1] < boxOf(2)[3] && boxOf(1)[3] > boxOf(2)[1]), JSON.stringify(av));
+ok("neither name covers the dot", [1, 2].every(function (i) { var b = av[i]; return !(b[0] < 216 && b[2] > 200 && b[1] < 76 && b[3] > 60); }));
+void n1; void n2;
 console.log(fails ? fails + " of " + n + " checks failed" : "all " + n + " checks passed");
 if (fails) process.exit(1);

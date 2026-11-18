@@ -210,18 +210,20 @@ K.tool({
       text += " " + M.leadText(r.cross, r.dist, r.searched, wn);
     }
     var low = Math.min(A.minV, B.minV);
-    if (low >= 7 && low < 7.8 && state !== "bad") { state = "warn"; text += " The battery drops to " + K.fix(low, 1) + " V, only " + K.fix(low - 6.8, 1) + " V above the 6.8 V brown-out: a worn battery or another mechanism running would cross it."; }
-    if (low < 7 && state !== "bad") { state = "warn"; text += " The battery drops to " + K.fix(low, 1) + " V, " + (low < 6.8 ? "below" : "close to") + " the 6.8 V where the roboRIO cuts the motors (a brownout), so a real robot would not run this fast: lower the " + s.statorA + " A current limit or add a supply limit."; }
+    // The battery warning goes in the second line, starting with the figure; the verdict keeps the race.
+    var batt = "";
+    if (low >= 7 && low < 7.8 && state !== "bad") { state = "warn"; batt = K.fix(low, 1) + " V at the lowest, only " + K.fix(low - 6.8, 1) + " V above the 6.8 V brown-out: a worn battery or another mechanism running would cross it."; }
+    if (low < 7 && state !== "bad") { state = "warn"; batt = K.fix(low, 1) + " V at the lowest, " + (low < 6.8 ? "below" : "close to") + " the 6.8 V where the roboRIO cuts the motors (a brownout), so a real robot would not run this fast: lower the " + s.statorA + " A current limit or add a supply limit."; }
     function two(a, b, n) { return K.fix(a, n) + " / " + K.fix(b, n); }
     var fast = r.best ? "The fastest reduction tried over " + d + " ft (" + K.fix(r.sweep[0][0], 1) + " to " + K.fix(r.sweep[r.sweep.length - 1][0], 1) + " : 1) is " + K.fix(r.best[0], 2) + " : 1, at " + K.fix(r.best[1], 3) + " s." : "";
     // Wheel slip in words: "Neither slips", "A only", or both speeds.
     var sa = A.slipEnd >= 0, sb = B.slipEnd >= 0, slip = !sa && !sb ? { v: "Neither slips", u: "", sub: "" } : sa && sb ? { v: two(A.slipV / FT, B.slipV / FT, 1), u: "ft/s", sub: "A / B slip until; " } :
       { v: (sa ? "A" : "B") + " only", u: "", sub: (sa ? "A" : "B") + " slips until " + fts((sa ? A : B).slipV) + " ft/s, " + (sa ? "B" : "A") + " does not; " };
-    return K.verdict(state, text, fast) + K.outs([
+    return K.verdict(state, text, (batt ? batt + " " : "") + fast) + K.outs([
       { k: "Time to " + d + " ft", v: two(A.time, B.time, M.margin(A.time, B.time).dp), u: "s", sub: "A / B", tip: "From a standing start, full power all the way." },
       { k: "Speed at the line", v: two(A.vLine / FT, B.vLine / FT, 1), u: "ft/s", sub: two(A.vLine, B.vLine, 2) + " m/s" },
-      { k: "Top speed", v: two(A.top / FT, B.top / FT, 1), u: "ft/s", sub: "free speed at 12 V " + two(A.free / FT, B.free / FT, 1), tip: "The speed where the motors' push has fallen to the rolling drag, from the rested battery in Fine tuning less its sag. Free speed is the catalogue figure: 12 V and no load." },
-      { k: "Wheel slip", v: slip.v, u: slip.u, sub: slip.sub + "launch " + two(A.acc0 / F.G, B.acc0 / F.G, 2) + " g", state: sa || sb ? "" : "ok", tip: "While the motors could push harder than the tread grips, the wheels spin on the carpet and grip sets the acceleration." }
+      { k: "Top speed", v: two(A.top / FT, B.top / FT, 1), u: "ft/s", sub: "from " + K.fix(s.V0, 1) + " V at rest; free speed at 12 V: " + two(A.free / FT, B.free / FT, 1), tip: "The speed where the motors' push has fallen to the rolling drag, from the rested battery in Fine tuning less its sag. Free speed is the catalogue figure: 12 V and no load." },
+      { k: "Wheel slip", v: slip.v, u: slip.u, sub: slip.sub + "launch " + two(A.acc0 / F.G, B.acc0 / F.G, 2) + " g of " + K.fix(s.grip, 1) + " grip", state: sa || sb ? "" : "ok", tip: "While the motors could push harder than the tread grips, the wheels spin on the carpet and grip sets the acceleration." }
     ]);
   },
 
@@ -250,7 +252,7 @@ K.tool({
     function sagNote() {
       var L = A.minV <= B.minV ? A : B, k = A.minV <= B.minV ? "A" : "B", more = " The Battery and breakers tool goes further: every mechanism drawing at once, a worn battery and the breakers.";
       if (!(L.minV < 8.5)) return '<p class="mute small">The drive alone keeps the battery above ' + K.fix(L.minV, 1) + " V in this sprint." + more + "</p>";
-      return '<p class="mute small">The lowest battery, ' + K.fix(L.minV, 1) + " V (" + k + "), " + K.fix(Math.abs(L.minV - 6.8), 1) + " V " + (L.minV >= 6.8 ? "above" : "below") + " the 6.8 V brown-out, is the sag during this sprint while the drive draws about " + K.n(M.batteryAmps(s.V0, L.minV, s.Rbat), 0) + " A from the battery in all, through the " + K.fix(s.Rbat, 3) + " Ω of battery and wiring set in Fine tuning. It is not a sign of a worn battery." + more + "</p>";
+      return '<p class="mute small">The lowest battery, ' + K.fix(L.minV, 1) + " V (" + k + "), " + K.fix(Math.abs(L.minV - 6.8), 1) + " V " + (L.minV >= 6.8 ? "above" : "below") + " the 6.8 V brown-out, is the sag during this sprint while the drive draws about " + K.n(M.batteryAmps(s.V0, L.minV, s.Rbat), 0) + " A from the battery in all, through the " + K.fix(s.Rbat, 3) + " Ω of battery and wiring set in Fine tuning. That is the worst moment of the sprint: the speed where the current limit stops holding the motors back, when each takes its full limit from the battery. Slower than that the battery supplies less than the current in the motors, and the model counts it that way. It is not a sign of a worn battery." + more + "</p>";
     }
     var dur = r.dur;
     function pts(L, key, k) { var o = [], sim = L.sim; for (var i = 0; i < sim.t.length && sim.t[i] <= dur + 1e-9; i += 5) o.push([sim.t[i], sim[key][i] * k]); return o; }
@@ -268,7 +270,7 @@ K.tool({
     var ymax = sw.length ? Math.min(Math.max.apply(null, sw.map(function (p) { return p[1]; })), (r.best ? r.best[1] : 3) * 1.6) : 1;
     sw = sw.map(function (p) { return [p[0], p[1] <= ymax + 1e-9 ? p[1] : NaN]; });   // leave out what is above the top
     if (tA != null && tA <= ymax) dots.push({ x: A.ratio, y: tA, label: "A" }); if (tB != null && tB <= ymax) dots.push({ x: B.ratio, y: tB, label: "B" });
-    var swX = { label: "reduction (: 1)", name: "Reduction", min: r.sweep[0][0], max: r.sweep[r.sweep.length - 1][0] }, swY = { label: "s", unit: "s", min: r.best ? Math.floor(r.best[1] * 10 * 0.95) / 10 : 0, max: ymax };
+    var swX = { label: "reduction, to 1", name: "Reduction", min: r.sweep[0][0], max: r.sweep[r.sweep.length - 1][0] }, swY = { label: "s", unit: "s", min: r.best ? Math.floor(r.best[1] * 10 * 0.95) / 10 : 0, max: ymax };
     var sweep = sweepMarks(K.chart({ id: "drv-s", title: "Time over " + sd + " ft for other reductions", x: swX, y: swY,
       series: [{ name: "Time", pts: sw, color: 3 }], marks: r.best ? [{ x: r.best[0] }] : [] }), swX, swY, sw, dots, r.best);
     return '<div class="chartrow">' + dist + ahead + '</div><div class="chartrow">' + speed + amps + '</div><div class="chartrow">' + sweep + "<div></div></div>" + table +
@@ -398,14 +400,14 @@ K.tool({
     if (showRes) {
       var W = r.win === "A" ? r.A : r.B, Lo = r.win === "A" ? r.B : r.A, ln2 = r.win === "A" ? "B" : "A", mg = M.margin(r.A.time, r.B.time);
       msg = (t < tw ? "Predicted finish: " : "") + (!Lo.reached ? r.win + " finishes; " + ln2 + " cannot get there" : mg.tie ? "a dead heat" : (mg.dp === 3 ? "too close to call, " + r.win + " by " : r.win + " wins by ") + K.fix(mg.gap, mg.dp) + " s" + (narrow ? "" : "; " + ln2 + " is " + K.fix(d - ft(M.at(Lo.sim, "x", tw)), 1) + " ft back"));
-      if (phone) msg = (t < tw ? "Predicted: " : "") + (!Lo.reached ? ln2 + " never gets there" : mg.tie ? "a dead heat" : r.win + " by " + K.fix(mg.gap, mg.dp) + " s");
+      if (phone) msg = "at the line: " + (!Lo.reached ? ln2 + " never gets there" : mg.tie ? "a dead heat" : r.win + " by " + K.fix(mg.gap, mg.dp) + " s");
       msg = msg.charAt(0).toUpperCase() + msg.slice(1);
     }
     if (phone) {
-      // A small key at the top left: each robot's speed now, or its time once it has finished.
-      [["A", c.s1, 17], ["B", c.s2, 35]].forEach(function (q) { g.rect(12, q[2] - 9, 10, 10, { fill: q[1], stroke: null, radius: 2 }); g.text(q[0] + "  " + keyTxt[q[0]], 28, q[2], { size: 12, weight: 600 }); });
-      g.text(K.fix(t, 2) + " s", g.w - 10, 17, { align: "right", weight: 700, size: 13 });
-      if (msg) g.text(msg, g.w - 10, 35, { align: "right", weight: 600, color: c.text2, size: 11 });
+      // One line: who leads now, and how it ends. Under it, quieter: the clock and the two speeds.
+      var nowTxt = t < tw && t > 0 ? "now: " + (Math.abs(gapFt) < 0.05 ? "level" : (gapFt > 0 ? "B" : "A") + " leads by " + K.fix(Math.abs(gapFt), 1) + " ft") : "", head1 = [nowTxt, msg.charAt(0).toLowerCase() + msg.slice(1)].filter(Boolean).join("; ");
+      if (head1) g.text(head1.charAt(0).toUpperCase() + head1.slice(1), 12, 18, { size: 12, weight: 700 });
+      g.text(K.fix(t, 2) + " s.  A " + keyTxt.A + ", B " + keyTxt.B, 12, 36, { size: 11, weight: 600, color: c.text2 });
     } else {
       g.text(K.fix(t, 2) + " s", 12, 19, { weight: 700, size: 13 });
       if (msg) g.text(msg, 70, 19, { weight: 600, color: c.text2, size: 12 });

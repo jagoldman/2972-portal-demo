@@ -179,25 +179,24 @@ K.tool({
       if (r.tips) ways.push("braking at " + g2(r.brake) + " g lifts the rear wheels (from " + g2(L.tipBrake) + " g)");
       if (r.backTips) ways.push("accelerating at " + g2(r.acc) + " g lifts the front wheels (from " + g2(L.tipAccel) + " g)");
       var dir = r.tips && r.backTips ? "lower" : r.tips ? "back" : "forward";
-      st = "bad"; text = ways.join(" and ") + ": " + (hs.length && hs.length === (r.tips ? 1 : 0) + (r.backTips ? 1 : 0) ? "keep the mechanism's centre of gravity well under " + K.fix(Math.min.apply(null, hs), 0) + " in (the ideal limit) or move weight " + dir : "move weight " + dir + " or lower it") + ", and test with someone ready to catch the robot.";
+      st = "bad"; text = ways.join(" and ") + ": " + (hs.length && hs.length === (r.tips ? 1 : 0) + (r.backTips ? 1 : 0) ? "keep the mechanism's centre of gravity well under " + K.fix(Math.min.apply(null, hs), 0) + " in (the ideal limit) or move weight " + dir : "move weight " + dir + " or lower it") + ". Test it tethered or against a padded stop, with nobody in its path: do not try to catch a falling robot.";
       text = text.charAt(0).toUpperCase() + text.slice(1);
       more = !r.tips ? "The animation shows a stop, which this robot survives; the front lifts when it speeds up at this rate." : (sim.fell ? "From " + s.v0 + " ft/s this model predicts it falls over onto its front." : sim.bumper ? "From " + s.v0 + " ft/s this model predicts the rear lifts until the front bumper hits the floor (" + deg(sim.maxPhi) + "°), then drops back." : sim.lifted ? "From " + s.v0 + " ft/s the rear lifts to " + deg(sim.maxPhi) + "° and drops back." : "") +
         (sim.lifted ? " A real bumper can bounce or crush, so near the edge it could go either way." : "");
     } else if (r.kind === "slides") { st = "ok"; text = "The wheels slide before it can tip: tipping needs " + g2(L.tipBrake) + " g of braking and the tread gives at most " + g2(Math.max(0, L.gripBrake)) + " g."; }
     else {
       st = "warn"; text = "Holds at " + g2(r.brake) + " g, but a harder stop could tip it: it tips at " + g2(L.tipBrake) + " g and the tread allows " + g2(L.gripBrake) + " g.";
-      if (isFinite(r.hFor)) more = "At this braking it tips once the mechanism's centre of gravity is above " + K.fix(r.hFor, 0) + " in, the ideal limit: stay well under it, and test with someone ready to catch the robot.";
+      if (isFinite(r.hFor)) more = "At this braking it tips once the mechanism's centre of gravity is above " + K.fix(r.hFor, 0) + " in, the ideal limit: stay well under it. Test it tethered or against a padded stop, with nobody in its path.";
     }
     if (r.capped && !r.still) more = (more ? more + " " : "") + "The tread cannot brake at " + g2(s.brake) + " g here; the most is " + g2(Math.max(0, L.gripBrake)) + " g, used above.";
     var hTxt = !isFinite(r.hFor) ? (r.hFor > 0 ? "never" : "always") : K.fix(r.hFor, 1);
     return K.verdict(st, text, more) + K.outs([
       { k: "Combined centre of gravity", v: K.fix(c.x, 1) + " / " + K.fix(c.h, 1), u: "in", sub: "forward / high", tip: "The weighted average of the chassis and the mechanism." },
-      { k: "Braking that tips it", v: g2(L.tipBrake), u: "g", sub: "forward", state: r.tips ? "bad" : r.still ? "" : L.slidesFirstBrake ? "ok" : "warn", tip: "Forward tip when braking ÷ g is more than (distance to the front wheel ÷ height)." },
+      { k: "Braking that tips it", v: g2(L.tipBrake), u: "g", sub: r.still ? "forward" : L.slidesFirstBrake ? "forward; the wheels slide first" : "forward; it tips before it slides", state: r.tips ? "bad" : r.still ? "" : L.slidesFirstBrake ? "ok" : "warn", tip: "Forward tip when braking ÷ g is more than (distance to the front wheel ÷ height)." },
       { k: "Acceleration that tips it", v: g2(L.tipAccel), u: "g", sub: r.kind === "back" ? "backward; it tips standing still" : r.backTips ? "backward; your " + g2(r.acc) + " g is over it" : L.slidesFirstAccel ? "backward; the wheels slip first" : "backward; tread allows " + g2(L.gripAccel), state: r.kind === "back" || r.backTips ? "bad" : L.slidesFirstAccel ? "" : "warn" },
       { k: "Static tip angle", v: K.fix(L.staticF, 0) + "° / " + K.fix(L.staticR, 0) + "°", sub: "forward / backward", tip: "The steepest slope it can stand on without tipping, nose down and nose up." },
-      { k: "Mechanism height limit", v: hTxt, u: isFinite(r.hFor) ? "in" : "", sub: "of its centre of gravity; tips above it at " + g2(r.brake) + " g", tip: "The mechanism's centre of gravity height above which braking at this rate tips the robot." },
-      { k: "Comes first", v: L.slidesFirstBrake ? "Sliding" : "Tipping", sub: "when braking harder", state: r.still ? "" : L.slidesFirstBrake ? "ok" : r.tips ? "bad" : "warn", tip: "The tread lets go before the robot tips when grip is less than (distance to the front wheel ÷ height)." }
-    ]);
+      { k: "Mechanism height limit", v: hTxt, u: isFinite(r.hFor) ? "in" : "", sub: "its centre of gravity, at " + g2(r.brake) + " g", tip: "The mechanism's centre of gravity height above which braking at this rate tips the robot." },
+    ]) + '<p class="mute small">Each static tip angle\'s tangent is its g figure: tan ' + K.fix(L.staticF, 0) + "° = " + g2(Math.tan(L.staticF * D2R)) + ", tan " + K.fix(L.staticR, 0) + "° = " + g2(Math.tan(L.staticR * D2R)) + (s.ramp ? ", on flat ground; this ramp changes the g figures" : "") + ".</p>";
   },
 
   more: function (s, r) {
@@ -327,7 +326,10 @@ K.tool({
       g.circle(pv[0], pv[1], 4, { fill: c.bad, stroke: c.sheet, width: 1.5 });
       var ptx = "pivot now: " + pn.replace("front bumper's edge", "bumper's edge"), pw = g.textWidth(ptx, { size: 11, weight: 700 }), pr = pv[0] + 22 + pw < g.w - 6;
       // On a phone the caption at the top names the pivot; there is no room beside it here.
-      if (wide) g.callout(ptx, pv[0] + (pr ? 3 : -3), pv[1] - 3, pv[0] + (pr ? 26 : -18), pv[1] - (pr ? 18 : 30), { size: 11, weight: 700, color: c.bad });
+      // Start the words past the front bumper, so they never sit on it.
+      var bf = Math.max(SR([wb / 2 + 2.5 + BUMP, 2])[0], SR([wb / 2 + 2.5 + BUMP, BTOP])[0]), lx2 = Math.max(pv[0] + 26, bf + 12);
+      pr = lx2 + pw < g.w - 6;
+      if (wide) g.callout(ptx, pv[0] + (pr ? 3 : -3), pv[1] - 3, pr ? lx2 : pv[0] - 18, pv[1] - (pr ? 18 : 30), { size: 11, weight: 700, color: c.bad });
       var rw = R([-wb / 2, 0]), up = rw[1];
       if (up > 0.3) {
         var r0 = S([rw[0], 0]), r1 = S(rw), ux = Math.min(r0[0], r1[0]) - 14;
@@ -339,7 +341,9 @@ K.tool({
     // Name each force where its arrow ends: the weight, the braking as a share of it, and their sum.
     g.text("weight", C[0] - 8, C[1] + wS[1] * 0.22, { align: "right", base: "middle", color: c.text2, size: 11, weight: 700 });
     if (brk > 0.01) {
-      g.text(wide ? "braking, " + g2(brk) + " × weight" : g2(brk) + " × weight", C[0] + bS[0] + 8, C[1] + bS[1] - 2, { base: "middle", color: c.text2, size: 11, weight: 700 });
+      // Not a push from outside: it is how braking feels to the robot, its inertia carrying it on.
+      if (wide) { g.text("what braking feels like to the robot", C[0] + bS[0] + 8, C[1] + bS[1] - 9, { base: "middle", color: c.text2, size: 11, weight: 700 }); g.text("(its inertia), " + g2(brk) + " × weight", C[0] + bS[0] + 8, C[1] + bS[1] + 6, { base: "middle", color: c.text2, size: 11, weight: 700 }); }
+      else g.text("inertia, " + g2(brk) + " × weight", C[0] + bS[0] + 8, C[1] + bS[1] - 2, { base: "middle", color: c.text2, size: 11, weight: 700 });
       g.text(wide ? "their sum" : "sum", C[0] + rS[0] * 0.5 + 10, C[1] + rS[1] * 0.5, { base: "middle", color: c.force, size: 11, weight: 700 });
     }
     var state = r.kind === "back" ? "tips backward standing still" : r.kind === "front" ? "tips forward standing still" : sim.piv[fi] >= 3 ? "fallen over" : sim.piv[fi] === 2 ? "now pivoting on the front bumper's edge, " + K.fix(phi / D2R, 0) + "°" : sim.piv[fi] === 3 ? "now pivoting on the top of the bumper, " + K.fix(phi / D2R, 0) + "°" : phi > 0.004 ? "pivoting on the front wheels, rear up " + K.fix(phi / D2R, 0) + "°" : braking ? "braking " + g2(r.brake) + " g" : sim.stopT > 0 && t >= sim.stopT ? "the robot has stopped" : "standing";
