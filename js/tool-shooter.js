@@ -227,7 +227,7 @@ K.tool({
     if (m && !m.wall) v.push({ k: m.entryDeg < 0 ? "Still rising at" : "Enters at", v: K.fix(Math.abs(m.entryDeg), 0), u: "°", sub: "after " + K.fix(m.t, 2) + " s in the air", tip: "How steeply the ball is falling as it reaches the opening. Steeper leaves more room front to back on an opening that faces up." });
     var w2 = [{ k: "Wheel after the shot", v: rpmTxt(sh.wAfter / RPM), u: "rpm", sub: "down " + rpmTxt(Math.round(s.rpm / 10) * 10 - Math.round(sh.wAfter / RPM / 10) * 10) + " (" + K.fix(sh.drop / (r.w || 1) * 100, 1) + "%)" + (r.aim && sh.wAfter / RPM < r.rpmLo && m && m.hit ? "; the next ball waits for it (Rapid fire)" : ": a normal dip") },
       { k: "Back to speed in", v: r.recov.time === Infinity ? "never" : K.fix(r.recov.time, 2), u: r.recov.time === Infinity ? "" : "s", sub: r.recov.time < Infinity && r.recov.time > 0 ? Math.max(1, s.motors) + " motor" + (s.motors > 1 ? "s" : "") + " at " + s.statorA + " A, no ball" : "", state: r.recov.time === Infinity ? "bad" : "" },
-      { k: "Spin-up from rest", v: cannot ? "never" : K.fix(r.spinup.time, 2), u: cannot ? "" : "s", state: cannot ? "bad" : "" },
+      { k: "Spin-up from rest", v: cannot ? "never" : K.fix(r.spinup.time, 2), u: cannot ? "" : "s", sub: cannot ? "" : Math.max(1, s.motors) + " motor" + (s.motors > 1 ? "s" : "") + " at " + s.statorA + " A", state: cannot ? "bad" : "" },
       { k: "Energy into the ball", v: K.fix(sh.eBall, 1), u: "J", sub: Math.round(sh.eff * 100) + "% of what the wheel gave up", tip: "A wheel-and-hood shooter fed a ball at rest can pass on at most half of the energy the wheel loses. The rest goes into heat and squashing the ball. A feeder that pushes the ball in raises the share." }];
     var caveat = (s.meas > 0 ? "Speed kept was set from your measured shot." : "Speed kept (" + K.fix(s.keep, 0) + "%) is a guess until you measure one shot: see Fine tuning.") + (s.lift ? " The lift from spin is an estimate for a foam ball." : "");
     return K.verdict(state, text, caveat) + K.outs(v) + K.outs(w2);
@@ -244,7 +244,7 @@ K.tool({
     if (r.meet) half = r.meet.half;
     for (var i = 0; i <= 20; i++) { var rp = s.rpm * (0.85 + 0.3 * i / 20), sv = F.shot(Object.assign({}, U.sp, { w: rp * RPM })).v, mm = F.meet(M.flight(U, sv, { dt: 0.005 }).pts, r.target); sens.push([rp, mm ? mm.miss / IN : NaN]); }
     var charts = '<div class="chartrow">' +
-      K.chart({ id: "sh-w", title: "Wheel speed through one shot (rpm)", x: { label: "seconds", name: "At", unit: "s" }, y: { min: Math.min(r.shot.wAfter / RPM, r.aim ? r.rpmLo : 1e9) * 0.96, max: s.rpm * 1.02, unit: "rpm" }, series: [{ name: "Wheel speed", pts: w, color: 1 }], note: "The ball leaves at the dot, at full speed; the dip comes after.", dots: [{ x: 0, y: s.rpm, label: "ball leaves" }], hlines: r.aim && r.rpmLo > r.shot.wAfter / RPM * 0.9 ? [{ y: r.rpmLo, label: "slowest that scores, as the ball leaves" }] : [] }) +
+      K.chart({ id: "sh-w", title: "Wheel speed through one shot (rpm)", x: { label: "seconds", name: "At", unit: "s" }, y: { min: Math.min(r.shot.wAfter / RPM, r.aim ? r.rpmLo : 1e9) * 0.96, max: s.rpm * 1.02, unit: "rpm" }, series: [{ name: "Wheel speed", pts: w, color: 1 }], note: "First dot: the ball reaches the wheel. The wheel slows while it pushes the ball, which leaves at the second dot. A set speed is the wheel's speed at the first.", dots: [{ x: 0, y: s.rpm }, { x: r.tc, y: r.shot.wAfter / RPM }], hlines: r.aim && r.rpmLo > r.shot.wAfter / RPM * 0.9 ? [{ y: r.rpmLo, label: "slowest set speed that scores" }] : [] }) +
       K.chart({ id: "sh-s", title: (s.tkind === "top" ? "Long or short" : "High or low") + " of the middle as wheel speed changes (in)", x: { label: "wheel rpm", name: "At", unit: "rpm" }, y: { unit: "in", min: -Math.max(half / IN * 1.8, 20), max: Math.max(half / IN * 1.8, 20) }, series: [{ name: "Where it arrives", pts: sens, color: 2 }], hlines: [{ y: half / IN, side: "left", label: "over " + K.fix(half / IN, 0) + " in: too " + (s.tkind === "top" ? "long" : "high") }, { y: -half / IN, below: true, label: "under −" + K.fix(half / IN, 0) + " in: too " + (s.tkind === "top" ? "short" : "low") }], marks: [{ x: s.rpm, label: r.meet && isFinite(r.meet.miss) ? "now, " + K.fix(Math.abs(r.meet.miss) / IN, 0) + " in " + (r.meet.miss >= 0 ? (s.tkind === "top" ? "long" : "high") : (s.tkind === "top" ? "short" : "low")) : "now" }] }) + "</div>";
     return charts + notes(s, r);
   },
@@ -287,7 +287,7 @@ function burstOuts(s, r) {
   return K.verdict(state, text) + (tryRate ? '<div class="row"><button class="btn sm" data-act="shrate" data-v="' + tryRate + '">Try ' + K.fix(tryRate, 1) + " a second</button></div>" : "") + K.outs([
     { k: "Balls that score", v: b.hits + " of " + n, state: state === "ok" ? "" : state },
     { k: "Wheel as the last ball reaches it", v: rpmTxt(last.wBefore / RPM), u: "rpm", sub: (1 - last.wBefore / r.w < 0.0005 ? "back to full speed" : K.fix((1 - Math.round(last.wBefore / RPM / 10) * 10 / (Math.round(r.w / RPM / 10) * 10)) * 100, 1) + "% under the set speed") + "; that ball drops it to " + rpmTxt(last.wAfter / RPM) },
-    { k: "Last ball leaves at", v: K.fix(last.v / FT, 1), u: "ft/s", sub: "first: " + K.fix(b.shots[0].v / FT, 1) + " ft/s" },
+    { k: "Last ball leaves at", v: K.fix(last.v / FT, 1), u: "ft/s", sub: K.fix(b.shots[0].v / FT, 1) === K.fix(last.v / FT, 1) ? "the same as the first" : "first: " + K.fix(b.shots[0].v / FT, 1) + " ft/s" },
     { k: "Fastest rate that scores them all", v: b.best == null ? "–" : b.best >= 20 ? "20+" : K.fix(Math.floor(b.best * 10) / 10, 1), u: "a second", sub: b.best >= 20 ? "no wheel limit found up to 20; check the feeder separately" : "set by how fast the wheel recovers" },
     { k: "One ball costs the wheel", v: K.fix(r.shot.drop / (r.w || 1) * 100, 1), u: "%", sub: "and takes " + (r.recov.time === Infinity ? "forever" : K.fix(r.recov.time, 2) + " s") + " to win back" }]);
 }
@@ -296,7 +296,7 @@ function burstMore(s, r) {
   var worst = Math.min.apply(null, b.shots.map(function (x) { return x.meet ? x.meet.miss / IN : 0; }).concat([-half / IN * 1.6])), short = 0;
   var never = [], land = b.shots.map(function (x, i) { if (!x.meet) { short++; never.push({ x: i + 1, y: worst * 1.12, label: "" }); } return [i + 1, x.meet ? x.meet.miss / IN : NaN]; });
   return '<div class="chartrow">' +
-    K.chart({ id: "sh-bw", title: "Wheel speed through the burst (rpm)", note: r.aim ? "Each dot is a ball leaving. One that leaves under the dashed line misses." : "Each dot is a ball leaving.", x: { label: "seconds", name: "At", unit: "s" }, y: { min: Math.min(Math.min.apply(null, b.w) / RPM, r.aim ? r.rpmLo : 1e9) * 0.97, max: s.rpm * 1.02, unit: "rpm" }, series: [{ name: "Wheel speed", pts: pts, color: 1 }], dots: b.shots.map(function (x, i) { return { x: x.t, y: x.wBefore / RPM, label: "" }; }), hlines: r.aim ? [{ y: r.rpmLo }] : [] }) +
+    K.chart({ id: "sh-bw", title: "Wheel speed through the burst (rpm)", note: r.aim ? "Each dot is a ball reaching the wheel. One that reaches it under the dashed line (" + rpmTxt(r.rpmLo) + " rpm) misses." : "Each dot is a ball reaching the wheel.", x: { label: "seconds", name: "At", unit: "s" }, y: { min: Math.min(Math.min.apply(null, b.w) / RPM, r.aim ? r.rpmLo : 1e9) * 0.97, max: s.rpm * 1.02, unit: "rpm" }, series: [{ name: "Wheel speed", pts: pts, color: 1 }], dots: b.shots.map(function (x, i) { return { x: x.t, y: x.wBefore / RPM, label: "" }; }), hlines: r.aim ? [{ y: r.rpmLo }] : [] }) +
     K.chart({ id: "sh-bl", title: "Where each ball arrives, from the middle (in)", note: short ? short + (short === 1 ? " ball never reaches" : " balls never reach") + " the rim: marked at the bottom, off the scale. Measured where a ball comes down through rim height." : (b.hits === b.shots.length ? "All " + b.shots.length + " arrive between the dashed lines" + (function () { var mm = land.map(function (q) { return q[1]; }), lo = Math.min.apply(null, mm), hi = Math.max.apply(null, mm); return Math.round(lo) === Math.round(hi) && Math.round(lo) !== 0 ? ", " + Math.abs(Math.round(lo)) + " in " + (lo > 0 ? "long" : "short") : ""; })() + ", so all go in." : "A ball outside the dashed lines misses.") + " Measured where the ball comes down through rim height.", x: { label: "ball", name: "Ball", min: 1, max: b.shots.length }, y: { unit: "in", min: Math.min(-half / IN * 1.6, Math.min.apply(null, land.map(function (p) { return isFinite(p[1]) ? p[1] : 0; })) * 1.15), max: Math.max(half / IN * 1.6, Math.max.apply(null, land.map(function (p) { return isFinite(p[1]) ? p[1] : 0; })) * 1.15) }, series: [{ name: "Arrives", pts: land, color: 2 }], dots: land.filter(function (p) { return isFinite(p[1]); }).map(function (p) { return { x: p[0], y: p[1] }; }).concat(never), hlines: [{ y: -half / IN, label: "below this: short", below: true }, { y: half / IN, label: "above this: long" }] }) + "</div>";
 }
 function mapOuts(s, r) {
@@ -473,12 +473,12 @@ function closeUp(g, s, r, phase, rpmNow, tShow) {
   var vin0 = U.sp.vIn || 0, lin = 0.5 * U.mb * (r.shot.v * r.shot.v - vin0 * vin0), rot = 0.5 * U.Ib * r.shot.spin * r.shot.spin, tot0 = Math.max(r.shot.eWheel, lin + rot, 1e-9), lost = Math.max(0, tot0 - lin - rot), tot = Math.max(1e-9, +K.fix(lin, 1) + +K.fix(rot, 1) + +K.fix(lost, 1));
   if (La.strip) {
     // On a phone: the bar and one line under it.
-    var bwS = cw - rx - 6, xs = rx + 2, sg = [[lin, c.s1], [rot, c.s3], [lost, c.surface3]]; ty += 2;
+    var bwS = cw - rx - 6, xs = rx + 2, sg = [[lin, c.s1], [rot, c.s3], [lost, c.ghost]]; ty += 2;
     sg.forEach(function (q, n) { var wseg = q[0] / tot * bwS; g.rect(xs, ty, Math.max(0, wseg - (n < 2 ? 2 : 0)), 8, { fill: q[1], stroke: null }); xs += wseg; });
     if (ty + 24 < yEnd) g.text("wheel's " + K.fix(tot, 1) + " J: flight " + K.fix(lin, 1) + ", spin " + K.fix(rot, 1) + ", wasted " + K.fix(lost, 1), rx + 2, ty + 22, { size: 10.5, color: c.mute, halo: false });
   } else if (ty + lh * 4 + 16 < g.h) {
     ty += 6; g.text("The wheel gave up " + K.fix(tot, 1) + " J", x0 + 2, ty, { size: sz, color: c.text2, weight: 600, halo: false }); ty += 8;
-    var bw = cw - 12, xx = x0 + 2, segs = [[lin, c.s1, "flight"], [rot, c.s3, "spin"], [lost, c.surface3, "wasted"]];
+    var bw = cw - 12, xx = x0 + 2, segs = [[lin, c.s1, "flight"], [rot, c.s3, "spin"], [lost, c.ghost, "wasted"]];
     segs.forEach(function (q, n) { var wseg = q[0] / tot * bw; g.rect(xx, ty, Math.max(0, wseg - (n < 2 ? 2 : 0)), 10, { fill: q[1], stroke: null }); xx += wseg; });
     ty += 26;
     segs.forEach(function (q) { if (ty > g.h - 4) return; g.rect(x0 + 2, ty - 9, 10, 10, { fill: q[1], stroke: null }); g.text(q[2], x0 + 17, ty, { size: sz, color: c.mute, halo: false }); g.text(K.fix(q[0], 1) + " J", cw - 6, ty, { size: sz, weight: 700, align: "right", halo: false }); ty += lh; });
@@ -514,7 +514,7 @@ function drawSide(g, s, r, t) {
       if (tf < 0) return;
       var endT = sh.pc.t[sh.pc.t.length - 1], shown = sh.path.filter(function (p) { return p[0] <= tf; });
       pathLine(g, V, shown, { color: sh.hit ? c.ok : c.bad, width: tf > endT ? (sh.hit ? 2.25 : 1.25) : 2 });
-      if (tf <= endT) { var bxN = V.X(F.interp(sh.pc.t, sh.pc.x, tf)), byN = V.Y(F.interp(sh.pc.t, sh.pc.y, tf)), brN = Math.max(3, V.L(tg.r)); g.ball(bxN, byN, brN, -spinK(r.w) * sh.spin * tf, {}); if (tf > 0.06) g.text(String(i + 1), bxN + brN + 3, byN - brN + 2, { size: 10.5, weight: 700, color: sh.hit ? c.ok : c.bad }); }
+      if (tf <= endT) { var bxN = V.X(F.interp(sh.pc.t, sh.pc.x, tf)), byN = V.Y(F.interp(sh.pc.t, sh.pc.y, tf)), brN = Math.max(3, V.L(tg.r)); g.ball(bxN, byN, brN, -spinK(r.w) * sh.spin * tf, {}); g.text(String(i + 1), bxN + brN + 3, byN - brN + 2, { size: 10.5, weight: 700, color: sh.hit ? c.ok : c.bad }); }
       else if (!sh.hit) { var e = sh.path[sh.path.length - 1]; g.circle(V.X(e[1]), V.Y(e[2]), 3.5, { fill: c.bad, stroke: null }); if (allDone) { var onFloor = e[2] < tg.r * 1.2, ny = V.Y(e[2]) + 4, lft = onFloor || Math.abs(ny - 4 - V.Y(tg.h)) < 9; g.text(String(i + 1), V.X(e[1]) + (lft ? -8 : 8), onFloor ? V.Y(0) - 6 : ny, { align: lft ? "right" : "left", size: 10.5, weight: 700, color: c.bad, halo: lft }); } }
     });
     // While balls are in the air the count is of those that have arrived; a dot marks each one that went in.
@@ -540,7 +540,7 @@ function drawSide(g, s, r, t) {
     g.arc(V.X(0), V.Y(s.h0 * IN), 26, -th, 0, { color: c.mute, width: 1 }); g.line(V.X(0), V.Y(s.h0 * IN), V.X(0) + 34, V.Y(s.h0 * IN), { color: c.mute, width: 1 });
     g.text(K.fix(s.deg, 0) + "°", V.X(0) + 32, V.Y(s.h0 * IN) - 9, { color: c.text2, size: 11, weight: 600 });
     g.circle(hx, hy, 5, { fill: c.surface, stroke: c.accent, width: 2 });
-    if (g.w > 520 && !K.playing(ID)) g.text("drag to aim", hx - 10, hy + 3, { align: "right", size: 10.5, color: c.accent });
+    if (!K.playing(ID)) g.text(g.w > 520 ? "drag to aim" : "drag", hx - 10, hy + 3, { align: "right", size: 10.5, color: c.accent });
     // Apex, entry and the verdict at the target.
     var ap = r.fl.apex, apOn = m && m.wall ? false : !m || !m.hit || ap[0] < m.x;
     if (apOn && !(flying && Math.hypot(bxs - V.X(ap[0]), bys - V.Y(ap[1])) < 46)) { g.line(V.X(ap[0]), V.Y(ap[1]) - 4, V.X(ap[0]), V.Y(ap[1]) - 16, { color: c.mute, width: 1 }); g.text((g.w > 520 ? "top of the arc, " : "top, ") + K.fix(ap[1] / FT, 1) + " ft up", V.X(ap[0]), V.Y(ap[1]) - 20, { align: "center", color: c.text2, size: 11, weight: 600 }); }
