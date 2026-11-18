@@ -37,7 +37,8 @@ var ICON = {
   gear: "M12 15a3 3 0 1 0 0-6 3 3 0 0 0 0 6zM10.3 3h3.4l.5 2.4 1.7.7 2-1.4 2.4 2.4-1.4 2 .7 1.7 2.4.5v3.4l-2.4.5-.7 1.7 1.4 2-2.4 2.4-2-1.4-1.7.7-.5 2.4h-3.4l-.5-2.4-1.7-.7-2 1.4-2.4-2.4 1.4-2-.7-1.7L3 13.7v-3.4l2.4-.5.7-1.7-1.4-2 2.4-2.4 2 1.4 1.7-.7z",
   camera: "M3 8h4l2-3h6l2 3h4v11H3zM12 17a4 4 0 1 0 0-8 4 4 0 0 0 0 8z",
   download: "M12 3v12M7 10l5 5 5-5M5 21h14",
-  editor: "M4 20h4L19 9l-4-4L4 16zM14 6l4 4"
+  editor: "M4 20h4L19 9l-4-4L4 16zM14 6l4 4",
+  calc: "M6 3h12v18H6zM9 7h6M9 12h.01M12 12h.01M15 12h.01M9 16h.01M12 16h.01M15 16h.01"
 };
 D.ICON = ICON;
 D.ic = function (name, size) { size = size || 20; return '<svg width="' + size + '" height="' + size + '" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="' + (ICON[name] || ICON.more) + '"/></svg>'; };
@@ -75,9 +76,28 @@ D.TOOLS = [
   { id: "tool-trace", name: "Drawing to vector", icon: "trace", line: "A photo of a drawing becomes a laser or CAD file.", tip: "Make an SVG for the laser and a DXF for Onshape, at true size.", modes: ["build", "competition"], groups: BUILDERS },
   { id: "tool-gear", name: "Gear and sprocket finder", icon: "gear", line: "A photo and one measurement name the part.", tip: "Work out gear pitch, chain size or belt profile, then find it in Parts.", modes: ["build", "competition"], groups: BUILDERS }
 ];
+/* ---------- Ground up helpers (GROUND_UP.md §5), shared by every app file ---------- */
+// How many practices are left from today up to and including a date ("2026-11-14"). null when it cannot be known
+// (no calendar, or the date is past). Rule 4: count in practices beside the date.
+D.practicesLeft = function (date) {
+  var api = D.calApi; if (!api || !api.meetDays || !date || date < api.TODAYS) return null;
+  return api.meetDays(api.TODAYS, date).length;
+};
+D.practicesText = function (date) { var n = D.practicesLeft(date); return n == null ? "" : n === 0 ? "no practice before then" : n === 1 ? "1 practice left" : n + " practices left"; };
+// A row of steps: the ones before `cur` are done, `cur` is where it is now. steps: [label] or [[label, small line]].
+// Rule 2 goes with it: say whose move it is with D.move().
+D.stages = function (steps, cur, label) {
+  return '<ol class="stages" aria-label="' + esc(label || "Progress") + '">' + steps.map(function (st, i) {
+    var name = Array.isArray(st) ? st[0] : st, sub = Array.isArray(st) ? st[1] : "";
+    return '<li class="' + (i < cur ? "done" : i === cur ? "now" : "todo") + '"' + (i === cur ? ' aria-current="step"' : "") + "><b>" + esc(name) + "</b>" + (sub ? "<small>" + esc(sub) + "</small>" : "") + "</li>";
+  }).join("") + "</ol>";
+};
+// "Waiting on Ms. Rivera" or "Your move". who: a name or a role ("a mentor"); mine: true when it is this person.
+D.move = function (who, mine) { return '<span class="move' + (mine ? " mine" : "") + '">' + (mine ? "Your move" : "Waiting on " + esc(who)) + "</span>"; };
 D.tool = function (id) { return D.TOOLS.filter(function (t) { return t.id === id; })[0]; };
 D.isToolRoute = function (r) { return r === "tools" || !!D.tool(r); };
-D.visibleTools = function () { return D.TOOLS.filter(function (t) { return D.inGroup(t) && t.modes.indexOf(D.S.mode) >= 0; }); };
+// Calculators (t.calc, js/calcs.js) are new in the 8.3 proposal, so the Live version does not list them.
+D.visibleTools = function () { return D.TOOLS.filter(function (t) { return D.inGroup(t) && t.modes.indexOf(D.S.mode) >= 0 && !(t.calc && D.design() === "live"); }); };
 /* The Calendar app has three tabs. Who sees each one is what the Attendance and Snacks tiles used to say. */
 D.CALTABS = [
   { id: "calendar", name: "Calendar", modes: ["build", "competition"], groups: ALL },
@@ -179,7 +199,7 @@ function demobar() {
   return '<div class="demobar"><b>Demo</b><span>sample data</span>' +
     '<span class="seg" role="group" aria-label="View as">' + roles + "</span>" +
     '<label><input type="checkbox" id="evday" data-change="eventday"' + (S.eventDay ? " checked" : "") + "> Event day</label>" +
-    '<span class="seg" role="group" aria-label="Design">' + [["live", "Live"], ["a", "A Baseline"], ["b", "B Ideal"]].map(function (v) { return '<button data-act="design" data-v="' + v[0] + '" aria-pressed="' + (D.design() === v[0]) + '">' + v[1] + "</button>"; }).join("") + "</span>" +
+    '<span class="seg" role="group" aria-label="Design">' + [["live", "Live"], ["b", "Baseline"], ["c", "Ground up"]].map(function (v) { return '<button data-act="design" data-v="' + v[0] + '" aria-pressed="' + (D.design() === v[0]) + '">' + v[1] + "</button>"; }).join("") + "</span>" +
     '<span class="spacer"></span><button class="linkbtn" data-act="reset">Reset</button></div>';
 }
 /* One navy app bar on every app: Apps button, 2972 badge, the app's name; Competition chip, bell and account at the right.
@@ -216,7 +236,10 @@ function groupRow(id, label, count, place, body, tip) {
 D.toolRow = function (t) { return '<a class="toolrow" href="#' + t.id + '" data-act="go" data-v="' + t.id + '" data-tip="' + esc(t.tip) + '"><span class="ic">' + D.ic(t.icon, 18) + "</span><span><b>" + esc(t.name) + "</b><small>" + esc(t.line) + "</small></span></a>"; };
 function toolsGroup(place) {
   var tools = D.visibleTools(); if (!tools.length) return "";
-  return groupRow("tools", "Tools", tools.length, place, tools.map(D.toolRow).join("") + '<a class="toolrow all" href="#tools" data-act="go" data-v="tools"><span>All tools</span><span class="chev" aria-hidden="true">›</span></a>');
+  // Menus are doors: the calculators get one row that opens the Tools page, not a row each.
+  var calcs = tools.filter(function (t) { return t.calc; });
+  var calcRow = calcs.length ? '<a class="toolrow" href="#tools" data-act="go" data-v="tools" data-tip="Gearbox, drivetrain, belt, chain, arm, elevator and more."><span class="ic">' + D.ic("calc", 18) + "</span><span><b>Calculators</b><small>" + calcs.length + " for gears, belts, chain and mechanisms.</small></span></a>" : "";
+  return groupRow("tools", "Tools", tools.length, place, tools.filter(function (t) { return !t.calc; }).map(D.toolRow).join("") + calcRow + '<a class="toolrow all" href="#tools" data-act="go" data-v="tools"><span>All tools</span><span class="chev" aria-hidden="true">›</span></a>');
 }
 /* Admin apps: the link-out apps for the people who run the site (Admin, Website editor). The group shows only when
    this person may open at least one of them, and lists only those. */
@@ -416,13 +439,16 @@ A.role = function (b) {
   D.render();
 };
 D.changes.eventday = function (el) { D.S.eventDay = el.checked; D.render(); };
-/* Demo only: three versions of the apps (design 8.3 proposal). "live" is the apps as they are today. "a" is the same
-   layouts in the new look (css/look.css). "b" is the ideal version: the new look, css/ideal.css and the layout changes
-   the js files make where D.ideal() is true. The choice is kept in this browser. */
-var DESIGNS = { live: 1, a: 1, b: 1 };
+/* Demo only: the versions of the apps (design 8.3 proposal).
+   "live" is the apps as they are today. "b" is the Baseline: the new look (css/look.css) and the tighter layout
+   (css/ideal.css, D.ideal()), which the owner chose on 2026-11-17. "c" is Ground up: the Baseline plus the changes in
+   GROUND_UP.md (css/ground*.css, D.ground()). "a" (the new look on today's layouts) is kept for comparison and is
+   reachable only by ?design=a. The choice is kept in this browser. */
+var DESIGNS = { live: 1, a: 1, b: 1, c: 1 };
 D.design = function () { var v = document.documentElement.getAttribute("data-design"); return DESIGNS[v] ? v : "live"; };
-D.ideal = function () { return D.design() === "b"; };
-D.setDesign = function (v) { if (v === "a" || v === "b") document.documentElement.setAttribute("data-design", v); else document.documentElement.removeAttribute("data-design"); };
+D.ideal = function () { var v = D.design(); return v === "b" || v === "c"; };
+D.ground = function () { return D.design() === "c"; };
+D.setDesign = function (v) { if (v === "a" || v === "b" || v === "c") document.documentElement.setAttribute("data-design", v); else document.documentElement.removeAttribute("data-design"); };
 A.design = function (b) { D.setDesign(b.dataset.v); try { localStorage.setItem("2972-demo-design83", b.dataset.v); } catch (e) {} D.render(); };
 A.reset = function () { D.saved = {}; try { localStorage.removeItem(SAVE_KEY); } catch (e) {} D.reset(); D.toast("Demo reset: sample data and saved choices."); D.render(); };
 A.go = function (b) { D.go(b.dataset.v); };
@@ -526,5 +552,5 @@ document.addEventListener("focusout", function (e) {
 });
 function routeFromHash() { var h = location.hash.slice(1); return h && (D.views[h] || D.tile(h) || D.ROUTE_TAB[h]) ? h : null; }
 window.addEventListener("hashchange", function () { var h = routeFromHash(), was = D.S.tabs.calapp; if (!h) return; h = D.landing(h); if (h !== D.S.route || was !== D.S.tabs.calapp) { D.S.route = h; D.S.drawer = null; D.S.modal = null; D.render(); } });
-D.boot = function () { D.reset(); var params = new URLSearchParams(location.search); var dz = params.get("design"); if (!DESIGNS[dz]) { try { dz = localStorage.getItem("2972-demo-design83"); } catch (e) { dz = null; } } D.setDesign(DESIGNS[dz] ? dz : "b"); if (Object.prototype.hasOwnProperty.call(D.ROLES, params.get("role"))) D.S.role = params.get("role"); if (params.get("mode") === "competition") D.S.mode = "competition"; var h = routeFromHash(); if (h) { if (params.get("tab")) D.S.tabs[h] = params.get("tab"); D.S.route = D.landing(h); } D.render(); };
+D.boot = function () { D.reset(); var params = new URLSearchParams(location.search); var dz = params.get("design"); if (!DESIGNS[dz]) { try { dz = localStorage.getItem("2972-demo-design83"); } catch (e) { dz = null; } } D.setDesign(DESIGNS[dz] ? dz : "c"); if (Object.prototype.hasOwnProperty.call(D.ROLES, params.get("role"))) D.S.role = params.get("role"); if (params.get("mode") === "competition") D.S.mode = "competition"; var h = routeFromHash(); if (h) { if (params.get("tab")) D.S.tabs[h] = params.get("tab"); D.S.route = D.landing(h); } D.render(); };
 })();

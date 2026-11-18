@@ -1,5 +1,6 @@
-/* Design 8.3, version B ("Ideal"): the same apps, features and words as version A, laid out to waste less space.
-   Loaded last, after css/look.css. Every rule sits under :root[data-design="b"], so versions Live and A never see it.
+/* Design 8.3, the Baseline layout (was "version B, Ideal"; the owner chose it on 2026-11-17): the same apps, features
+   and words as Live, laid out to waste less space. Loaded after css/look.css. Every rule sits under
+   :root:is([data-design="b"], [data-design="c"]), so Live never sees it and Ground up ("c") builds on it.
    The few places where the page's content changes (Home, the Parts request table, Tasks' "After that", Skills'
    overview rows, the Calendar's "Coming up" column) are in the js files, behind D.ideal().
 
@@ -10,12 +11,12 @@
    3. Tighter rows. With a mouse: 14 px text, 40 px rows, 34 px buttons. On a phone nothing you tap is under 44 px.
    4. Facts in columns. Lists whose rows carry the same facts (part requests) are tables on a wide screen. */
 
-:root[data-design="b"] {
+:root:is([data-design="b"], [data-design="c"]) {
   --bar: 48px; --maxw: 1240px; --sheet-x: 16px;
 }
-@media (min-width: 641px) { :root[data-design="b"] { --sheet-x: 24px; } }
+@media (min-width: 641px) { :root:is([data-design="b"], [data-design="c"]) { --sheet-x: 24px; } }
 
-:root[data-design="b"] {
+:root:is([data-design="b"], [data-design="c"]) {
   /* ============================================================
      1. One bar
      ============================================================ */
