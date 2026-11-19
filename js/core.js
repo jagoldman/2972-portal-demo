@@ -268,7 +268,8 @@ function accountMenu() {
 /* Tools, Admin apps and More (in that order): one quiet row each, closed by default, that opens a short list. The row is a real button with
    aria-expanded and its chevron turns. A group with nothing in it for this person is not shown. */
 // The guide may open a group for one stop (D.S.guideOpen) without changing the saved choice.
-D.groupOpen = function (id) { return !!D.pref("open-" + id, false) || !!(D.S.guideOpen && D.S.guideOpen[id]); };
+// In the Ground up Apps menu the Tools row starts open (its own choice, "open-menutools"), so the favourites show without a press.
+D.groupOpen = function (id) { return !!D.pref("open-" + id, id === "menutools") || !!(D.S.guideOpen && D.S.guideOpen[id]); };
 function groupRow(id, label, count, place, body, tip) {
   var open = D.groupOpen(id), bid = "grp-" + place + "-" + id;
   return '<div class="grp" data-grp="' + id + '"><button class="grphead" id="' + bid + '-btn" data-act="grp" data-v="' + id + '" data-place="' + place + '" aria-expanded="' + open + '" aria-controls="' + bid + '"' + (tip ? ' data-tip="' + esc(tip) + '"' : "") + ">" +
@@ -276,6 +277,17 @@ function groupRow(id, label, count, place, body, tip) {
     '<div class="grpbody" id="' + bid + '"' + (open ? "" : " hidden") + ">" + body + "</div></div>";
 }
 D.toolRow = function (t) { return '<a class="toolrow" href="#' + t.id + '" data-act="go" data-v="' + t.id + '" data-tip="' + esc(t.tip) + '"><span class="ic">' + D.ic(t.icon, 18) + "</span><span><b>" + esc(t.name) + (t.group === "photo" ? '<span class="tooltag">needs a photo</span>' : "") + "</b><small>" + esc(t.line) + "</small></span>" + (D.ground() ? '<span class="chev" aria-hidden="true">›</span>' : "") + "</a>"; };
+/* Ground up Apps menu: Tools opens in place. It lists the person's favourite tools by name, two to a row like the
+   apps above, then one door to the page that has every tool. Pressing Tools never leaves the page the person is on. */
+function menuTools() {
+  var tools = D.visibleTools(); if (!tools.length) return "";
+  var favs = D.toolFavs().map(D.tool).filter(function (t) { return tools.indexOf(t) >= 0; });
+  function item(t) { return '<a class="appitem toolitem" href="#' + t.id + '" data-act="go" data-v="' + t.id + '" data-tip="' + esc(t.tip) + '"' + (D.S.route === t.id ? ' aria-current="page"' : "") + '><span class="ic">' + D.ic(t.icon, 18) + "</span><b>" + esc(t.name) + "</b></a>"; }
+  return groupRow("menutools", "Tools", tools.length, "menu",
+    (favs.length ? '<div class="appgrid">' + favs.map(item).join("") + "</div>" : '<p class="grpnote">Star a tool on the Tools page to keep it here.</p>') +
+    '<a class="toolrow all" href="#tools" data-act="go" data-v="tools"' + (D.S.route === "tools" ? ' aria-current="page"' : "") + "><span>All " + tools.length + ' tools</span><span class="chev" aria-hidden="true">›</span></a>',
+    "Your favourite tools, and a link to all of them.");
+}
 function toolsGroup(place) {
   var tools = D.visibleTools(); if (!tools.length) return "";
   // The group is a short list of doors: the person's favourite tools, then one link to the page that has them all.
@@ -295,9 +307,9 @@ function appsMenu() {
   // Name only, two columns at every width (as the real bar's kit 0.2.3): the description is the tile's tip.
   function item(t) { return '<a class="appitem" href="' + D.appHref(t.id) + '" target="_blank" rel="noopener noreferrer" aria-label="' + esc(t.name) + ' (opens in a new tab)"' + D.tileTip(t.id) + (S.route === t.id ? ' aria-current="page"' : "") + '><span class="ic">' + D.ic(t.icon, 20) + "</span><b>" + esc(t.name) + (t.ext ? " ↗" : "") + "</b></a>"; }
   var more = tiles.filter(function (t) { return t.more; });
-  return '<div class="appsmenu" role="dialog" aria-label="All apps" data-keepscroll="appsmenu"><div class="menuhead"><div class="seg" role="group" aria-label="Mode"><button data-act="mode" data-v="build" aria-pressed="' + (S.mode === "build") + '" data-tip="Show the apps for build season.">Build</button><button data-act="mode" data-v="competition" aria-pressed="' + (S.mode === "competition") + '" data-tip="Show the event apps: schedule, pit and scouting.">Competition</button></div><button class="xbtn" data-act="apps" aria-label="Close" data-tip="Close the apps menu.">×</button></div>' +
+  return '<div class="appsmenu" role="dialog" aria-label="All apps" data-keepscroll="appsmenu"><div class="menuhead">' + (D.ground() ? '<h3>Apps</h3>' : '<div class="seg" role="group" aria-label="Mode"><button data-act="mode" data-v="build" aria-pressed="' + (S.mode === "build") + '" data-tip="Show the apps for build season.">Build</button><button data-act="mode" data-v="competition" aria-pressed="' + (S.mode === "competition") + '" data-tip="Show the event apps: schedule, pit and scouting.">Competition</button></div>') + '<button class="xbtn" data-act="apps" aria-label="Close" data-tip="Close the apps menu.">×</button></div>' +
     '<div class="appgrid">' + (D.ground() ? '<a class="appitem" href="#portal" data-act="go" data-v="portal"' + (S.route === "portal" ? ' aria-current="page"' : "") + '><span class="ic">' + D.ic("home", 20) + "</span><b>Home</b></a>" : "") + tiles.filter(isCore).map(item).join("") + "</div>" +
-    '<div class="menugroups">' + (D.ground() && D.visibleTools().length ? '<div class="grp"><a class="grphead" href="#tools" data-act="go" data-v="tools"><span class="grpname">Tools</span><span class="chev" aria-hidden="true" style="margin-left:auto">›</span></a></div>' : toolsGroup("menu")) + adminGroup("menu", tiles, function (l) { return '<div class="appgrid">' + l.map(item).join("") + "</div>"; }) + (more.length ? groupRow("more", D.ground() ? "Team links" : "More", more.length, "menu", '<div class="appgrid">' + more.map(item).join("") + "</div>") : "") + "</div></div>";
+    '<div class="menugroups">' + (D.ground() ? menuTools() : toolsGroup("menu")) + adminGroup("menu", tiles, function (l) { return '<div class="appgrid">' + l.map(item).join("") + "</div>"; }) + (more.length ? groupRow("more", D.ground() ? "Team links" : "More", more.length, "menu", '<div class="appgrid">' + more.map(item).join("") + "</div>") : "") + "</div></div>";
 }
 /* One notice row. Click: mark read, then open its app. Right-click, long-press, Shift+F10 or the context-menu key:
    a one-item menu to mark it read or unread (D.noticeMenu below). Unread = dot + bold + "Unread:" for screen readers. */

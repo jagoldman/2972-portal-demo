@@ -740,3 +740,14 @@
   :root[data-design="c"] .tside .trow .more { opacity: 0; }
   :root[data-design="c"] .tside .trow:hover .more, :root[data-design="c"] .tside .trow:focus-within .more, :root[data-design="c"] .tside .trow .more[aria-expanded="true"] { opacity: 1; }
 }
+
+/* ---- Apps menu, 2026-11-19: Tools opens in place with the favourites; the mode switch is on Account only ---- */
+:root[data-design="c"] {
+  .appsmenu .menuhead h3 { margin: 0; padding-left: 8px; font-size: 1rem; font-weight: 650; }
+  /* A tool is quieter than an app: a smaller grey mark, so the two lists do not read as one. */
+  .appsmenu .toolitem { min-height: 44px; }
+  .appsmenu .toolitem .ic { width: 28px; height: 28px; border-radius: 8px; background: var(--surface-2); color: var(--text-2); }
+  .appsmenu .toolitem b { font-weight: 550; line-height: 1.25; }
+  .appsmenu .grpnote { margin: 0; padding: 4px 8px; color: var(--mute); font-size: .86rem; }
+  .appsmenu .toolrow.all[aria-current="page"] { background: var(--tint); }
+}
