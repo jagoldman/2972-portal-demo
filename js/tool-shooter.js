@@ -380,7 +380,7 @@ function lim(x, cap) { return x >= (cap || M.LIM) - 1e-9 ? K.fix(x, 0) + "+" : K
 // is a band that does not.
 function runCard(name, runs, at, cap, sub, extra) {
   var r = M.pickRun(runs, at), band = r && r[0] > 0.05, more = runs && runs.length > 1 ? "; another band scores too" : "";
-  return Object.assign({ k: (band || !r ? "Scores " : "Fastest ") + name, v: !r ? "none" : band ? K.fix(r[0], 1) + " to " + lim(r[1], cap) : lim(r[1], cap), u: r ? "ft/s" : "", sub: sub + more }, extra || {});
+  return Object.assign({ k: (band || !r ? "Scores " : "Fastest ") + name, v: !r ? "none" : band ? K.fix(r[0], 1) + " to " + lim(r[1], cap) : lim(r[1], cap), u: r ? "ft/s" : "", sub: (r ? sub : sub.replace(/^either way, /, "")) + more }, extra || {});
 }
 function moveLimits(s, mv) {
   var E = mv.env, sp = mv.speed, cap = Math.max(M.LIM, Math.ceil(sp)), hr = M.pickRun(E.heading, sp);

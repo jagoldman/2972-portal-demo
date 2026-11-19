@@ -278,8 +278,8 @@ details.cg:not([open]) { padding-bottom: 12px; }
 .cmpbar > span { flex: 1 1 240px; }
 .ckey.cmp, .ckey.ccmp { background: none; border-top: 2px dotted var(--mute); height: 0; }
 .cline.ccmp { stroke: var(--mute); stroke-width: 1.75; stroke-dasharray: 1.5 4; stroke-linecap: round; }
-.out .cmpv { display: flex; align-items: center; gap: 6px; margin-top: 4px; padding-top: 4px; border-top: 1px dotted var(--line-2); color: var(--text-2); }
+.out .cmpv { display: block; margin-top: 4px; padding-top: 4px; border-top: 1px dotted var(--line-2); color: var(--text-2); }
 .out .cmpv { font-size: .82rem; line-height: 1.3; }
 .out dd .cmpv b { font-size: inherit; font-weight: 700; color: var(--text); letter-spacing: 0; white-space: nowrap; }
-.out .cmpv .ckey { flex: none; width: 14px; }
+.out .cmpv .ckey { display: inline-block; width: 14px; margin-right: 6px; vertical-align: middle; }
 @media (max-width: 640px) { .setuprow { grid-template-columns: minmax(0, 1fr) auto; } .setupacts { grid-column: 1 / -1; justify-content: flex-start; } }
