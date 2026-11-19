@@ -130,5 +130,19 @@ ok("angle and tangent agree as shown, across 5,000 robots", bad === 0, bad);
 // Round 11 (GPT Sol, must-fix): the braking arrow is a force, so no label on it gives it in g.
 var srcT = require("fs").readFileSync(require("path").join(__dirname, "../js/tool-tip.js"), "utf8");
 ok("no force arrow labelled in g", !/"inertia, " \+ g2\(brk\) \+ " g"/.test(srcT) && !/"forward, " \+ g2\(brk\) \+ " g"/.test(srcT) && /" × weight"/.test(srcT));
+// Owner round 1: the stop runs until the motion is over, holds 0.3 s, and never past the 8 s ceiling.
+var geo = { L: 33, H: 12, bumpX: 17, bBot: 2, bTop: 7, mastX: 8.5, mastTop: 57 }, base = Object.assign({}, dflt, geo);
+function ended(sm) { var k = sm.t.length - 1; return sm.how !== "ceiling" && sm.T >= sm.endT + M.HOLD - 1e-9 && sm.T < sm.endT + M.HOLD + 0.011 && sm.T <= M.CEILING; }
+var sD = M.stop(base, 0.8, 180, M.CEILING);
+ok("default: back on its wheels, then a hold, well before 8 s", sD.how === "wheels" && ended(sD) && sD.phi[sD.phi.length - 1] === 0 && sD.T < 3, sD.how + " " + sD.T);
+ok("default: the caption names the landing", /^back on its wheels at 1\.\d\d s$/.test(M.endWords(sD)), M.endWords(sD));
+var sO = M.stop(Object.assign({}, base, { m2: 40, h2: 90, mastTop: 95 }), 1.1, 240, M.CEILING);
+ok("a tall heavy mechanism goes right over and comes to rest", sO.how === "over" && sO.fell && ended(sO), sO.how + " " + sO.T);
+var sR = M.stop(Object.assign({}, base, { ramp: 5 }), 0.6, 180, M.CEILING);
+ok("on a ramp: the run ends at rest", sR.how !== "ceiling" && ended(sR), sR.how + " " + sR.T);
+var sN = M.stop(Object.assign({}, base, { h2: 14 }), 0.8, 180, M.CEILING);
+ok("never lifts: ends with the braking, plus the hold", sN.how === "still" && !sN.lifted && Math.abs(sN.endT - sN.stopT) < 0.002 && ended(sN), sN.endT + " " + sN.stopT);
+var sC = M.stop(Object.assign({}, base, { m2: 40, h2: 90, mastTop: 95 }), 1.1, 240, 0.2);
+ok("the ceiling stops a run and says so", sC.how === "ceiling" && sC.T <= 0.2 + 1e-9 && /longest this runs/.test(M.endWords(sC)), sC.how);
 console.log(fails ? fails + " of " + n + " checks failed" : "all " + n + " checks passed");
 if (fails) process.exit(1);

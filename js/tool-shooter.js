@@ -114,11 +114,40 @@ M.move = function (s, r, map) {
   var ds = g.map(function (x) { return x.d * FT; }), vs = g.map(function (x) { return x.v; }), ts = g.map(function (x) { return x.time; }), dg = g.map(function (x) { return x.deg; });
   function sf(d) { if (d < ds[0] - 1e-6 || d > ds[ds.length - 1] + 1e-6) return null; return { v: F.interp(ds, vs, d), time: F.interp(ds, ts, d) }; }
   var d = r.target.d, still = sf(d); if (!still) return null;
-  var m = F.moving(d, s.vtoward * FT, s.vacross * FT, sf); if (!m) return { still: still, out: true };
+  var m = F.moving(d, s.vtoward * FT, s.vacross * FT, sf), sp = Math.hypot(s.vtoward, s.vacross), E = M.envelope(d, s.vtoward, s.vacross, sf);
+  E.range = [ds[0], ds[ds.length - 1]]; E.capNear = !!map.rows[0].ok; E.capFar = !!map.rows[map.rows.length - 1].ok;
+  if (!m) {
+    // Why not, and what would work: the distance the shot would have to be made for (taking the flight time of the
+    // nearest distance that does score), and the distances this speed does score from.
+    var need = F.moving(d, s.vtoward * FT, s.vacross * FT, function (q) { return sf(F.clamp(q, ds[0], ds[ds.length - 1])); });
+    var okD = []; for (var q = ds[0]; q <= ds[ds.length - 1] + 1e-9; q += 0.25 * FT) if (F.moving(q, s.vtoward * FT, s.vacross * FT, sf)) okD.push(q);
+    // The run of working distances nearest to where the robot is.
+    var runs = [], run = null; okD.forEach(function (q) { if (run && q - run[1] < 0.26 * FT) run[1] = q; else runs.push(run = [q, q]); });
+    runs.sort(function (a, b) { return Math.min(Math.abs(a[0] - d), Math.abs(a[1] - d)) - Math.min(Math.abs(b[0] - d), Math.abs(b[1] - d)); });
+    return { still: still, out: true, env: E, need: need ? need.d : null, from: runs[0] || null, speed: sp };
+  }
   // The corrected shot seen from the side, in the launcher's own frame: the distance it is shot for, and its arc.
   var degL = F.interp(ds, dg, m.d), tgL = Object.assign({}, r.target, { d: m.d }), flL = F.fly(Object.assign({}, r.U.fb, { deg: degL, v: m.v, spin: r.U.spinPer * m.v })), meetL = F.meet(flL.pts, tgL);
   return { still: still, lead: m, rpm: M.rpmFor(r.U, m.v), rpmStill: M.rpmFor(r.U, still.v), deg: degL, side: { pts: M.cut(flL.pts, tgL, meetL), meet: meetL, target: tgL, apex: flL.apex },
-    missNoLead: Math.hypot(s.vtoward * FT, s.vacross * FT) * still.time };
+    missNoLead: Math.hypot(s.vtoward * FT, s.vacross * FT) * still.time, env: E, speed: sp };
+};
+/* The driving speeds that score from d metres away. vt, va: the present speed toward the target and across, ft/s.
+   sf(distance) gives the standing shot for a distance, or null where none scores. A speed scores when the shot it
+   needs (F.moving) is one this shooter can make. Returns, all in ft/s:
+     across           the fastest across that scores, either way, at the present toward speed (0 if none)
+     toward, away     the fastest toward the target and backing away, at the present across speed
+     heading          the fastest on the present heading (null when standing still)
+     zone             rows [toward, across from, across to] of speeds that score, on a 0.5 ft/s grid out to LIM
+   Each limit is the first speed, going up from a standstill in 0.1 ft/s steps, that no longer scores; LIM (14, the
+   end of the sliders) means no limit was found. */
+M.LIM = 14;
+M.envelope = function (d, vt, va, sf) {
+  function ok(t, a) { return !!F.moving(d, t * FT, a * FT, sf); }
+  function reach(f, cap) { if (!f(0)) return 0; var n = 0, top = Math.round(cap * 10); while (n < top && f((n + 1) / 10)) n++; return n / 10; }
+  var sp = Math.hypot(vt, va), zone = [], L = M.LIM;
+  for (var t = -L; t <= L + 1e-9; t += 0.5) { var from = null; for (var a = -L; a <= L + 0.5 + 1e-9; a += 0.5) { var good = a <= L + 1e-9 && ok(t, a); if (good && from == null) from = a; if (!good && from != null) { zone.push([t, from, a - 0.5]); from = null; } } }
+  return { across: reach(function (x) { return ok(vt, x); }, L), toward: reach(function (x) { return ok(x, va); }, L), away: reach(function (x) { return ok(-x, va); }, L),
+    heading: sp > 0.01 ? reach(function (x) { return ok(vt * x / sp, va * x / sp); }, Math.max(L, Math.ceil(sp))) : null, zone: zone };
 };
 // The "speed kept" that makes this page's shot land on open floor where a real one did (feet from the shooter).
 M.keepFor = function (s, landedFt) {
@@ -178,7 +207,7 @@ K.tool({
     if (s.view === "map") top = K.group(ID, "map", "Distances", '<p class="cfh">This view works out the wheel speed each distance needs, so there is no wheel speed to set here.</p>' + K.num(ID, "dnear", "Nearest", { unit: "ft", min: 2, max: 30, step: 0.5 }) + K.num(ID, "dfar", "Farthest", { unit: "ft", min: 4, max: 54, step: 0.5 }) +
       K.seg(ID, "hood", "Hood", [["fixed", "Fixed angle"], ["adj", "Adjustable"]], { hint: s.hood === "adj" ? "For each distance it picks the angle that forgives the most wheel-speed error while keeping the wheel under 85% of its top speed." : "" }) +
       (s.hood === "adj" ? K.num(ID, "degLo", "Lowest angle", { unit: "°", min: 15, max: 80, step: 1 }) + K.num(ID, "degHi", "Highest angle", { unit: "°", min: 25, max: 88, step: 1 }) : ""));
-    if (s.view === "move") top = K.group(ID, "move", "The robot is driving", '<p class="cfh">This view works out the wheel speed the moving shot needs, so there is no wheel speed to set here. The drawing shows that shot.</p>' + K.num(ID, "vtoward", "Toward the target", { unit: "ft/s", min: -14, max: 14, step: 0.5, slider: true, hint: "Minus is backing away.", tip: "Negative means backing away." }) + K.num(ID, "vacross", "Across", { unit: "ft/s", min: -14, max: 14, step: 0.5, slider: true, hint: "Plus is to the right as the robot faces the target; minus is to the left.", tip: "Sideways past the target. Positive is to the right as the robot faces it." }));
+    if (s.view === "move") top = K.group(ID, "move", "The robot is driving", '<p class="cfh">This view works out the wheel speed the moving shot needs, so there is no wheel speed to set here. Drag the tip of the speed arrow in the drawing, or use these.</p>' + K.num(ID, "vtoward", "Toward the target", { unit: "ft/s", min: -14, max: 14, step: 0.5, slider: true, hint: "Minus is backing away.", tip: "Negative means backing away." }) + K.num(ID, "vacross", "Across", { unit: "ft/s", min: -14, max: 14, step: 0.5, slider: true, hint: "Plus is to the right as the robot faces the target; minus is to the left.", tip: "Sideways past the target. Positive is to the right as the robot faces it." }));
     var shooter = K.seg(ID, "type", "Kind", [["hood", "Wheel and hood"], ["dual", "Two wheels"]]) +
       (s.view === "map" || s.view === "move" ? "" : K.num(ID, "rpm", "Wheel speed", { unit: "rpm", min: 500, max: 7000, step: 10, slider: true })) +
       (s.view === "map" && s.hood === "adj" ? "" : K.num(ID, "deg", "Launch angle", { unit: "°", min: 15, max: 88, step: 0.5, slider: true, tip: "Above level, as the ball leaves." })) +
@@ -263,7 +292,7 @@ K.tool({
     if (!hold) return false;
     if (hold.what === "target") s.dist = F.clamp(Math.round(hold.V.ux(x) / FT * 4) / 4, 2, 40);
     else if (hold.what === "aim") s.deg = F.clamp(Math.round(Math.atan2(hold.V.uy(y) - s.h0 * IN, hold.V.ux(x)) * 180 / Math.PI * 2) / 2, 15, 88);
-    else if (hold.what === "vel") { s.vacross = F.clamp(Math.round((hold.V.ux(x) - 0) / FT / 0.35 * 2) / 2, -14, 14); s.vtoward = F.clamp(Math.round((hold.V.uy(y) + s.dist * FT) / FT / 0.35 * 2) / 2, -14, 14); }
+    else if (hold.what === "vel") { s.vacross = F.clamp(Math.round((hold.V.ux(x) - 0) / FT / VK * 2) / 2, -14, 14); s.vtoward = F.clamp(Math.round((hold.V.uy(y) + s.dist * FT) / FT / VK * 2) / 2, -14, 14); }
     return true;
   }
 });
@@ -331,10 +360,29 @@ function mapMore(s, r) {
     rows.map(function (x) { return "  kShooterRpm.put(" + K.fix(x.d * FT, 2) + ", " + (Math.round(x.rpm / 10) * 10).toFixed(1) + ");" + (s.hood === "adj" ? "  kHoodDegrees.put(" + K.fix(x.d * FT, 2) + ", " + K.fix(x.deg, 1) + ");" : ""); }).join("\n") + "\n}";
   return charts + table + '<section class="ctab"><h2>For robot code</h2>' + K.code("sh-code", code, "Copy the code") + "</section>";
 }
+function headingWords(s) { return [Math.abs(s.vacross) > 0.01 ? (s.vacross > 0 ? "to its right" : "to its left") : "", Math.abs(s.vtoward) > 0.01 ? (s.vtoward > 0 ? "toward the target" : "backing away") : ""].filter(Boolean).join(" and "); }
+function lim(x, cap) { return x >= (cap || M.LIM) - 1e-9 ? K.fix(x, 0) + "+" : K.fix(x, 1); }
+// The second row of cards: how fast the robot can drive and still score from here.
+function moveLimits(s, mv) {
+  var E = mv.env, sp = mv.speed, cap = Math.max(M.LIM, Math.ceil(sp)), none = "none scores";
+  return K.outs([
+    sp > 0.01 ? { k: "Fastest on this heading", v: E.heading > 0 ? lim(E.heading, cap) : "0", u: "ft/s", sub: "you are at " + K.fix(sp, 1) + " ft/s", state: mv.out ? "bad" : sp > E.heading * 0.85 && E.heading < cap ? "warn" : "", tip: "The fastest speed in the direction the robot is driving now at which the shot still scores from this distance. A plus sign means no limit was found up to the end of the sliders." } : null,
+    { k: "Fastest across", v: lim(E.across), u: "ft/s", sub: (E.across > 0 ? "either way, " : none + " ") + (Math.abs(s.vtoward) < 0.01 ? "with no speed toward" : s.vtoward > 0 ? "at " + K.fix(s.vtoward, 1) + " ft/s toward" : "backing away at " + K.fix(-s.vtoward, 1) + " ft/s") },
+    { k: "Fastest toward the target", v: lim(E.toward), u: "ft/s", sub: (E.toward > 0 ? "" : none + " ") + "at " + K.fix(Math.abs(s.vacross), 1) + " ft/s across" },
+    { k: "Fastest backing away", v: lim(E.away), u: "ft/s", sub: (E.away > 0 ? "" : none + " ") + "at " + K.fix(Math.abs(s.vacross), 1) + " ft/s across" },
+    { k: "Standing range", v: K.fix(E.range[0] / FT, 1) + " to " + K.fix(E.range[1] / FT, 1), u: "ft", sub: "the limits above come from this range", tip: "From Every distance: the nearest and farthest distances this shooter scores from standing still. A moving shot is a standing shot from another distance, so it must fall inside this range." }]);
+}
 function moveOuts(s, r) {
   var mv = r.move;
   if (!mv) return K.verdict("bad", "This distance is outside the range that can be scored from. Open Every distance to see the range.");
-  if (mv.out) return K.verdict("bad", "At this speed the shot would have to come from a distance this shooter cannot score from. Slow down or move.");
+  if (mv.out) {
+    var E = mv.env, lo = E.range[0], hi = E.range[1], far = mv.need != null && mv.need > hi, near = mv.need != null && mv.need < lo;
+    var why = "Driving " + K.fix(mv.speed, 1) + " ft/s " + headingWords(s) + ", the shot would have to be made as if from " + (mv.need != null ? "about " + K.fix(mv.need / FT, 0) + " ft" : "another distance") + ", and this shooter scores from " + K.fix(lo / FT, 1) + " to " + K.fix(hi / FT, 1) + " ft.";
+    var act = (E.heading >= 0.1 ? " Slow to " + K.fix(E.heading, 1) + " ft/s or less on this heading" : " Stop to shoot from here") + (mv.from ? ", or shoot from " + (mv.from[1] - mv.from[0] < 0.3 * FT ? "about " + K.fix(mv.from[0] / FT, 1) : K.fix(mv.from[0] / FT, 1) + " to " + K.fix(mv.from[1] / FT, 1)) + " ft away" : "") + ".";
+    var more = far ? (E.capFar ? "Every distance was only worked out to " + K.fix(hi / FT, 1) + " ft: raise Farthest there to see whether it scores from further." : "To score from further it needs more wheel speed or a flatter launch angle: see Every distance.")
+      : near ? (E.capNear ? "Every distance was only worked out from " + K.fix(lo / FT, 1) + " ft: lower Nearest there to see whether it scores from closer." : "To score from closer it needs a steeper launch angle: see Every distance.") : "";
+    return K.verdict("bad", why + act, more) + moveLimits(s, mv);
+  }
   var L = mv.lead, side = L.leadDeg < -0.05 ? "left" : L.leadDeg > 0.05 ? "right" : "", still = Math.abs(s.vtoward) < 0.01 && Math.abs(s.vacross) < 0.01;
   var text = still ? "Standing still, aim straight at the target." : "Aim " + (side ? K.fix(Math.abs(L.leadDeg), 1) + "° " + side + " of the target, as the robot faces it" : "straight at it") + ". Set the wheel to " + rpmTxt(mv.rpm) + " rpm, as for a standing shot from " + K.fix(L.d / FT, 1) + " ft.";
   return K.verdict(still ? "info" : "ok", text, still ? "" : "Exact without air and at a steady speed: tune it on the field.") + K.outs([
@@ -342,7 +390,7 @@ function moveOuts(s, r) {
     { k: "Shoot as if from", v: K.fix(L.d / FT, 1), u: "ft", sub: "really " + K.fix(s.dist, 1) + " ft" },
     { k: "Wheel speed", v: rpmTxt(mv.rpm), u: "rpm", sub: "standing still: " + rpmTxt(mv.rpmStill) },
     { k: "In the air", v: K.fix(L.time, 2), u: "s", sub: "the robot moves " + K.fix(Math.hypot(s.vtoward, s.vacross) * Math.round(L.time * 100) / 100, 1) + " ft meanwhile, at a steady speed" },
-    { k: "Miss without the lead", v: K.fix(mv.missNoLead / FT, 1), u: "ft", sub: "a straight shot flies " + K.fix(mv.still.time, 2) + " s: " + K.fix(Math.hypot(s.vtoward, s.vacross), 1) + " ft/s × " + K.fix(mv.still.time, 2) + " s", state: mv.missNoLead > r.target.w / 2 ? "warn" : "" }]);
+    { k: "Miss without the lead", v: K.fix(mv.missNoLead / FT, 1), u: "ft", sub: "a straight shot flies " + K.fix(mv.still.time, 2) + " s: " + K.fix(Math.hypot(s.vtoward, s.vacross), 1) + " ft/s × " + K.fix(mv.still.time, 2) + " s", state: mv.missNoLead > r.target.w / 2 ? "warn" : "" }]) + moveLimits(s, mv);
 }
 function notes(s, r) {
   // The paragraph about the view on screen comes first.
@@ -365,6 +413,7 @@ function notesText(r) {
     "<p><b>While driving.</b> The ball keeps the robot's speed when it leaves, so the launcher aims at where the target seems to be after the flight time:</p>" +
     '<p class="eq">aim point = target − robot velocity × time in the air</p>' +
     "<p>The time in the air depends on how far away the aim point is, so the sum is run a few times over until it settles. The robot is taken to hold a steady speed. This is exact only without air. With drag the true lead differs, by how much this page cannot say, so treat it as a first setting and check it on the field.</p>" +
+    "<p>The shot the robot must make is a standing shot from the aim point's distance. So a driving speed scores when that distance is one this shooter scores from standing still (the range in Every distance). The green patch in the drawing marks every such speed, at the speed arrow's own scale, and the limits under the answers are where the patch ends: each is the first speed, going up from a standstill in steps of 0.1 ft/s, that no longer scores.</p>" +
     "<p><b>Left out.</b> The ball's squash in the shooter, spin slowing in flight, wind, a ball that clips the rim and bounces in, the motor's own rotor inertia, and belt slip. The lift figure is used at more spin than the baseball tests covered.</p>");
 }
 
@@ -489,7 +538,10 @@ function wheelAt(r, s, t) {     // rpm of the wheel t seconds after the ball tou
   var rc = r.recov; return Math.min(s.rpm, F.interp(rc.t, rc.w, t - r.tc) / RPM);
 }
 function drawSide(g, s, r, t) {
-  var c = g.c, tg = r.target, burst = s.view === "burst" && r.burst, V = sideView(g, s, r);
+  var c = g.c, tg = r.target, burst = s.view === "burst" && r.burst;
+  // A saved setup being compared (One shot only): its flight goes under this one, dotted grey, with its name.
+  var cmp = !burst && s.view === "shot" && K.compare ? K.compare(ID) : null; if (cmp && !(cmp.r.path && cmp.r.path.length > 1 && cmp.r.fl)) cmp = null;
+  var V = cmp ? sideView(g, s, r, cmp.r.path[cmp.r.path.length - 1][1] + 0.3, cmp.r.fl.apex[1]) : sideView(g, s, r);
   var m = r.meet, hitState = burst ? (r.burst.hits === r.burst.shots.length ? "ok" : "miss") : m && m.hit ? "ok" : "miss";
   // The fan of every flight that scores, then the flight without air, behind everything else.
   if (!burst && r.aim && r.fanLo && r.fanHi) {
@@ -501,6 +553,12 @@ function drawSide(g, s, r, t) {
   }
   if (!burst && s.cd > 0 && !(m && m.wall)) { pathLine(g, V, r.vac, { color: c.ghost, width: 1.25, dash: [5, 5] }); var ve = r.vac[Math.floor(r.vac.length * 0.78)]; if (ve && V.X(ve[1]) + (g.w > 520 ? 76 : 44) < g.w) g.text(g.w > 520 ? "with no air" : "no air", V.X(ve[1]) + 8, V.Y(ve[2]) - 4, { color: c.mute, size: 11 }); }
   drawTarget(g, V, r, hitState, s.tpreset === "hub26" && V.L(tg.w) > 50 && !burst ? "Hub" : "");
+  if (cmp) {
+    pathLine(g, V, cmp.r.path, { color: c.text2, width: 2.25, dash: [1, 5.5] });
+    var ce = cmp.r.path[cmp.r.path.length - 1], cq = cmp.r.path[Math.floor(cmp.r.path.length * 0.3)], far = Math.abs(cmp.r.target.d - tg.d) > 0.01;
+    g.circle(V.X(ce[1]), V.Y(ce[2]), 3.5, { fill: c.sheet, stroke: c.text2, width: 1.5 });
+    g.text(cmp.name + (far ? ", from " + K.fix(cmp.r.target.d / FT, 1) + " ft" : ""), V.X(cq[1]) - 8, V.Y(cq[2]) - 4, { align: "right", color: c.text2, size: 11.5, weight: 700 });
+  }
   drawRobot(g, V, s, r, 0);
   var tNow = t, rpmNow, phase;
   if (burst) {
@@ -558,9 +616,10 @@ function drawSide(g, s, r, t) {
   if (burst) { var curI = -1; r.burst.shots.forEach(function (sh, i) { if (t >= sh.t) curI = i; }); if (curI >= 0) { var cs = r.burst.shots[curI]; rC = Object.assign({}, r, { ballLabel: ["Ball " + (curI + 1), "Ball " + (curI + 1) + " left at"], afterBall: curI + 1, wThen: cs.wBefore, shot: Object.assign({}, r.shot, { v: cs.v, spin: cs.spin, eWheel: 0.5 * r.U.Iw * (cs.wBefore * cs.wBefore - cs.wAfter * cs.wAfter) }) }); } }
   closeUp(g, s, rC, phase, rpmNow, tNow);
 }
+var VK = 0.35;     // the speed arrow's scale on the top view: metres drawn for each metre a second
 function hit(x, y, s) {
   var V = last.V; if (!V) return "";
-  if (s.view === "move") { var vx = V.X(s.vacross * FT * 0.35), vy = V.Y(-s.dist * FT + s.vtoward * FT * 0.35); return Math.hypot(x - vx, y - vy) < 22 ? "vel" : ""; }
+  if (s.view === "move") { var vx = V.X(s.vacross * FT * VK), vy = V.Y(-s.dist * FT + s.vtoward * FT * VK); return Math.hypot(x - vx, y - vy) < 22 ? "vel" : ""; }
   if (s.view === "map") return "";
   var th = s.deg * Math.PI / 180, hx = V.X(0) + 46 * Math.cos(th), hy = V.Y(s.h0 * IN) - 46 * Math.sin(th);
   if (s.view === "shot" && Math.hypot(x - hx, y - hy) < 20) return "aim";
@@ -610,7 +669,7 @@ function drawMap(g, s, r, t) {
 /* ---------- Drawing: while driving, from above ---------- */
 function drawMove(g, s, r, t) {
   var c = g.c, mv = r.move, d = r.target.d, tw = r.target.w;
-  var half = Math.max(d * 0.55, 2.2), box = hold && hold.box ? hold.box : { x0: -half, x1: half, y0: -d - 1.1, y1: tw / 2 + 0.7 };
+  var half = Math.max(d * 0.55, 2.2), box = hold && hold.box ? hold.box : { x0: -half, x1: half, y0: -d - (mv && mv.env ? M.LIM * FT * VK + 0.12 : 1.1), y1: tw / 2 + 0.7 };
   var phoneM = g.w < 520, insH = phoneM ? Math.min(170, g.w * 0.46) * 0.56 + 44 : 0;       // on a phone the side view sits under the scene
   var V = g.view(box, { l: 12, r: 12, t: phoneM ? 98 : 22, b: 12 + insH }); last.V = V; last.box = box;
   var step = V.k * FT >= 13 ? FT : 5 * FT; g.grid(V, step, g.w > 520 ? (step === FT ? "1 ft squares, seen from above" : "5 ft squares, seen from above") : "");
@@ -621,7 +680,30 @@ function drawMove(g, s, r, t) {
   if (g.w > 520) g.text(s.tpreset === "hub26" ? "Hub" : "target", V.X(tw / 2) + 6, V.Y(-tw * 0.3), { align: "left", color: c.text2, size: 11, weight: 600 });
   else g.text(s.tpreset === "hub26" ? "Hub" : "target", V.X(0), V.Y(tw / 2) - 6, { align: "center", color: c.text2, size: 11, weight: 600 });
   var vx = s.vacross * FT, vy = s.vtoward * FT, start = [0, -d];
-  if (!mv || mv.out || !mv.lead) { robotTop(g, V, start[0], start[1], Math.PI / 2, c); g.text(!mv ? "Out of range from here." : "Too fast to score from here.", V.X(0), V.Y(-d / 2), { align: "center", color: c.warn, weight: 700 }); return; }
+  // The driving speeds that score from here, drawn round the robot at the speed arrow's own scale: while the tip of
+  // the arrow is inside the green, the shot scores.
+  if (mv && mv.env) {
+    var hc = 0.25 * FT * VK; g.ctx.globalAlpha = 0.17;
+    mv.env.zone.forEach(function (z) { var xa = V.X(z[1] * FT * VK - hc), xb = V.X(z[2] * FT * VK + hc), ya = V.Y(-d + z[0] * FT * VK + hc), yb = V.Y(-d + z[0] * FT * VK - hc); g.rect(xa, ya, xb - xa, yb - ya + 0.6, { fill: c.ok, stroke: null }); });
+    g.ctx.globalAlpha = 1;
+  }
+  function speedArrow() {
+    g.arrow(V.X(0), V.Y(-d), V.X(vx * VK), V.Y(-d + vy * VK), { color: c.accent, width: 2.5, head: 9 });
+    g.circle(V.X(vx * VK), V.Y(-d + vy * VK), 5, { fill: c.surface, stroke: c.accent, width: 2 });
+    var words = headingWords(s);
+    g.text("driving " + K.fix(Math.hypot(s.vtoward, s.vacross), 1) + " ft/s" + (words ? " " + words : ""), V.X(0), V.Y(-d - 0.42) + 30, { color: c.accent, weight: 700, size: 11, align: "center" });
+  }
+  // The zone's key: its own line at the foot of a laptop drawing (the top-left key is where the aim point can land), the last key line on a phone.
+  function zoneKey(y) {
+    var big = g.w > 520, words = big ? "arrow tip in the green: that driving speed scores" : "arrow tip in the green: scores", x = big ? g.w - 14 - g.textWidth(words, { size: 11 }) - 28 : 12; if (big) y = g.h - 12;
+    g.ctx.globalAlpha = 0.3; g.rect(x, y - 10, 22, 11, { fill: c.ok, stroke: null }); g.ctx.globalAlpha = 1; g.text(words, x + 28, y, { size: 11, color: c.text2 });
+  }
+  if (!mv || mv.out || !mv.lead) {
+    robotTop(g, V, start[0], start[1], Math.PI / 2, c);
+    if (mv && mv.env) { speedArrow(); zoneKey(g.w > 520 ? 40 : 36); }
+    g.text(!mv ? "Out of range from here." : "Too fast to score from here: the arrow's tip is outside the green.", V.X(0), V.Y(-d * 0.6), { align: "center", color: c.warn, weight: 700, size: g.w > 520 ? 12 : 11 });
+    return;
+  }
   var L = mv.lead, tl = F.clamp(t, 0, L.time), ts = F.clamp(t, 0, mv.still.time), tr = F.clamp(t, 0, Math.max(L.time, mv.still.time));
   var lead = L.leadDeg * Math.PI / 180, aim = Math.PI / 2 - lead;                 // the launcher's direction on the field (0 = +x)
   var hv = L.d / L.time, hvS = d / mv.still.time;
@@ -632,6 +714,7 @@ function drawMove(g, s, r, t) {
   var nlT = "misses by " + K.fix(mv.missNoLead / FT, 1) + " ft", nlR = V.X(noLead[0]) + 10 + g.textWidth(nlT, { weight: 600, size: 11 }) < g.w - 6;
   g.text(nlT, V.X(noLead[0]) + (nlR ? 10 : -10), V.Y(noLead[1]) + 4, { align: nlR ? "left" : "right", color: c.warn, size: 11, weight: 600 });
   var ky = g.w > 520 ? 40 : 36; (g.w > 520 ? [["where the ball goes", c.ok, null], ["if aimed straight, at the standing shot's speed", c.warn, [5, 5]], ["where the launcher points", c.mute, [2, 4]]] : [["where the ball goes", c.ok, null], ["if aimed straight, at the standing shot's speed", c.warn, [5, 5]], ["where the launcher points", c.mute, [2, 4]]]).forEach(function (q) { g.line(12, ky - 4, 34, ky - 4, { color: q[1], width: 2, dash: q[2], cap: "butt" }); g.text(q[0], 40, ky, { size: 11, color: c.text2 }); ky += 16; });
+  zoneKey(ky);
   // With the lead: the launcher points off to one side and the ball arrives.
   g.line(V.X(0), V.Y(-d), V.X(0), V.Y(0), { color: c.ok, width: 2 });
   g.line(V.X(0), V.Y(-d), V.X(L.d * Math.cos(aim)), V.Y(-d + L.d * Math.sin(aim)), { color: c.mute, width: 1, dash: [2, 4] });
@@ -642,9 +725,7 @@ function drawMove(g, s, r, t) {
   if (tr > 0.02) { robotTop(g, V, 0, -d, aim, c, true); if (Math.hypot(rx, ry + d) * V.k > (g.w > 520 ? 70 : 24)) g.text(g.w > 520 ? "released here" : "release", V.X(-0.42) - 8, V.Y(-d - 0.3), { align: "right", color: c.mute, size: 11 }); }
   robotTop(g, V, rx, ry, aim, c);
   g.text(tr > 0.02 ? "robot now" : "robot", V.X(rx), V.Y(ry - 0.42) + 14, { align: "center", color: c.text2, size: 11, weight: 600 });
-  g.arrow(V.X(0), V.Y(-d), V.X(vx * 0.35), V.Y(-d + vy * 0.35), { color: c.accent, width: 2.5, head: 9 });
-  g.circle(V.X(vx * 0.35), V.Y(-d + vy * 0.35), 5, { fill: c.surface, stroke: c.accent, width: 2 });
-  g.text("driving " + K.fix(Math.hypot(s.vtoward, s.vacross), 1) + " ft/s" + [Math.abs(s.vacross) > 0.01 ? (s.vacross > 0 ? " to its right" : " to its left") : "", Math.abs(s.vtoward) > 0.01 ? (s.vtoward > 0 ? " toward the target" : " backing away") : ""].filter(Boolean).join(" and"), V.X(0), V.Y(-d - 0.42) + 30, { color: c.accent, weight: 700, size: 11, align: "center" });
+  speedArrow();
   // The two balls.
   var rb = Math.max(3.5, V.L(r.target.r));
   g.ball(V.X(vx * ts), V.Y(-d + (hvS + vy) * ts), rb, 0, { fill: c.sheet, stroke: c.warn });

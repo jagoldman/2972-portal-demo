@@ -95,5 +95,59 @@ void n1; void n2;
   var dGood = 2 * cs[1] * drive / q0.piece, q2 = M.speeds({ drive: dr, V: 12, rollerR: dGood / 2 * F.IN, contact: cs[0], driveV: drive, travel: 0.3 });
   near(cs[0] + ": piece at the marked diameter is on the pass line", q2.piece, cs[1] * drive, 1e-9);
 });
+// Owner's round 1, E1: "Over the bumper", one roller in front of the bumper. Hand-worked at the defaults: Kraken X44,
+// 7757 rpm free at 12 V, through 2.5:1 on a 2 in roller: surface = pi x 2 x 7757 / 2.5 / 60 = 324.94 in/s = 27.08 ft/s.
+// The floor comes in at 12 ft/s. Pinched between the roller and the floor the piece rolls between two surfaces moving
+// the same way, so its centre is at their average, (27.08 + 12) / 2 = 19.54 ft/s. Against the bumper, which is fixed,
+// half the surface: 13.54 ft/s.
+var d25 = F.drive({ motor: "kraken44", n: 1, ratio: 2.5, eff: 0.9, statorA: 30 }), Rb = 5.91 / 2;
+var ov = M.speeds({ drive: d25, V: 12, rollerR: 1 * F.IN, contact: "over", driveV: drive, travel: 14 * F.IN, pieceR: Rb * F.IN });
+var vs = Math.PI * 2 * 7757 / 2.5 / 60 / 12;
+near("over: surface 27.08 ft/s", ov.surface / F.FT, vs, 1e-9);
+near("over: surface, rounded hand figure", ov.surface / F.FT, 27.08, 0.005);
+near("over: on the floor = (surface + drive) / 2", ov.piece / F.FT, (vs + 12) / 2, 1e-9);
+near("over: on the floor, rounded hand figure 19.54", ov.piece / F.FT, 19.54, 0.005);
+near("over: up the bumper = surface / 2", ov.pieceB / F.FT, vs / 2, 1e-9);
+near("over: up the bumper, rounded hand figure 13.54", ov.pieceB / F.FT, 13.54, 0.005);
+near("over: the floor part is faster than the plate case by half the drive", ov.piece - ov.pieceB, drive / 2, 1e-9);
+// The rule: the piece on the floor at least 1.1 x the drive, so (surface + drive) / 2 >= 1.1 drive, a surface of 1.2 x.
+near("over: target surface 1.2 x drive", ov.target, 1.2, 1e-12);
+near("over: pass line 1.1 x drive = 13.2 ft/s", ov.pass / F.FT, 13.2, 1e-9);
+// Reduction for that: 2.5 x 27.08 / (1.2 x 12) = 4.701:1; there the floor speed is exactly 13.2 ft/s.
+near("over: reduction for the margin by hand", ov.ratioGood, 2.5 * vs / 14.4, 1e-9);
+near("over: reduction, rounded hand figure 4.70", ov.ratioGood, 4.70, 0.005);
+var ovg = M.speeds({ drive: F.drive({ motor: "kraken44", n: 1, ratio: ov.ratioGood, eff: 0.9, statorA: 30 }), V: 12, rollerR: 1 * F.IN, contact: "over", driveV: drive, travel: 0.3, pieceR: Rb * F.IN });
+near("over: at that reduction the floor speed is on the pass line", ovg.piece, 1.1 * drive, 1e-9);
+ok("over: and it passes", ovg.state === "ok", ovg.state);
+// States: the piece comes in faster than the floor exactly when the surface is faster than the drive.
+ok("over: surface 0.9 x drive is a problem (pushed ahead)", M.state(0.9, 0.95, drive, "over") === "bad");
+ok("over: surface 1.1 x drive is a check (piece 1.05 x)", M.state(1.1, 1.05, drive, "over") === "warn");
+ok("over: surface 1.2 x drive is good, no 2 x rule", M.state(1.2, 1.1, drive, "over") === "ok");
+ok("over: default setup is good", ov.state === "ok", ov.state);
+near("over: default pieceRatio 1.63", ov.pieceRatio, (vs + 12) / 24, 1e-9);
+// Time through 14 in: the floor part is sqrt 2 (Rr + Rb) = sqrt 2 x 3.955 = 5.593 in at 19.54 ft/s, the other 8.407 in
+// at 13.54 ft/s: 5.593 / 234.5 + 8.407 / 162.5 = 0.0756 s.
+var Lf = Math.SQRT2 * (1 + Rb);
+near("over: floor part length", ov.floorLen / F.IN, Lf, 1e-9);
+near("over: time by hand", ov.time, Lf / ((vs + 12) / 2 * 12) + (14 - Lf) / (vs / 2 * 12), 1e-9);
+near("over: time, rounded hand figure", ov.time, 0.0756, 0.0005);
+near("over: standing still the floor part is half the surface", M.speeds({ drive: d25, V: 12, rollerR: 1 * F.IN, contact: "over", driveV: 0, travel: 0.3, pieceR: Rb * F.IN }).piece, ov.surface / 2, 1e-12);
+// The drawing's path: first touch at Rc from the roller, the corner touching floor, bumper and roller, the floor part
+// as long as the sums use, the piece never squeezed by more than Rc (1 - 1/sqrt 2), and a path that does not jump.
+[{ piece: 5.91, roller: 2, travel: 14 }, { piece: 9.5, roller: 4, travel: 30 }, { piece: 16, roller: 1, travel: 60 }].forEach(function (sz) {
+  var G = M.geomOver(sz), Rc = sz.piece / 2 + sz.roller / 2, p0 = G.at(0).p, pq = G.at(G.Lf).p;
+  near(sz.piece + " in: first touch at Rc from the roller", Math.hypot(p0[0] - G.C[0], p0[1] - G.C[1]), Rc, 1e-9);
+  near(sz.piece + " in: at the corner the piece touches the roller", Math.hypot(pq[0] - G.C[0], pq[1] - G.C[1]), Rc, 1e-9);
+  near(sz.piece + " in: floor part as in the sums", G.Lf, M.floorLen(sz.roller / 2, sz.piece / 2), 1e-9);
+  var worst = 0, jump = 0, prev = p0;
+  for (var i = 0; i <= 400; i++) { var dd = sz.travel * i / 400, q = G.at(dd).p; if (dd <= G.Lf) worst = Math.max(worst, Rc - Math.hypot(q[0] - G.C[0], q[1] - G.C[1])); jump = Math.max(jump, Math.hypot(q[0] - prev[0], q[1] - prev[1])); prev = q; }
+  ok(sz.piece + " in: squeeze on the floor at most Rc (1 - 1/sqrt 2)", worst <= Rc * (1 - Math.SQRT1_2) + 1e-9, worst);
+  ok(sz.piece + " in: the path does not jump", jump <= sz.travel / 400 + 1e-9, jump);
+  ok(sz.piece + " in: on the floor until the corner", p0[1] === sz.piece / 2 && pq[1] === sz.piece / 2);
+  // The bumper is the box x -3.5 to 0, y 1.5 to 6.5: the piece's centre stays at least its radius from it.
+  var inside = 0;
+  for (var j = 0; j <= 400; j++) { var c2 = G.at(sz.travel * j / 400).p, nx = Math.max(-3.5, Math.min(0, c2[0])), ny = Math.max(1.5, Math.min(6.5, c2[1])); inside = Math.max(inside, sz.piece / 2 - Math.hypot(c2[0] - nx, c2[1] - ny)); }
+  ok(sz.piece + " in: never inside the bumper", inside <= 1e-9, inside);
+});
 console.log(fails ? fails + " of " + n + " checks failed" : "all " + n + " checks passed");
 if (fails) process.exit(1);

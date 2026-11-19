@@ -71,5 +71,33 @@ var a = mv.lead.leadDeg * Math.PI / 180, hv = mv.lead.d / mv.lead.time, vx = hv 
 near("lead cancels sideways motion", vx * mv.lead.time, 0, 0.02);
 near("and covers the distance", vy * mv.lead.time, r.target.d, 0.02);
 
+// The driving speeds that score. A made-up shooter that scores from 2 to 6 m with a flight of exactly 1 s, so the
+// sums can be done by hand. From 3 m: driving at the target shortens the shot by v x 1 s, and it must stay 2 m or
+// more, so 1 m/s = 3.28 ft/s (3.2 on the 0.1 ft/s steps); backing away lengthens it to at most 6 m, so 3 m/s =
+// 9.84 ft/s (9.8); across, sqrt(9 + v^2) <= 6 gives 5.2 m/s = 17 ft/s, past the 14 ft/s the sliders reach.
+function sf1(d) { return d < 2 - 1e-9 || d > 6 + 1e-9 ? null : { v: 8, time: 1 }; }
+var E = M.envelope(3, 0, 0, sf1);
+near("envelope: fastest toward", E.toward, 3.2, 1e-9);
+near("envelope: fastest backing away", E.away, 9.8, 1e-9);
+near("envelope: across runs to the sliders' end", E.across, M.LIM, 1e-9);
+ok("envelope: standing still has no heading", E.heading === null);
+// Backing away at 12 ft/s is past the limit, so no across speed scores at that toward speed, and the heading limit
+// is the backing-away one.
+var E2 = M.envelope(3, -12, 0, sf1);
+near("envelope: nothing across when already too fast", E2.across, 0, 1e-9);
+near("envelope: heading limit is the backing-away limit", E2.heading, 9.8, 1e-9);
+// The zone is the same test on a grid: (0, 0) is in it, 12 ft/s backing away is not.
+function inZone(Z, t, a) { return Z.zone.some(function (z) { return Math.abs(z[0] - t) < 1e-9 && a >= z[1] - 1e-9 && a <= z[2] + 1e-9; }); }
+ok("zone: standing still scores", inZone(E, 0, 0));
+ok("zone: 9.5 back scores, 10 back does not, 3 toward scores, 3.5 toward does not", inZone(E, -9.5, 0) && !inZone(E, -10, 0) && inZone(E, 3, 0) && !inZone(E, 3.5, 0));
+// The real shooter: the default drive (6 ft/s across) scores and sits inside its own limits; 12 ft/s backing away
+// with 8 across does not, and the page then says what would.
+ok("default drive is inside its limits", mv.env.across >= 6 && mv.env.heading >= 6 && !mv.out, mv.env.across);
+var mvx = M.move(with_({ vtoward: -12, vacross: 8 }), r, mp);
+ok("too fast: out, with a slower speed that works on the same heading", mvx.out && mvx.env.heading > 0 && mvx.env.heading < mvx.speed, mvx.env.heading);
+ok("too fast: the shot it would need is past the standing range", mvx.need > mvx.env.range[1], mvx.need);
+var kh = mvx.env.heading / mvx.speed, back = M.move(with_({ vtoward: -12 * kh, vacross: 8 * kh }), r, mp);
+ok("slowing to the heading limit scores", back && !back.out);
+
 console.log((n - fails) + " of " + n + " checks passed");
 process.exit(fails ? 1 : 0);

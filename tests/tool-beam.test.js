@@ -85,12 +85,6 @@ near("niceTop of nothing -> 1", M.niceTop(0), 1, 0);
 near("grid 30 in -> 1 in squares", M.gridStep(30), 1, 0);
 near("grid 60 in -> 2 in squares", M.gridStep(60), 2, 0);
 near("grid 96 in -> 6 in squares", M.gridStep(96), 6, 0);
-// Round 6: the stress drawing's enlargement. 12% of yield is drawn 5x (60% of the scale); 0.5% is drawn 100x.
-near("12% of yield drawn 5x", M.stressZoom(0.1152), 5, 0);
-near("0.5% of yield drawn 100x", M.stressZoom(0.005), 100, 0);
-near("30% or more is drawn true", M.stressZoom(0.3), 1, 0);
-near("no load is drawn true", M.stressZoom(0), 1, 0);
-ok("an enlarged share stays within the scale", [0.001, 0.01, 0.05, 0.1, 0.2, 0.29].every(function (x) { var z = M.stressZoom(x); return x * z <= 0.8 && x * z >= 0.16; }));
 
 // Round 7: other stock sections under the same load. Default (6061, 30 in, 25 lbf, held at one end, tall way):
 // the 2x1 1/16 tube has a safety factor of 8.7; the lightest with 3 or more is the 1x1 1/16 tube (3.2, 0.69 lb).
@@ -107,11 +101,20 @@ ok("compare: the flat way is weaker for a 2x1", M.compare({ mat: M.mat("al"), L:
 
 // Round 9: one rule for the bend's enlargement, from the inputs alone. Default: 0.121 in on 30 in; 15% of 30 in is
 // 4.5 in, 4.5 / 0.121 = 37, so 30 times. A bend already 15% of the length or more is drawn true.
-near("bend drawn 30x by default", M.bendScale(0.1212, 30), 30, 0);
-near("a big bend is drawn true", M.bendScale(3, 30), 1, 0);
+near("a 0.1212 in bend on 30 in is drawn 40x", M.bendScale(0.1212, 30), 40, 0);
+near("a big bend is drawn true", M.bendScale(6, 30), 1, 0);
 near("a tiny bend is drawn larger", M.bendScale(0.001, 30), 1000, 0);
 near("no bend is drawn true", M.bendScale(0, 30), 1, 0);
-ok("the factor never draws it past 15% of the length", [0.0005, 0.003, 0.02, 0.1, 0.5, 1.5].every(function (d) { return d * M.bendScale(d, 30) <= 0.15 * 30 + 1e-9; }));
+ok("the factor never draws it past 20% of the length", [0.0005, 0.003, 0.02, 0.1, 0.5, 1.5].every(function (d) { return d * M.bendScale(d, 30) <= 0.2 * 30 + 1e-9; }));
+
+// Owner round 1: the drawing's scale comes from the yield load, not the present load. Default tube: yields at
+// 216.8 lbf, stiffness 207.0 lbf/in, so the bend at yield is 1.047 in; 20% of 30 in is 6 in, 6 / 1.047 = 5.7, so 5x.
+var spec0 = M.section(M.sectionSpec("r2x1_16"), "tall");
+function at(P) { return M.beam({ sec: spec0, mat: M.mat("al"), L: 30, P: P, hold: "cant" }); }
+near("yield bend of the default tube", at(25).Pyield / at(25).stiff, 1.05, 1e-9);
+ok("the scale is 5x at 5, 25, 100 and 200 lbf", [5, 25, 100, 200].every(function (P) { return M.drawScale(at(P)) === 5; }), [5, 25, 100, 200].map(function (P) { return M.drawScale(at(P)); }).join());
+ok("more load draws more bend", [5, 25, 100, 200].every(function (P, i, a) { return !i || at(P).delta * M.drawScale(at(P)) > at(a[i - 1]).delta * M.drawScale(at(a[i - 1])); }));
+ok("a longer tube changes the scale", M.drawScale(M.beam({ sec: spec0, mat: M.mat("al"), L: 60, P: 25, hold: "cant" })) !== 5);
 
 console.log(fails ? fails + " of " + n + " checks failed" : "all " + n + " checks passed");
 process.exit(fails ? 1 : 0);

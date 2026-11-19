@@ -36,7 +36,9 @@ K.result = function (id) { return CACHE[id]; };
      tabs: [[value, label], ...] (a row of views above the drawing; the choice is the state key "view"),
      playLabel: "Fire" (or a function of s), hints(s, r) -> { elementId: text } (small derived lines inside the controls),
      pointer(kind, x, y, s, r) -> true when it changed s (kind: "down" | "move" | "up"; x, y in canvas CSS pixels),
-     onPick(key, value, s) (after a dropdown or segment changes; use it to apply a preset) } */
+     onPick(key, value, s) (after a dropdown or segment changes; use it to apply a preset),
+     saves: false (no "Saved setups": a look-up with nothing worth keeping),
+     compare: false (setups can be saved and opened but not compared: the tool already sets things side by side) } */
 K.tool = function (def) {
   TOOLS[def.id] = def;
   D.views[def.id] = function () { return page(def); };
@@ -53,9 +55,12 @@ function compute(id) { var r; try { r = T(id).compute(S(id)); } catch (e) { if (
 function page(def) {
   if (!D.visibleTools().length) return D.denied("Tools");
   var id = def.id, s = S(id), r = compute(id), tool = D.tool(id), R = rt(id);
+  capture(def, s);
   var head = '<div class="pagehead toolhead benchhead"><a class="backlink" href="#tools" data-act="go" data-v="tools"><span aria-hidden="true">‹</span> All tools</a>' +
-    '<div class="row between"><h1>' + esc(tool ? tool.name : id) + '</h1><span class="row"><button class="btn sm" data-act="calclink" data-tool="' + id + '" data-tip="Copy a link that opens this calculator with these numbers.">Copy link</button>' +
-    '<button class="btn sm ghost" data-act="calcreset" data-tool="' + id + '" data-tip="Put every number back to where it started.">Start over</button></span></div></div>';
+    '<div class="row between"><h1>' + esc(tool ? tool.name : id) + '</h1><span class="row benchacts">' + D.toolStar(id) +
+    (def.saves === false ? "" : '<button class="btn sm" data-act="calcsaves" data-tool="' + id + '" aria-expanded="' + !!R.savesOpen + '" aria-controls="calc-setups" data-tip="Keep these numbers under a name, open them again later' + (def.compare === false ? "" : ", or compare them with what is on the page") + '.">Saved setups' + (saves(id).length ? " (" + saves(id).length + ")" : "") + "</button>") +
+    '<button class="btn sm" data-act="calclink" data-tool="' + id + '" data-tip="Copy a link that opens this calculator with these numbers.">Copy link</button>' +
+    '<button class="btn sm ghost" data-act="calcreset" data-tool="' + id + '" data-tip="Put every number back to where it started.">Start over</button></span></div>' + setupsPanel(id) + "</div>";
   var stage = "";
   if (def.stage) {
     var dur = def.duration && !def.loop ? durOf(def, s, r) : 0, moves = def.duration || def.loop;
@@ -81,6 +86,7 @@ function playLabel(def, R) { return R.playing ? "Pause" : esc(label(def)); }
 K.refresh = function (id) {
   var def = T(id); if (!def || D.S.route !== id) return;
   var s = S(id), r = compute(id);
+  capture(def, s);
   swap("calc-outs", safe(def.outs, s, r));
   if (def.more) swapMore(safe(def.more, s, r));
   if (def.hints && !(r && r.error)) { var h = def.hints(s, r) || {}; Object.keys(h).forEach(function (k) { var el = document.getElementById(k); if (el) el.textContent = h[k]; }); }
@@ -196,11 +202,115 @@ function readLink(St) {
   } catch (e) {}
 }
 
+/* ---------- Saved setups ---------- */
+/* A person can keep a calculator's numbers under a name, open them again, download them as a small file, open such a
+   file, and compare a saved setup with the numbers on the page. The demo keeps them in this browser with the other
+   choices (D.pref); the real site would keep them with the person's account.
+   Comparing: the kit works the saved setup out as well, then shows each of its answers under the present one and
+   draws its chart lines dotted grey on the same charts. It does that by running the tool's outs() and more() once
+   for the saved setup with K.outs and K.chart only taking notes (capOn). A drawing is the tool's own business:
+   K.compare(id) hands it the saved setup, { name, s, r }, or null. */
+var CAP = null, capOn = null, outRow = 0;
+function saves(id) { var all = D.pref("calcsaves", {}) || {}; return all[id] || []; }
+function setSaves(id, list) { var all = JSON.parse(JSON.stringify(D.pref("calcsaves", {}) || {})); all[id] = list; D.setPref("calcsaves", all); }
+// Only the keys this calculator has, and only values of the kind it expects.
+function fit(id, v) { var d = T(id).defaults || {}, out = JSON.parse(JSON.stringify(d)); Object.keys(v || {}).forEach(function (k) { if (Object.prototype.hasOwnProperty.call(d, k) && typeof v[k] === typeof d[k] && Array.isArray(v[k]) === Array.isArray(d[k])) out[k] = JSON.parse(JSON.stringify(v[k])); }); return out; }
+function cmpOf(id) {
+  var R = rt(id), sv = R.cmp == null ? null : saves(id)[R.cmp], def = T(id); if (!sv || def.compare === false || def.saves === false) return null;
+  var cs = fit(id, sv.v); if (def.tabs) cs.view = S(id).view;               // compare like with like: the view on screen
+  var key = JSON.stringify(cs);
+  if (!R.cmpR || R.cmpKey !== key) { R.cmpKey = key; try { R.cmpR = def.compute(cs); } catch (e) { R.cmpR = { error: String(e && e.message || e) }; } }
+  return R.cmpR && !R.cmpR.error ? { name: sv.n, s: cs, r: R.cmpR } : null;
+}
+K.compare = function (id) { return cmpOf(id); };
+function capture(def, s) {
+  CAP = null; outRow = 0;
+  var c = cmpOf(def.id); if (!c) return;
+  var cap = { name: c.name, outs: [], charts: {} };
+  capOn = cap; try { def.outs(c.s, c.r); if (def.more) def.more(c.s, c.r); } catch (e) { if (window.console) console.error(e); } capOn = null;
+  CAP = cap;
+}
+// The saved setup's answer for a card: the card with the same name, else the one in the same place when the two rows
+// have the same shape. Nothing when the saved figure is the same as the present one.
+function wasItem(i, row, n, len) {
+  if (!CAP) return null;
+  var same = function (q) { return q.k === i.k; }, r = CAP.outs[row] || [], hit = r.filter(same)[0], blur = function (t) { return String(t).replace(/[\d.,]+/g, "#"); };
+  if (!hit && r.length === len && r[n] && blur(r[n].k) === blur(i.k)) hit = r[n];
+  if (!hit) CAP.outs.some(function (q) { hit = q.filter(same)[0]; return !!hit; });
+  return hit && (hit.v !== i.v || (hit.u || "") !== (i.u || "")) ? hit : null;
+}
+function setupsPanel(id) {
+  var R = rt(id), list = saves(id), c = cmpOf(id), tool = D.tool(id), def = T(id); if (def.saves === false) return "";
+  var bar = c ? '<p class="cmpbar"><i class="ckey cmp" aria-hidden="true"></i><span>Comparing with <b>' + esc(c.name) + '</b>: its figures sit under yours and its lines are dotted grey.</span> <button class="btn sm" data-act="calccmp" data-tool="' + id + '" data-v="-1">Stop comparing</button></p>' : "";
+  if (!R.savesOpen) return '<div id="calc-setups" class="setups shut">' + bar + "</div>";
+  var rows = list.map(function (sv, i) {
+    return '<li class="setuprow"><input class="inp" type="text" maxlength="40" value="' + esc(sv.n) + '" aria-label="Name of saved setup ' + (i + 1) + '" data-input="calcsavename" data-tool="' + id + '" data-v="' + i + '">' +
+      '<span class="setupwhen">' + esc(sv.t || "") + '</span><span class="row setupacts">' +
+      '<button class="btn sm" data-act="calcopen" data-tool="' + id + '" data-v="' + i + '" data-tip="Put these numbers on the page.">Open</button>' +
+      (def.compare === false ? "" : '<button class="btn sm" data-act="calccmp" data-tool="' + id + '" data-v="' + i + '" aria-pressed="' + (R.cmp === i) + '" data-tip="Show this setup beside the numbers on the page.">' + (R.cmp === i ? "Comparing" : "Compare") + "</button>") +
+      '<button class="btn sm" data-act="calcdown" data-tool="' + id + '" data-v="' + i + '" data-tip="Save it as a small file you can keep or send.">Download</button>' +
+      '<button class="btn sm ghost" data-act="calcdrop" data-tool="' + id + '" data-v="' + i + '">Remove</button></span></li>';
+  }).join("");
+  return '<div id="calc-setups" class="setups">' + bar + '<section class="setupsbox" aria-label="Saved setups"><div class="row setupstop"><button class="btn sm primary" data-act="calcsave" data-tool="' + id + '">Save these numbers</button>' +
+    '<label class="btn sm filebtn">Open a setup file<input type="file" accept=".json,application/json" class="vh" data-change="calcsavefile" data-tool="' + id + '"></label></div>' +
+    (rows ? '<ul class="setuplist">' + rows + "</ul>" : '<p class="mute small">Nothing saved for ' + esc(tool ? tool.name : "this calculator") + " yet.</p>") +
+    '<p class="mute small setupnote">In this demo saved setups stay in this browser. A downloaded file opens on any device.</p></section></div>';
+}
+function today() { var d = new Date(); return d.toLocaleDateString("en-GB", { day: "numeric", month: "short" }); }
+D.acts.calcsaves = function (b) { var R = rt(b.dataset.tool); R.savesOpen = !R.savesOpen; D.render(); var again = document.querySelector('[data-act="calcsaves"]'); if (again) again.focus(); };
+D.acts.calcsave = function (b) {
+  var id = b.dataset.tool, list = saves(id).slice(), n = list.length + 1; while (list.some(function (q) { return q.n === "Setup " + n; })) n++;
+  list.push({ n: "Setup " + n, v: JSON.parse(JSON.stringify(S(id))), t: today() }); setSaves(id, list);
+  D.toast("Saved as Setup " + n + ". Type a name for it."); D.render();
+  var el = document.querySelector('.setuprow:last-child input[data-input="calcsavename"]'); if (el) { el.focus(); el.select(); }
+};
+D.inputs.calcsavename = function (el) { var id = el.dataset.tool, list = saves(id).slice(), i = +el.dataset.v; if (!list[i]) return; list[i] = Object.assign({}, list[i], { n: el.value.trim() || "Setup " + (i + 1) }); setSaves(id, list); };
+function applySetup(id, v) { D.S.calc[id] = fit(id, v); stop(id); var R = rt(id), keep = { savesOpen: R.savesOpen, cmp: R.cmp }; RT[id] = null; Object.assign(rt(id), keep); }
+D.acts.calcopen = function (b) { var id = b.dataset.tool, sv = saves(id)[+b.dataset.v]; if (!sv) return; applySetup(id, sv.v); D.toast("Opened " + sv.n + "."); D.render(); };
+D.acts.calccmp = function (b) { var id = b.dataset.tool, R = rt(id), i = +b.dataset.v; R.cmp = i < 0 || R.cmp === i ? null : i; R.cmpR = null; D.render(); };
+D.acts.calcdrop = function (b) {
+  var id = b.dataset.tool, list = saves(id).slice(), i = +b.dataset.v, R = rt(id), sv = list[i]; if (!sv) return;
+  list.splice(i, 1); setSaves(id, list); if (R.cmp === i) R.cmp = null; else if (R.cmp > i) R.cmp--; R.cmpR = null;
+  D.toast("Removed " + sv.n + "."); D.render();
+};
+function slug(t) { return String(t).toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/^-|-$/g, "") || "setup"; }
+D.acts.calcdown = function (b) {
+  var id = b.dataset.tool, sv = saves(id)[+b.dataset.v], tool = D.tool(id); if (!sv) return;
+  var text = JSON.stringify({ app: "2972 Tools", tool: id, toolName: tool ? tool.name : id, name: sv.n, saved: sv.t, values: sv.v }, null, 2);
+  var url = URL.createObjectURL(new Blob([text], { type: "application/json" })), a = document.createElement("a");
+  a.href = url; a.download = slug(tool ? tool.name : id) + "-" + slug(sv.n) + ".json"; document.body.appendChild(a); a.click(); a.remove();
+  setTimeout(function () { URL.revokeObjectURL(url); }, 1000);
+};
+// A setup file: checked before anything is used. It must be for this calculator, and only known keys are taken.
+K.readSetup = function (id, text) {
+  var o; try { o = JSON.parse(text); } catch (e) { return { error: "That file is not a setup file." }; }
+  if (!o || typeof o !== "object" || !o.values || typeof o.values !== "object" || typeof o.tool !== "string") return { error: "That file is not a setup file." };
+  if (o.tool !== id) { var other = D.tool(o.tool); return { error: other ? "That setup is for " + other.name + ". Open it from that calculator." : "That setup is for a calculator this site does not have." }; }
+  return { name: String(o.name || "Opened setup").slice(0, 40), values: fit(id, o.values) };
+};
+D.changes.calcsavefile = function (el) {
+  var id = el.dataset.tool, f = el.files && el.files[0]; if (!f) return;
+  if (f.size > 200000) { D.toast("That file is too big to be a setup file."); D.render(); return; }
+  var rd = new FileReader();
+  rd.onload = function () {
+    var got = K.readSetup(id, String(rd.result)); if (got.error) { D.toast(got.error); D.render(); return; }
+    var list = saves(id).slice(); list.push({ n: got.name, v: got.values, t: today() }); setSaves(id, list);
+    applySetup(id, got.values); D.toast("Opened " + got.name + " and added it to your saved setups."); D.render();
+  };
+  rd.onerror = function () { D.toast("That file could not be read."); D.render(); };
+  rd.readAsText(f);
+};
+
 /* ---------- Answers ---------- */
 /* A row of answers. items: [{ k: label, v: value (text), u: unit, sub: a second line, tip, state: "ok" | "warn" | "bad" }] */
 K.outs = function (items) {
-  return '<dl class="outs">' + items.filter(Boolean).map(function (i) {
-    return '<div class="out' + (i.state ? " " + i.state : "") + '"><dt' + (i.tip ? ' class="abbr" tabindex="0" data-tip="' + esc(i.tip) + '"' : "") + ">" + esc(i.k) + '</dt><dd><b class="num">' + esc(i.v) + "</b>" + (i.u ? (/^(°|%|:|×)/.test(i.u) ? "" : " ") + "<span" + (/^(°|%|:|×)/.test(i.u) ? ' class="tight"' : "") + ">" + esc(i.u.replace(/^:\s*1$/, ":1")) + "</span>" : "") + (i.sub ? "<small>" + esc(i.sub) + "</small>" : "") + "</dd></div>";
+  items = items.filter(Boolean);
+  if (capOn) { capOn.outs.push(items); return ""; }
+  var row = outRow++;
+  return '<dl class="outs">' + items.map(function (i, n) {
+    var was = wasItem(i, row, n, items.length), tight = /^(°|%|:|×)/;
+    return '<div class="out' + (i.state ? " " + i.state : "") + '"><dt' + (i.tip ? ' class="abbr" tabindex="0" data-tip="' + esc(i.tip) + '"' : "") + ">" + esc(i.k) + '</dt><dd><b class="num">' + esc(i.v) + "</b>" + (i.u ? (tight.test(i.u) ? "" : " ") + "<span" + (tight.test(i.u) ? ' class="tight"' : "") + ">" + esc(i.u.replace(/^:\s*1$/, ":1")) + "</span>" : "") + (i.sub ? "<small>" + esc(i.sub) + "</small>" : "") +
+      (was ? '<small class="cmpv"><i class="ckey cmp" aria-hidden="true"></i>' + esc(CAP.name) + ": <b>" + esc(was.v) + (was.u ? (tight.test(was.u) ? "" : " ") + esc(was.u.replace(/^:\s*1$/, ":1")) : "") + "</b></small>" : "") + "</dd></div>";
   }).join("") + "</dl>";
 };
 // One plain sentence that says whether the design works. state: "ok" | "warn" | "bad" | "info". The "ok" word is
@@ -210,7 +320,7 @@ K.verdict = function (state, text, more) { return '<p class="verdict ' + state +
 K.notes = function (html, title) { return '<details class="how" data-open="how"><summary>' + esc(title || "How this is worked out") + '</summary><div class="howbody">' + html + "</div></details>"; };
 /* A block of text to copy into robot code or a notebook, with a Copy button. key: unique on the page. */
 var COPY = {};
-K.code = function (key, text, label) { COPY[key] = text; return '<div class="codebox"><pre class="codeout">' + esc(text) + '</pre><button class="btn sm" data-act="calccopy" data-v="' + esc(key) + '">' + esc(label || "Copy") + "</button></div>"; };
+K.code = function (key, text, label) { if (capOn) return ""; COPY[key] = text; return '<div class="codebox"><pre class="codeout">' + esc(text) + '</pre><button class="btn sm" data-act="calccopy" data-v="' + esc(key) + '">' + esc(label || "Copy") + "</button></div>"; };
 D.acts.calccopy = function (b) {
   var text = COPY[b.dataset.v] || "", done = function () { D.toast("Copied."); D.render(); };
   if (navigator.clipboard && navigator.clipboard.writeText) navigator.clipboard.writeText(text).then(done, function () { D.toast("Could not copy. Select the text and copy it by hand."); D.render(); }); else { D.toast("Could not copy. Select the text and copy it by hand."); D.render(); }
@@ -236,6 +346,12 @@ function tickFmt(v, step) { var dp = step >= 1 ? 0 : Math.min(4, Math.ceil(-Math
      bands: [{ x0, x1, label }] (a shaded range of x), dots: [{ x, y, label }], h (height, default 190), table: false }
    One y axis only: two measures on different scales are two charts. Hover or arrow keys read out every series. */
 K.chart = function (o) {
+  if (capOn) { capOn.charts[o.id] = o; return ""; }
+  // Comparing with a saved setup: its lines go on the same chart, dotted grey, under the present ones.
+  var was = CAP && CAP.charts[o.id];
+  if (was && was.series) o = Object.assign({}, o, { series: was.series.filter(function (q) { return q.pts && q.pts.length; }).map(function (q) { return { name: CAP.name + ": " + q.name, pts: q.pts, color: "cmp", cmp: true }; })
+    .concat(o.series.filter(function (q) { return q.pts && q.pts.length; }).map(function (q, i) { return q.color ? q : Object.assign({}, q, { color: i + 1 }); })) });
+  if (was) ["x", "y"].forEach(function (ax) { var a = o[ax], b = was[ax]; if (!a || !b) return; a = o[ax] = Object.assign({}, a); if (a.min != null && b.min != null) a.min = Math.min(a.min, b.min); if (a.max != null && b.max != null) a.max = Math.max(a.max, b.max); });
   var W = 480, H = o.h || 190, pl = 46, pr = 14, pt = o.y && o.y.label ? 24 : 10, pb = o.x && o.x.label ? 34 : 24, series = o.series.filter(function (s) { return s.pts && s.pts.length; });
   var xs = [], ys = [];
   series.forEach(function (s) { s.pts.forEach(function (p) { if (isFinite(p[0]) && isFinite(p[1])) { xs.push(p[0]); ys.push(p[1]); } }); });
@@ -260,15 +376,17 @@ K.chart = function (o) {
   if (o.y && o.y.label) g += '<text class="clabel" x="4" y="11">' + esc(o.y.label) + "</text>";
   (o.hlines || []).forEach(function (h) { if (h.y < y0 || h.y > y1) return; g += '<line class="cmark" x1="' + pl + '" x2="' + (W - pr) + '" y1="' + Y(h.y).toFixed(1) + '" y2="' + Y(h.y).toFixed(1) + '"/>' + (h.label ? '<text class="cnote" x="' + (h.side === "left" ? pl + 3 : W - pr - 2) + '" y="' + (Y(h.y) + (h.below ? 12 : -4)).toFixed(1) + '" text-anchor="' + (h.side === "left" ? "start" : "end") + '">' + esc(h.label) + "</text>" : ""); });
   (o.marks || []).forEach(function (m) { if (m.x < x0 || m.x > x1) return; g += '<line class="cmark" x1="' + X(m.x).toFixed(1) + '" x2="' + X(m.x).toFixed(1) + '" y1="' + pt + '" y2="' + (H - pb) + '"/>' + (m.label ? '<text class="cnote" x="' + (X(m.x) + (X(m.x) > W - 110 ? -4 : 4)).toFixed(1) + '" y="' + (pt + 10) + '"' + (X(m.x) > W - 110 ? ' text-anchor="end"' : "") + ">" + esc(m.label) + "</text>" : ""); });
+  g += '<clipPath id="' + esc(o.id) + '-clip"><rect x="' + pl + '" y="' + (pt - 2) + '" width="' + (W - pl - pr) + '" height="' + (H - pt - pb + 4) + '"/></clipPath><g clip-path="url(#' + esc(o.id) + '-clip)">';
   series.forEach(function (s, i) {
     var d = "", pen = false;
     s.pts.forEach(function (p) { if (!isFinite(p[1])) { pen = false; return; } d += (pen ? "L" : "M") + X(p[0]).toFixed(1) + " " + Y(F.clamp(p[1], y0 - (y1 - y0), y1 + (y1 - y0))).toFixed(1); pen = true; });
     g += '<path class="cline c' + (s.color || i + 1) + (s.dash ? " dash" : "") + '" d="' + d + '"/>';
   });
+  g += "</g>";
   (o.dots || []).forEach(function (p) { if (p.y < y0 || p.y > y1 || p.x < x0 || p.x > x1) return; g += '<circle class="cdot" cx="' + X(p.x).toFixed(1) + '" cy="' + Y(p.y).toFixed(1) + '" r="4"/>' + (p.label ? '<text class="cnote" x="' + (X(p.x) + (X(p.x) > W - 30 - p.label.length * 5.2 ? -7 : 7)).toFixed(1) + '" y="' + (Y(p.y) - 6).toFixed(1) + '"' + (X(p.x) > W - 30 - p.label.length * 5.2 ? ' text-anchor="end"' : "") + ">" + esc(p.label) + "</text>" : ""); });
   g += '<line class="cnow" id="' + o.id + '-now" x1="0" x2="0" y1="' + pt + '" y2="' + (H - pb) + '" visibility="hidden"/><line class="ccross" x1="0" x2="0" y1="' + pt + '" y2="' + (H - pb) + '" visibility="hidden"/>';
   CHARTS[o.id] = { x0: x0, x1: x1, pl: pl, pr: pr, W: W, series: series, xl: o.x && o.x.unit || "", yl: o.y && o.y.unit || "", xn: o.x && o.x.name || "" };
-  var legend = series.length > 1 ? '<div class="clegend">' + series.map(function (s, i) { return '<span><i class="ckey c' + (s.color || i + 1) + (s.dash ? " dash" : "") + '"></i>' + esc(s.name) + "</span>"; }).join("") + "</div>" : "";
+  var legend = series.length > 1 || was ? '<div class="clegend">' + series.map(function (s, i) { return '<span><i class="ckey c' + (s.color || i + 1) + (s.dash ? " dash" : "") + '"></i>' + esc(s.name) + "</span>"; }).join("") + "</div>" : "";
   var table = "";
   if (o.table !== false) {
     var rows = [], n = 8;

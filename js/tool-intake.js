@@ -10,33 +10,55 @@ var M = {};
 // The piece must come in at least this much faster than the floor brings it, and the roller's surface must run at
 // least twice the drive speed (the rule of thumb), for the page to call the intake good.
 M.MARGIN = 1.1; M.RULE = 2;
-/* o: { drive (F.drive), V (battery volts), rollerR (m), contact: "plate" | "both", driveV (m/s), travel (m) }.
-   The roller runs near free speed (it carries almost no load until it grips a piece). A piece pinched between a
-   roller and a fixed plate rolls on the plate, so its centre moves at half the roller's surface speed; between two
-   moving surfaces it moves at the full speed. */
+/* o: { drive (F.drive), V (battery volts), rollerR (m), contact: "over" | "plate" | "both", driveV (m/s), travel (m),
+   pieceR (m, for "over") }.
+   The roller runs near free speed (it carries almost no load until it grips a piece). Every speed is in the robot's
+   frame, where the floor comes at the robot at the drive speed. A piece that rolls without slipping between two
+   surfaces moves at the average of their speeds:
+     "plate"  between the roller and a fixed plate: (surface + 0) / 2, half the surface speed.
+     "both"   between two driven surfaces at the same speed: (surface + surface) / 2, the full speed.
+     "over"   one roller in front of the bumper. First the piece is pinched between the roller and the floor, which comes
+              in at the drive speed: (surface + drive) / 2. Then it rolls up the bumper's face, which is fixed: half the
+              surface speed, as against a plate. For this mode "piece" is the floor part and "pieceB" the bumper part. */
 M.factor = function (contact) { return contact === "both" ? 1 : 0.5; };
+// How far the piece moves while pinched against the floor, "over" mode (m): see M.geomOver.
+M.floorLen = function (rollerR, pieceR) { return Math.SQRT2 * (rollerR + pieceR); };
 M.speeds = function (o) {
-  var w = o.drive.freeSpeed(o.V), surface = w * o.rollerR, k = M.factor(o.contact), piece = surface * k;
-  var out = { w: w, rpm: w / F.RPM, surface: surface, piece: piece };
+  var w = o.drive.freeSpeed(o.V), surface = w * o.rollerR, over = o.contact === "over", k = M.factor(o.contact);
+  var piece = over ? (surface + o.driveV) / 2 : surface * k;
+  var out = { w: w, rpm: w / F.RPM, surface: surface, piece: piece, over: over };
   out.surfRatio = o.driveV > 0 ? surface / o.driveV : Infinity;
   out.pieceRatio = o.driveV > 0 ? piece / o.driveV : Infinity;
-  out.time = piece > 0 ? o.travel / piece : Infinity;
+  if (over) {
+    // The bumper part: half the surface speed, whatever the drive speed. Time: the floor part, then the rest at that.
+    out.pieceB = surface / 2;
+    var Lf = M.floorLen(o.rollerR, o.pieceR || 0), tr = o.travel;
+    out.floorLen = Lf;
+    out.time = piece > 0 && out.pieceB > 0 ? Math.min(tr, Lf) / piece + Math.max(0, tr - Lf) / out.pieceB : Infinity;
+  } else out.time = piece > 0 ? o.travel / piece : Infinity;
   out.push = o.driveV - piece;                                    // + : the robot shoves the piece along the floor
   out.force = o.drive.at(0, o.V, 1).torque / o.rollerR;             // N at the roller surface, at the current limit
   // The surface speed (times the drive speed) the page calls good: the rule of thumb, and enough for the piece itself
   // to come in 10% faster than the floor brings it. Against a plate that is 2.2, between two belts 2.
-  out.target = Math.max(M.RULE, M.MARGIN / k);
+  /* Over the bumper the test is the floor part, where the floor still brings the piece in: the piece at 10% over the
+     drive speed, (surface + drive) / 2 = 1.1 x drive, so a surface of 1.2 x drive. The rule of thumb of 2 is not used:
+     it is there for a plate, where the piece gets only half the surface speed against the floor. */
+  out.target = over ? 2 * M.MARGIN - 1 : Math.max(M.RULE, M.MARGIN / k);
+  // The piece speed the pass line stands for (m/s): what the piece reaches at the target surface speed.
+  out.pass = over ? M.MARGIN * o.driveV : out.target * k * o.driveV;
   var free = o.drive.motor.free * o.V / 12;
   out.ratioGood = o.driveV > 0 ? free / (out.target * o.driveV / o.rollerR) : Infinity;
-  out.state = M.state(out.surfRatio, out.pieceRatio, o.driveV);
+  out.state = M.state(out.surfRatio, out.pieceRatio, o.driveV, o.contact);
   return out;
 };
 /* The verdict's state. "bad": the piece comes in slower than the floor brings it (against a plate, any surface speed
    under 2 times the drive speed). "warn": it comes in faster, but under the rule of thumb or with under 10% to spare.
    "ok": both met. */
-M.state = function (surfRatio, pieceRatio, driveV) {
+M.state = function (surfRatio, pieceRatio, driveV, contact) {
   if (!(driveV > 0.05)) return "ok";
   if (pieceRatio < 1 - 1e-9) return "bad";
+  // Over the bumper: "bad" when the surface is slower than the floor (the roller pushes the piece out at first touch).
+  if (contact === "over") return pieceRatio >= M.MARGIN - 1e-9 ? "ok" : "warn";
   return surfRatio >= M.RULE - 1e-9 && pieceRatio >= M.MARGIN - 1e-9 ? "ok" : "warn";
 };
 
@@ -63,6 +85,32 @@ M.geom = function (s) {
     return { p: [A[0] + u[0] * (d - Larc), A[1] + u[1] * (d - Larc)], dir: u };
   }
   return { Rb: Rb, Rr: Rr, Rc: Rc, Rp: Rp, bTop: bTop, TH: TH, p1: p1, r1: r1, u: u, C: C, E: [xe, Rb], A: A, P1: P1, Larc: Larc, straight: straight, run: run, Cr: Cr, plate: plate, at: at };
+};
+
+/* "Over the bumper": the drawing's geometry in inches, x forward from the bumper face, y up from the floor. One roller
+   sits in front of the bumper. The piece, on the floor, first touches the roller when its centre is Rc = (piece + roller
+   radius) from the roller's centre; it is pinched against the floor, rolls in to the bumper's face, and at the corner it
+   touches floor, bumper and roller together (the roller's centre is at 45 degrees above and ahead of the piece's). Then
+   it rolls up the face, over the top front corner and on over the bumper. A rigid ball cannot touch the roller both under
+   it and against the bumper: the drawing squeezes the piece by up to Rc (1 - 1/sqrt 2) on the way, as a foam ball does.
+   The floor part runs from first touch to the corner: 2 Rc / sqrt 2 = sqrt 2 Rc (M.floorLen). */
+M.geomOver = function (s) {
+  var Rb = s.piece / 2, Rr = s.roller / 2, bTop = 6.5, Rc = Rb + Rr, a = Rc / Math.SQRT2;
+  // Where the floor part ends: touching the bumper's face, or (a piece taller than the bumper) its top corner.
+  var xq = Rb <= bTop ? Rb : Math.sqrt(Math.max(0, Rb * Rb - (Rb - bTop) * (Rb - bTop)));
+  var C = [xq + a, Rb + a], x1 = xq + 2 * a, Lf = 2 * a, Lc = Rb <= bTop ? bTop - Rb : 0;
+  var th0 = Rb <= bTop ? 0 : Math.asin(Math.min(1, (Rb - bTop) / Rb)), La = Rb * (Math.PI / 2 - th0);
+  function at(d) {                    // piece centre, its direction of travel and its phase after d inches
+    d = Math.max(0, Math.min(d, s.travel));
+    if (d <= Lf) return { p: [x1 - d, Rb], dir: [-1, 0], phase: "floor" };
+    d -= Lf;
+    if (d <= Lc) return { p: [xq, Rb + d], dir: [0, 1], phase: "bumper" };
+    d -= Lc;
+    if (d <= La) { var th = th0 + d / Rb; return { p: [Rb * Math.cos(th), bTop + Rb * Math.sin(th)], dir: [-Math.sin(th), Math.cos(th)], phase: "bumper" }; }
+    d -= La;
+    return { p: [-d, bTop + Rb], dir: [-1, 0], phase: "over" };
+  }
+  return { Rb: Rb, Rr: Rr, Rc: Rc, bTop: bTop, C: C, E: [x1, Rb], Q: [xq, Rb], Lf: Lf, Lc: Lc, La: La, th0: th0, at: at };
 };
 
 /* A level line's name on a chart, at whichever end (above or below the line) no curve passes through, clear of the dot
@@ -92,15 +140,15 @@ function fts(v) { return K.fix(v / FT, 1); }
 K.tool({
   id: ID,
   // Reduction 2.5 (the lead's choice, 2026-11-18): the page opens on an intake that works; 3:1 at 12 ft/s does not.
-  defaults: { roller: 2, motor: "kraken44", motors: 1, ratio: 2.5, statorA: 30, eff: 90, drive: 12, piece: 5.91, travel: 14, contact: "plate", V: 12, pieceLb: 0.47 },
-  stage: { ratio: 2.1, narrow: 1.05, label: "Side view to scale: the front of the robot driving onto a ball. The roller takes the ball from the top and carries it between its belt and a plate, up over the bumper." },
+  defaults: { roller: 2, motor: "kraken44", motors: 1, ratio: 2.5, statorA: 30, eff: 90, drive: 12, piece: 5.91, travel: 14, contact: "over", V: 12, pieceLb: 0.47 },
+  stage: { ratio: 2.1, narrow: 1.05, label: "Side view to scale: the front of the robot driving onto a ball, and the roller taking it in over the bumper." },
   // The whole pick-up takes a tenth of a second or so, so it plays in slow motion.
   autoplay: true, speed: 0.05,
 
   compute: function (s) {
     var dr = K.driveOf(s), vd = s.drive * FT;
-    var r = M.speeds({ drive: dr, V: s.V, rollerR: s.roller * IN / 2, contact: s.contact, driveV: vd, travel: s.travel * IN });
-    r.vd = vd; r.G = M.geom(s);
+    var r = M.speeds({ drive: dr, V: s.V, rollerR: s.roller * IN / 2, contact: s.contact, driveV: vd, travel: s.travel * IN, pieceR: s.piece * IN / 2 });
+    r.vd = vd; r.G = M.geom(s); if (r.over) r.GO = M.geomOver(s);
     // The animation: the robot closes a short gap, the roller touches the ball, the ball goes through.
     r.gap = vd > 0.05 ? F.clamp(vd / IN * 0.06, 3, 10) : 0;
     r.tc = vd > 0.05 ? r.gap * IN / vd : 0;
@@ -110,8 +158,8 @@ K.tool({
   },
 
   controls: function (s) {
-    return K.group(ID, "roll", "Roller or belt", K.num(ID, "roller", "Roller diameter", { unit: "in", min: 0.5, max: 6, step: 0.125, hint: "A belt runs at its roller's surface speed.", tip: "Outside diameter where it touches the piece, with any compliant wheels or tubing on it. With a belt, the diameter of the roller it runs on, plus the belt's thickness." }) +
-        K.seg(ID, "contact", "The piece is pinched between", [["plate", "Against a plate"], ["both", "Driven on both sides"]], { hint: s.contact === "both" ? "Both sides driven: the piece moves at the full surface speed." : "Against a fixed plate the piece rolls, so it moves at half the surface speed.", tip: "Against a fixed plate the piece rolls, so it moves at half the roller's surface speed. Between two driven rollers, or a roller and a moving belt, it moves at the full speed." })) +
+    return K.group(ID, "roll", "Roller or belt", K.num(ID, "roller", "Roller diameter", { unit: "in", min: 0.5, max: 6, step: 0.125, hint: s.contact === "over" ? "Where it touches the piece." : "A belt runs at its roller's surface speed.", tip: "Outside diameter where it touches the piece, with any compliant wheels or tubing on it. With a belt, the diameter of the roller it runs on, plus the belt's thickness." }) +
+        K.seg(ID, "contact", "The piece is taken", [["over", "Over the bumper"], ["plate", "Against a plate"], ["both", "Rollers on both sides"]], { hint: s.contact === "over" ? "On the floor it comes in at (roller + floor) ÷ 2, then up the bumper at half the roller's speed: fabric grips so it rolls; on a slick face it slides, faster than half." : s.contact === "both" ? "Both sides driven: the piece moves at the full surface speed." : "Against a fixed plate the piece rolls, so it moves at half the surface speed.", tip: "Over the bumper: one roller in front of the bumper pins the piece against the floor, then rolls it up the bumper's face and over. Against a plate: the piece rolls on a fixed plate under a roller or belt. Rollers on both sides: two driven surfaces carry it at their full speed." })) +
       K.group(ID, "motor", "Motor", K.motorFields(ID, { slider: true, ratioMax: 20 })) +
       K.group(ID, "drive", "Driving onto it", K.num(ID, "drive", "Robot speed toward the piece", { unit: "ft/s", min: 0, max: 20, step: 0.5, slider: true, tip: "How fast the driver comes onto a piece. Full speed for most swerve robots is 14 to 17 ft/s." })) +
       K.group(ID, "piece", "Game piece", K.num(ID, "piece", "Piece diameter", { unit: "in", min: 2, max: 16, step: 0.01, tip: "5.91 in is the 2026 ball." }) +
@@ -122,16 +170,26 @@ K.tool({
 
   outs: function (s, r) {
     var vd = r.vd, text, sr = K.fix(r.surfRatio, 2), tg = K.fix(r.target, 1), rg = K.fix(r.ratioGood, 2);
-    void sr; void tg;
-    var plate = s.contact !== "both";
+    var plate = s.contact === "plate", over = r.over;
     /* One sentence, yours first: how much faster than the floor the piece comes in at no-load speed, and the reduction
-       that gives the margin this page asks for. The caution goes in the second line. */
-    var pct = Math.round((r.pieceRatio - 1) * 100), mine = "Yours, " + K.fix(s.ratio, 2) + ":1, ";
+       that gives the margin this page asks for. The caution goes in the second line. Over the bumper the comparison is
+       the floor part, the only part where the floor still brings the piece in. */
+    var pct = Math.round((r.pieceRatio - 1) * 100), mine = "Yours, " + K.fix(s.ratio, 2) + ":1, ", where = over ? " on the floor" : "";
     if (vd <= 0.05) text = "The robot is standing still, so the piece comes in at " + fts(r.piece) + " ft/s at the roller's no-load speed.";
-    else if (r.state === "ok") text = mine + "pulls the piece in " + pct + "% faster than the floor brings it at no-load speed; " + rg + ":1 or lower (rounded down) keeps a 10% margin.";
-    else if (pct >= 0) text = mine + "pulls the piece in only " + pct + "% faster than the floor brings it at no-load speed; " + rg + ":1 or lower gives a 10% margin.";
-    else text = mine + "pulls the piece in " + (-pct) + "% slower than the floor brings it, so the robot shoves it along; " + rg + ":1 or lower gives a 10% margin.";
-    var more = "Once it grips, the roller slows by an amount this page cannot know, which can use up the margin. Test with a real piece how hard it must be squeezed.";
+    else if (r.state === "ok") text = mine + "pulls the piece in" + where + " " + pct + "% faster than the floor brings it at no-load speed; " + rg + ":1 or lower (rounded down) keeps a 10% margin.";
+    else if (pct >= 0) text = mine + "pulls the piece in" + where + " only " + pct + "% faster than the floor brings it at no-load speed; " + rg + ":1 or lower gives a 10% margin.";
+    else text = over ? mine + "turns the roller's surface slower than the floor comes in, so at first touch it pushes the piece ahead instead of taking it; " + rg + ":1 or lower gives a 10% margin." : mine + "pulls the piece in " + (-pct) + "% slower than the floor brings it, so the robot shoves it along; " + rg + ":1 or lower gives a 10% margin.";
+    var more = over ? "Up the bumper it rolls at half the roller's speed, " + fts(r.pieceB) + " ft/s, as against a plate, and the drive speed no longer matters there. The roller slows once it grips, by an amount this page cannot know: test with a real piece how hard it must squeeze." :
+      "Once it grips, the roller slows by an amount this page cannot know, which can use up the margin. Test with a real piece how hard it must be squeezed.";
+    var surfName = over ? "Roller surface speed" : "Belt surface speed";
+    if (over) return K.verdict(r.state, text, more) + K.outs([
+      { k: surfName, v: fts(r.surface), u: "ft/s", sub: "at " + K.fix(s.V, 1) + " V, no load: " + K.fix(r.surface, 2) + " m/s", tip: "Roller radius times roller speed, at the battery voltage in Fine tuning with no load: the roller turns at " + K.n(r.rpm, 0) + " rpm. It slows as it grips a piece." },
+      { k: "Piece on the floor", v: fts(r.piece), u: "ft/s", sub: "(roller + floor) ÷ 2, " + K.fix(r.pieceRatio, 2) + "× the floor", state: r.state === "bad" ? "bad" : r.state === "warn" ? "warn" : "", tip: "Pinched between the roller and the floor, which comes at the robot at the drive speed, the piece rolls between two moving surfaces, so its centre moves at their average. This is where the page's rule is tested." },
+      { k: "Piece up the bumper", v: fts(r.pieceB), u: "ft/s", sub: "half the roller's, as against a plate", tip: "Against the bumper's face, which does not move, the piece rolls, so its centre moves at half the roller's surface speed whatever the drive speed. Bumper fabric grips; a slick face lets it slide, and then it moves faster than half." },
+      { k: "Surface to drive speed", v: isFinite(r.surfRatio) ? sr : "–", u: "×", sub: "good from " + tg + ": this page's rule", state: r.state, tip: "Roller surface speed divided by the robot's speed toward the piece. This page's rule, not an input: on the floor the piece should come in at least 10% faster than the floor brings it, so (surface + drive) ÷ 2 at least 1.1 × drive: a surface of 1.2 × drive. Below 1 the roller pushes the piece ahead at first touch." },
+      { k: "Time to pass through", v: K.fix(r.time, 2), u: "s", sub: "ideal; the first " + K.fix(r.floorLen / IN, 1) + " in on the floor", tip: "The first " + K.fix(r.floorLen / IN, 1) + " in at the floor speed, the rest of the " + s.travel + " in at the bumper speed, with no slowing." },
+      { k: "Pull at the " + s.statorA + " A limit", v: K.n(r.force / F.LBF, 1), u: "lbf", sub: "at low speed; the piece weighs " + K.fix(s.pieceLb, 2) + "\u00a0lb", tip: "Torque at the current limit divided by the roller's radius: what the roller can pull while it is turning slowly. Faster, the motor has less torque; at free speed it has none. Lifting the piece up the bumper takes grip as well as pull." }
+    ]);
     return K.verdict(r.state, text, more) + K.outs([
       { k: "Belt surface speed", v: fts(r.surface), u: "ft/s", sub: "at " + K.fix(s.V, 1) + " V, no load: " + K.fix(r.surface, 2) + " m/s", tip: "Roller radius times roller speed, at the battery voltage in Fine tuning with no load: the roller turns at " + K.n(r.rpm, 0) + " rpm. It slows as it grips a piece." },
       { k: "Piece speed", v: fts(r.piece), u: "ft/s", sub: plate ? "half the belt's surface speed, against a plate" : "the belt's full surface speed, driven both sides", tip: "How fast the piece moves along its path. How this is worked out says which speeds are compared.", state: r.state === "bad" ? "bad" : r.state === "warn" ? "warn" : "" },
@@ -146,17 +204,20 @@ K.tool({
     var ymax = Math.max(2.6 * vd / FT, r.surface / FT * 1.15, 5);
     // Curves stop below the top of the chart, where the upright mark's name sits.
     function cut(v) { return v <= ymax * 0.86 ? v : NaN; }      // points above the chart's top are left out, not drawn outside it
-    function at(G, dia) { return M.speeds({ drive: F.drive({ motor: s.motor, n: s.motors, ratio: G, eff: s.eff / 100, statorA: s.statorA }), V: s.V, rollerR: dia * IN / 2, contact: s.contact, driveV: vd, travel: s.travel * IN }); }
-    var pts = [], surf = [], dp = [], ds = [], i, q;
-    for (i = 0; i <= 80; i++) { var G = lo + (hi - lo) * i / 80; q = at(G, s.roller); pts.push([G, cut(q.piece / FT)]); surf.push([G, cut(q.surface / FT)]); }
-    for (i = 0; i <= 60; i++) { var dia = 0.5 + 3.5 * i / 60; q = at(s.ratio, dia); dp.push([dia, cut(q.piece / FT)]); ds.push([dia, cut(q.surface / FT)]); }
+    function at(G, dia) { return M.speeds({ drive: F.drive({ motor: s.motor, n: s.motors, ratio: G, eff: s.eff / 100, statorA: s.statorA }), V: s.V, rollerR: dia * IN / 2, contact: s.contact, driveV: vd, travel: s.travel * IN, pieceR: s.piece * IN / 2 }); }
+    var pts = [], surf = [], dp = [], ds = [], pb = [], db = [], i, q, over = r.over;
+    for (i = 0; i <= 80; i++) { var G = lo + (hi - lo) * i / 80; q = at(G, s.roller); pts.push([G, cut(q.piece / FT)]); surf.push([G, cut(q.surface / FT)]); if (over) pb.push([G, cut(q.pieceB / FT)]); }
+    for (i = 0; i <= 60; i++) { var dia = 0.5 + 3.5 * i / 60; q = at(s.ratio, dia); dp.push([dia, cut(q.piece / FT)]); ds.push([dia, cut(q.surface / FT)]); if (over) db.push([dia, cut(q.pieceB / FT)]); }
     var y = { label: "ft/s", unit: "ft/s", min: 0, max: ymax };
     /* The level lines: the drive speed, and the pass line, the piece speed this page asks for (10% over the drive
        speed against a plate; twice the drive speed between two driven surfaces). An upright mark where the piece's
        curve crosses the pass line: the largest reduction, or the smallest roller, that passes. Level lines are drawn
        dotted (the belt's curve is dashed). */
-    var passV = r.target * M.factor(s.contact) * vd, passName = "pass line: " + K.fix(passV / vd, 1) + "× drive, " + K.fix(passV / FT, 1) + " ft/s";
-    var dGood = r.piece > 0 ? s.roller * passV / r.piece : NaN;
+    // The pass line is the piece speed this page asks for; over the bumper it is the piece on the floor.
+    var passV = r.pass, passName = over ? "pass line, " + K.fix(passV / FT, 1) + " ft/s" : "pass line: " + K.fix(passV / vd, 1) + "× drive, " + K.fix(passV / FT, 1) + " ft/s";
+    // The roller that passes at your reduction: the surface speed goes as the diameter, so the diameter that gives the
+    // target surface speed.
+    var dGood = r.surface > 0 ? s.roller * r.target * vd / r.surface : NaN;
     function hl(xr, lines, dx, dy, mx) {
       if (!(vd > 0.05)) return [];
       var X = function (x) { return 46 + (x - xr[0]) / (xr[1] - xr[0]) * 420; }, Yd = 156 - dy / ymax * 132, avoid = [[X(dx) - 8, Yd - 8, X(dx) + 8, Yd + 8]];
@@ -164,20 +225,26 @@ K.tool({
       return [place(passName, passV / FT, xr, ymax, lines, avoid)];
     }
     function dotted(html) { return html.replace(/<line class="cmark" x1="46" x2="466"/g, '<line class="cmark" style="stroke-dasharray:1.5 3" x1="46" x2="466"'); }
-    var note = vd > 0.05 ? "The dot is yours. Dotted: the pass line, the piece speed this page asks for. The upright mark is where the piece meets it." : "The dot is yours.";
+    var note = vd > 0.05 ? (over ? "The dot is yours. Dotted: the pass line, the piece on the floor at 1.1× the drive speed. The upright mark is where it meets it." : "The dot is yours. Dotted: the pass line, the piece speed this page asks for. The upright mark is where the piece meets it.") : "The dot is yours.";
+    var sName = over ? "Roller surface" : "Belt surface";
+    function ser(pc, pbump, sf) { return over ? [{ name: "Piece on the floor", pts: pc, color: 3 }, { name: "Piece up the bumper", pts: pbump, color: 3, dash: true }, { name: sName, pts: sf, color: 1, dash: true }] : [{ name: "Piece", pts: pc, color: 3 }, { name: sName, pts: sf, color: 1, dash: true }]; }
     var rMark = isFinite(r.ratioGood) && r.ratioGood >= lo && r.ratioGood <= hi && vd > 0.05 ? [{ x: r.ratioGood, label: K.fix(r.ratioGood, 2) + ":1" }] : [];
     var dMark = isFinite(dGood) && dGood >= 0.5 && dGood <= 4 && vd > 0.05 ? [{ x: dGood, label: K.fix(dGood, 2) + " in" }] : [];
     var chart = '<div class="chartrow">' +
       dotted(K.chart({ id: "int-r", title: "Speeds for other reductions", note: note, x: { label: "reduction, to 1", name: "Reduction", min: lo, max: hi }, y: y,
-        series: [{ name: "Piece", pts: pts, color: 3 }, { name: "Belt surface", pts: surf, color: 1, dash: true }], hlines: hl([lo, hi], [pts, surf], s.ratio, r.piece / FT, r.ratioGood), marks: rMark, dots: [{ x: s.ratio, y: r.piece / FT }] })) +
+        series: ser(pts, pb, surf), hlines: hl([lo, hi], [pts, surf].concat(over ? [pb] : []), s.ratio, r.piece / FT, r.ratioGood), marks: rMark, dots: [{ x: s.ratio, y: r.piece / FT }] })) +
       dotted(K.chart({ id: "int-d", title: "Speeds for other roller diameters", note: note, x: { label: "roller diameter (in)", name: "Diameter", unit: "in", min: 0.5, max: 4 }, y: y,
-        series: [{ name: "Piece", pts: dp, color: 3 }, { name: "Belt surface", pts: ds, color: 1, dash: true }], hlines: hl([0.5, 4], [dp, ds], s.roller, r.piece / FT, dGood), marks: dMark, dots: s.roller <= 4 ? [{ x: s.roller, y: r.piece / FT }] : [] })) + "</div>";
+        series: ser(dp, db, ds), hlines: hl([0.5, 4], [dp, ds].concat(over ? [db] : []), s.roller, r.piece / FT, dGood), marks: dMark, dots: s.roller <= 4 ? [{ x: s.roller, y: r.piece / FT }] : [] })) + "</div>";
     return chart + K.notes(
       "<p>The roller turns at about its free speed until it grips a piece, so its surface moves at:</p>" +
       "<p>The free speed here is at the battery voltage in Fine tuning, 12 V unless you change it, with no load. Other tools on this site use a rested 12.3 V battery; at 12.3 V the roller would run 2.5% faster. The roller slows as soon as it grips a piece, so every speed on this page is the most it could be.</p>" +
       '<p class="eq">surface speed = roller radius × motor free speed × (battery ÷ 12 V) ÷ reduction</p>' +
       "<p>A piece pinched between the roller and a fixed plate rolls along the plate. Its bottom stays still on the plate and its top moves with the roller, so its centre moves at half the surface speed. Between two moving surfaces (two rollers, or a roller and a belt) it moves at the full surface speed.</p>" +
       '<p class="eq">piece speed = surface speed × ½ (against a plate) or × 1 (rollers on both sides)</p>' +
+      "<p><b>Over the bumper.</b> One roller in front of the bumper takes the piece in two parts. First it pins the piece against the floor. In the robot's frame the floor is not still: it comes at the robot at the drive speed. So the piece rolls between two surfaces moving the same way, and its centre moves at their average. Then the piece reaches the bumper's face and rolls up it and over. The bumper does not move, so this part is the plate case: half the surface speed, whatever the drive speed.</p>" +
+      '<p class="eq">on the floor: piece = (surface + drive) ÷ 2; up the bumper: piece = surface ÷ 2</p>' +
+      "<p>So the answer to whether a bumper changes things: against the bumper it is the plate case, half the surface speed. What differs is the first touch, on the floor, which is easier: the floor helps carry the piece in. The piece comes in faster than the floor brings it whenever the roller's surface is faster than the drive speed. If it is slower, the roller's surface at first touch moves into the robot more slowly than the piece does, so its friction pushes the piece back out ahead of the robot instead of drawing it under.</p>" +
+      "<p>That is where this page tests over-the-bumper intakes: the piece on the floor at least 10% faster than the floor brings it, which is a surface speed of 1.2 × the drive speed. Up the bumper the piece is slower, half the surface speed, but the floor no longer pushes it there, so speed is not the limit: grip is. The roller has to lift the piece while the bottom of it still rubs the floor. Bumper fabric grips, so the piece rolls; on a slick face it slides instead, and then it moves faster than half. This page does not know the friction, so it does not model the slide. Many teams still run about twice the drive speed, for margin as the roller slows when it grips.</p>" +
       '<p class="eq">time to pass through = travel ÷ piece speed</p>' +
       '<p class="eq">pull at the current limit = output torque at the limit ÷ roller radius</p>' +
       "<p>That pull is the most there is, while the roller turns slowly. As it speeds up, the motor's torque falls, to nothing at free speed.</p>" +
@@ -185,7 +252,7 @@ K.tool({
       "<p>Which speeds are compared: the piece's speed is along its own path. Where the roller first touches it (directly under the roller, still on the floor), that path runs straight along the floor, the same line the robot drives on, so the two speeds are compared as they are. That is the moment that matters: once the piece is up on the plate it is inside the robot and the floor no longer pushes it. Up the ramp the piece keeps its speed along the ramp; only part of that is along the floor, and it does not need to be more.</p>" +
       "<p>Many teams aim for a surface speed (roller or belt) of about twice the drive speed. That is a rule of thumb from experience, not a law, and against a plate it has no margin at all: the piece moves at half the surface speed, so at exactly 2 times it only matches the drive speed. This page calls an intake good when the surface runs at least 2 times the drive speed and the piece itself comes in at least 10% faster than the floor brings it. Against a plate that is a surface speed of 2.2 times the drive speed; between two driven surfaces, 2 times. Under that it says Check, and when the piece is slower than the floor it says Problem.</p>" +
       "<p>The pull is what the motor could give at its current limit. Whether the piece follows depends on the squeeze (how far the gap is smaller than the piece) and on the friction between them, which this page does not know. Test it with a real piece.</p>" +
-      "<p>Left out: the roller slowing under load, slip between roller and piece, the squeeze, and the piece bouncing. The drawing shows the piece just touching; a real pinch squeezes it a little. Its shape (a curved lip under the roller, a 35° ramp, a belt from the roller to a second pulley) is a sketch of a common over-the-bumper intake; only the sizes and speeds come from your numbers.</p>");
+      "<p>Left out: the roller slowing under load, slip between roller and piece, the squeeze, and the piece bouncing. The drawing shows the piece just touching; a real pinch squeezes it a little. Its shape (a curved lip under the roller, a 35° ramp, a belt from the roller to a second pulley) is a sketch of a common over-the-bumper intake; only the sizes and speeds come from your numbers. Over the bumper, the drawing puts the roller where it touches the piece on the floor and again in the corner against the bumper; a rigid ball cannot do both, so the drawing squeezes it by up to " + K.fix((s.piece / 2 + s.roller / 2) * (1 - Math.SQRT1_2), 1) + " in on the way, as a foam ball does. The floor part is " + K.fix(Math.SQRT2 * (s.piece / 2 + s.roller / 2), 1) + " in long in that drawing; the time uses the same length.</p>");
   },
 
   duration: function (s, r) { return r && r.dur || 2; },
@@ -196,7 +263,7 @@ K.tool({
     return r.tc + 1e-4;
   },
 
-  draw: draw
+  draw: function (g, s, r, t) { return r.over ? drawOver(g, s, r, t) : draw(g, s, r, t); }
 });
 
 
@@ -400,4 +467,120 @@ function draw(g, s, r, t) {
     g.text(flab, fx + 10, fyy, { size: ks, weight: 700, color: c.text2, base: "middle" });
   }
 }
+
+/* "Over the bumper": the robot's front from the side, to scale. One roller on an arm in front of the bumper; the piece
+   on the floor is pinched under it, rolls in to the bumper's face, up it and over. Everything is drawn as the robot sees
+   it: the floor moves toward the robot at the drive speed. */
+function drawOver(g, s, r, t) {
+  var c = g.c, G = r.GO, Rb = G.Rb, Rr = G.Rr, bTop = G.bTop, phone = g.w < 520;
+  var vd = r.vd / IN, vf = r.piece / IN, vb = r.pieceB / IN, sv = r.surface / IN;            // inches per second
+  var jam = r.state === "bad" && vd > 0.05, ballX0 = G.E[0] + r.gap;
+  // How far along its path the piece is (inches): the floor part at the floor speed, the rest at the bumper speed.
+  var d;
+  if (t <= r.tc) d = -1;
+  else if (jam) d = 0;
+  else { var tt = t - r.tc, tf = G.Lf / Math.max(vf, 1e-9); d = Math.min(s.travel, tt <= tf ? tt * vf : G.Lf + (tt - tf) * vb); }
+  var pos = d < 0 ? { p: [ballX0 - vd * t, Rb], dir: [-1, 0], phase: "before" } : G.at(d), bp = pos.p, inside = d >= s.travel - 1e-9;
+  var endP = G.at(s.travel).p;
+  // The arm: a post behind the bumper, across above the piece's path, and down to the roller's axle.
+  var armTop = Math.max(G.C[1] + Rr + 2.2, bTop + 2 * Rb + 1.6), postX = Math.min(-6.5, endP[0] - Rb - 1.4), aw = 0.8;
+  var x0b = Math.min(-12.6, postX - 1.5);
+  var box = phone ? { x0: x0b, x1: G.E[0] + Rb + 3, y0: -3.8, y1: armTop + 1 } : { x0: x0b, x1: ballX0 + Rb + 2, y0: -3.6, y1: armTop + 1 };
+  var V = g.view(box, phone ? { l: 6, r: 6, t: 50, b: 6 } : { l: 8, r: 8, t: 50, b: 8 }, "middle");
+  var step = V.k >= 9 ? 1 : 6;
+  var gnote = step === 1 ? "1 in squares" : "6 in squares";
+  // On a phone the header needs the top line's width, so the grid's note goes under the floor at the left.
+  g.grid(V, step, phone ? "" : gnote);
+  function P(p) { return [V.X(p[0]), V.Y(p[1])]; }
+  var fy = V.Y(0), shift = vd * t;
+  if (phone) g.text(gnote, 10, fy + 20, { size: 11, color: c.mute });
+  // The floor, its marks moving toward the robot.
+  g.line(0, fy, g.w, fy, { color: c.text2, width: 1.5 });
+  var x0w = V.ux(0), x1w = V.ux(g.w);
+  for (var m = Math.floor((x0w + shift) / 3) * 3; m - shift < x1w + 3; m += 3) { var mx = V.X(m - shift); g.line(mx, fy, mx - 6, fy + 7, { color: c.line2, width: 1 }); }
+  // The robot: frame rail, wheel, bumper, and the arm's post (behind the piece: it is the far side's).
+  var railX = Math.min(-12, postX - 1);
+  g.rect(V.X(railX), V.Y(4), V.L(-3.5 - railX), V.L(2), { fill: c.part, stroke: c.partLine, width: 1, radius: 2 });
+  g.wheel(V.X(-8), V.Y(2), V.L(2), vd * t / 2, { spokes: 5 });
+  g.rect(V.X(postX - aw / 2), V.Y(armTop + aw / 2), V.L(aw), V.Y(4) - V.Y(armTop + aw / 2), { fill: c.part2, stroke: c.partLine, width: 1 });
+  var Cp = P(G.C), elbow = [G.C[0] + 1.8, armTop];
+  g.rect(V.X(postX - aw / 2), V.Y(armTop + aw / 2), V.X(elbow[0]) - V.X(postX - aw / 2), V.L(aw), { fill: c.part2, stroke: c.partLine, width: 1 });
+  g.line(V.X(elbow[0]), V.Y(armTop), Cp[0], Cp[1], { color: c.part2, width: V.L(aw) });
+  g.line(V.X(elbow[0]), V.Y(armTop), Cp[0], Cp[1], { color: c.partLine, width: 1 });
+  g.rect(V.X(-3.5), V.Y(bTop), V.L(3.5), V.L(bTop - 1.5), { fill: c.s1, stroke: null, radius: V.L(0.8) });
+  g.text("bumper", V.X(-1.75), V.Y(1.5) + 14, { align: "center", color: c.mute, size: 11 });
+  // A ghost of the piece at first touch, where the floor part starts and the speeds are compared.
+  var Ep = P(G.E), firstShown = d < 0 || d > Rb * 0.6 || jam;
+  if (firstShown) g.circle(Ep[0], Ep[1], V.L(Rb), { fill: c.line, stroke: null });
+  // The piece (it rolls, so it turns as it goes), then the roller over it: where they overlap the piece is squeezed.
+  var ang = d < 0 ? 0 : -d / Rb;
+  g.ball(V.X(bp[0]), V.Y(bp[1]), V.L(Rb), ang + 0.6, {});
+  g.wheel(Cp[0], Cp[1], V.L(Rr), r.w * t, { spokes: 4, tread: Math.max(1.5, V.L(Rr) * 0.14) });
+  // Which way the roller's surface moves: clockwise, so its underside moves into the robot.
+  var rimR = V.L(Rr) + 6, BLUE = c.s1, GREEN = c.s3;
+  rimArrow(g, Cp[0], Cp[1], rimR, -1.25, -0.1, BLUE);
+  // Speed arrows, all to one scale.
+  var vmax = Math.max(vd, vf, sv, 1), aL = function (v) { return Math.max(12, (phone ? 70 : 92) * v / vmax); };
+  var bx = V.X(bp[0]), by = V.Y(bp[1]), Rpx = V.L(Rb), ph = pos.phase, vNow = ph === "floor" || ph === "before" ? vf : vb;
+  var boxes = [], circles = [[bx, by, Rpx + 4], [Cp[0], Cp[1], rimR + 4], [Ep[0], Ep[1], firstShown ? V.L(Rb) + 3 : 0]];
+  // The bumper, the post, the arm and the rail, as boxes a label must not touch.
+  boxes.push([V.X(-3.5) - 3, V.Y(bTop) - 3, V.X(0) + 3, V.Y(1.5) + 3], [V.X(postX - aw / 2) - 3, V.Y(armTop + aw / 2) - 3, V.X(postX + aw / 2) + 3, V.Y(4)],
+    [V.X(postX), V.Y(armTop + aw / 2) - 3, V.X(elbow[0]) + 3, V.Y(armTop - aw / 2) + 3], [V.X(railX), V.Y(4), V.X(-3.5), V.Y(2)]);
+  var armSeg = [V.X(elbow[0]), V.Y(armTop), Cp[0], Cp[1]];
+  function segNear(sg, x0, y0, x1, y1, pad) { for (var q = 0; q <= 12; q++) { var px = sg[0] + (sg[2] - sg[0]) * q / 12, py = sg[1] + (sg[3] - sg[1]) * q / 12; if (px > x0 - pad && px < x1 + pad && py > y0 - pad && py < y1 + pad) return true; } return false; }
+  var arrows = [armSeg];
+  function clearBox(x0, y0, x1, y1) {
+    if (x0 < 4 || x1 > g.w - 4 || y0 < 46 || y1 > fy - 3) return false;
+    if (boxes.some(function (b) { return x0 < b[2] && x1 > b[0] && y0 < b[3] && y1 > b[1]; })) return false;
+    if (circles.some(function (q) { var cx = Math.max(x0, Math.min(q[0], x1)), cy = Math.max(y0, Math.min(q[1], y1)); return Math.hypot(cx - q[0], cy - q[1]) < q[2]; })) return false;
+    return !arrows.some(function (sg) { return segNear(sg, x0, y0, x1, y1, 4); });
+  }
+  // A level label (one or two lines) at the first clear place in a list of [x, y, "l" | "r" | "c"] (y is its middle).
+  function label(lines, color, places) {
+    var o = { size: 11, weight: 700 }, w = Math.max.apply(null, lines.map(function (tx) { return g.textWidth(tx, o); })), h = 12 * lines.length;
+    for (var q = 0; q < places.length; q++) {
+      var x0 = places[q][0] - (places[q][2] === "r" ? w : places[q][2] === "c" ? w / 2 : 0), y0 = places[q][1] - h / 2;
+      if (clearBox(x0 - 2, y0 - 2, x0 + w + 2, y0 + h + 2)) {
+        lines.forEach(function (tx, j) { g.text(tx, x0, y0 + 6 + 12 * j, Object.assign({ color: color, base: "middle" }, o)); });
+        boxes.push([x0 - 2, y0 - 2, x0 + w + 2, y0 + h + 2]); return true;
+      }
+    }
+    return false;
+  }
+  if (d >= 0 && !inside && !jam) {
+    var dir = pos.dir, Lp = aL(vNow), sx = bx + dir[0] * (Rpx + 3), sy = by - dir[1] * (Rpx + 3);
+    g.arrow(sx, sy, sx + dir[0] * Lp, sy - dir[1] * Lp, { color: GREEN, width: 3, head: 10 });
+    arrows.push([sx, sy, sx + dir[0] * Lp, sy - dir[1] * Lp]);
+    var ex = sx + dir[0] * Lp, ey = sy - dir[1] * Lp, pl = ["piece " + K.fix(vNow / 12, 1) + " ft/s"], cand = [];
+    for (var kq = 0; kq < 8; kq++) cand.push([ex - 6 - 6 * kq, ey - 16 - 4 * kq, "r"], [ex + 8, ey - 14 - 5 * kq, "l"], [bx + Rpx + 8 + 4 * kq, by - Rpx * 0.4 - 6 * kq, "l"], [bx - Rpx - 8, by - Rpx - 10 - 6 * kq, "r"]);
+    label(pl, GREEN, cand);
+  } else if (jam && d >= 0) {
+    var jl = aL(vd);
+    g.arrow(bx + Rpx + 3, by, bx + Rpx + 3 + jl, by, { color: c.bad, width: 2.5 });
+    arrows.push([bx + Rpx + 3, by, bx + Rpx + 3 + jl, by]);
+    label(["pushed ahead"], c.bad, [[bx + Rpx + 3, by - 16, "l"], [bx + Rpx + 3, by + 16, "l"], [bx - Rpx - 6, by - Rpx - 10, "r"]]);
+  } else if (d < 0 && vd > 0.05) label(["piece, still on the floor"], c.text2, [[bx, by - Rpx - 12, "c"], [bx - Rpx - 6, by - Rpx - 12, "r"]]);
+  // The roller's surface speed, beside its rim arrow.
+  var rl = "roller surface " + K.fix(sv / 12, 1) + " ft/s", rx = Cp[0] + rimR + 6, ry = Cp[1] - rimR - 4;
+  if (!label([rl], BLUE, [[rx, ry, "l"], [rx, ry - 14, "l"], [Cp[0], Cp[1] - rimR - 16, "c"], [Cp[0] - rimR - 6, ry, "r"]])) label(["roller", K.fix(sv / 12, 1) + " ft/s"], BLUE, [[rx, ry, "l"], [rx, ry - 14, "l"], [Cp[0] + rimR + 4, Cp[1] + rimR + 8, "l"]]);
+  // The header: the time, then which part the piece is in, with its speed in that part.
+  var hx = 10, hy = 18, status, scol = c.text2;
+  if (t < r.tc) status = "driving onto the piece";
+  else if (jam) { status = "the roller's surface is slower than the floor: it pushes the piece ahead"; scol = c.bad; }
+  else if (inside) { status = "over the bumper and in, " + K.fix(r.time, 2) + " s after first touch"; scol = c.ok; }
+  else if (ph === "floor") status = (d < Rb * 0.6 ? "first touch: " : "") + "pinched against the floor, piece " + K.fix(vf / 12, 1) + " ft/s";
+  else status = (ph === "over" ? "over the top, " : "rolling up the bumper, ") + "piece " + K.fix(vb / 12, 1) + " ft/s";
+  g.text(K.fix(t, 3) + " s", hx, hy, { weight: 700, size: 13 });
+  var sw = wrapText(g, status, g.w - hx - 72, { size: phone ? 11 : 12, weight: 600 });
+  sw.forEach(function (ln, j) { g.text(ln, hx + 62, hy + 15 * j, { color: scol, weight: 600, size: phone ? 11 : 12 }); });
+  if (vd > 0.05) g.text(phone ? "Speeds relative to the robot; the floor comes at " + K.fix(vd / 12, 1) + " ft/s" : "Speeds are relative to the robot. The floor comes at the robot at the drive speed, " + K.fix(vd / 12, 1) + " ft/s.", hx, hy + 15 * (sw.length - 1) + 20, { size: 11, weight: 600, color: c.text2, base: "middle" });
+  // Under the floor: the first touch, and the floor's own speed pointing at the robot.
+  if (vd > 0.05) {
+    g.text("first touch", Ep[0], fy + 16, { size: 11, weight: 700, color: c.text2, align: "center" });
+    var flab = "floor " + K.fix(vd / 12, 1) + " ft/s", fL = aL(vd), fyy = fy + 32, fx = Math.min(Ep[0], g.w - 16 - g.textWidth(flab, { size: phone ? 11 : 12, weight: 700 }));
+    g.arrow(fx + 2, fyy, fx + 2 - fL, fyy, { color: c.text2, width: 3, head: 10 });
+    g.text(flab, fx + 10, fyy, { size: phone ? 11 : 12, weight: 700, color: c.text2, base: "middle" });
+  }
+}
+function wrapText(g, str, maxW, o) { var words = str.split(" "), lines = [], cur = ""; words.forEach(function (w) { var tx = cur ? cur + " " + w : w; if (cur && g.textWidth(tx, o) > maxW) { lines.push(cur); cur = w; } else cur = tx; }); if (cur) lines.push(cur); return lines; }
 })(typeof window !== "undefined" ? window : this);

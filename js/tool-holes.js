@@ -69,6 +69,7 @@ function in4(x) { return x.toFixed(4) + " in"; }
 function mm2(x) { return (x * 25.4).toFixed(2) + " mm"; }
 
 var def = {
+  saves: false,   // a look-up: nothing worth keeping under a name
   id: ID,
   defaults: { kind: "tap", size: 5, fit: "close", press: "slip" },
   stage: { ratio: 2.2, narrow: 1.2, label: "A section through the plate, enlarged and to scale: the hole as drilled, and the same hole with its screw, rivet or part in it." },

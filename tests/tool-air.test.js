@@ -83,5 +83,20 @@ ok("2 in", M.inFrac(2) === "2 in", M.inFrac(2));
 ok("0.3125 in", M.inFrac(0.3125) === "5/16 in (0.3125)", M.inFrac(0.3125));
 ok("not a fraction stays a decimal", M.inFrac(0.81) === "0.81 in", M.inFrac(0.81));
 
+// Owner round 1: strokes are drawn slowed, about half a second of a 16 s playback (5 s of a 160 s match), never
+// overlapping on one cylinder, never before their own time.
+var sim6 = M.sim({ tanks: 2, ml: 574, stored: 120, work: 60, cfm: 0, match: 160, cyls: [{ name: "A", bore: 1.0625, stroke: 4, rod: 0.3125, cycles: 6 }, { name: "B", bore: 0.75, stroke: 2, rod: 0.25, cycles: 2 }] });
+var sch = M.schedule(sim6.ev, 160, 16, 0.5);
+ok("schedule: one slot per stroke", sch.length === sim6.ev.length);
+ok("schedule: each lasts 5 s of match time", sch.every(function (q) { return Math.abs(q.to - q.from - 5) < 1e-9; }), JSON.stringify(sch[0]));
+ok("schedule: none starts before its stroke", sch.every(function (q, n) { return q.from >= sim6.ev[n].t - 1e-9; }));
+var lastEnd = {}; ok("schedule: no overlap on one cylinder", sim6.ev.every(function (e, n) { var okk = !(lastEnd[e.i] > sch[n].from + 1e-9); lastEnd[e.i] = sch[n].to; return okk; }));
+var busy = M.sim({ tanks: 2, ml: 574, stored: 120, work: 60, cfm: 0, match: 160, cyls: [{ name: "C", bore: 0.75, stroke: 2, rod: 0.25, cycles: 200 }] });
+var schB = M.schedule(busy.ev, 160, 16, 0.5);
+ok("schedule: a busy cylinder gets shorter strokes that still fit", schB[schB.length - 1].to <= 160 + 1e-6 && schB.every(function (q) { return q.to - q.from < 5; }), schB[schB.length - 1].to);
+// The first stroke of the default: free air 18.022 in³ = 0.295 L; tanks 120 to 116.218 psi.
+ok("stroke line", M.strokeLine(sim6.ev[0], 60) === "out: 0.30 L, tanks 120 to 116 psi", M.strokeLine(sim6.ev[0], 60));
+ok("stroke line before any stroke", M.strokeLine(null, 60) === "no stroke yet");
+
 console.log(fails ? fails + " of " + n + " checks failed" : "all " + n + " checks passed");
 process.exit(fails ? 1 : 0);

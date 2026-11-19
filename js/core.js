@@ -52,7 +52,9 @@ var ICON = {
   tip: "M3 20h18M6 20l4-12 8 3-3 9M12 14h.01",
   beam: "M4 5v14M4 8h16M4 8c8 0 13 2 16 7M20 8v6M18 12l2 2 2-2",
   holes: "M12 3v8M9 11h6l-1 4h-4zM12 15v3M5 21h14M8 6h8",
-  units: "M4 8h13M14 5l3 3-3 3M20 16H7M10 13l-3 3 3 3"
+  units: "M4 8h13M14 5l3 3-3 3M20 16H7M10 13l-3 3 3 3",
+  code: "M8 7l-5 5 5 5M16 7l5 5-5 5M13.5 5l-3 14",
+  star: "M12 3.5l2.6 5.4 5.9.8-4.3 4.1 1 5.9-5.2-2.8-5.2 2.8 1-5.9-4.3-4.1 5.9-.8z"
 };
 D.ICON = ICON;
 D.ic = function (name, size) { size = size || 20; return '<svg width="' + size + '" height="' + size + '" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="' + (ICON[name] || ICON.more) + '"/></svg>'; };
@@ -86,8 +88,8 @@ D.TILES = [
 ];
 /* Tools: small helpers that open inside the site, in the same tab. They are not apps and not link-outs, so they get
    their own closed group under Apps. Adding a tool adds one row here and one page in js/tools.js, never a new tile. */
-D.TOOL_GROUPS = [["mech", "Mechanisms"], ["drive", "Power transmission"], ["power", "Motors and power"], ["shop", "Structure, shop and code"], ["photo", "From a photo"]];
-/* top: true puts the tool in the short list under Apps and on Home; every tool is on the Tools page. */
+D.TOOL_GROUPS = [["mech", "Mechanisms"], ["drive", "Power transmission"], ["power", "Motors and power"], ["struct", "Structure"], ["ref", "Reference"], ["photo", "From a photo"]];
+/* top: true makes the tool one of the favourites a person starts with (D.toolFavs); every tool is on the Tools page. */
 D.TOOLS = [
   { id: "tool-shooter", group: "mech", top: true, name: "Shooter", icon: "shooter", line: "Wheel, hood and the shot's flight, played out.", tip: "See what a wheel speed and a hood angle do to a shot, and how fast the wheel recovers." },
   { id: "tool-elevator", group: "mech", top: true, name: "Elevator", icon: "elevator", line: "Stages, rigging, speed and holding power.", tip: "Size the motor and reduction for a lift, and watch the stages move." },
@@ -99,10 +101,11 @@ D.TOOLS = [
   { id: "tool-motors", group: "power", name: "Motors", icon: "motor", line: "Torque, current and power curves, compared.", tip: "Compare motors under the current limit you will really run." },
   { id: "tool-power", group: "power", name: "Battery and breakers", icon: "battery", line: "What the robot pulls, and when it browns out.", tip: "Add up the current of every mechanism and see the battery voltage sag." },
   { id: "tool-air", group: "power", name: "Pneumatics", icon: "air", line: "Air used against what the tanks hold.", tip: "Check that the tanks and compressor keep up with the cylinders." },
-  { id: "tool-tip", group: "shop", name: "Tip-over", icon: "tip", line: "Centre of gravity and how hard you can brake.", tip: "Find where the robot's weight sits and when it tips." },
-  { id: "tool-beam", group: "shop", name: "Tube strength", icon: "beam", line: "How far a tube bends and when it yields.", tip: "Pick a tube size and wall for an arm or a frame member." },
-  { id: "tool-holes", group: "shop", name: "Holes and fasteners", icon: "holes", line: "Drill sizes for taps, rivets, bearings and inserts.", tip: "Look up the drill for a thread, a rivet or a press fit." },
-  { id: "tool-units", group: "shop", name: "Units and code constants", icon: "units", line: "Unit conversions and the numbers robot code needs.", tip: "Turn gearing and wheel size into the conversion factors for code." },
+  { id: "tool-tip", group: "struct", name: "Tip-over", icon: "tip", line: "Centre of gravity and how hard you can brake.", tip: "Find where the robot's weight sits and when it tips." },
+  { id: "tool-beam", group: "struct", name: "Tube strength", icon: "beam", line: "How far a tube bends and when it yields.", tip: "Pick a tube size and wall for an arm or a frame member." },
+  { id: "tool-holes", group: "ref", name: "Holes and fasteners", icon: "holes", line: "Drill sizes for taps, rivets, bearings and inserts.", tip: "Look up the drill for a thread, a rivet or a press fit." },
+  { id: "tool-units", group: "ref", name: "Unit conversion", icon: "units", line: "One number in every unit of its kind.", tip: "Convert a length, a force, a torque or a speed between inch and metric units." },
+  { id: "tool-code", group: "ref", name: "Code constants", icon: "code", line: "Gearing and wheel size as the numbers robot code needs.", tip: "Turn gearing and wheel size into the conversion factors for code." },
   { id: "tool-trace", group: "photo", top: true, name: "Drawing to vector", icon: "trace", line: "A photo of a drawing becomes a laser or CAD file.", tip: "Make an SVG for the laser and a DXF for Onshape, at true size." },
   { id: "tool-gear", group: "photo", top: true, name: "Gear and sprocket finder", icon: "gear", line: "A photo and one measurement name the part.", tip: "Work out gear pitch, chain size or belt profile, then find it in Parts." }
 ];
@@ -149,6 +152,12 @@ var SAVE_KEY = "demo2972.saved.v1";
 D.saved = (function () { try { return JSON.parse(localStorage.getItem(SAVE_KEY)) || {}; } catch (e) { return {}; } })();
 D.pref = function (k, def) { var r = D.saved[D.S.role] || {}; return Object.prototype.hasOwnProperty.call(r, k) ? r[k] : def; };
 D.setPref = function (k, v) { (D.saved[D.S.role] = D.saved[D.S.role] || {})[k] = v; try { localStorage.setItem(SAVE_KEY, JSON.stringify(D.saved)); } catch (e) {} };
+/* A person's favourite tools: the ones they starred, in the order they starred them. Everyone starts with the tools
+   marked top. They head the Tools page and are the short list under Apps and on Home. */
+D.toolFavs = function () { var f = D.pref("toolfavs", null) || D.TOOLS.filter(function (t) { return t.top; }).map(function (t) { return t.id; }); return f.filter(function (id) { return D.tool(id); }); };
+D.isToolFav = function (id) { return D.toolFavs().indexOf(id) >= 0; };
+// The star that adds a tool to the favourites or takes it out. It sits beside a tool's row and in a tool's page head.
+D.toolStar = function (id) { var t = D.tool(id), on = D.isToolFav(id); if (!t) return ""; return '<button class="toolstar" data-act="toolfav" data-v="' + id + '" aria-pressed="' + on + '" aria-label="' + esc(t.name) + ': favourite" data-tip="' + (on ? "Take out of your favourites" : "Add to your favourites") + '">' + D.ic("star", 18) + "</button>"; };
 D.reset = function () {
   var prev = D.S || {};
   var S = D.S = {
@@ -267,8 +276,8 @@ function groupRow(id, label, count, place, body, tip) {
 D.toolRow = function (t) { return '<a class="toolrow" href="#' + t.id + '" data-act="go" data-v="' + t.id + '" data-tip="' + esc(t.tip) + '"><span class="ic">' + D.ic(t.icon, 18) + "</span><span><b>" + esc(t.name) + (t.group === "photo" ? '<span class="tooltag">needs a photo</span>' : "") + "</b><small>" + esc(t.line) + "</small></span>" + (D.ground() ? '<span class="chev" aria-hidden="true">›</span>' : "") + "</a>"; };
 function toolsGroup(place) {
   var tools = D.visibleTools(); if (!tools.length) return "";
-  // The group is a short list of doors: the tools people open most, then one link to the page that has them all.
-  var top = tools.filter(function (t) { return t.top; });
+  // The group is a short list of doors: the person's favourite tools, then one link to the page that has them all.
+  var top = D.toolFavs().map(D.tool).filter(function (t) { return tools.indexOf(t) >= 0; });
   return groupRow("tools", "Tools", tools.length, place, top.map(D.toolRow).join("") + '<a class="toolrow all" href="#tools" data-act="go" data-v="tools"><span>All ' + tools.length + ' tools</span><span class="chev" aria-hidden="true">›</span></a>');
 }
 /* Admin apps: the link-out apps for the people who run the site (Admin, Website editor). The group shows only when
@@ -665,6 +674,12 @@ D.design = function () { var v = document.documentElement.getAttribute("data-des
 D.ideal = function () { var v = D.design(); return v === "b" || v === "c"; };
 D.ground = function () { return D.design() === "c"; };
 D.setDesign = function (v) { if (v === "a" || v === "b" || v === "c") document.documentElement.setAttribute("data-design", v); else document.documentElement.removeAttribute("data-design"); };
+A.toolfav = function (b) {
+  var id = b.dataset.v, f = D.toolFavs().slice(), i = f.indexOf(id), t = D.tool(id); if (!t) return;
+  if (i >= 0) f.splice(i, 1); else f.push(id);
+  D.setPref("toolfavs", f); D.toast(i >= 0 ? t.name + " is out of your favourites." : t.name + " is in your favourites."); D.render();
+  var again = document.querySelector('.toolstar[data-v="' + id + '"]'); if (again) again.focus();
+};
 A.design = function (b) { D.setDesign(b.dataset.v); try { localStorage.setItem("2972-demo-design83", b.dataset.v); } catch (e) {} D.render(); };
 A.reset = function () { D.saved = {}; try { localStorage.removeItem(SAVE_KEY); } catch (e) {} D.reset(); D.toast("Demo reset: sample data and saved choices."); D.render(); };
 A.go = function (b) { D.go(b.dataset.v); };
