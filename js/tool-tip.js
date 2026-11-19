@@ -109,15 +109,16 @@ M.stop = function (o, a, v0, T) {
   var out = { t: [], phi: [], piv: [], qx: [], qy: [], P: P, maxPhi: 0, lifted: false, bumper: false, fell: false, stopT: stopT, hand: [], how: "ceiling", endT: null, landT: null };
   for (var i = 0, t = 0; t <= T + 1e-9; i++, t = i * dt) {
     if (i % 20 === 0) { out.t.push(t); out.phi.push(phi); out.piv.push(piv); out.qx.push(q[0]); out.qy.push(q[1]); }
-    // Is the motion over? Then hold a moment, sampled, and stop.
+    var fx = (t < stopT ? a * g : 0) + g * sb, fy = -g * cb, r = world([c.x, c.h], piv, [0, 0], phi);
+    var tq = c.m * (r[1] * fx - r[0] * fy);                       // clockwise (nose down) moment about the turning point
+    // Is the motion over? Then hold a moment, sampled, and stop. On its wheels it is over only when nothing is
+    // turning it either: a robot whose weight alone tips it (a steep ramp) is not at rest at the first instant.
     if (out.endT == null) {
       if (rest) { out.endT = t; out.how = "over"; }
-      else if (t >= stopT && piv === 1 && phi === 0 && w === 0) { out.endT = t; out.how = out.lifted ? "wheels" : "still"; }
+      else if (t >= stopT && piv === 1 && phi === 0 && w === 0 && tq <= 0) { out.endT = t; out.how = out.lifted ? "wheels" : "still"; }
     }
     if (out.endT != null && t >= out.endT + M.HOLD - 1e-9 && i % 20 === 0) break;
     if (rest) continue;
-    var fx = (t < stopT ? a * g : 0) + g * sb, fy = -g * cb, r = world([c.x, c.h], piv, [0, 0], phi);
-    var tq = c.m * (r[1] * fx - r[0] * fy);                       // clockwise (nose down) moment about the turning point
     if (piv === 1 && phi <= 0 && tq <= 0) { phi = 0; w = 0; continue; }
     w += tq / Ipiv(piv) * dt; phi += w * dt;
     // Has another point reached the floor? Then the robot turns about that one from here.

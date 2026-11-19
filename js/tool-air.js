@@ -97,7 +97,8 @@ M.schedule = function (ev, match, dur, show) {
 // What a stroke did, in a few words: "out: 0.30 L, tanks 120 to 116 psi". e: an event from M.sim, or null.
 M.strokeLine = function (e, work) {
   if (!e) return "no stroke yet";
-  var L = M.freeAir(e.vol, work) * M.L_PER_IN3;
+  // The air it really took: at the pressure the stroke got, which is less than working pressure for a short stroke.
+  var L = M.freeAir(e.vol, e.p != null && isFinite(e.p) ? Math.min(e.p, work) : work) * M.L_PER_IN3;
   return (e.dir === "out" ? "out" : "back") + ": " + L.toFixed(2) + " L, tanks " + Math.round(e.before) + " to " + Math.round(e.after) + " psi" + (e.short ? ", short of air (" + Math.round(e.p) + " psi)" : "");
 };
 // The tank chart's y ticks: 0, the working pressure and the stored pressure, the two typed in.
@@ -124,7 +125,8 @@ function L(in3) { return in3 * M.L_PER_IN3; }
 function clock(s) { s = Math.max(0, Math.round(s)); return Math.floor(s / 60) + ":" + (s % 60 < 10 ? "0" : "") + (s % 60); }
 function cylsOf(s) {
   return (Array.isArray(s.cyls) ? s.cyls : []).filter(function (c) { return c && isFinite(c.bore) && isFinite(c.stroke) && isFinite(c.rod) && isFinite(c.cycles); })
-    .map(function (c) { return { name: String(c.name || "Cylinder"), bore: c.bore, stroke: c.stroke, rod: Math.min(c.rod, c.bore * 0.95), cycles: Math.max(0, Math.round(c.cycles)) }; });
+    .slice(0, MAXC)     // rows from a link or a file are held to what the fields allow
+    .map(function (c) { var bore = Math.min(4, Math.max(0.25, c.bore)); return { name: String(c.name || "Cylinder").slice(0, 40), bore: bore, stroke: Math.min(36, Math.max(0.25, c.stroke)), rod: Math.min(Math.max(0.0625, c.rod), bore * 0.95), cycles: Math.min(200, Math.max(0, Math.round(c.cycles))) }; });
 }
 function simOf(s, tanks) { return { tanks: tanks || s.tanks, ml: s.ml, stored: s.stored, work: Math.min(s.work, s.stored), cfm: s.comp === "robot" ? s.cfm : 0, match: s.match, cyls: cylsOf(s) }; }
 
@@ -334,11 +336,14 @@ function drawAir(g, s, r, t) {
   if (!n) { g.text("No cylinders. Add one in Cylinders.", ax0, (ay0 + ay1) / 2, { color: c.mute }); return; }
   var rowH = (ay1 - ay0) / n, maxLen = 0, maxBore = 0;
   cyls.forEach(function (cy) { maxLen = Math.max(maxLen, 2 * cy.stroke + 1.05); maxBore = Math.max(maxBore, cy.bore); });
-  var arrowRoom = narrow ? 44 : 64, k = Math.min((ax1 - ax0 - arrowRoom) / maxLen, (rowH - (narrow ? 61 : 74)) * 0.95 / maxBore, narrow ? 60 : 110);
+  // Each row needs room above its cylinder for two lines of words (its name, then its last stroke). With many
+  // cylinders there is not that much: then the last stroke goes on the name's line and the row keeps one line.
+  var tight = rowH < (narrow ? 92 : 108), headH = tight ? (narrow ? 46 : 58) : (narrow ? 61 : 74), topH = tight ? (narrow ? 24 : 29) : (narrow ? 39 : 46);
+  var arrowRoom = narrow ? 44 : 64, k = Math.max(3, Math.min((ax1 - ax0 - arrowRoom) / maxLen, (rowH - headH) * 0.95 / maxBore, narrow ? 60 : 110));
   var maxF = Math.max.apply(null, r.per.map(function (p) { return p.push; })) || 1;
   var feedTop = narrow ? feedY + 22 : feedY;
   cyls.forEach(function (cy, j) {
-    var st = state(r, j, T), ry = ay0 + rowH * j, bh = Math.max(6, cy.bore * k), mid = ry + (narrow ? 39 : 46) + bh / 2 + Math.max(0, (rowH - (narrow ? 61 : 74) - bh) / 2) * 0.5;
+    var st = state(r, j, T), ry = ay0 + rowH * j, bh = Math.max(6, cy.bore * k), mid = ry + topH + bh / 2 + Math.max(0, (rowH - headH - bh) / 2) * 0.5;
     var cap = 0.4 * k, body = cy.stroke * k + 2 * cap, bx = ax0;
     var short = st.p < o.work - 1e-6, col = short && st.started ? c.bad : c.text;
     if (j > 0) g.line(ax0 - 4, ry, ax1, ry, { color: c.line, width: 1 });
@@ -359,9 +364,14 @@ function drawAir(g, s, r, t) {
     // Its name on a line of its own, then what it is and where it has got to.
     var ly = ry + (narrow ? 15 : 20), nw = g.textWidth(cy.name, { weight: 700, size: narrow ? 12 : 13 });
     g.text(cy.name, bx, ly, { weight: 700, size: narrow ? 12 : 13, color: col });
-    g.text(M.inFrac(cy.bore) + " bore, cycle " + Math.min(st.done, cy.cycles) + " of " + cy.cycles, bx + nw + 8, ly, { size: 11, color: c.mute });
-    // Its last stroke, on its own line, kept until the next one: which way, the free air it used, the tanks before and after.
-    g.text(M.strokeLine(st.last, o.work), bx, ly + (narrow ? 15 : 17), { size: narrow ? 11 : 12, weight: 600, color: short && st.started ? c.bad : st.started ? c.text2 : c.mute });
+    // Its last stroke, kept until the next one: which way, the free air it used, the tanks before and after. On its
+    // own line under the name; beside the name when the rows are tight.
+    var lastCol = short && st.started ? c.bad : st.started ? c.text2 : c.mute;
+    if (tight) g.text(M.strokeLine(st.last, o.work), bx + nw + 8, ly, { size: 11, weight: 600, color: lastCol });
+    else {
+      g.text(M.inFrac(cy.bore) + " bore, cycle " + Math.min(st.done, cy.cycles) + " of " + cy.cycles, bx + nw + 8, ly, { size: 11, color: c.mute });
+      g.text(M.strokeLine(st.last, o.work), bx, ly + (narrow ? 15 : 17), { size: narrow ? 11 : 12, weight: 600, color: lastCol });
+    }
     // Where the rod reaches at full stroke: a faint shadow of the rod (not a dashed line, which is the venting route),
     // with the stroke dimensioned under it.
     var rh = Math.max(2, cy.rod * k), endK = 0.25 * k, rod0 = bx + body + endK, rodFull = rod0 + cy.stroke * k;

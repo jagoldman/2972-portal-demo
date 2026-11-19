@@ -98,5 +98,8 @@ ok("schedule: a busy cylinder gets shorter strokes that still fit", schB[schB.le
 ok("stroke line", M.strokeLine(sim6.ev[0], 60) === "out: 0.30 L, tanks 120 to 116 psi", M.strokeLine(sim6.ev[0], 60));
 ok("stroke line before any stroke", M.strokeLine(null, 60) === "no stroke yet");
 
+// A short stroke's line gives the air it really took, at the pressure it got, not at working pressure (review,
+// 2026-11-19): 3.24 in3 at 37.9 psi is 3.24 x (37.9 + 14.7) / 14.7 x 0.016387 = 0.19 L, not the 0.27 L it would take at 60.
+ok("short stroke: air at the pressure it got", /^back: 0\.19 L, tanks 40 to 38 psi, short of air \(38 psi\)$/.test(M.strokeLine({ dir: "back", vol: 3.239767, before: 40.3458, after: 37.9127, p: 37.9127, short: true }, 60)), M.strokeLine({ dir: "back", vol: 3.239767, before: 40.3458, after: 37.9127, p: 37.9127, short: true }, 60));
 console.log(fails ? fails + " of " + n + " checks failed" : "all " + n + " checks passed");
 process.exit(fails ? 1 : 0);

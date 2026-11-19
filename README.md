@@ -21,7 +21,7 @@ Everything is sample data. Nothing is saved, and a reload resets it. The only th
 | Calendar | One app, three tabs. **Calendar**: agenda and month views; admins also get "Practice pattern and sync" (mentors cannot edit practice patterns). **Attendance**: door-code sign-in, hours, mentor plans. **Snacks**: snack sign-up. Each practice day on the agenda has two short lines that open Attendance and Snacks for that day. Parents see Calendar and Snacks; students see Calendar and Attendance. |
 | Skills | Overview of what to do next, skill trees, sign-off requests, shop tool permissions. |
 | Schedule, Pit, Scouting | Event roles, pit checklists and monitor, match scouting with stats and a pick list (Competition mode). |
-| Tools | Sixteen small helpers on one page, found by group or by search (see "FRC calculators" below). **Drawing to vector**: the sample drawing's traced outline, real size from two taps, SVG and DXF downloads (the demo only traces the sample). **Gear and sprocket finder**: sample gear or sprocket, or your photo with the teeth counted by hand, plus one caliper measurement; the size and pitch diameter are worked out for real, with doors into Parts. |
+| Tools | Seventeen small helpers on one page, found by group or by search, with the person's starred favourites first (see "FRC calculators" below). **Drawing to vector**: the sample drawing's traced outline, real size from two taps, SVG and DXF downloads (the demo only traces the sample). **Gear and sprocket finder**: sample gear or sprocket, or your photo with the teeth counted by hand, plus one caliper measurement; the size and pitch diameter are worked out for real, with doors into Parts. |
 | Account | Profile, notifications, appearance, mode, the guided tour, sign-in. |
 
 ## Files
@@ -69,7 +69,7 @@ the same, and the choice is kept in this browser. `?event=1` ticks Event day. No
 | Parts | The flow (Needs OK, To order, Ordered, Arrived) is the filter; every request says whose move it is | Whose move |
 | Skills | A student's Overview opens with the machines they may use; "Finish what you started" comes first | The moment first |
 | Schedule, Pit, Scouting | One line across all three: you now, next match, robot | Doors between apps |
-| Tools | Fourteen calculators (also in Baseline), each with a drawing to scale; in Ground up they wear its look (`css/ground-tools.css`) | See "FRC calculators" below |
+| Tools | Fifteen calculators (also in Baseline), each with a drawing to scale; in Ground up they wear its look (`css/ground-tools.css`) | See "FRC calculators" below |
 
 ### The look (Baseline and Ground up)
 - **Colour** is kept from design 8.2: flag black and white, arena grey, and the blue of the robot's bumpers as the one
@@ -106,7 +106,7 @@ page). Ground up adds content, so its pages are 8.8% shorter than Live in total.
   The coders for Skills, Competition and Parts also compared the page HTML of Live and Baseline before and after
   their changes: identical (Parts: 106 states).
 - **Baseline changed in one place:** the Tools page lists the calculators.
-- **The calculator maths.** `tests/` holds Node checks for the fourteen calculators and the shared maths (14 files):
+- **The calculator maths.** `tests/` holds Node checks for the fifteen calculators and the shared maths (15 files):
   all pass. Nothing has been checked against a real robot.
 - **One review per change set, by a different model than the coder.** The four coders were Opus 5.5; the lead
   (Fable 5.2) read each diff and looked at each screen. Home and the Tasks change were written by the lead and have
@@ -127,26 +127,44 @@ page). Ground up adds content, so its pages are 8.8% shorter than Live in total.
 
 The owner chose these fourteen (built on branch `tools-calcs`) over the nine simpler calculators that design 8.3 had
 (2026-11-18). The nine's files are removed; some of their style rules (`.calc…` in `css/ground.css`) remain and are
-unused. The fourteen show in Baseline and Ground up and not in Live. In Ground up, `css/ground-tools.css` gives the
+unused. They show in Baseline and Ground up and not in Live. In Ground up, `css/ground-tools.css` gives the
 Tools page and every calculator that look: rules in place of boxes, the answer in a bar, bumper blue as the first
 chart colour, neutral paper in the drawings. It changes no number, word or control.
 
-Fourteen calculators join the two photo tools. The research, the reasons and the open decisions are in
+Fifteen calculators (fourteen until Units and code constants was split) join the two photo tools. The research, the reasons and the open decisions are in
 `../new-apps/TOOLS_CALCULATORS.md`; the contract each calculator follows is `../new-apps/briefs/calcs/KIT.md`.
 
 Every calculator has the same page: a drawing to scale that can play, one sentence that says whether the design works,
-the answers, grouped inputs with sliders, charts with a readout, "How this is worked out", and Copy link. Typing never
-redraws the page, only the answers, charts and drawing.
+the answers, grouped inputs with sliders, charts with a readout, "How this is worked out", Copy link and Saved setups.
+Typing never redraws the page, only the answers, charts and drawing.
 
 | Group | Tools |
 |---|---|
 | Mechanisms | Shooter (one shot, rapid fire, every distance, while driving), Elevator, Arm, Drivetrain, Intake |
 | Power transmission | Belt, chain and gear spacing; Gear ratio |
 | Motors and power | Motors; Battery and breakers; Pneumatics |
-| Structure and shop | Tip-over; Tube strength; Holes and fasteners; Units and code constants |
+| Structure | Tip-over; Tube strength |
+| Reference | Holes and fasteners; Unit conversion; Code constants |
 | From a photo | Drawing to vector; Gear and sprocket finder (unchanged) |
 
-The Tools group under Apps and on Home lists six of them and a link to all sixteen.
+**After the owner's comments (2026-11-19, branch `tools-feedback`):**
+- **Favourites.** Every tool has a star, beside its row on the Tools page and in its page head. The starred tools head
+  the Tools page and are the short list under Apps and on Home. A person starts with six and changes them. (They
+  replace the fixed "quick answers" links.)
+- **Reference** is a group of its own, and Units and code constants is two tools, so there are fifteen calculators.
+- **Saved setups.** On a calculator a person can keep its numbers under a name, open them again, download them as a
+  small file, open such a file, and compare a saved setup with the page: its figures sit under the present ones and
+  its chart lines are dotted grey (the Shooter and Tube strength draw it too). The demo keeps them in this browser;
+  the real site would keep them with the account. Holes and Unit conversion have nothing to save; Drivetrain and
+  Motors, which already set things side by side, save but do not compare.
+- **Shooter, While driving** marks every driving speed that scores (a green patch at the speed arrow's scale), gives
+  the fastest speed on the present heading, across, toward and backing away, and when a speed does not score says
+  why and what would. **Battery and breakers** is one current bar and one voltage waterfall. **Tip-over** runs until
+  the motion is over. **Intake** has an Over the bumper mode (one roller, the floor then the bumper) and opens on
+  it. **Pneumatics** draws each stroke slowed and keeps its figures up. **Tube strength** keeps one bend scale at
+  every load. **Motors** says what holds the torque level.
+
+The Tools group under Apps and on Home lists a person's favourites and a link to all seventeen.
 
 Run the maths checks: `for f in tests/*.test.js; do node "$f"; done`.
 

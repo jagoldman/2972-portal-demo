@@ -23,6 +23,9 @@ M.MARGIN = 1.1; M.RULE = 2;
 M.factor = function (contact) { return contact === "both" ? 1 : 0.5; };
 // How far the piece moves while pinched against the floor, "over" mode (m): see M.geomOver.
 M.floorLen = function (rollerR, pieceR) { return Math.SQRT2 * (rollerR + pieceR); };
+// A reduction to act on, to two decimals, rounded DOWN: "this or lower" must itself pass, and rounding 4.3393 to
+// 4.34 names a reduction that just misses.
+M.down2 = function (x) { return isFinite(x) ? Math.floor(x * 100 + 1e-9) / 100 : x; };
 M.speeds = function (o) {
   var w = o.drive.freeSpeed(o.V), surface = w * o.rollerR, over = o.contact === "over", k = M.factor(o.contact);
   var piece = over ? (surface + o.driveV) / 2 : surface * k;
@@ -169,7 +172,7 @@ K.tool({
   },
 
   outs: function (s, r) {
-    var vd = r.vd, text, sr = K.fix(r.surfRatio, 2), tg = K.fix(r.target, 1), rg = K.fix(r.ratioGood, 2);
+    var vd = r.vd, text, sr = K.fix(r.surfRatio, 2), tg = K.fix(r.target, 1), rg = K.fix(M.down2(r.ratioGood), 2);
     var plate = s.contact === "plate", over = r.over;
     /* One sentence, yours first: how much faster than the floor the piece comes in at no-load speed, and the reduction
        that gives the margin this page asks for. The caution goes in the second line. Over the bumper the comparison is
@@ -228,7 +231,7 @@ K.tool({
     var note = vd > 0.05 ? (over ? "The dot is yours. Dotted: the pass line, the piece on the floor at 1.1× the drive speed. The upright mark is where it meets it." : "The dot is yours. Dotted: the pass line, the piece speed this page asks for. The upright mark is where the piece meets it.") : "The dot is yours.";
     var sName = over ? "Roller surface" : "Belt surface";
     function ser(pc, pbump, sf) { return over ? [{ name: "Piece on the floor", pts: pc, color: 3 }, { name: "Piece up the bumper", pts: pbump, color: 3, dash: true }, { name: sName, pts: sf, color: 1, dash: true }] : [{ name: "Piece", pts: pc, color: 3 }, { name: sName, pts: sf, color: 1, dash: true }]; }
-    var rMark = isFinite(r.ratioGood) && r.ratioGood >= lo && r.ratioGood <= hi && vd > 0.05 ? [{ x: r.ratioGood, label: K.fix(r.ratioGood, 2) + ":1" }] : [];
+    var rMark = isFinite(r.ratioGood) && r.ratioGood >= lo && r.ratioGood <= hi && vd > 0.05 ? [{ x: r.ratioGood, label: K.fix(M.down2(r.ratioGood), 2) + ":1" }] : [];
     var dMark = isFinite(dGood) && dGood >= 0.5 && dGood <= 4 && vd > 0.05 ? [{ x: dGood, label: K.fix(dGood, 2) + " in" }] : [];
     var chart = '<div class="chartrow">' +
       dotted(K.chart({ id: "int-r", title: "Speeds for other reductions", note: note, x: { label: "reduction, to 1", name: "Reduction", min: lo, max: hi }, y: y,

@@ -144,5 +144,9 @@ var sN = M.stop(Object.assign({}, base, { h2: 14 }), 0.8, 180, M.CEILING);
 ok("never lifts: ends with the braking, plus the hold", sN.how === "still" && !sN.lifted && Math.abs(sN.endT - sN.stopT) < 0.002 && ended(sN), sN.endT + " " + sN.stopT);
 var sC = M.stop(Object.assign({}, base, { m2: 40, h2: 90, mastTop: 95 }), 1.1, 240, 0.2);
 ok("the ceiling stops a run and says so", sC.how === "ceiling" && sC.T <= 0.2 + 1e-9 && /longest this runs/.test(M.endWords(sC)), sC.how);
+// Standing still on a ramp so steep that the weight alone tips it (review, 2026-11-19): the run must not end at
+// once as "still". It lifts, goes over and only then ends.
+var sG = M.stop(Object.assign({}, base, { m2: 40, h2: 100, mastTop: 105, ramp: 30 }), 0, 180, M.CEILING);
+ok("tips under its own weight on a steep ramp: not over at the first instant", sG.how !== "still" && sG.lifted && sG.endT > 0.3 && sG.maxPhi > 0.3, sG.how + " endT " + sG.endT);
 console.log(fails ? fails + " of " + n + " checks failed" : "all " + n + " checks passed");
 if (fails) process.exit(1);

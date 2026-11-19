@@ -149,5 +149,11 @@ near("over: standing still the floor part is half the surface", M.speeds({ drive
   for (var j = 0; j <= 400; j++) { var c2 = G.at(sz.travel * j / 400).p, nx = Math.max(-3.5, Math.min(0, c2[0])), ny = Math.max(1.5, Math.min(6.5, c2[1])); inside = Math.max(inside, sz.piece / 2 - Math.hypot(c2[0] - nx, c2[1] - ny)); }
   ok(sz.piece + " in: never inside the bumper", inside <= 1e-9, inside);
 });
+// The reduction the verdict names is rounded down, so it passes itself (review, 2026-11-19). Over the bumper at
+// 13 ft/s the exact figure is 7757 x 2 pi / (60 x 12) / (1.2 x 13) = 4.3393:1; "4.34 or lower" would name one that misses.
+var d13 = M.speeds({ drive: F.drive({ motor: "kraken44", n: 1, ratio: 2.5, eff: 0.9, statorA: 30 }), V: 12, rollerR: 1 * F.IN, contact: "over", driveV: 13 * F.FT, travel: 14 * F.IN, pieceR: 5.91 / 2 * F.IN });
+near("over at 13 ft/s: exact reduction 4.3393", d13.ratioGood, 4.339268913, 1e-6);
+near("and the figure shown is 4.33", M.down2(d13.ratioGood), 4.33, 1e-12);
+ok("4.33:1 passes and 4.34:1 does not", M.speeds({ drive: F.drive({ motor: "kraken44", n: 1, ratio: 4.33, eff: 0.9, statorA: 30 }), V: 12, rollerR: 1 * F.IN, contact: "over", driveV: 13 * F.FT, travel: 14 * F.IN, pieceR: 5.91 / 2 * F.IN }).state === "ok" && M.speeds({ drive: F.drive({ motor: "kraken44", n: 1, ratio: 4.34, eff: 0.9, statorA: 30 }), V: 12, rollerR: 1 * F.IN, contact: "over", driveV: 13 * F.FT, travel: 14 * F.IN, pieceR: 5.91 / 2 * F.IN }).state !== "ok");
 console.log(fails ? fails + " of " + n + " checks failed" : "all " + n + " checks passed");
 if (fails) process.exit(1);

@@ -114,13 +114,15 @@ M.move = function (s, r, map) {
   var ds = g.map(function (x) { return x.d * FT; }), vs = g.map(function (x) { return x.v; }), ts = g.map(function (x) { return x.time; }), dg = g.map(function (x) { return x.deg; });
   function sf(d) { if (d < ds[0] - 1e-6 || d > ds[ds.length - 1] + 1e-6) return null; return { v: F.interp(ds, vs, d), time: F.interp(ds, ts, d) }; }
   var d = r.target.d, still = sf(d); if (!still) return null;
-  var m = F.moving(d, s.vtoward * FT, s.vacross * FT, sf), sp = Math.hypot(s.vtoward, s.vacross), E = M.envelope(d, s.vtoward, s.vacross, sf);
+  var lo = ds[0], hi = ds[ds.length - 1];
+  var m = F.moving(d, s.vtoward * FT, s.vacross * FT, sf, lo, hi), sp = Math.hypot(s.vtoward, s.vacross), E = M.envelope(d, s.vtoward, s.vacross, sf, lo, hi);
   E.range = [ds[0], ds[ds.length - 1]]; E.capNear = !!map.rows[0].ok; E.capFar = !!map.rows[map.rows.length - 1].ok;
   if (!m) {
-    // Why not, and what would work: the distance the shot would have to be made for (taking the flight time of the
-    // nearest distance that does score), and the distances this speed does score from.
-    var need = F.moving(d, s.vtoward * FT, s.vacross * FT, function (q) { return sf(F.clamp(q, ds[0], ds[ds.length - 1])); });
-    var okD = []; for (var q = ds[0]; q <= ds[ds.length - 1] + 1e-9; q += 0.25 * FT) if (F.moving(q, s.vtoward * FT, s.vacross * FT, sf)) okD.push(q);
+    // Why not, and what would work. The distance the shot would have to be made for: the same sum over a wider
+    // span of distances, taking the flight time of the nearest distance that does score for the ones that do not.
+    // And the distances this speed does score from.
+    var need = F.moving(d, s.vtoward * FT, s.vacross * FT, function (q) { return sf(F.clamp(q, lo, hi)); }, 0.05, hi * 4 + 10);
+    var okD = []; for (var q = lo; q <= hi + 1e-9; q += 0.25 * FT) if (F.moving(q, s.vtoward * FT, s.vacross * FT, sf, lo, hi)) okD.push(q);
     // The run of working distances nearest to where the robot is.
     var runs = [], run = null; okD.forEach(function (q) { if (run && q - run[1] < 0.26 * FT) run[1] = q; else runs.push(run = [q, q]); });
     runs.sort(function (a, b) { return Math.min(Math.abs(a[0] - d), Math.abs(a[1] - d)) - Math.min(Math.abs(b[0] - d), Math.abs(b[1] - d)); });
@@ -132,22 +134,30 @@ M.move = function (s, r, map) {
     missNoLead: Math.hypot(s.vtoward * FT, s.vacross * FT) * still.time, env: E, speed: sp };
 };
 /* The driving speeds that score from d metres away. vt, va: the present speed toward the target and across, ft/s.
-   sf(distance) gives the standing shot for a distance, or null where none scores. A speed scores when the shot it
-   needs (F.moving) is one this shooter can make. Returns, all in ft/s:
-     across           the fastest across that scores, either way, at the present toward speed (0 if none)
-     toward, away     the fastest toward the target and backing away, at the present across speed
-     heading          the fastest on the present heading (null when standing still)
+   sf(distance) gives the standing shot for a distance, or null where none scores; lo, hi: the ends of the distances
+   it answers for. A speed scores when the shot it needs (F.moving) is one this shooter can make. Returns, in ft/s:
+     across           the across speeds that score, either way, at the present toward speed
+     toward, away     the speeds toward the target, and backing away, that score at the present across speed
+     heading          the speeds that score on the present heading (null when standing still)
      zone             rows [toward, across from, across to] of speeds that score, on a 0.5 ft/s grid out to LIM
-   Each limit is the first speed, going up from a standstill in 0.1 ft/s steps, that no longer scores; LIM (14, the
-   end of the sliders) means no limit was found. */
+   across, toward, away and heading are lists of runs [from, to], found by trying every 0.1 ft/s from a standstill
+   to LIM (14, the end of the sliders; further on the heading when the robot is already faster). The speeds that
+   score need not be one run starting at a standstill: driving fast at the target, only a band of across speeds
+   keeps the shot long enough. M.pickRun chooses the run to show. */
 M.LIM = 14;
-M.envelope = function (d, vt, va, sf) {
-  function ok(t, a) { return !!F.moving(d, t * FT, a * FT, sf); }
-  function reach(f, cap) { if (!f(0)) return 0; var n = 0, top = Math.round(cap * 10); while (n < top && f((n + 1) / 10)) n++; return n / 10; }
+M.envelope = function (d, vt, va, sf, lo, hi) {
+  function ok(t, a) { return !!F.moving(d, t * FT, a * FT, sf, lo, hi); }
+  function runs(f, cap) { var out = [], cur = null, top = Math.round(cap * 10); for (var n = 0; n <= top; n++) { if (f(n / 10)) { if (cur) cur[1] = n / 10; else out.push(cur = [n / 10, n / 10]); } else cur = null; } return out; }
   var sp = Math.hypot(vt, va), zone = [], L = M.LIM;
   for (var t = -L; t <= L + 1e-9; t += 0.5) { var from = null; for (var a = -L; a <= L + 0.5 + 1e-9; a += 0.5) { var good = a <= L + 1e-9 && ok(t, a); if (good && from == null) from = a; if (!good && from != null) { zone.push([t, from, a - 0.5]); from = null; } } }
-  return { across: reach(function (x) { return ok(vt, x); }, L), toward: reach(function (x) { return ok(x, va); }, L), away: reach(function (x) { return ok(-x, va); }, L),
-    heading: sp > 0.01 ? reach(function (x) { return ok(vt * x / sp, va * x / sp); }, Math.max(L, Math.ceil(sp))) : null, zone: zone };
+  return { across: runs(function (x) { return ok(vt, x); }, L), toward: runs(function (x) { return ok(x, va); }, L), away: runs(function (x) { return ok(-x, va); }, L),
+    heading: sp > 0.01 ? runs(function (x) { return ok(vt * x / sp, va * x / sp); }, Math.max(L, Math.ceil(sp))) : null, zone: zone };
+};
+// The run of scoring speeds to show for a line of speeds: the one the present speed is in, else the nearest to it.
+M.pickRun = function (runs, at) {
+  if (!runs || !runs.length) return null;
+  function gap(r) { return at < r[0] ? r[0] - at : at > r[1] ? at - r[1] : 0; }
+  return runs.slice().sort(function (a, b) { return gap(a) - gap(b); })[0];
 };
 // The "speed kept" that makes this page's shot land on open floor where a real one did (feet from the shooter).
 M.keepFor = function (s, landedFt) {
@@ -181,9 +191,12 @@ K.tool({
     if (key === "view") K.rewind(ID);
   },
 
-  compute: function (s) {
+  compute: function (s, o) {
     var r = M.one(s);
     if (s.view === "burst") r.burst = M.burst(s, r);
+    // A saved setup being compared has its own map, worked out at once: the live map's cache waits a moment while
+    // a slider moves and would hand back the live setup's map.
+    if (o && o.saved && (s.view === "map" || s.view === "move")) { r.map = M.map(s, r); if (s.view === "move") r.move = M.move(s, r, r.map); r.view = s.view; return r; }
     if (s.view === "map" || s.view === "move") {
       var key = JSON.stringify([s.bd, s.bw, s.bshape, s.cd, s.type, s.wd, s.wd2, s.g2, s.ww, s.fw, s.fd, s.keep, s.vin, s.deg, s.h0, s.tkind, s.th, s.tw, s.alt, s.lift, s.hood, s.degLo, s.degHi, s.dnear, s.dfar, s.motor, s.ratio]);
       var now = Date.now();
@@ -362,14 +375,21 @@ function mapMore(s, r) {
 }
 function headingWords(s) { return [Math.abs(s.vacross) > 0.01 ? (s.vacross > 0 ? "to its right" : "to its left") : "", Math.abs(s.vtoward) > 0.01 ? (s.vtoward > 0 ? "toward the target" : "backing away") : ""].filter(Boolean).join(" and "); }
 function lim(x, cap) { return x >= (cap || M.LIM) - 1e-9 ? K.fix(x, 0) + "+" : K.fix(x, 1); }
-// The second row of cards: how fast the robot can drive and still score from here.
+// The second row of cards: how fast the robot can drive and still score from here. Each card shows one run of
+// scoring speeds (M.pickRun): "11.6" when it starts at a standstill (the fastest that scores), "8.5 to 10.5" when it
+// is a band that does not.
+function runCard(name, runs, at, cap, sub, extra) {
+  var r = M.pickRun(runs, at), band = r && r[0] > 0.05, more = runs && runs.length > 1 ? "; another band scores too" : "";
+  return Object.assign({ k: (band || !r ? "Scores " : "Fastest ") + name, v: !r ? "none" : band ? K.fix(r[0], 1) + " to " + lim(r[1], cap) : lim(r[1], cap), u: r ? "ft/s" : "", sub: sub + more }, extra || {});
+}
 function moveLimits(s, mv) {
-  var E = mv.env, sp = mv.speed, cap = Math.max(M.LIM, Math.ceil(sp)), none = "none scores";
+  var E = mv.env, sp = mv.speed, cap = Math.max(M.LIM, Math.ceil(sp)), hr = M.pickRun(E.heading, sp);
+  var tw = Math.abs(s.vtoward) < 0.01 ? "with no speed toward" : s.vtoward > 0 ? "at " + K.fix(s.vtoward, 1) + " ft/s toward" : "backing away at " + K.fix(-s.vtoward, 1) + " ft/s", ac = "at " + K.fix(Math.abs(s.vacross), 1) + " ft/s across";
   return K.outs([
-    sp > 0.01 ? { k: "Fastest on this heading", v: E.heading > 0 ? lim(E.heading, cap) : "0", u: "ft/s", sub: "you are at " + K.fix(sp, 1) + " ft/s", state: mv.out ? "bad" : sp > E.heading * 0.85 && E.heading < cap ? "warn" : "", tip: "The fastest speed in the direction the robot is driving now at which the shot still scores from this distance. A plus sign means no limit was found up to the end of the sliders." } : null,
-    { k: "Fastest across", v: lim(E.across), u: "ft/s", sub: (E.across > 0 ? "either way, " : none + " ") + (Math.abs(s.vtoward) < 0.01 ? "with no speed toward" : s.vtoward > 0 ? "at " + K.fix(s.vtoward, 1) + " ft/s toward" : "backing away at " + K.fix(-s.vtoward, 1) + " ft/s") },
-    { k: "Fastest toward the target", v: lim(E.toward), u: "ft/s", sub: (E.toward > 0 ? "" : none + " ") + "at " + K.fix(Math.abs(s.vacross), 1) + " ft/s across" },
-    { k: "Fastest backing away", v: lim(E.away), u: "ft/s", sub: (E.away > 0 ? "" : none + " ") + "at " + K.fix(Math.abs(s.vacross), 1) + " ft/s across" },
+    sp > 0.01 ? runCard("on this heading", E.heading, sp, cap, "you are at " + K.fix(sp, 1) + " ft/s", { state: mv.out ? "bad" : hr && hr[1] < cap && sp > hr[1] * 0.85 ? "warn" : "", tip: "The speeds, in the direction the robot is driving now, at which the shot still scores from this distance. A plus sign means no limit was found up to the end of the sliders." }) : null,
+    runCard("across", E.across, Math.abs(s.vacross), M.LIM, "either way, " + tw),
+    runCard("toward the target", E.toward, Math.max(0, s.vtoward), M.LIM, ac),
+    runCard("backing away", E.away, Math.max(0, -s.vtoward), M.LIM, ac),
     { k: "Standing range", v: K.fix(E.range[0] / FT, 1) + " to " + K.fix(E.range[1] / FT, 1), u: "ft", sub: "the limits above come from this range", tip: "From Every distance: the nearest and farthest distances this shooter scores from standing still. A moving shot is a standing shot from another distance, so it must fall inside this range." }]);
 }
 function moveOuts(s, r) {
@@ -378,14 +398,17 @@ function moveOuts(s, r) {
   if (mv.out) {
     var E = mv.env, lo = E.range[0], hi = E.range[1], far = mv.need != null && mv.need > hi, near = mv.need != null && mv.need < lo;
     var why = "Driving " + K.fix(mv.speed, 1) + " ft/s " + headingWords(s) + ", the shot would have to be made as if from " + (mv.need != null ? "about " + K.fix(mv.need / FT, 0) + " ft" : "another distance") + ", and this shooter scores from " + K.fix(lo / FT, 1) + " to " + K.fix(hi / FT, 1) + " ft.";
-    var act = (E.heading >= 0.1 ? " Slow to " + K.fix(E.heading, 1) + " ft/s or less on this heading" : " Stop to shoot from here") + (mv.from ? ", or shoot from " + (mv.from[1] - mv.from[0] < 0.3 * FT ? "about " + K.fix(mv.from[0] / FT, 1) : K.fix(mv.from[0] / FT, 1) + " to " + K.fix(mv.from[1] / FT, 1)) + " ft away" : "") + ".";
+    var hr = M.pickRun(E.heading, mv.speed), how = !hr || hr[1] < 0.1 ? " Stop to shoot from here" : hr[0] < 0.05 ? " Slow to " + K.fix(hr[1], 1) + " ft/s or less on this heading" : (mv.speed > hr[1] ? " Slow to" : " Speed up to") + " between " + K.fix(hr[0], 1) + " and " + K.fix(hr[1], 1) + " ft/s on this heading";
+    var act = how + (mv.from ? ", or shoot from " + (mv.from[1] - mv.from[0] < 0.3 * FT ? "about " + K.fix(mv.from[0] / FT, 1) : K.fix(mv.from[0] / FT, 1) + " to " + K.fix(mv.from[1] / FT, 1)) + " ft away" : "") + ".";
     var more = far ? (E.capFar ? "Every distance was only worked out to " + K.fix(hi / FT, 1) + " ft: raise Farthest there to see whether it scores from further." : "To score from further it needs more wheel speed or a flatter launch angle: see Every distance.")
       : near ? (E.capNear ? "Every distance was only worked out from " + K.fix(lo / FT, 1) + " ft: lower Nearest there to see whether it scores from closer." : "To score from closer it needs a steeper launch angle: see Every distance.") : "";
     return K.verdict("bad", why + act, more) + moveLimits(s, mv);
   }
   var L = mv.lead, side = L.leadDeg < -0.05 ? "left" : L.leadDeg > 0.05 ? "right" : "", still = Math.abs(s.vtoward) < 0.01 && Math.abs(s.vacross) < 0.01;
   var text = still ? "Standing still, aim straight at the target." : "Aim " + (side ? K.fix(Math.abs(L.leadDeg), 1) + "° " + side + " of the target, as the robot faces it" : "straight at it") + ". Set the wheel to " + rpmTxt(mv.rpm) + " rpm, as for a standing shot from " + K.fix(L.d / FT, 1) + " ft.";
-  return K.verdict(still ? "info" : "ok", text, still ? "" : "Exact without air and at a steady speed: tune it on the field.") + K.outs([
+  // A lead of more than a quarter turn scores on paper but points the launcher away from the target: say so.
+  var behind = Math.abs(L.leadDeg) > 90;
+  return K.verdict(still ? "info" : behind ? "warn" : "ok", text, still ? "" : behind ? "That is more than a quarter turn, so the launcher points away from the target, and few can. A slower speed needs a smaller lead." : "Exact without air and at a steady speed: tune it on the field.") + K.outs([
     { k: "Turn the aim", v: K.fix(Math.abs(L.leadDeg), 1), u: "°", sub: side ? "to the " + side : "none" },
     { k: "Shoot as if from", v: K.fix(L.d / FT, 1), u: "ft", sub: "really " + K.fix(s.dist, 1) + " ft" },
     { k: "Wheel speed", v: rpmTxt(mv.rpm), u: "rpm", sub: "standing still: " + rpmTxt(mv.rpmStill) },
@@ -413,7 +436,7 @@ function notesText(r) {
     "<p><b>While driving.</b> The ball keeps the robot's speed when it leaves, so the launcher aims at where the target seems to be after the flight time:</p>" +
     '<p class="eq">aim point = target − robot velocity × time in the air</p>' +
     "<p>The time in the air depends on how far away the aim point is, so the sum is run a few times over until it settles. The robot is taken to hold a steady speed. This is exact only without air. With drag the true lead differs, by how much this page cannot say, so treat it as a first setting and check it on the field.</p>" +
-    "<p>The shot the robot must make is a standing shot from the aim point's distance. So a driving speed scores when that distance is one this shooter scores from standing still (the range in Every distance). The green patch in the drawing marks every such speed, at the speed arrow's own scale, and the limits under the answers are where the patch ends: each is the first speed, going up from a standstill in steps of 0.1 ft/s, that no longer scores.</p>" +
+    "<p>The shot the robot must make is a standing shot from the aim point's distance. So a driving speed scores when that distance is one this shooter scores from standing still (the range in Every distance). The green patch in the drawing marks every such speed, at the speed arrow's own scale, and the limits under the answers are where the patch ends: found by trying every 0.1 ft/s. The speeds that score are not always one run from a standstill: driving fast at the target, only a band of across speeds keeps the shot long enough, and then the card gives the band.</p>" +
     "<p><b>Left out.</b> The ball's squash in the shooter, spin slowing in flight, wind, a ball that clips the rim and bounces in, the motor's own rotor inertia, and belt slip. The lift figure is used at more spin than the baseball tests covered.</p>");
 }
 

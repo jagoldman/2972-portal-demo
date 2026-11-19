@@ -21,7 +21,8 @@ K.state = S;
 K.result = function (id) { return CACHE[id]; };
 
 /* ---------- Registering a calculator ---------- */
-/* def: { id (its route and its row in D.TOOLS), defaults: {key: value}, compute(s) -> r,
+/* def: { id (its route and its row in D.TOOLS), defaults: {key: value}, compute(s, o) -> r (o.saved is true when s is a saved setup
+     being compared, not the page's own numbers),
      stage: { ratio (width / height, default 16/9), narrow (the same on a phone, default at most 1.5),
               tall: true (a tall subject: on a phone the drawing may take up to 62% of the screen's height, not 46%),
               label (what the drawing shows, for screen readers) } or null,
@@ -214,12 +215,23 @@ var CAP = null, capOn = null, outRow = 0;
 function saves(id) { var all = D.pref("calcsaves", {}) || {}; return all[id] || []; }
 function setSaves(id, list) { var all = JSON.parse(JSON.stringify(D.pref("calcsaves", {}) || {})); all[id] = list; D.setPref("calcsaves", all); }
 // Only the keys this calculator has, and only values of the kind it expects.
-function fit(id, v) { var d = T(id).defaults || {}, out = JSON.parse(JSON.stringify(d)); Object.keys(v || {}).forEach(function (k) { if (Object.prototype.hasOwnProperty.call(d, k) && typeof v[k] === typeof d[k] && Array.isArray(v[k]) === Array.isArray(d[k])) out[k] = JSON.parse(JSON.stringify(v[k])); }); return out; }
+// A value from outside (a file, a link, an old save) made safe to hand to a tool: numbers finite, text short, lists
+// short, nothing nested deeper than a list of rows. What a row may hold is the tool's own business (its compute
+// cleans its rows); this only keeps the size and the kinds in bounds.
+function tame(x, depth) {
+  if (typeof x === "number") return isFinite(x) ? x : 0;
+  if (typeof x === "string") return x.slice(0, 80);
+  if (typeof x === "boolean" || x == null) return x;
+  if (depth > 3) return null;
+  if (Array.isArray(x)) return x.slice(0, 40).map(function (q) { return tame(q, depth + 1); });
+  var o = {}; Object.keys(x).slice(0, 40).forEach(function (k) { o[String(k).slice(0, 40)] = tame(x[k], depth + 1); }); return o;
+}
+function fit(id, v) { var d = T(id).defaults || {}, out = JSON.parse(JSON.stringify(d)); Object.keys(v || {}).forEach(function (k) { if (Object.prototype.hasOwnProperty.call(d, k) && typeof v[k] === typeof d[k] && Array.isArray(v[k]) === Array.isArray(d[k]) && (typeof v[k] !== "number" || isFinite(v[k]))) out[k] = tame(v[k], 0); }); return out; }
 function cmpOf(id) {
   var R = rt(id), sv = R.cmp == null ? null : saves(id)[R.cmp], def = T(id); if (!sv || def.compare === false || def.saves === false) return null;
   var cs = fit(id, sv.v); if (def.tabs) cs.view = S(id).view;               // compare like with like: the view on screen
   var key = JSON.stringify(cs);
-  if (!R.cmpR || R.cmpKey !== key) { R.cmpKey = key; try { R.cmpR = def.compute(cs); } catch (e) { R.cmpR = { error: String(e && e.message || e) }; } }
+  if (!R.cmpR || R.cmpKey !== key) { R.cmpKey = key; try { R.cmpR = def.compute(cs, { saved: true }); } catch (e) { R.cmpR = { error: String(e && e.message || e) }; } }
   return R.cmpR && !R.cmpR.error ? { name: sv.n, s: cs, r: R.cmpR } : null;
 }
 K.compare = function (id) { return cmpOf(id); };
@@ -244,7 +256,7 @@ function setupsPanel(id) {
   var bar = c ? '<p class="cmpbar"><i class="ckey cmp" aria-hidden="true"></i><span>Comparing with <b>' + esc(c.name) + '</b>: its figures sit under yours and its lines are dotted grey.</span> <button class="btn sm" data-act="calccmp" data-tool="' + id + '" data-v="-1">Stop comparing</button></p>' : "";
   if (!R.savesOpen) return '<div id="calc-setups" class="setups shut">' + bar + "</div>";
   var rows = list.map(function (sv, i) {
-    return '<li class="setuprow"><input class="inp" type="text" maxlength="40" value="' + esc(sv.n) + '" aria-label="Name of saved setup ' + (i + 1) + '" data-input="calcsavename" data-tool="' + id + '" data-v="' + i + '">' +
+    return '<li class="setuprow"><input class="inp" type="text" maxlength="40" value="' + esc(sv.n) + '" id="setup-' + id + "-" + i + '" aria-label="Name of saved setup ' + (i + 1) + '" data-input="calcsavename" data-tool="' + id + '" data-v="' + i + '">' +
       '<span class="setupwhen">' + esc(sv.t || "") + '</span><span class="row setupacts">' +
       '<button class="btn sm" data-act="calcopen" data-tool="' + id + '" data-v="' + i + '" data-tip="Put these numbers on the page.">Open</button>' +
       (def.compare === false ? "" : '<button class="btn sm" data-act="calccmp" data-tool="' + id + '" data-v="' + i + '" aria-pressed="' + (R.cmp === i) + '" data-tip="Show this setup beside the numbers on the page.">' + (R.cmp === i ? "Comparing" : "Compare") + "</button>") +
@@ -264,7 +276,12 @@ D.acts.calcsave = function (b) {
   D.toast("Saved as Setup " + n + ". Type a name for it."); D.render();
   var el = document.querySelector('.setuprow:last-child input[data-input="calcsavename"]'); if (el) { el.focus(); el.select(); }
 };
-D.inputs.calcsavename = function (el) { var id = el.dataset.tool, list = saves(id).slice(), i = +el.dataset.v; if (!list[i]) return; list[i] = Object.assign({}, list[i], { n: el.value.trim() || "Setup " + (i + 1) }); setSaves(id, list); };
+D.inputs.calcsavename = function (el) {
+  var id = el.dataset.tool, list = saves(id).slice(), i = +el.dataset.v; if (!list[i]) return;
+  list[i] = Object.assign({}, list[i], { n: el.value.trim() || "Setup " + (i + 1) }); setSaves(id, list);
+  // The setup being compared carries its name on the page: keep those labels in step, without touching this field.
+  if (rt(id).cmp === i) { var b = document.querySelector(".cmpbar b"); if (b) b.textContent = list[i].n; K.refresh(id); }
+};
 function applySetup(id, v) { D.S.calc[id] = fit(id, v); stop(id); var R = rt(id), keep = { savesOpen: R.savesOpen, cmp: R.cmp }; RT[id] = null; Object.assign(rt(id), keep); }
 D.acts.calcopen = function (b) { var id = b.dataset.tool, sv = saves(id)[+b.dataset.v]; if (!sv) return; applySetup(id, sv.v); D.toast("Opened " + sv.n + "."); D.render(); };
 D.acts.calccmp = function (b) { var id = b.dataset.tool, R = rt(id), i = +b.dataset.v; R.cmp = i < 0 || R.cmp === i ? null : i; R.cmpR = null; D.render(); };
@@ -284,10 +301,20 @@ D.acts.calcdown = function (b) {
 // A setup file: checked before anything is used. It must be for this calculator, and only known keys are taken.
 K.readSetup = function (id, text) {
   var o; try { o = JSON.parse(text); } catch (e) { return { error: "That file is not a setup file." }; }
-  if (!o || typeof o !== "object" || !o.values || typeof o.values !== "object" || typeof o.tool !== "string") return { error: "That file is not a setup file." };
+  if (!o || typeof o !== "object" || !o.values || typeof o.values !== "object" || Array.isArray(o.values) || typeof o.tool !== "string") return { error: "That file is not a setup file." };
   if (o.tool !== id) { var other = D.tool(o.tool); return { error: other ? "That setup is for " + other.name + ". Open it from that calculator." : "That setup is for a calculator this site does not have." }; }
-  return { name: String(o.name || "Opened setup").slice(0, 40), values: fit(id, o.values) };
+  var vals = fit(id, o.values); clampToFields(id, vals);
+  if (!works(id, vals)) return { error: "That file has values this calculator cannot use." };
+  return { name: (typeof o.name === "string" && o.name.trim() ? o.name.trim() : "Opened setup").slice(0, 40), values: vals };
 };
+// Would the calculator draw these numbers? Work them out and build every part of the page, off screen, and see that
+// nothing throws: a choice the tool does not know (a made-up mechanism, say) fails here, not after it is saved.
+function works(id, vals) {
+  var def = T(id), was = capOn, good = true;
+  capOn = { outs: [], charts: {} };
+  try { var r = def.compute(vals, { saved: true }); if (!r || r.error) good = false; else { def.outs(vals, r); if (def.more) def.more(vals, r); } } catch (e) { good = false; }
+  capOn = was; return good;
+}
 D.changes.calcsavefile = function (el) {
   var id = el.dataset.tool, f = el.files && el.files[0]; if (!f) return;
   if (f.size > 200000) { D.toast("That file is too big to be a setup file."); D.render(); return; }
@@ -396,7 +423,9 @@ K.chart = function (o) {
   return '<figure class="chart"><figcaption>' + esc(o.title || "") + "</figcaption>" + (o.note ? '<p class="chartnote">' + esc(o.note) + "</p>" : "") + legend + '<svg viewBox="0 0 ' + W + " " + H + '" data-chart="' + esc(o.id) + '" tabindex="0" role="img" aria-label="' + esc((o.title || "Chart") + ". Use the left and right arrow keys to read values.") + '">' + g + "</svg>" + table + "</figure>";
 };
 var F = window.FRC;
-function sample(pts, x) { if (!pts.length) return NaN; if (x <= pts[0][0]) return pts[0][1]; for (var i = 1; i < pts.length; i++) if (pts[i][0] >= x) { var a = pts[i - 1], b = pts[i], t = (x - a[0]) / ((b[0] - a[0]) || 1); return a[1] + (b[1] - a[1]) * t; } return pts[pts.length - 1][1]; }
+// A series' value at x, between its points. Outside the span of x it was given for there is no value: a chart
+// widened to take in a compared setup must not read a short series out past its end.
+function sample(pts, x) { if (!pts.length) return NaN; var eps = 1e-9 * (Math.abs(pts[pts.length - 1][0] - pts[0][0]) || 1); if (x < pts[0][0] - eps || x > pts[pts.length - 1][0] + eps) return NaN; if (x <= pts[0][0]) return pts[0][1]; for (var i = 1; i < pts.length; i++) if (pts[i][0] >= x) { var a = pts[i - 1], b = pts[i], t = (x - a[0]) / ((b[0] - a[0]) || 1); return a[1] + (b[1] - a[1]) * t; } return pts[pts.length - 1][1]; }
 // The chart's readout: one small box that lists every series at the pointer's x.
 var tipEl = null;
 function chartTip(svg, x) {
@@ -545,8 +574,8 @@ function G(ctx, w, h) {
 var cur = { id: null, cv: null, ro: null, raf: 0, last: 0 };
 /* A link can carry any number. Hold each one to the limits of the field that shows it, so a zero or a huge value
    from a hand-edited link cannot freeze or break the page. Returns true when something was changed. */
-function clampToFields(id) {
-  var s = S(id), changed = false;
+function clampToFields(id, vals) {
+  var s = vals || S(id), changed = false;
   document.querySelectorAll('.benchside input[type="number"][data-input="calc"][data-tool="' + id + '"]').forEach(function (el) {
     var k = el.dataset.k, v = s[k]; if (typeof v !== "number") return;
     var lo = el.min !== "" ? +el.min : -Infinity, hi = el.max !== "" ? +el.max : Infinity, c = !isFinite(v) ? (isFinite(lo) ? lo : 0) : Math.min(hi, Math.max(lo, v));
