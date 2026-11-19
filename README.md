@@ -139,9 +139,12 @@ up and not in Live (`proposal: true` on its entry in `D.CALTABS`). The code is i
   event (with Undo). Mentors cannot add or edit events.
 - **Notices:** parents and mentors are told when an event is added; the admin is told when an event fills and when
   someone cancels. The people signed up are told when the time changes or the event is deleted (a toast says so).
-- **Not decided:** whether a volunteer event also shows on the Calendar tab and in the phone subscription; whether
-  one event can have several jobs or shifts; whether a family can take more than one spot; whether students may
-  sign up for some events. The demo does none of these.
+- **On the Calendar tab too (the owner, 2026-11-18, D184):** each volunteer event shows on the month, the agenda
+  and "Coming up" for the people who have the Volunteer tab, marked with a ring and the word Volunteer. It is a
+  door to its row in the Volunteer tab; on the agenda in Ground up it carries a Sign up button. The real Calendar
+  also puts it in the parents' and mentors' phone feeds, which the demo cannot show.
+- **Not decided:** whether one event can have several jobs or shifts; whether a family can take more than one
+  spot; whether students may sign up for some events. The demo does none of these.
 - **Checked:** a 28-step click-through (add, edit, remove a person, add a name, delete and undo, sign up, cancel,
   the notices, Home, who sees the tab in each version and role) passes, and every screen draws (see above). No
   other model has judged this tab.

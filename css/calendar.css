@@ -59,6 +59,8 @@
 .k-outreach { --kc: var(--ok); }
 .k-meeting { --kc: var(--warn); }
 .k-off { --kc: var(--bad); }
+/* A volunteer event is a ring, not a dot: it is a different kind of thing (a call for people), told apart by shape. */
+.k-vol .kd, .ev.k-vol::before { background: none; box-shadow: inset 0 0 0 2px var(--text); }
 .kd { width: 8px; height: 8px; border-radius: 50%; background: var(--kc, var(--mute)); flex: none; display: inline-block; }
 
 /* Month grid: pale events with a coloured dot; "today" is the one gold mark. */

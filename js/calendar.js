@@ -11,6 +11,10 @@ function parse(s) { var p = s.split("-"); return new Date(+p[0], +p[1] - 1, +p[2
 function fmt(s, o) { return parse(s).toLocaleDateString("en-US", o || { weekday: "short", month: "short", day: "numeric" }); }
 var TODAYS = iso(TODAY);
 var KIND = { practice: ["Practice", "k-practice"], build: ["Build day", "k-build"], comp: ["Competition", "k-comp"], outreach: ["Outreach", "k-outreach"], meeting: ["Meeting", "k-meeting"], off: ["No practice", "k-off"] };
+// A volunteer event on the Calendar tab is not one of the kinds above: it lives in the Volunteer tab's list (D184)
+// and only shows to the people who have that tab. Its mark is a ring, so it differs from every dot by shape.
+var VOLKIND = ["Volunteer", "k-vol"];
+function kindOf(e) { return e.vol ? VOLKIND : KIND[e.kind]; }
 var WD = ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"];
 // Only the mentor group makes someone a mentor (D166). An admin-only account is an app admin: never listed, counted or picked here.
 var MENTORS = ["Ms. Rivera", "Mr. Chen", "Dr. Patel", "Ms. Nakamura"];
@@ -72,8 +76,8 @@ D.inits.push(function (S) {
     snacks: {}, slots: 2,
     // Volunteer events: need = how many adults, who = the people signed up (one spot per adult).
     vol: [
-      { id: 1, name: "Library robot demo", date: "2026-11-19", start: "17:30", end: "20:00", where: "Lafayette Public Library", need: 2, note: "Carry the robot in and set up the table before the doors open.", who: ["Dana Kim"] },
-      { id: 2, name: "FLL qualifier", date: "2026-12-05", start: "08:00", end: "16:00", where: "Boulder Valley", need: 8, note: "Line up the teams, reset the tables and run the snack table. You don't need to know robots.", who: ["Raj Shah", "Chris Brooks", "Mr. Chen"] },
+      { id: 1, name: "Set up the library demo", date: "2026-11-19", start: "17:30", end: "18:15", where: "Lafayette Public Library", need: 2, note: "Carry the robot in and set up the table before the doors open.", who: ["Dana Kim"] },
+      { id: 2, name: "Run tables at the FLL qualifier", date: "2026-12-05", start: "08:00", end: "16:00", where: "Boulder Valley", need: 8, note: "Line up the teams, reset the tables and run the snack table. You don't need to know robots.", who: ["Raj Shah", "Chris Brooks", "Mr. Chen"] },
       { id: 3, name: "Kickoff breakfast", date: "2027-01-09", start: "08:00", end: "09:30", where: "Dawson shop", need: 3, note: "Set out breakfast before the game reveal.", who: ["Dana Kim", "Raj Shah", "Chris Brooks"] },
       { id: 4, name: "Field build", date: "2027-01-16", start: "09:00", end: "13:00", where: "Dawson shop", need: 6, note: "Build the practice field pieces from the game drawings. Bring a drill if you have one.", who: ["Chris Brooks", "Mr. Chen"] },
       { id: 5, name: "Regional: lunch for the pit", date: "2027-03-04", start: "11:00", end: "13:00", where: "Denver", need: 4, note: "Bring lunch to the pit for 30 people.", who: [] }
@@ -141,6 +145,11 @@ function snacksFor(date) { var s = C().snacks[date]; if (!s || !s.length) return
 /* Volunteer events that still need people and that this person has not joined, soonest first (Home's "Can you help?"). */
 function volName() { return D.me().name; }
 function volList() { return C().vol.filter(function (v) { return v.date >= TODAYS; }).sort(function (a, b) { return a.date < b.date ? -1 : a.date > b.date ? 1 : 0; }); }
+/* Volunteer events as the Calendar tab draws them: the month, the agenda and "Coming up". Each is a door to its row
+   in the Volunteer tab, where the sign-up is. Other apps' lists (Home, Tasks) do not get them. */
+function volEvents() { return D.calTab("volunteer") ? C().vol.map(function (v) { return { id: "v" + v.id, vol: v.id, date: v.date, kind: "vol", name: v.name, start: v.start, end: v.end, where: v.where }; }) : []; }
+function calUpcoming(n) { return upcoming(400).concat(volEvents().filter(function (e) { return e.date >= TODAYS; })).sort(function (a, b) { return a.date < b.date ? -1 : a.date > b.date ? 1 : 0; }).slice(0, n); }
+function evAct(e) { return e.vol ? 'data-act="caldoor" data-v="volunteer" data-d="' + e.date + '"' : 'data-act="calev" data-v="' + e.id + '"'; }
 function volOpen() { var me = volName(); return volList().filter(function (v) { return v.who.length < v.need && v.who.indexOf(me) < 0; }).map(function (v) { return { id: v.id, name: v.name, date: v.date, when: span(v), open: v.need - v.who.length }; }); }
 D.calApi = { volOpen: volOpen, kickoff: kickoff, practiceOn: practiceOn, mentorsOn: mentorsOn, mentors: function () { return MENTORS.slice(); }, snacksFor: snacksFor, practiceDays: practiceDays, upcoming: upcoming, fmt: fmt, span: span, TODAYS: TODAYS, meetDays: meetDays, eventsIn: eventsIn, daysOff: daysOff, currentEvent: function () { return C().events.filter(function (e) { return e.kind === "comp" && e.tba; })[0]; } };
 
@@ -179,26 +188,26 @@ function calendarTab() {
   if (!list.some(function (x) { return x[0] === t; })) t = def;
   return subnav("calendar", list, def) + (t === "agenda" ? agenda() : t === "setup" ? setup() : month());
 }
-function evBtn(e) { return '<button class="ev ' + KIND[e.kind][1] + '" data-act="calev" data-v="' + e.id + '" data-tip="' + esc(e.name + " · " + span(e)) + '" aria-label="' + esc(e.name) + '"><span class="et">' + (e.start && !D.ground() ? t12(e.start).replace(" pm", "p").replace(" am", "a") + " " : "") + esc(D.ground() ? e.name.split(":")[0] : e.name) + "</span></button>"; }
+function evBtn(e) { return '<button class="ev ' + kindOf(e)[1] + '" ' + evAct(e) + ' data-tip="' + esc(e.name + " · " + span(e)) + '" aria-label="' + esc(e.name) + '"><span class="et">' + (e.start && !D.ground() ? t12(e.start).replace(" pm", "p").replace(" am", "a") + " " : "") + esc(D.ground() ? e.name.split(":")[0] : e.name) + "</span></button>"; }
 function month() {
   var c = C(), y = c.month[0], m = c.month[1], first = new Date(y, m, 1), start = new Date(y, m, 1 - first.getDay());
   var cells = "";
   for (var i = 0; i < 42; i++) {
     var d = new Date(y, m, 1 - first.getDay() + i), s = iso(d);
     if (D.ground() && i % 7 === 0 && i >= 28 && d.getMonth() !== m) break;
-    var evs = c.events.filter(function (e) { return e.date === s || (e.end2 && s >= e.date && s <= e.end2); });
+    var evs = c.events.filter(function (e) { return e.date === s || (e.end2 && s >= e.date && s <= e.end2); }).concat(volEvents().filter(function (e) { return e.date === s; }));
     var hideAuto = evs.some(function (e) { return !e.auto && (e.kind === "build" || e.kind === "off" || e.kind === "comp"); });
     evs = evs.filter(function (e) { return !(hideAuto && e.auto); });
     cells += '<div class="day' + (d.getMonth() !== m ? " other" : "") + (s === TODAYS ? " today" : "") + '"><span class="d">' + (D.ground() && d.getDate() === 1 && d.getMonth() !== m ? d.toLocaleDateString("en-US", { month: "short" }) + " " : "") + d.getDate() + "</span>" + evs.slice(0, 3).map(evBtn).join("") + (evs.length > 3 ? '<span class="who">+' + (evs.length - 3) + " more</span>" : "") + "</div>";
   }
   var title = first.toLocaleDateString("en-US", { month: "long", year: "numeric" });
   /* Version B: on a wide screen the next events are listed beside the month, so the two views do not need a switch. */
-  var next = D.ideal() ? '<div class="card calnext"><h2>Coming up</h2><div class="list">' + upcoming(7).map(function (e) {
-    return '<button class="li cnrow" data-act="calev" data-v="' + e.id + '"><span class="num cnd">' + fmt(e.date, { weekday: "short", month: "short", day: "numeric" }) + '</span><span class="grow"><b>' + esc(e.name) + '</b><span class="who">' + span(e) + "</span></span></button>";
+  var next = D.ideal() ? '<div class="card calnext"><h2>Coming up</h2><div class="list">' + calUpcoming(7).map(function (e) {
+    return '<button class="li cnrow" ' + evAct(e) + '><span class="num cnd">' + fmt(e.date, { weekday: "short", month: "short", day: "numeric" }) + '</span><span class="grow"><b>' + esc(e.name) + '</b><span class="who">' + span(e) + "</span></span></button>";
   }).join("") + "</div></div>" : "";
   return (next ? '<div class="calsplit">' : "") + '<div class="card"><div class="row mnav"><button class="btn sm" data-act="calmonth" data-v="-1" aria-label="Previous month" data-tip="Go back one month.">←</button><h2>' + title + '</h2><button class="btn sm" data-act="calmonth" data-v="1" aria-label="Next month" data-tip="Go forward one month.">→</button><button class="btn ghost sm" data-act="caltoday">Today</button></div>' +
     '<div class="month">' + WD.map(function (x) { return '<div class="dh">' + x + "</div>"; }).join("") + cells + "</div>" +
-    '<div class="legend">' + Object.keys(KIND).map(function (k) { return '<span class="' + KIND[k][1] + '"><i class="kd"></i>' + KIND[k][0] + "</span>"; }).join("") + "</div></div>" + (next ? next + "</div>" : "");
+    '<div class="legend">' + Object.keys(KIND).map(function (k) { return KIND[k]; }).concat(D.calTab("volunteer") ? [VOLKIND] : []).map(function (k) { return '<span class="' + k[1] + '"><i class="kd"></i>' + k[0] + "</span>"; }).join("") + "</div></div>" + (next ? next + "</div>" : "");
 }
 function isPractice(e) { return e.kind === "practice" || e.kind === "build"; }
 /* A practice day's two short lines. They are doors to the Attendance and Snacks tabs, not controls. */
@@ -226,10 +235,17 @@ function dayDoors(e, brief) {
   else if (D.calTab("snacks")) out += door("snacks", "", e.date, "snacks", snackLine(e.date), "Snacks");
   return out ? '<div class="agdoors">' + out + "</div>" : "";
 }
+// A volunteer event's line on the agenda: how full it is, and Sign up where one tap settles it (as the snack line does).
+function volDoors(e) {
+  var v = volBy(e.vol), me = volName(), open = v.need - v.who.length, has = v.who.indexOf(me) >= 0;
+  var text = has ? "You are signed up" + (open > 0 ? ", " + open + " more needed" : "") : open > 0 ? open + " more " + (open === 1 ? "person" : "people") + " needed" : "All " + v.need + " spots are taken";
+  if (D.ground() && D.S.role !== "admin" && open > 0 && !has) return '<div class="agdoors"><div class="doorln doorask"><span class="dtxt"><span class="pill warn">' + esc(text) + '</span></span><button class="btn sm" data-act="volyes" data-v="' + v.id + '" aria-label="Sign up for ' + esc(v.name) + '">Sign up</button></div></div>';
+  return '<div class="agdoors">' + door("volunteer", "", e.date, "user", text, "Volunteer") + "</div>";
+}
 function agenda() {
-  var items = upcoming(18);
+  var items = calUpcoming(18);
   return '<div class="card"><h2>Coming up</h2><div class="list">' + items.map(function (e) {
-    return '<div class="agitem"><button class="li agrow" data-act="calev" data-v="' + e.id + '"><b class="num agdate">' + fmt(e.date) + (e.end2 ? "–" + fmt(e.end2, { month: "short", day: "numeric" }) : "") + '</b><span class="grow"><b>' + esc(e.name) + '</b><span class="who agmore">' + span(e) + (e.where ? " · " + esc(e.where) : "") + '</span></span><span class="kind ' + KIND[e.kind][1] + (D.ground() && e.name.indexOf(KIND[e.kind][0]) === 0 ? " ksame" : "") + '"><i class="kd"></i><span class="kname">' + KIND[e.kind][0] + "</span></span></button>" + (isPractice(e) ? dayDoors(e) : "") + "</div>";
+    return '<div class="agitem"><button class="li agrow" ' + evAct(e) + '><b class="num agdate">' + fmt(e.date) + (e.end2 ? "–" + fmt(e.end2, { month: "short", day: "numeric" }) : "") + '</b><span class="grow"><b>' + esc(e.name) + '</b><span class="who agmore">' + span(e) + (e.where ? " · " + esc(e.where) : "") + '</span></span><span class="kind ' + kindOf(e)[1] + (D.ground() && e.name.indexOf(kindOf(e)[0]) === 0 ? " ksame" : "") + '"><i class="kd"></i><span class="kname">' + kindOf(e)[0] + "</span></span></button>" + (e.vol ? volDoors(e) : isPractice(e) ? dayDoors(e) : "") + "</div>";
   }).join("") + "</div></div>";
 }
 function setup() {
@@ -504,7 +520,7 @@ function volunteer() {
     else if (has) act = '<button class="btn ghost sm" data-act="volno" data-v="' + v.id + '">Cancel sign-up</button>';
     else if (open > 0) { act = '<button class="btn sm' + (flagged ? "" : " primary") + '" data-act="volyes" data-v="' + v.id + '" aria-label="Sign up for ' + esc(v.name) + '">Sign up</button>'; flagged = true; }
     else act = '<span class="pill ok">Full</span>';
-    return '<div class="li vrow' + (admin ? " vadm" : "") + '"><span class="grow"><b>' + esc(v.name) + '</b><span class="who agmore">' + esc(volWhen(v)) + "</span>" + (v.note ? '<span class="vnote">' + esc(v.note) + "</span>" : "") +
+    return '<div class="li vrow' + (admin ? " vadm" : "") + (C().focus === v.date ? " focusrow" : "") + '"><span class="grow"><b>' + esc(v.name) + '</b><span class="who agmore">' + esc(volWhen(v)) + "</span>" + (v.note ? '<span class="vnote">' + esc(v.note) + "</span>" : "") +
       '<span class="who vwho">' + (names.length ? names.length + " of " + v.need + " signed up: " + esc(names.join(", ")) : "Nobody yet, " + people(v.need) + " needed") + "</span></span>" + act + "</div>";
   }).join("");
   return hero + '<div class="card"><div class="row between"><h2>Volunteer events</h2><span class="who">' + (admin ? "Parents and mentors sign up here" : "One spot is one adult") + "</span></div>" +
