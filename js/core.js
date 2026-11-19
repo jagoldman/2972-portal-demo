@@ -129,14 +129,16 @@ D.tool = function (id) { return D.TOOLS.filter(function (t) { return t.id === id
 D.isToolRoute = function (r) { return r === "tools" || !!D.tool(r); };
 // The calculators (every tool but the two photo tools) are new in the 8.3 proposal, so the Live version does not list them.
 D.visibleTools = function () { return D.TOOLS.filter(function (t) { return D.views[t.id] && D.inGroup(t) && t.modes.indexOf(D.S.mode) >= 0 && !(t.calc && D.design() === "live"); }); };
-/* The Calendar app has three tabs. Who sees each one is what the Attendance and Snacks tiles used to say. */
+/* The Calendar app's tabs. Who sees each one is what the Attendance and Snacks tiles used to say. Volunteer is a
+   proposal (2026-11-18): the real Calendar does not have it, so the Live version leaves it out. */
 D.CALTABS = [
   { id: "calendar", name: "Calendar", modes: ["build", "competition"], groups: ALL },
   { id: "here", name: "Attendance", modes: ["build", "competition"], groups: BUILDERS },
-  { id: "snacks", name: "Snacks", modes: ["build"], groups: ["admin", "mentor", "parent"] }
+  { id: "snacks", name: "Snacks", modes: ["build"], groups: ["admin", "mentor", "parent"] },
+  { id: "volunteer", name: "Volunteer", modes: ["build", "competition"], groups: ["admin", "mentor", "parent"], proposal: true }
 ];
 /* Old routes for the tabs. The tab ids are also the old tile ids, so #here and #snacks still work. */
-D.ROUTE_TAB = { here: "calendar", snacks: "calendar" };
+D.ROUTE_TAB = { here: "calendar", snacks: "calendar", volunteer: "calendar" };
 D.APPNAME = { portal: "Portal", account: "Account", kiosk: "Door QR", monitor: "Pit monitor", projector: "Projector", tools: "Tools" };
 D.TILES.forEach(function (t) { D.APPNAME[t.id] = t.name; });
 D.TOOLS.forEach(function (t) { D.APPNAME[t.id] = "Tools"; });
@@ -161,7 +163,7 @@ D.reset = function () {
 D.me = function () { return D.ROLES[D.S.role]; };
 D.isStaff = function () { return D.S.role === "mentor" || D.S.role === "admin"; };
 D.tile = function (id) { return D.TILES.filter(function (t) { return t.id === id; })[0]; };
-D.calTabs = function () { return D.CALTABS.filter(function (t) { return t.groups.some(function (g) { return D.me().groups.indexOf(g) >= 0; }) && t.modes.indexOf(D.S.mode) >= 0; }); };
+D.calTabs = function () { return D.CALTABS.filter(function (t) { return t.groups.some(function (g) { return D.me().groups.indexOf(g) >= 0; }) && t.modes.indexOf(D.S.mode) >= 0 && !(t.proposal && D.design() === "live"); }); };
 D.calTab = function (id) { return D.calTabs().some(function (t) { return t.id === id; }); };
 // Pick the screen for a route. A tab id (here, snacks) or "calendar" lands on that Calendar tab.
 D.landing = function (route) {
@@ -344,6 +346,10 @@ function practiceRows() {
       })[0];
       if (need) { var sn = c.snacks[need.date], k = sn.indexOf(null), open = sn.filter(function (x) { return !x; }).length; rows.push({ app: "snacks", title: api.fmt(need.date) + " needs snacks", line: plural(open, "family", "families") + " needed", btn: '<button class="btn" data-act="snack" data-d="' + need.date + '" data-k="' + k + '">Sign up</button>' }); }
     }
+    // The next two volunteer events that still need people and that this parent has not joined.
+    if (D.calTab("volunteer") && api.volOpen) api.volOpen().slice(0, 2).forEach(function (v) {
+      rows.push({ app: "volunteer", title: v.name, line: api.fmt(v.date) + ", " + v.when + ", " + plural(v.open, "more person", "more people") + " needed", btn: '<button class="btn" data-act="volyes" data-v="' + v.id + '" aria-label="Sign up for ' + esc(v.name) + '">Sign up</button>' });
+    });
     return rows;
   }
   if (S.eventDay) return rows;
@@ -423,6 +429,13 @@ function nowRows() {
       if (k < 0 || sn.indexOf(mine) >= 0) return;
       var open = sn.filter(function (x) { return !x; }).length;
       rows.push({ app: "snacks", title: "Snacks needed " + api.fmt(e.date), line: (api.practiceOn(e.date) ? esc(api.span(api.practiceOn(e.date))) + "<br>" : "") + esc(plural(open, "family", "families") + " needed"), btn: '<button class="btn primary" data-act="snack" data-d="' + e.date + '" data-k="' + k + '">Sign up</button>' });
+    });
+  }
+  // Volunteer events come after this week's snacks: they are further off, so their button is the quiet one.
+  if (S.role === "parent" && api && api.volOpen && D.calTab("volunteer")) {
+    rows = rows.filter(function (r) { return r.app !== "volunteer"; });
+    api.volOpen().slice(0, 2).forEach(function (v) {
+      rows.push({ app: "volunteer", title: v.name, line: esc(api.fmt(v.date) + ", " + v.when) + "<br>" + esc(plural(v.open, "more person", "more people") + " needed"), btn: '<button class="btn" data-act="volyes" data-v="' + v.id + '" aria-label="Sign up for ' + esc(v.name) + '">Sign up</button>' });
     });
   }
   if (staff) {

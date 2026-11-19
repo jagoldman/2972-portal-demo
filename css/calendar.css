@@ -128,6 +128,15 @@
 .snrow .grow { min-width: 0; }
 .snrow .btn { flex: none; }
 
+/* Volunteer: an event's row is its name, when and where, what to know, and who is on it */
+.vrow .grow { min-width: 0; }
+.vrow .btn, .vrow .pill { flex: none; }
+.vnote { display: block; max-width: 72ch; margin-block: 2px; color: var(--text-2); font-size: .9rem; line-height: 1.4; }
+.vwho { display: block; }
+.vadd { margin-top: 8px; }
+.vadd .inp { flex: 1 1 auto; min-width: 0; }
+.mfoot .vdel { margin-left: auto; }
+
 /* Door-code TV screen */
 .kiosk { justify-items: center; text-align: center; align-content: center; min-height: 100vh; gap: 24px; }
 .qrtime { width: min(78vw, 360px); }
@@ -161,6 +170,10 @@
   .snrow .grow { flex: 1 1 100%; }
   .snrow .btn { min-height: 44px; }
   .snrow > .btn:not(.ghost) { width: 100%; }
+  .vrow .grow { flex: 1 1 100%; }
+  .vrow .btn { min-height: 44px; }
+  .vrow:not(.vadm) > .btn:not(.ghost) { width: 100%; }
+  .vrow.vadm > .btn { margin-left: auto; }
   .dpop { left: 8px !important; right: 8px; top: auto !important; bottom: 8px; max-width: none; }
   .kiosk { padding-top: 56px; }
 }

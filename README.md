@@ -18,7 +18,7 @@ Everything is sample data. Nothing is saved, and a reload resets it. The only th
 |---|---|
 | Tasks | Your next task, projects and subteams, a task panel, the timeline and the projector. The **Projector** (staff, and the Display role) switches between Practice (clock, countdown, who is working on what), Meeting (last practice's and today's tasks, with a note for today) and the Build plan. The **Timeline** shows only the days the team meets (from the Calendar); click a bar to open the task. Mentors, admins and Lead-mode students drag a bar (or use the arrow keys) to move a due date, with Undo. Division and project rows open and close (carets, or "Open all"). |
 | Parts & Inventory | Request a part, order by vendor (mentors), check in arrivals, find spares by place. |
-| Calendar | One app, three tabs. **Calendar**: agenda and month views; admins also get "Practice pattern and sync" (mentors cannot edit practice patterns). **Attendance**: door-code sign-in, hours, mentor plans. **Snacks**: snack sign-up. Each practice day on the agenda has two short lines that open Attendance and Snacks for that day. Parents see Calendar and Snacks; students see Calendar and Attendance. |
+| Calendar | One app, four tabs (three in Live). **Calendar**: agenda and month views; admins also get "Practice pattern and sync" (mentors cannot edit practice patterns). **Attendance**: door-code sign-in, hours, mentor plans. **Snacks**: snack sign-up. Each practice day on the agenda has two short lines that open Attendance and Snacks for that day. **Volunteer** (proposal, not in Live): the other days the team needs adults, such as the field build; an admin adds an event with a date and a number of spots, and parents and mentors sign up. Parents see Calendar, Snacks and Volunteer; students see Calendar and Attendance. |
 | Skills | Overview of what to do next, skill trees, sign-off requests, shop tool permissions. |
 | Schedule, Pit, Scouting | Event roles, pit checklists and monitor, match scouting with stats and a pick list (Competition mode). |
 | Tools | Sixteen small helpers on one page, found by group or by search (see "FRC calculators" below). **Drawing to vector**: the sample drawing's traced outline, real size from two taps, SVG and DXF downloads (the demo only traces the sample). **Gear and sprocket finder**: sample gear or sprocket, or your photo with the teeth counted by hand, plus one caliper measurement; the size and pitch diameter are worked out for real, with doors into Parts. |
@@ -99,9 +99,10 @@ page). Ground up adds content, so its pages are 8.8% shorter than Live in total.
 950 px, the student's Skills overview from 1,763 px to 1,142 px.
 
 ### Checked, and not checked (2026-11-18)
-- **Every screen draws.** 255 screens (every app, every tab, every calculator, five roles, event day; 1280, 820 and
-  390 px) in each of Live, Baseline and Ground up: no JavaScript errors and no sideways scroll. Ground up in dark
-  mode at 1280 px: 85 screens, none. (Run again on 2026-11-18 after the fourteen calculators replaced the nine.)
+- **Every screen draws.** Every app, every tab, every calculator, five roles, event day, at 1280, 820 and 390 px:
+  255 screens in Live and 261 in each of Baseline and Ground up (the Volunteer tab adds two per width), with no
+  JavaScript errors and no sideways scroll. Ground up in dark mode at 1280 px: 87 screens, none. (Run again on
+  2026-11-18 after the fourteen calculators replaced the nine, and again after the Volunteer tab was added.)
 - **Live is unchanged.** The 61 desktop screens measured before the Ground up work are the same height after it.
   The coders for Skills, Competition and Parts also compared the page HTML of Live and Baseline before and after
   their changes: identical (Parts: 106 states).
@@ -122,6 +123,28 @@ page). Ground up adds content, so its pages are 8.8% shorter than Live in total.
 - Left as they are in Live: the Projector's task-state colours, the scouting field drawing, the tool drawings.
 - Design 8.2 (Big Shoulders and Libre Franklin) is still on branch `design-8.2`; this branch starts from it and
   replaces its stylesheet.
+
+## Volunteer events (2026-11-18): in the demo, not built in the real Calendar
+
+The owner asked for a place for volunteer work other than snacks, such as the field build, where an admin adds
+events with dates and families sign up, as a tab like Snacks. It is the fourth Calendar tab, in Baseline and Ground
+up and not in Live (`proposal: true` on its entry in `D.CALTABS`). The code is in `js/calendar.js` ("Volunteer tab").
+
+- **Who sees it:** parents, mentors and admins, in Build and Competition mode. Students do not.
+- **Signing up:** each event has a date, a time, a place, a note and a number of spots; one spot is one adult.
+  A parent or mentor taps Sign up on the row, and Cancel sign-up to give the spot back. A full event says Full.
+- **Home:** a parent's "Can you help?" lists the next two events that still need people, after this week's snacks.
+- **The admin:** New volunteer event opens a form (what, date, from, to, where, people needed, what to know). Edit
+  opens the same form with the people signed up; the admin can remove a person or add one by name, and delete the
+  event (with Undo). Mentors cannot add or edit events.
+- **Notices:** parents and mentors are told when an event is added; the admin is told when an event fills and when
+  someone cancels. The people signed up are told when the time changes or the event is deleted (a toast says so).
+- **Not decided:** whether a volunteer event also shows on the Calendar tab and in the phone subscription; whether
+  one event can have several jobs or shifts; whether a family can take more than one spot; whether students may
+  sign up for some events. The demo does none of these.
+- **Checked:** a 28-step click-through (add, edit, remove a person, add a name, delete and undo, sign up, cancel,
+  the notices, Home, who sees the tab in each version and role) passes, and every screen draws (see above). No
+  other model has judged this tab.
 
 ## FRC calculators (2026-11-18): in the demo, not built in the real Tools service
 

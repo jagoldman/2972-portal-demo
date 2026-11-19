@@ -1,5 +1,7 @@
-/* Team Calendar service, one app with three tabs: Calendar (month, agenda, events, and for admins the practice pattern), Attendance (door sign-in, mentors, hours), Snacks.
-   Each answers "what is happening at practice on this day". The Door QR screen is part of it. */
+/* Team Calendar service, one app with four tabs: Calendar (month, agenda, events, and for admins the practice pattern), Attendance (door sign-in, mentors, hours), Snacks, Volunteer.
+   The first three answer "what is happening at practice on this day". Volunteer (proposal, 2026-11-18; not in Live) is the
+   other days the team needs adults: an admin adds an event with a date and a number of spots, and parents and mentors
+   sign up. The Door QR screen is part of the app. */
 (function () {
 "use strict";
 var esc = D.esc;
@@ -68,6 +70,14 @@ D.inits.push(function (S) {
     mview: "list", mmonth: [2026, 10], pop: null, medit: null, udraft: null,
     adjust: [ { who: "Jordan Lee", hours: 2.5, why: "Forgot to scan out on Nov 5", by: "Ms. Rivera", when: "Nov 6" } ],
     snacks: {}, slots: 2,
+    // Volunteer events: need = how many adults, who = the people signed up (one spot per adult).
+    vol: [
+      { id: 1, name: "Library robot demo", date: "2026-11-19", start: "17:30", end: "20:00", where: "Lafayette Public Library", need: 2, note: "Carry the robot in and set up the table before the doors open.", who: ["Dana Kim"] },
+      { id: 2, name: "FLL qualifier", date: "2026-12-05", start: "08:00", end: "16:00", where: "Boulder Valley", need: 8, note: "Line up the teams, reset the tables and run the snack table. You don't need to know robots.", who: ["Raj Shah", "Chris Brooks", "Mr. Chen"] },
+      { id: 3, name: "Kickoff breakfast", date: "2027-01-09", start: "08:00", end: "09:30", where: "Dawson shop", need: 3, note: "Set out breakfast before the game reveal.", who: ["Dana Kim", "Raj Shah", "Chris Brooks"] },
+      { id: 4, name: "Field build", date: "2027-01-16", start: "09:00", end: "13:00", where: "Dawson shop", need: 6, note: "Build the practice field pieces from the game drawings. Bring a drill if you have one.", who: ["Chris Brooks", "Mr. Chen"] },
+      { id: 5, name: "Regional: lunch for the pit", date: "2027-03-04", start: "11:00", end: "13:00", where: "Denver", need: 4, note: "Bring lunch to the pit for 30 people.", who: [] }
+    ],
     sync: { last: "2 min ago", count: 148 }
   };
   S.cal.snacks["2026-11-10"] = ["Kim family", "Shah family"];
@@ -128,9 +138,13 @@ function mentorsOn(date) { return MENTORS.filter(function (m) { var a = availOf(
 /* Snacks on a date, from Snacks: the families bringing them (empty spots left out) and how many spots are open. The
    Projector shows the families on the shop screen (the owner, 2026-11-14). null when the day has no snack sign-up. */
 function snacksFor(date) { var s = C().snacks[date]; if (!s || !s.length) return null; var names = s.filter(Boolean); return { names: names, filled: names.length, open: s.length - names.length }; }
-D.calApi = { kickoff: kickoff, practiceOn: practiceOn, mentorsOn: mentorsOn, mentors: function () { return MENTORS.slice(); }, snacksFor: snacksFor, practiceDays: practiceDays, upcoming: upcoming, fmt: fmt, span: span, TODAYS: TODAYS, meetDays: meetDays, eventsIn: eventsIn, daysOff: daysOff, currentEvent: function () { return C().events.filter(function (e) { return e.kind === "comp" && e.tba; })[0]; } };
+/* Volunteer events that still need people and that this person has not joined, soonest first (Home's "Can you help?"). */
+function volName() { return D.me().name; }
+function volList() { return C().vol.filter(function (v) { return v.date >= TODAYS; }).sort(function (a, b) { return a.date < b.date ? -1 : a.date > b.date ? 1 : 0; }); }
+function volOpen() { var me = volName(); return volList().filter(function (v) { return v.who.length < v.need && v.who.indexOf(me) < 0; }).map(function (v) { return { id: v.id, name: v.name, date: v.date, when: span(v), open: v.need - v.who.length }; }); }
+D.calApi = { volOpen: volOpen, kickoff: kickoff, practiceOn: practiceOn, mentorsOn: mentorsOn, mentors: function () { return MENTORS.slice(); }, snacksFor: snacksFor, practiceDays: practiceDays, upcoming: upcoming, fmt: fmt, span: span, TODAYS: TODAYS, meetDays: meetDays, eventsIn: eventsIn, daysOff: daysOff, currentEvent: function () { return C().events.filter(function (e) { return e.kind === "comp" && e.tba; })[0]; } };
 
-/* ---------- The app: three tabs, each with its own small switch ---------- */
+/* ---------- The app: four tabs; the first two have their own small switch ---------- */
 function snackName() { return D.S.role === "parent" ? "Ortiz family" : D.me().name; }
 function subnav(app, list, def) {
   var cur = D.tab(app, def);
@@ -144,6 +158,10 @@ D.views.calendar = function () {
     body = attendance();
     if (staff) right = '<button class="btn sm" data-act="go" data-v="kiosk" aria-label="Door QR screen" data-tip="Show the sign-in code on the shop door screen.">' + D.ic("qr", 16) + '<span class="hide-sm">Door QR screen</span></button>';
   } else if (top === "snacks") body = snacks();
+  else if (top === "volunteer") {
+    body = volunteer();
+    if (D.S.role === "admin") right = '<button class="btn primary sm" data-act="volnew" aria-label="New volunteer event">' + D.ic("plus", 16) + '<span>New<span class="hide-sm"> volunteer event</span></span></button>';
+  }
   else {
     body = calendarTab();
     right = staff ? '<button class="btn primary sm" data-act="calnew" aria-label="New event">' + D.ic("plus", 16) + '<span>New<span class="hide-sm"> event</span></span></button>' : '<button class="btn sm" data-act="calical"><span>Subscribe' + (D.ground() ? "" : '<span class="hide-sm"> on my phone</span>') + "</span></button>";
@@ -470,6 +488,41 @@ function snacks() {
     }).join("") + "</div></div>";
 }
 
+/* ---------- Volunteer tab ---------- */
+/* Like Snacks, but the days are events an admin adds, each with its own number of spots. Parents and mentors sign up
+   from the row; an admin sees how many are still needed and edits the event (and who is on it) in a dialog. */
+function people(n) { return n + (n === 1 ? " person" : " people"); }
+function volWhen(v) { return fmt(v.date) + ", " + span(v) + (v.where ? ", " + v.where : ""); }
+function volunteer() {
+  var me = volName(), admin = D.S.role === "admin", list = volList(), flagged = false;
+  var mine = list.filter(function (v) { return v.who.indexOf(me) >= 0; }).map(function (v) { return v.name + " on " + fmt(v.date); });
+  var hero = mine.length ? '<div class="card hero"><h2>You\'re helping at ' + esc(mine.length > 1 ? mine.slice(0, -1).join(", ") + " and " + mine[mine.length - 1] : mine[0]) + '</h2><p class="small mute">We\'ll remind you two days before.</p></div>' : "";
+  var rows = list.map(function (v) {
+    var open = v.need - v.who.length, has = v.who.indexOf(me) >= 0, act;
+    var names = v.who.map(function (n) { return n === me ? "You" : n; }).sort(function (a, b) { return a === "You" ? -1 : b === "You" ? 1 : 0; });
+    if (admin) act = (open > 0 ? '<span class="pill warn">' + open + " more needed</span>" : '<span class="pill ok">Full</span>') + '<button class="btn sm" data-act="voledit" data-v="' + v.id + '" aria-label="Edit ' + esc(v.name) + '">Edit</button>';
+    else if (has) act = '<button class="btn ghost sm" data-act="volno" data-v="' + v.id + '">Cancel sign-up</button>';
+    else if (open > 0) { act = '<button class="btn sm' + (flagged ? "" : " primary") + '" data-act="volyes" data-v="' + v.id + '" aria-label="Sign up for ' + esc(v.name) + '">Sign up</button>'; flagged = true; }
+    else act = '<span class="pill ok">Full</span>';
+    return '<div class="li vrow' + (admin ? " vadm" : "") + '"><span class="grow"><b>' + esc(v.name) + '</b><span class="who agmore">' + esc(volWhen(v)) + "</span>" + (v.note ? '<span class="vnote">' + esc(v.note) + "</span>" : "") +
+      '<span class="who vwho">' + (names.length ? names.length + " of " + v.need + " signed up: " + esc(names.join(", ")) : "Nobody yet, " + people(v.need) + " needed") + "</span></span>" + act + "</div>";
+  }).join("");
+  return hero + '<div class="card"><div class="row between"><h2>Volunteer events</h2><span class="who">' + (admin ? "Parents and mentors sign up here" : "One spot is one adult") + "</span></div>" +
+    (rows ? '<div class="list">' + rows + "</div>" : '<p class="mute">' + (admin ? "No volunteer events yet. Add the first with New volunteer event." : "Nothing needs volunteers right now. You'll get a notice when something does.") + "</p>") + "</div>";
+}
+/* New and Edit are one dialog. It works on a copy (the draft), so removing a person or closing changes nothing until Save. */
+D.modals.vol = function (d) {
+  var edit = d.id != null;
+  return D.modalHead(edit ? "Edit volunteer event" : "New volunteer event") + '<div class="formgrid"><div class="field wide"><label for="ve-name">What</label><input id="ve-name" value="' + esc(d.name) + '"></div>' +
+    '<div class="field"><label for="ve-date">Date</label><input id="ve-date" type="date" value="' + esc(d.date) + '"></div><div class="field"><label for="ve-need">People needed</label><input id="ve-need" type="number" min="1" max="60" inputmode="numeric" value="' + esc(d.need) + '"></div>' +
+    '<div class="field"><label for="ve-start">From</label><input id="ve-start" type="time" value="' + esc(d.start) + '"></div><div class="field"><label for="ve-end">To</label><input id="ve-end" type="time" value="' + esc(d.end) + '"></div>' +
+    '<div class="field wide"><label for="ve-where">Where</label><input id="ve-where" value="' + esc(d.where) + '"></div>' +
+    '<div class="field wide"><label for="ve-note">What to know</label><textarea id="ve-note" rows="2">' + esc(d.note) + "</textarea></div></div>" +
+    (edit ? '<div><p class="flabel">Signed up, ' + d.who.length + " of " + esc(d.need) + '</p><div class="list">' + (d.who.map(function (n, i) { return '<div class="li"><b class="grow">' + esc(n) + '</b><button class="btn ghost sm" data-act="volrm" data-i="' + i + '" aria-label="Remove ' + esc(n) + '">Remove</button></div>'; }).join("") || '<div class="li"><span class="mute">Nobody yet</span></div>') +
+      '</div><div class="row nowrap vadd"><input class="inp" id="ve-add" placeholder="Name" aria-label="Add someone by name"><button class="btn" data-act="voladd">Add</button></div></div>' : "") +
+    '<div class="row mfoot"><button class="btn primary" data-act="volsave">Save</button><button class="btn" data-act="closemodal">Cancel</button>' + (edit ? '<button class="btn danger vdel" data-act="voldel">Delete event</button>' : "") + "</div>";
+};
+
 /* ---------- Actions ---------- */
 var A = D.acts;
 A.calmonth = function (b) { var c = C(), m = c.month[1] + (+b.dataset.v), y = c.month[0]; if (m < 0) { m = 11; y--; } if (m > 11) { m = 0; y++; } c.month = [y, m]; D.render(); };
@@ -521,4 +574,39 @@ A.herefix = function (b) { var c = C(); c.att[b.dataset.n][b.dataset.d] = 2.5; c
 A.hereadd = function () { var c = C(); c.adjust.unshift({ who: D.val("ha-who"), hours: parseFloat(D.val("ha-h")) || 0, why: D.val("ha-why"), by: D.me().name, when: "Just now" }); D.toast("Saved. It shows in their history."); D.render(); };
 A.snack = function (b) { var c = C(), nm = snackName(); c.snacks[b.dataset.d][+b.dataset.k] = nm; D.toast("Thanks. You'll get a reminder the day before."); D.render(); };
 A.snackfree = function (b) { C().snacks[b.dataset.d][+b.dataset.k] = null; D.render(); };
+function volBy(id) { return C().vol.filter(function (v) { return v.id === +id; })[0]; }
+A.volyes = function (b) {
+  var v = volBy(b.dataset.v), me = volName(); if (!v || v.who.indexOf(me) >= 0 || v.who.length >= v.need) return;
+  v.who.push(me); D.log("signed up to help at " + v.name, "calendar");
+  if (v.who.length === v.need) D.notify("admin", "calendar", v.name + " on " + fmt(v.date) + " has all " + people(v.need) + ".");
+  D.toast("Signed up for " + v.name + ", " + fmt(v.date) + ". We'll remind you two days before."); D.render();
+};
+A.volno = function (b) {
+  var v = volBy(b.dataset.v), me = volName(); if (!v) return;
+  v.who = v.who.filter(function (n) { return n !== me; });
+  D.notify("admin", "calendar", me + " can no longer help at " + v.name + " on " + fmt(v.date) + ".");
+  D.toast("Sign-up cancelled. Your spot at " + v.name + " is open again."); D.render();
+};
+// The dialog's fields, read back into the draft before anything redraws it.
+function volDraft() { var d = D.S.modal.data; ["name", "date", "need", "start", "end", "where", "note"].forEach(function (k) { d[k] = D.val("ve-" + k); }); return d; }
+A.volnew = function () { D.openModal("vol", { id: null, name: "Field build, day 2", date: "2027-01-23", start: "09:00", end: "13:00", where: "Dawson shop", need: 6, note: "Finish the field pieces and paint them.", who: [] }); };
+A.voledit = function (b) { var v = volBy(b.dataset.v); if (v) D.openModal("vol", { id: v.id, name: v.name, date: v.date, start: v.start, end: v.end, where: v.where, need: v.need, note: v.note, who: v.who.slice() }); };
+A.volrm = function (b) { volDraft().who.splice(+b.dataset.i, 1); D.render(); };
+A.voladd = function () { var d = volDraft(), n = D.val("ve-add").trim(); if (n && d.who.indexOf(n) < 0) d.who.push(n); D.render(); };
+A.volsave = function () {
+  var c = C(), d = volDraft(), name = d.name.trim(), need = Math.max(parseInt(d.need, 10) || 0, d.who.length);
+  if (!name || !d.date || need < 1) { D.toast("Give it a name, a date and how many people it needs."); D.render(); return; }
+  var v = d.id != null ? volBy(d.id) : null, moved = v && (v.date !== d.date || v.start !== d.start) && d.who.length;
+  if (!v) { v = { id: 1 + c.vol.reduce(function (m, x) { return Math.max(m, x.id); }, 0) }; c.vol.push(v); }
+  v.name = name; v.date = d.date; v.start = d.start; v.end = d.end; v.where = d.where.trim(); v.need = need; v.note = d.note.trim(); v.who = d.who.slice();
+  D.S.modal = null;
+  if (d.id == null) { D.log("asked for volunteers for " + v.name, "calendar"); D.notify(["parent", "mentor"], "calendar", "Volunteers needed: " + v.name + ", " + fmt(v.date) + ". " + people(v.need) + "."); D.toast("Saved. Parents and mentors were told."); }
+  else D.toast(moved ? "Saved. The " + people(d.who.length) + " signed up " + (d.who.length === 1 ? "was" : "were") + " told the new time." : "Saved.");
+  D.render();
+};
+A.voldel = function () {
+  var c = C(), v = volBy(D.S.modal.data.id), at = c.vol.indexOf(v); if (!v) return;
+  D.S.modal = null;
+  D.withUndo("Deleted " + v.name + "." + (v.who.length ? " The " + people(v.who.length) + " signed up " + (v.who.length === 1 ? "was" : "were") + " told." : ""), function () { c.vol.splice(at, 1); }, function () { c.vol.splice(at, 0, v); });
+};
 })();

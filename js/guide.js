@@ -77,6 +77,11 @@ var S_SNACK = { id: "snack", name: "Sign up for snacks", line: "Families take tu
   missing: "Every practice has snacks covered; a day that needs more gets an I'll bring snacks button.",
   go: function () { D.go("snacks"); }, target: function () { return q('.snrow [data-act="snack"]'); },
   snap: function () { return JSON.stringify(cal().snacks); }, done: function (s, g) { return g.clicked || JSON.stringify(cal().snacks) !== s; } };
+var S_VOL = { id: "vol", name: "Help at a team event", line: "The field build and other days that need adults.", covered: "volunteer sign-up",
+  title: "Help at a team event", text: "Tap Sign up on an event you can make; you get a reminder two days before.",
+  missing: "Every volunteer event is full; one that needs people gets a Sign up button.",
+  go: function () { D.go("volunteer"); }, target: function () { return q('.vrow [data-act="volyes"]'); },
+  snap: function () { return JSON.stringify(cal().vol); }, done: function (s, g) { return g.clicked || JSON.stringify(cal().vol) !== s; } };
 var S_ADMIN = { id: "admin", name: "Let new people in", line: "Approve new accounts and set their groups.", covered: "letting new people in",
   title: "Let new people in", text: "Open Admin, under Admin apps, to approve new accounts and put people in groups.",
   missing: "Admin is under Admin apps on Home; open it to approve new accounts.",
@@ -91,14 +96,14 @@ var S_DAYS_ADMIN = Object.assign({}, S_DAYS, { name: "Check the mentor days", li
 D.GUIDE = {
   student: [S_DOOR, S_TASK, S_PART, S_SKILL],
   mentor: [S_DAYS, S_WAIT, S_OK, S_SIGN],
-  parent: [S_NEXT, S_SUB, S_SNACK],
+  parent: [S_NEXT, S_SUB, S_SNACK, S_VOL],
   admin: [S_ADMIN, S_PATTERN, S_WAIT, S_DAYS_ADMIN, S_OK]
 };
 
 /* ---------- Progress, kept per role ---------- */
 /* What each stop's screen needs. A stop whose app (or Calendar tab) is not in the current mode is left out of the
    list and the count while that mode is on, and comes back with it. */
-var NEEDS = { door: "tab:here", task: "tasks", part: "parts", skill: "skills", days: "tab:here", ok: "parts", sign: "skills", next: "calendar", sub: "calendar", snack: "tab:snacks", admin: "admin", pattern: "calendar" };
+var NEEDS = { door: "tab:here", task: "tasks", part: "parts", skill: "skills", days: "tab:here", ok: "parts", sign: "skills", next: "calendar", sub: "calendar", snack: "tab:snacks", vol: "tab:volunteer", admin: "admin", pattern: "calendar" };
 function available(s) {
   var n = NEEDS[s.id]; if (!n) return true;
   if (n.indexOf("tab:") === 0) return D.calTab(n.slice(4));
