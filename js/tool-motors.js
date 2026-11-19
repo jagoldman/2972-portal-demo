@@ -21,6 +21,13 @@ M.peak = function (id, V, L) {
   var w = knee != null && knee > ws ? knee : ws, T = M.at(id, V, L, w).torque;
   return { w: w, rpm: w / F.RPM, power: T * w, torque: T, knee: knee };
 };
+/* Why a motor's torque card shows one number: below the knee the current limit holds the torque level. Returns
+   { held (N m, one motor, from a standstill), kneeRpm (where the limit lets go; null with no limit or one it never
+   reaches), stall (N m with no limit, at a standstill), freeRpm }. */
+M.flatTorque = function (id, V, L) {
+  var pk = M.peak(id, V, L), held = M.at(id, V, L, 0).torque, stall = M.at(id, V, 0, 0).torque;
+  return { held: held, kneeRpm: pk.knee != null && stall > held * 1.001 ? pk.knee / F.RPM : null, stall: stall, freeRpm: M.free(id, V) };
+};
 M.free = function (id, V) { return F.motor(id).freeRpm * V / 12; };      // rpm with no load
 
 if (typeof module !== "undefined" && module.exports) { module.exports = M; return; }
@@ -111,7 +118,9 @@ function drawCurve(g, s, r, t) {
   g.line(dx, dy, dx, y0, { color: c.accent, width: 1 });
   g.circle(dx, dy, 6, { fill: c.accent, stroke: c.sheet, width: 2 });
   g.text(q.name + " at " + K.fix(V, 1) + " V, " + (L > 0 ? L + " A limit" : "no limit"), 12, 18, { weight: 700 });
-  g.text(phone ? K.n(wt / F.RPM, 0) + " rpm: " + K.fix(at.torque * n, 2) + " N m, " + K.n(at.statorA, 0) + " A motor, " + K.n(at.supplyA, 0) + " A battery, " + K.n(at.power * n, 0) + " W" : "At the dot: " + K.n(wt / F.RPM, 0) + " rpm, " + K.fix(at.torque * n, 2) + " N m, " + K.n(at.statorA, 0) + " A in the motor, " + K.n(at.supplyA, 0) + " A from the battery, " + K.n(at.power * n, 0) + " W", 12, 38, { size: phone ? 11 : 12, weight: 600, color: c.accent });
+  // Say which part of the curve the dot is on, so the torque is seen to be held, then to fall.
+  var state = !limited ? "" : Math.abs(wt - q.peak.knee) <= q.peak.knee * 0.005 ? " (at the knee)" : wt < q.peak.knee ? (phone ? " (held)" : " (held by the limit)") : (phone ? " (falling)" : " (past the knee, falling)");
+  g.text(phone ? K.n(wt / F.RPM, 0) + " rpm: " + K.fix(at.torque * n, 2) + " N m" + state + ", " + K.n(at.statorA, 0) + " A motor, " + K.n(at.supplyA, 0) + " A battery, " + K.n(at.power * n, 0) + " W" : "At the dot: " + K.n(wt / F.RPM, 0) + " rpm, " + K.fix(at.torque * n, 2) + " N m" + state + ", " + K.n(at.statorA, 0) + " A in the motor, " + K.n(at.supplyA, 0) + " A from the battery, " + K.n(at.power * n, 0) + " W", 12, 38, { size: phone ? 11 : 12, weight: 600, color: c.accent });
 }
 // A ring where each battery-current line ends, at its free current, with the value beside it, in the motor's colour.
 function endRings(html, o, L) {
@@ -163,7 +172,7 @@ var K = D.calc, ID = "tool-motors";
 // On a phone the side-by-side table comes before the four charts: it answers the question the charts explain.
 if (!document.getElementById("t-motors-css")) {
   var st = document.createElement("style"); st.id = "t-motors-css";
-  st.textContent = ".t-motors-row3>figure:first-child{grid-column:1/-1}.t-motors-cap{margin:2px 0 4px;max-width:60ch}.t-motors-play{margin:-6px 0 6px}.t-motors-charts{display:grid;gap:16px}@media (max-width:640px){.t-motors-tab{order:-1}}";
+  st.textContent = ".t-motors-row3>figure:first-child{grid-column:1/-1}.t-motors-cap{margin:2px 0 4px;max-width:60ch}.t-motors-play{margin:-6px 0 6px}.out dd b.t-motors-tq{display:inline-block;margin-top:8px;font-size:1.05rem}.t-motors-charts{display:grid;gap:16px}@media (max-width:640px){.t-motors-tab{order:-1}}";
   document.head.appendChild(st);
 }
 var LIST = F.MOTORS.map(function (m) { return [m.id, m.name]; });
@@ -202,6 +211,7 @@ function placeLabels(o) {
 
 K.tool({
   id: ID,
+  compare: false,   // the page already sets three motors side by side
   defaults: { m1: "kraken60", n1: 1, m2: "vortex", n2: 1, m3: "kraken44", n3: 1, volts: 12, statorA: 60 },
   stage: { ratio: 2.3, narrow: 1.05, label: "The first motor's torque against speed: the flat part the current limit holds, the knee, free speed, and its power shaded underneath. Play moves a dot from standstill to free speed." },
   duration: function () { return 4; },
@@ -249,8 +259,15 @@ K.tool({
     if (L.length > 1 && perLb !== top) text += " Per pound, " + perLb.m.name + " leads.";
     text += " A mechanism only gets that power if it is geared so the motor runs near that speed.";
     return '<p class="mute small t-motors-play">Play moves a dot along each motor\'s curve; the read-out above is the first motor.</p>' + K.verdict("info", text) +
-      K.outs(L.map(function (q) { return { k: q.name, v: K.n(q.peak.power * q.n, 0), u: "W", sub: "peak at " + K.n(q.peak.rpm, 0) + " rpm", tip: "The most mechanical power " + (q.n > 1 ? "these motors give" : "this motor gives") + " " + lim + " at " + K.fix(s.volts, 1) + " V." }; })) +
-      K.outs(L.map(function (q) { var T = q.limT * q.n; return { k: "Torque, " + (q.n > 1 ? q.n + " × " : "") + q.m.name, v: K.n(T, 2), u: "N m", sub: K.n(T / (F.LBF * F.IN), 1) + " lb in from a standstill, " + (s.statorA > 0 ? "at the " + s.statorA + " A limit" : "with no limit") }; }));
+      // One card per motor: its peak power, and under it the torque the current limit holds level, with the speed
+      // range it holds over, so the single figure is explained where it is read.
+      '<dl class="outs">' + L.map(function (q) {
+        var ft = M.flatTorque(q.id, s.volts, s.statorA), T = ft.held * q.n, held = ft.kneeRpm != null, lbin = K.n(T / (F.LBF * F.IN), 1);
+        var tnote = held ? "torque held by the " + s.statorA + "\u00a0A limit, 0\u00a0to\u00a0" + K.n(ft.kneeRpm, 0) + "\u00a0rpm" : "torque at a standstill" + (s.statorA > 0 ? "; the limit never holds it back" : ", with no limit");
+        var tip = "Peak power " + lim + ". Torque: " + K.fix(T, 2) + " N m (" + lbin + " lb in)" + (held ? ", held level from a standstill to " + K.n(ft.kneeRpm, 0) + " rpm by the current limit. Above that it falls, to nothing at free speed (" + K.n(ft.freeRpm, 0) + " rpm). With no limit it would be " + K.fix(ft.stall * q.n, 2) + " N m at a standstill." : ", falling from there to nothing at free speed (" + K.n(ft.freeRpm, 0) + " rpm).");
+        return '<div class="out"><dt class="abbr" tabindex="0" data-tip="' + D.esc(tip) + '">' + D.esc(q.name) + '</dt><dd><b class="num">' + K.n(q.peak.power * q.n, 0) + "</b> <span>W</span><small>peak power, at " + K.n(q.peak.rpm, 0) + " rpm</small>" +
+          '<b class="num t-motors-tq">' + K.fix(T, 2) + "</b> <span>N m</span><small>" + D.esc(tnote) + "</small></dd></div>";
+      }).join("") + "</dl>";
   },
 
   more: function (s, r) {

@@ -52,5 +52,13 @@ ok("table note names both NEO Vortex rows", /NEO Vortex \(CTRE\\?'s test\)/.test
   var m = F.motor(id), q = M.at(id, 12, 60, m.free);
   near("free current at free speed, " + id, q.supplyA, m.freeA, 1e-6);
 });
+// Owner round 1: the torque card's one figure is the level the limit holds, to the knee the drawing marks; above the
+// knee the torque falls. Kraken X60 at 12 V, 60 A: 1.10 N m to 5,130 rpm; 7.16 N m with no limit.
+var ft = M.flatTorque("kraken60", 12, 60);
+near("held torque", ft.held, M.at("kraken60", 12, 60, 0).torque, 1e-12);
+ok("held to the knee the drawing marks", Math.abs(ft.kneeRpm - M.peak("kraken60", 12, 60).knee / F.RPM) < 1e-9 && Math.round(ft.kneeRpm) === 5130, ft.kneeRpm);
+ok("level below the knee, falling above it", Math.abs(M.at("kraken60", 12, 60, ft.kneeRpm * 0.5 * F.RPM).torque - ft.held) < 1e-9 && M.at("kraken60", 12, 60, ft.kneeRpm * 1.05 * F.RPM).torque < ft.held - 1e-3);
+near("no-limit stall", ft.stall, 7.16, 1e-9);
+ok("no limit: no knee", M.flatTorque("kraken60", 12, 0).kneeRpm === null);
 console.log(fails ? fails + " of " + n + " checks failed" : "All " + n + " checks passed");
 process.exit(fails ? 1 : 0);

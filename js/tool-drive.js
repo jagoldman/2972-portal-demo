@@ -142,6 +142,7 @@ function fts(v) { return K.fix(v / FT, 1); }
 
 K.tool({
   id: ID,
+  compare: false,   // the page already races two gearings; a third, saved one would bury both
   defaults: { lb: 135, wheel: 4, grip: 1.1, driven: "all", share: 100, motor: "kraken60", motors: 4, statorA: 60, eff: 90,
     presetA: "mk4i-l2", ratioA: 6.75, presetB: "mk4i-l3", ratioB: 6.12, dist: 15, V0: 12.3, Rbat: 0.02, drag: 6 },
   stage: { ratio: 2.4, narrow: 1.45, label: "The race from above, to scale: robot A and robot B on two lanes of carpet, with a mark every 5 feet and the finish line." },

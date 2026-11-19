@@ -92,19 +92,20 @@ M.compare = function (o) {
   var ok = rows.filter(function (q) { return q.sf >= 3; });
   return { rows: rows, best: ok.length ? ok[0].id : null };
 };
-/* How much to enlarge the bend so it shows: the largest round factor (1, 2, 3, 4, 5, 10, 20, 30, 40, 50, 100 ...) that
-   draws it no deeper than 15% of the beam's length. 1 when it already shows. From the inputs alone, so every screen
-   draws the same factor. */
+/* How much to enlarge a bend so it shows: the largest round factor (1, 2, 3, 4, 5, 10, 20, 30, 40, 50, 100 ...) that
+   draws a bend of delta no deeper than 20% of the beam's length. 1 when it already shows. */
 M.bendScale = function (delta, L) {
   if (!(delta > 0) || !(L > 0)) return 1;
-  var want = 0.15 * L / delta, q = [1000, 500, 300, 200, 100, 50, 40, 30, 20, 10, 5, 4, 3, 2, 1];
+  var want = 0.2 * L / delta, q = [1000, 500, 300, 200, 100, 50, 40, 30, 20, 10, 5, 4, 3, 2, 1];
   for (var i = 0; i < q.length; i++) if (q[i] <= want) return q[i];
   return 1;
 };
+/* The drawing's enlargement, chosen from things that do not move with the load (the tube, the material, the length
+   and how it is held): the bend at the load that yields this tube is drawn 20% of the length deep or less. So dragging
+   the load never changes the scale: more load always draws more bend, and yield always looks the same. r: M.beam(). */
+M.drawScale = function (r) { return M.bendScale(r.Pyield / r.stiff, r.L); };
 // The grid behind the beam: 1 in squares up to 40 in, 2 in up to 80 in, then 6 in. It depends on the length alone.
 M.gridStep = function (L) { return L <= 40 ? 1 : L <= 80 ? 2 : 6; };
-// When the stress is a sliver against yield, the cross-section's stress drawing is enlarged by this much (1 = true).
-M.stressZoom = function (share) { if (!(share > 0) || share >= 0.3) return 1; var z = [1000, 500, 200, 100, 50, 20, 10, 5, 4, 3, 2]; for (var i = 0; i < z.length; i++) if (share * z[i] <= 0.8) return z[i]; return 1; };
 M.niceTop = function (x) { if (!(x > 0)) return 1; var m = Math.pow(10, Math.floor(Math.log10(x))), q = [1, 1.2, 1.5, 2, 2.5, 3, 4, 5, 6, 8, 10]; for (var i = 0; i < q.length; i++) if (q[i] * m >= x * (1 - 1e-12)) return q[i] * m; return 10 * m; };
 
 if (typeof module !== "undefined" && module.exports) { module.exports = M; return; }
@@ -156,7 +157,7 @@ function ease(u) { u = F.clamp(u, 0, 1); return u * u * (3 - 2 * u); }
 K.tool({
   id: ID,
   defaults: { section: "r2x1_16", way: "tall", cw: 2, ch: 1, ct: 0.0625, mat: "al", L: 30, P: 25, hold: "cant" },
-  stage: { ratio: 2.2, narrow: 1.0, label: "The beam to scale on its supports, bending under the load, coloured by how close it is to yielding, with its cross-section." },
+  stage: { ratio: 2.2, narrow: 0.8, tall: true, label: "The beam to scale on its supports, bending under the load, coloured by how close it is to yielding, with its cross-section." },
   duration: function () { return DUR; }, autoplay: true, playLabel: "Load it",
 
   compute: function (s) {
@@ -252,17 +253,19 @@ K.tool({
     var arrowLen = Math.min(narrow ? 44 : 56, (bot - top) * 0.2);
     // One scale for length and depth, so the beam is to scale both ways.
     var k = Math.min((ax1 - ax0) / L, 0.2 * (bot - top) / sec.H), th = Math.max(4, sec.H * k);
-    var x0 = ax0 + ((ax1 - ax0) - L * k) / 2, cy = top + 34 + arrowLen + th / 2;
+    // Room in the header for its extra lines: a compared setup, and the past-yield note.
+    var cmp = K.compare ? K.compare(ID) : null, extra = (cmp && cmp.r && isFinite(cmp.r.EI) ? 16 : 0) + (s.P > r.Pyield ? 16 : 0);
+    var x0 = ax0 + ((ax1 - ax0) - L * k) / 2, cy = top + 34 + extra + arrowLen + th / 2;
     var V = { k: k, X: function (x) { return x0 + x * k; }, Y: function (y) { return cy - y * k; }, L: function (l) { return l * k; }, ux: function (px) { return (px - x0) / k; }, uy: function (py) { return (cy - py) / k; } };
     var step = M.gridStep(L);                       // from the length alone: the same squares in every frame and on every screen
     g.ctx.save(); g.ctx.beginPath(); g.ctx.rect(0, 0, narrow ? W : pan.x, narrow ? pan.y : H); g.ctx.clip(); g.grid(V, step, ""); g.ctx.restore();
     // How much to enlarge the bend so it shows: on a phone, a little more of the room under the beam.
     var below = s.hold === "simple" ? 26 : s.hold === "cant" && narrow ? 30 : 14;
-    // The bend's enlargement depends on the inputs alone (the same on a phone and a laptop); it is cut down only when the
-    // enlarged bend would not fit the room under the beam.
-    var room = bot - (cy + th / 2) - below, f = M.bendScale(r.delta, L);
-    if (r.delta * k * f > 0.9 * room && r.delta > 0) { var fit = 0.9 * room / (r.delta * k); f = fit >= 1 ? NICE.filter(function (n) { return n <= fit; })[0] : fit; }
-    function yAt(x) { return cy + M.deflect(s.hold, P, L, r.EI, x) * k * f; }
+    // The bend's enlargement is fixed by the tube, its length and how it is held (M.drawScale), never by the load, so
+    // it holds still while the load is dragged or comes on. A bend deeper than the room under the beam (well past
+    // yield) is drawn to the room's edge and the note says it runs off.
+    var room = bot - (cy + th / 2) - below, f = M.drawScale(r), maxPx = Math.max(10, room), offRoom = false;
+    function yAt(x) { var d = M.deflect(s.hold, P, L, r.EI, x) * k * f; if (d > maxPx) { offRoom = true; d = maxPx; } return cy + d; }
     // The beam unloaded, as a ghost.
     g.rect(V.X(0), cy - th / 2, L * k, th, { stroke: c.ghost, width: 1, dash: [5, 4] });
     // The beam, in slices coloured by their own stress against yield.
@@ -293,6 +296,10 @@ K.tool({
       g.text(t1, fpx, hiY - th / 2 - 8, fo);
       g.text(t2, fpx, loY + th / 2 + 17, fo); faceBotY = loY + th / 2 + 17;
     }
+    // A saved setup being compared (the kit's Saved setups, then Compare): its bent centre line, dotted grey as on the charts, at this
+    // drawing's scale and enlargement whatever its length or support, with its name and its largest bend. It is drawn
+    // over this tube rather than under it, because a centre line under a tube is hidden by the tube's own width.
+    if (cmp && cmp.r && cmp.s && isFinite(cmp.r.EI)) drawSaved(g, cmp, V, cy, f, maxPx, narrow ? W : pan.x, top);
     // Supports.
     var sh = Math.max(th + 40, 64);
     if (s.hold === "cant" || s.hold === "fixed") wall(g, V.X(0), cy, sh, -1);
@@ -335,13 +342,29 @@ K.tool({
     g.dim(V.X(0), (narrow ? pan.y : H) - 14, V.X(L), (narrow ? pan.y : H) - 14, K.n(L, 2) + " in", 0);
     // Words at the top left.
     g.text(holdName(s.hold) + ", " + (s.P > 0 ? ltxt : "no load") + " " + where(s.hold), 12, top + 8, { weight: 600, base: "middle" });
-    var note = (step === 1 ? "1 in" : step + " in") + " squares" + (f !== 1 && s.P > 0 ? (f > 1 ? ". Bend drawn " + f + "× so it shows" : ". Bend drawn " + Math.round(1 / f) + " times smaller to fit") : "");
+    var note = (step === 1 ? "1 in" : step + " in") + " squares. Bend drawn " + (f > 1 ? f + "×" + (narrow ? " at every load" : ", the same at every load") : "true size");
+    var hy = top + 40;
+    if (offRoom) { g.text("Past yield the bend runs off the drawing", 12, hy, { color: c.warn, size: 11, weight: 600, base: "middle" }); hy += 16; }
+    // The compared setup, named once in the header beside a sample of its dashed line.
+    if (cmp && cmp.r && isFinite(cmp.r.EI)) { g.line(12, hy, 34, hy, { color: c.text2, width: 2.25, dash: [1, 5.5] }); g.text(cmp.name + ", its centre line: bends " + inch(cmp.r.delta) + (cmp.s.L !== L ? ", " + K.n(cmp.s.L, 2) + " in long" : "") + (cmp.s.hold !== s.hold ? ", " + holdName(cmp.s.hold).toLowerCase() : ""), 40, hy, { color: c.text2, size: 11, weight: 700, base: "middle" }); }
     g.text(note, 12, top + 24, { color: c.mute, size: 11, base: "middle" });
     // The cross-section.
     section(g, s, r, pan, narrow, k, frac);
   }
 });
 
+/* The saved setup's centre line, from its own support, length and load, drawn with this page's scale (V, f) and cut at
+   the same depth as this tube's (maxPx) and at the drawing's right edge (xMax). Its name and bend are in the header. */
+function drawSaved(g, cmp, V, cy, f, maxPx, xMax, top) {
+  var c = g.c, cs = cmp.s, cr = cmp.r, L = cs.L, pts = [], deep = { y: -Infinity, x: 0 };
+  for (var i = 0; i <= 80; i++) {
+    var x = L * i / 80, px = V.X(x); if (px > xMax - 4) break;
+    var d = Math.min(M.deflect(cs.hold, cs.P, L, cr.EI, x) * V.k * f, maxPx), py = cy + d;
+    pts.push([px, py]); if (py > deep.y) deep = { x: px, y: py };
+  }
+  if (pts.length < 2) return;
+  g.path(pts, { color: c.text2, width: 2.25, dash: [1, 5.5] });
+}
 /* The heat colour: the part colour with a safety factor of 3 or more, toward warn at 1, problem colour below 1. */
 function heat(c, sf) { if (!(sf < 3)) return c.part; if (sf >= 1) return mix(c.part, c.warn, (3 - sf) / 2); return c.bad; }
 function rgb(col) {
@@ -390,12 +413,13 @@ function section(g, s, r, pan, narrow, kBeam, frac) {
   g.dim(cx - bw / 2 - 12, cy + bh / 2, cx - bw / 2 - 12, cy - bh / 2, frac2(sec.H) + " in", 0, { side: "left", size: 12 });
   /* The stress across the depth, as a small chart on its side: zero on the neutral axis, the red dashes at yield
      either side (squeezed one way, stretched the other), and the wedge reaching out to this load's stress. */
-  // A sliver of stress is drawn enlarged, by a stated factor, as the bend is; the ticks then mark a share of yield.
-  var zoom = M.stressZoom(r.share), lim = narrow ? 26 : 34, sx = cx + bw / 2 + (narrow ? 46 : 36) + lim, share = r.share * frac, wv = lim * Math.min(share * zoom, 1.15);
+  // A fixed scale, 0 to yield either side, with a mark at a third of yield (a safety factor of 3): it never refits to
+  // the load, so the wedge grows as the load does.
+  var zoom = 1, lim = narrow ? 34 : 44, sx = cx + bw / 2 + (narrow ? 46 : 36) + lim, share = r.share * frac, wv = lim * Math.min(share * zoom, 1.15);
   var fc = M.faces(s.hold, s.P, s.L), topSq = fc.topSqueezed;   // from the moment's sign at the most-stressed point
   g.line(cx - bw / 2 - 6, cy, sx + lim + 4, cy, { color: c.accent, width: 1.25, dash: [8, 3, 2, 3] });
   g.line(sx, cy - bh / 2 - 2, sx, cy + bh / 2 + 2, { color: c.text2, width: 1 });
-  [-1, 1].forEach(function (sg) { g.line(sx + sg * lim, cy - bh / 2 - 4, sx + sg * lim, cy + bh / 2 + 4, { color: zoom > 1 ? c.mute : c.bad, width: 1, dash: [3, 3] }); });
+  [-1, 1].forEach(function (sg) { g.line(sx + sg * lim, cy - bh / 2 - 4, sx + sg * lim, cy + bh / 2 + 4, { color: c.bad, width: 1, dash: [3, 3] }); g.line(sx + sg * lim / 3, cy - bh / 2, sx + sg * lim / 3, cy + bh / 2, { color: c.mute, width: 1, dash: [2, 3] }); });
   if (wv > 0.5) {
     var col = share >= 1 ? c.bad : share > 1 / 3 ? c.warn : c.s1, d = topSq ? -1 : 1;
     g.poly([[sx, cy], [sx + d * wv, cy - bh / 2], [sx, cy - bh / 2]], { fill: col, stroke: null });
@@ -423,15 +447,16 @@ function section(g, s, r, pan, narrow, kBeam, frac) {
   if (!narrow) {
     var ky = sy + 30, kx = pan.x + 12;
     if (!naxis) { g.line(kx, ky - 4, kx + 22, ky - 4, { color: c.accent, width: 1.25, dash: [8, 3, 2, 3] }); g.text("neutral axis, no stress", kx + 28, ky, { size: 12, weight: 600, color: c.accent }); naxis = true; ky += 16; }
+    g.line(kx + 10, ky - 10, kx + 10, ky + 1, { color: c.mute, width: 1, dash: [2, 3] }); g.text("a third of yield (safety factor 3)", kx + 28, ky, { size: 12, color: c.mute }); ky += 16;
     if (!sec.solid) g.text("tube wall " + frac2(sec.t) + " in", kx, ky, { size: 12, color: c.mute });
   }
-  var lab = narrow ? Math.max(sx + lim + 14, sx + 14 + g.textWidth("stretched", { size: 12 })) : pan.x + 12, ly = narrow ? pan.y + 44 : sy + 70, maxW = (narrow ? g.w : pan.x + pan.w) - lab - 8;
+  var lab = narrow ? Math.max(sx + lim + 14, sx + 14 + g.textWidth("stretched", { size: 12 })) : pan.x + 12, ly = narrow ? pan.y + 44 : sy + 86, maxW = (narrow ? g.w : pan.x + pan.w) - lab - 8;
   // One line each: where, which face is stretched, the stress, and its share of yield.
   var where = s.hold === "cant" ? "At the support, most stressed" : s.hold === "simple" ? "At the middle, most stressed" : "At the middle and the held ends";
   var rows = [[where, { color: c.accent, size: 12, weight: 700 }],
     [fc.swap ? (topSq ? "Middle: top squeezed; ends: top stretched" : "Middle: top stretched; ends: top squeezed") : "Top " + (topSq ? "squeezed" : "stretched") + ", bottom " + (topSq ? "stretched" : "squeezed"), { color: c.text2, size: 12 }],
     [K.n(r.stress * frac, 0) + " psi, " + K.n(share * 100, 0) + "% of yield", { color: share >= 1 ? c.bad : c.text, size: 12, weight: 600 }]];
-  if (narrow) { rows.push(["Dash-dot: no stress", { color: c.accent, size: 12, weight: 600 }]); if (!sec.solid) rows.push(["Tube wall " + frac2(sec.t) + " in", { color: c.mute, size: 12 }]); }
+  if (narrow) { rows.push(["Dash-dot: no stress", { color: c.accent, size: 12, weight: 600 }]); rows.push(["Grey dashes: a third of yield", { color: c.mute, size: 12 }]); if (!sec.solid) rows.push(["Tube wall " + frac2(sec.t) + " in", { color: c.mute, size: 12 }]); }
   // Each label wrapped to the room beside the section, so nothing runs off a phone's edge.
   var y = ly, lh = narrow ? 15 : 17;
   rows.forEach(function (row) {

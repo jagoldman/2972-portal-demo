@@ -359,17 +359,44 @@ F.bestAngle = function (shot, target, degLo, degHi, minEntry) {
   return best;
 };
 /* Shooting while driving. The ball keeps the robot's velocity, so aim at where the target seems to be after the
-   flight time: target minus robot velocity times time, worked out a few times over. vx: robot speed toward the
-   target (m/s), vy: speed across. speedFor(d): { v, time } for a standing shot at distance d (null when out of reach).
+   flight time: target minus robot velocity times time. The flight time depends on the distance shot for, so the
+   distance D must satisfy  D = | (d, 0) - (vx, vy) x time(D) |.
+   vx: robot speed toward the target (m/s), vy: speed across. speedFor(D): { v, time } for a standing shot at distance
+   D (null when out of reach). lo, hi: the nearest and farthest distances speedFor answers for.
+   With lo and hi it looks for every D in [lo, hi] that satisfies the equation (the left side minus the right changes
+   sign there) and takes the one nearest the real distance, so a shot is called impossible only when no distance in
+   the range works. Without them it runs the sum a few times over from d, which can leave the range on the way to an
+   answer inside it; keep that form for callers that have no range.
    Returns { d (the distance to shoot for), leadDeg (turn the launcher this far against the sideways motion), time, v }. */
-F.moving = function (d, vx, vy, speedFor) {
-  var s = speedFor(d); if (!s) return null;
-  var t = s.time, ex = d, ey = 0, dd = d;
-  for (var i = 0; i < 8; i++) {
-    ex = d - vx * t; ey = -vy * t; dd = Math.hypot(ex, ey);
-    s = speedFor(dd); if (!s) return null; t = s.time;
+F.moving = function (d, vx, vy, speedFor, lo, hi) {
+  var s, t, ex, ey, dd;
+  if (lo == null || hi == null || !(hi > lo)) {
+    s = speedFor(d); if (!s) return null;
+    t = s.time; ex = d; ey = 0; dd = d;
+    for (var i = 0; i < 8; i++) {
+      ex = d - vx * t; ey = -vy * t; dd = Math.hypot(ex, ey);
+      s = speedFor(dd); if (!s) return null; t = s.time;
+    }
+    return { d: dd, leadDeg: Math.atan2(ey, ex) * 180 / Math.PI, time: t, v: s.v };
   }
-  return { d: dd, leadDeg: Math.atan2(ey, ex) * 180 / Math.PI, time: t, v: s.v };
+  function gap(D) { var q = speedFor(D); return q ? Math.hypot(d - vx * q.time, vy * q.time) - D : NaN; }
+  var n = 96, best = null, prevD = lo, prevG = gap(lo);
+  function take(D) { if (best == null || Math.abs(D - d) < Math.abs(best - d)) best = D; }
+  if (prevG === 0) take(lo);
+  for (var k = 1; k <= n; k++) {
+    var D = lo + (hi - lo) * k / n, g = gap(D);
+    if (g === 0) take(D);
+    else if (isFinite(g) && isFinite(prevG) && prevG !== 0 && (g < 0) !== (prevG < 0)) {
+      var a = prevD, b = D, ga = prevG;
+      for (var it = 0; it < 40; it++) { var m = (a + b) / 2, gm = gap(m); if ((gm < 0) === (ga < 0)) { a = m; ga = gm; } else b = m; }
+      take((a + b) / 2);
+    }
+    prevD = D; prevG = g;
+  }
+  if (best == null) return null;
+  s = speedFor(best); if (!s) return null;
+  ex = d - vx * s.time; ey = -vy * s.time;
+  return { d: best, leadDeg: Math.atan2(ey, ex) * 180 / Math.PI, time: s.time, v: s.v };
 };
 
 /* ---------- Belts, chains and gears ---------- */

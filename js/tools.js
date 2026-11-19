@@ -26,7 +26,8 @@ function allowed() { return D.visibleTools().length > 0; }
 
 /* ---------- Shared pieces ---------- */
 function head(name) {
-  return '<div class="pagehead toolhead"><a class="backlink" href="#tools" data-act="go" data-v="tools"><span aria-hidden="true">‹</span> All tools</a><h1>' + esc(name) + "</h1></div>";
+  var t = D.TOOLS.filter(function (x) { return x.name === name; })[0];
+  return '<div class="pagehead toolhead"><a class="backlink" href="#tools" data-act="go" data-v="tools"><span aria-hidden="true">‹</span> All tools</a><div class="row between"><h1>' + esc(name) + "</h1>" + (t ? D.toolStar(t.id) : "") + "</div></div>";
 }
 function step(n, title, body) { return '<section class="card toolstep"><h2><span class="stepn" aria-hidden="true">' + n + "</span>" + esc(title) + "</h2>" + body + "</section>"; }
 function photoPicker(id, samples) {
@@ -50,16 +51,14 @@ function n3(x) { return (Math.round(x * 1000) / 1000).toFixed(3); }
 function toolList() {
   var q = (D.S.tools.q || "").trim().toLowerCase(), tools = D.visibleTools().filter(function (t) { return !q || (t.name + " " + t.line + " " + t.tip).toLowerCase().indexOf(q) >= 0; });
   if (!tools.length) return '<p class="empty">No tool matches “' + esc(D.S.tools.q) + '”. Try a shorter word.</p>';
-  // First, the three a student opens with a part in hand. They are also in their own groups below.
-  var quick = q ? [] : ["tool-holes", "tool-units", "tool-spacing"].map(D.tool).filter(function (t) { return t && tools.indexOf(t) >= 0; });
-  // They are short links worded as the question, not a second set of cards: every tool has one card, in its group.
-  var ask = { "tool-holes": "Drill and tap sizes", "tool-units": "Convert a unit", "tool-spacing": "Belt, chain and gear centres" };
-  return (quick.length ? '<nav class="toolquick" id="tg-quick" aria-label="Quick answers at the bench"><span class="tql">Quick answers at the bench</span>' + quick.map(function (t) { return '<a class="tqa" href="#' + t.id + '" data-act="go" data-v="' + t.id + '">' + D.ic(t.icon, 16) + "<span><b>" + ask[t.id] + "</b><small>" + esc(t.name) + "</small></span></a>"; }).join("") + "</nav>" : "") +
+  // First, the person's favourites: the tools they starred. Short links, not a second set of cards.
+  var favs = q ? [] : D.toolFavs().map(D.tool).filter(function (t) { return tools.indexOf(t) >= 0; });
+  return (q ? "" : '<nav class="toolquick" id="tg-favs" aria-label="Your favourites"><span class="tql">Your favourites</span>' + (favs.length ? favs.map(function (t) { return '<a class="tqa" href="#' + t.id + '" data-act="go" data-v="' + t.id + '">' + D.ic(t.icon, 16) + "<span><b>" + esc(t.name) + "</b></span></a>"; }).join("") : '<span class="tqnone">None yet. Press the star beside a tool to keep it here and under Apps.</span>') + "</nav>") +
     // On a phone, links that jump to each group. They come after the quick answers, which a student wants first.
     (q ? "" : '<nav class="tooljump chips" aria-label="Jump to a group"><span class="tjl">Jump to</span>' + D.TOOL_GROUPS.filter(function (g) { return tools.some(function (t) { return t.group === g[0]; }); }).map(function (g) { return '<button class="chip" data-act="tooljump" data-v="' + g[0] + '">' + esc(g[1]) + "</button>"; }).join("") + "</nav>") +
     D.TOOL_GROUPS.map(function (g) {
     var rows = tools.filter(function (t) { return t.group === g[0]; }); if (!rows.length) return "";
-    return '<section class="toolgroup" id="tg-' + g[0] + '" tabindex="-1"><h2>' + esc(g[1]) + "</h2>" + (g[0] === "photo" ? '<p class="small mute toolnote">These two start from a photo you take, not from numbers you type.</p>' : "") + '<div class="toollist">' + rows.map(D.toolRow).join("") + "</div></section>";
+    return '<section class="toolgroup" id="tg-' + g[0] + '" tabindex="-1"><h2>' + esc(g[1]) + "</h2>" + (g[0] === "photo" ? '<p class="small mute toolnote">These two start from a photo you take, not from numbers you type.</p>' : "") + '<div class="toollist">' + rows.map(function (t) { return '<div class="toolcell">' + D.toolRow(t) + D.toolStar(t.id) + "</div>"; }).join("") + "</div></section>";
   }).join("");
 }
 D.views.tools = function () {

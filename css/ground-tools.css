@@ -29,17 +29,17 @@
   .toolgroup { gap: 4px; padding-top: 14px; border-top: 1px solid var(--line); }
   .toolgroup > h2 { padding: 0; color: var(--text); font-size: 1.06rem; font-weight: 700; }
   .toolgroup .toollist { gap: 0 28px; padding: 0; border: 0; border-radius: 0; background: none; }
-  .toolgroup .toollist .toolrow, .toolgroup .toollist .toolrow + .toolrow { border-radius: var(--r); padding-inline: 0 6px; }
+  .toolgroup .toollist .toolrow { border-radius: var(--r); padding-inline: 0 46px; }
   .toolgroup .toolrow .ic { width: 36px; }
   .toolgroup .toolrow .chev { display: none; }
   .toolnote { padding: 0; }
   .tooltag { margin-left: 8px; padding: 0; border-radius: 0; background: none; color: var(--mute); font-size: .8rem; font-weight: 500; }
   .toolquick .tql { padding-left: 0; color: var(--text); }
   .toolquick .tqa { border-radius: var(--r-ctl); border-color: var(--line-2); }
-  /* On a phone the doors are a list, one to a row, with a rule between and a chevron at the end. */
+  /* On a phone the doors are a list, one to a row, with a rule between and the star at the end. */
   @media (max-width: 760px) {
-    .toolgroup .toollist .toolrow + .toolrow { border-top: 1px solid var(--line); border-radius: 0; }
-    .toolgroup .toolrow .chev { display: block; align-self: center; }
+    .toolgroup .toollist .toolcell + .toolcell { border-top: 1px solid var(--line); }
+    .toolgroup .toollist .toolrow { border-radius: 0; }
   }
 
   /* ---------- The bench ---------- */
@@ -85,11 +85,10 @@
   .codeout { font-family: ui-monospace, "SF Mono", Menlo, Consolas, monospace; border-radius: var(--r); }
   .howbody .eq { border-radius: var(--r); }
 
-  /* Units: the Convert / Code constants switch sits on the sheet, and Convert, a page of one column, has no side rule. */
-  .t-units-jump { box-sizing: border-box; max-width: var(--maxw); margin: 0 auto; padding: 12px max(var(--sheet-x), env(safe-area-inset-left, 0px)) 0 max(var(--sheet-x), env(safe-area-inset-left, 0px)); background: var(--surface); }
-  @media (min-width: 1241px) { .t-units-jump { border-inline: 1px solid var(--line); } }
-  .t-units-show-conv .benchside { border-left: 0; }
-  .t-units-show-conv .cg { padding-left: 0; }
+  /* Saved setups: a part between rules, and the compare note as a bar like the verdict's. */
+  .setupsbox { padding: 12px 0; border: 0; border-block: 1px solid var(--line); border-radius: 0; background: none; }
+  .cmpbar { padding: 9px 14px; border: 0; border-left: 4px solid var(--mute); border-radius: 0 var(--r) var(--r) 0; background: var(--surface-2); }
+  .toolstar[aria-pressed="true"] { color: var(--bumper); }
 
   /* The drawing keeps its frame: it is a picture, not a box of content. */
   .stage { border-color: var(--line); }

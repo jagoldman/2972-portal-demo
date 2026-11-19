@@ -71,5 +71,58 @@ var a = mv.lead.leadDeg * Math.PI / 180, hv = mv.lead.d / mv.lead.time, vx = hv 
 near("lead cancels sideways motion", vx * mv.lead.time, 0, 0.02);
 near("and covers the distance", vy * mv.lead.time, r.target.d, 0.02);
 
+// The driving speeds that score. A made-up shooter that scores from 2 to 6 m with a flight of exactly 1 s, so the
+// sums can be done by hand. From 3 m: driving at the target shortens the shot by v x 1 s, and it must stay 2 m or
+// more, so 1 m/s = 3.28 ft/s (3.2 on the 0.1 ft/s steps); backing away lengthens it to at most 6 m, so 3 m/s =
+// 9.84 ft/s (9.8); across, sqrt(9 + v^2) <= 6 gives 5.2 m/s = 17 ft/s, past the 14 ft/s the sliders reach.
+function sf1(d) { return d < 2 - 1e-9 || d > 6 + 1e-9 ? null : { v: 8, time: 1 }; }
+function same(runs, want) { return JSON.stringify(runs) === JSON.stringify(want); }
+var E = M.envelope(3, 0, 0, sf1, 2, 6);
+ok("envelope: toward, one run from a standstill to 3.2", same(E.toward, [[0, 3.2]]), JSON.stringify(E.toward));
+ok("envelope: backing away, to 9.8", same(E.away, [[0, 9.8]]), JSON.stringify(E.away));
+ok("envelope: across runs to the sliders' end", same(E.across, [[0, M.LIM]]), JSON.stringify(E.across));
+ok("envelope: standing still has no heading", E.heading === null);
+// Backing away at 12 ft/s is past the limit. Across speed only lengthens the shot further, so none scores there;
+// the heading's run is the backing-away one.
+var E2 = M.envelope(3, -12, 0, sf1, 2, 6);
+ok("envelope: nothing across when backing away too fast", same(E2.across, []), JSON.stringify(E2.across));
+ok("envelope: heading run is the backing-away run", same(E2.heading, [[0, 9.8]]), JSON.stringify(E2.heading));
+// A band that does not start at a standstill (review, 2026-11-19). Driving at the target at 14 ft/s = 4.267 m/s from
+// 3 m, the aim point is 1.267 m past the target with no across speed: too near. Across speed v makes the shot
+// sqrt(1.267^2 + v^2) long, which is 2 m at v = 1.547 m/s = 5.08 ft/s and 6 m at 5.865 m/s = 19.2 ft/s. So across
+// scores from 5.1 ft/s to the sliders' end, and not below.
+var E3 = M.envelope(3, 14, 0, sf1, 2, 6);
+ok("envelope: a band of across speeds that starts above a standstill", same(E3.across, [[5.1, M.LIM]]), JSON.stringify(E3.across));
+ok("pickRun: the run the speed is in, else the nearest", same(M.pickRun([[0, 3], [9, 12]], 10), [9, 12]) && same(M.pickRun([[0, 3], [9, 12]], 5), [0, 3]) && M.pickRun([], 5) === null);
+// The zone is the same test on a grid: (0, 0) is in it, 12 ft/s backing away is not.
+function inZone(Z, t, a) { return Z.zone.some(function (z) { return Math.abs(z[0] - t) < 1e-9 && a >= z[1] - 1e-9 && a <= z[2] + 1e-9; }); }
+ok("zone: standing still scores", inZone(E, 0, 0));
+ok("zone: 9.5 back scores, 10 back does not, 3 toward scores, 3.5 toward does not", inZone(E, -9.5, 0) && !inZone(E, -10, 0) && inZone(E, 3, 0) && !inZone(E, 3.5, 0));
+ok("zone agrees with the band: at 14 toward, 5.5 across scores and 5 does not", inZone(E3, 14, 5.5) && !inZone(E3, 14, 5));
+// The solver must not call a shot impossible because a first guess left the range (review, 2026-11-19). A shooter
+// whose flight time grows with distance: time = 0.2 x distance (s, m), scoring from 2 to 6 m. From 3 m at 2 m/s
+// toward: D = 3 - 2 x 0.2 D, so D = 3 / 1.4 = 2.143 m, inside the range. The old sum's first guess was
+// 3 - 2 x 0.6 = 1.8 m, outside it, and it gave up there.
+function sf2(d) { return d < 2 - 1e-9 || d > 6 + 1e-9 ? null : { v: 8, time: 0.2 * d }; }
+var mm = F.moving(3, 2, 0, sf2, 2, 6);
+ok("solver: finds the shot inside the range", mm && Math.abs(mm.d - 3 / 1.4) < 1e-6, mm && mm.d);
+near("solver: the answer satisfies its own equation", Math.hypot(3 - 2 * mm.time, 0) - mm.d, 0, 1e-6);
+// The real shooter: the default drive (6 ft/s across) scores and sits inside its own run; 12 ft/s backing away
+// with 8 across does not, and the page then says what would.
+var hrun = M.pickRun(mv.env.heading, mv.speed), arun = M.pickRun(mv.env.across, 6);
+ok("default drive is inside its runs", !mv.out && hrun[0] <= 6 && hrun[1] >= 6 && arun[0] <= 6 && arun[1] >= 6, JSON.stringify(mv.env.heading));
+var mvx = M.move(with_({ vtoward: -12, vacross: 8 }), r, mp), xrun = M.pickRun(mvx.env.heading, mvx.speed);
+ok("too fast: out, with a slower run that works on the same heading", mvx.out && xrun && xrun[1] < mvx.speed, JSON.stringify(mvx.env.heading));
+ok("too fast: the shot it would need is past the standing range", mvx.need > mvx.env.range[1], mvx.need);
+var kh = xrun[1] / mvx.speed, back = M.move(with_({ vtoward: -12 * kh, vacross: 8 * kh }), r, mp);
+ok("slowing to the top of that run scores", back && !back.out);
+// Every speed the cards call scoring really does, and the first speed past each run does not.
+[["toward", function (x) { return [x, 6]; }], ["away", function (x) { return [-x, 6]; }], ["across", function (x) { return [0, x]; }]].forEach(function (q) {
+  mv.env[q[0]].forEach(function (run) {
+    var top = q[1](run[1]), past = q[1](run[1] + 0.1), a1 = M.move(with_({ vtoward: top[0], vacross: top[1] }), r, mp), a2 = run[1] >= M.LIM - 1e-9 ? { out: true } : M.move(with_({ vtoward: past[0], vacross: past[1] }), r, mp);
+    ok("cards agree with the shot: " + q[0] + " " + run[1], a1 && !a1.out && a2 && a2.out, run[1]);
+  });
+});
+
 console.log((n - fails) + " of " + n + " checks passed");
 process.exit(fails ? 1 : 0);
