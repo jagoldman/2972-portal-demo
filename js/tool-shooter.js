@@ -182,6 +182,7 @@ K.tool({
     brate: 5, bn: 8, hood: "fixed", degLo: 48, degHi: 76, dnear: 6, dfar: 22, vtoward: 0, vacross: 6, meas: 0 },
   stage: { ratio: 2, narrow: 0.98, label: "The robot, the ball's flight and the target from the side, to scale, with a close-up of the shooter wheel." },
   tabs: [["shot", "One shot"], ["burst", "Rapid fire"], ["map", "Every distance"], ["move", "While driving"]],
+  tabsNote: "Four views of one shooter. Its numbers are the same in every view: change one here and it changes in all four.",
   speed: 0.25, autoplay: true,
   playLabel: function (s) { return s.view === "map" ? "Drive back" : s.view === "burst" ? "Fire the burst" : "Fire"; },
 
@@ -215,12 +216,13 @@ K.tool({
   duration: function (s, r) { return s.view === "burst" && r.burst ? r.burst.duration : s.view === "map" ? 7 : s.view === "move" && r.move && r.move.lead ? Math.max(r.move.lead.time, r.move.still.time) + 0.15 : r.duration; },
 
   controls: function (s) {
-    var top = "";
-    if (s.view === "burst") top = K.group(ID, "burst", "The burst", K.num(ID, "brate", "Balls a second", { min: 0.5, max: 15, step: 0.5, slider: true }) + K.num(ID, "bn", "Balls", { min: 2, max: 20, step: 1, slider: true }));
-    if (s.view === "map") top = K.group(ID, "map", "Distances", '<p class="cfh">This view works out the wheel speed each distance needs, so there is no wheel speed to set here.</p>' + K.num(ID, "dnear", "Nearest", { unit: "ft", min: 2, max: 30, step: 0.5 }) + K.num(ID, "dfar", "Farthest", { unit: "ft", min: 4, max: 54, step: 0.5 }) +
+    // The group only the view on screen uses comes first, tagged; the rest is the one shooter every view shares.
+    var top = "", own = function (key, title, html, tag) { return K.group(ID, key, title, html, false, tag || "this view only"); };
+    if (s.view === "burst") top = own("burst", "The burst", K.num(ID, "brate", "Balls a second", { min: 0.5, max: 15, step: 0.5, slider: true }) + K.num(ID, "bn", "Balls", { min: 2, max: 20, step: 1, slider: true }));
+    if (s.view === "map") top = own("map", "Distances", '<p class="cfh">This view works out the wheel speed each distance needs, so there is no wheel speed to set here.</p>' + K.num(ID, "dnear", "Nearest", { unit: "ft", min: 2, max: 30, step: 0.5 }) + K.num(ID, "dfar", "Farthest", { unit: "ft", min: 4, max: 54, step: 0.5 }) +
       K.seg(ID, "hood", "Hood", [["fixed", "Fixed angle"], ["adj", "Adjustable"]], { hint: s.hood === "adj" ? "For each distance it picks the angle that forgives the most wheel-speed error while keeping the wheel under 85% of its top speed." : "" }) +
-      (s.hood === "adj" ? K.num(ID, "degLo", "Lowest angle", { unit: "°", min: 15, max: 80, step: 1 }) + K.num(ID, "degHi", "Highest angle", { unit: "°", min: 25, max: 88, step: 1 }) : ""));
-    if (s.view === "move") top = K.group(ID, "move", "The robot is driving", '<p class="cfh">This view works out the wheel speed the moving shot needs, so there is no wheel speed to set here. Drag the tip of the speed arrow in the drawing, or use these.</p>' + K.num(ID, "vtoward", "Toward the target", { unit: "ft/s", min: -14, max: 14, step: 0.5, slider: true, hint: "Minus is backing away.", tip: "Negative means backing away." }) + K.num(ID, "vacross", "Across", { unit: "ft/s", min: -14, max: 14, step: 0.5, slider: true, hint: "Plus is to the right as the robot faces the target; minus is to the left.", tip: "Sideways past the target. Positive is to the right as the robot faces it." }));
+      (s.hood === "adj" ? K.num(ID, "degLo", "Lowest angle", { unit: "°", min: 15, max: 80, step: 1 }) + K.num(ID, "degHi", "Highest angle", { unit: "°", min: 25, max: 88, step: 1 }) : ""), "used here and by While driving");
+    if (s.view === "move") top = own("move", "The robot is driving", '<p class="cfh">This view works out the wheel speed the moving shot needs, so there is no wheel speed to set here. Drag the tip of the speed arrow in the drawing, or use these.</p>' + K.num(ID, "vtoward", "Toward the target", { unit: "ft/s", min: -14, max: 14, step: 0.5, slider: true, hint: "Minus is backing away.", tip: "Negative means backing away." }) + K.num(ID, "vacross", "Across", { unit: "ft/s", min: -14, max: 14, step: 0.5, slider: true, hint: "Plus is to the right as the robot faces the target; minus is to the left.", tip: "Sideways past the target. Positive is to the right as the robot faces it." }));
     var shooter = K.seg(ID, "type", "Kind", [["hood", "Wheel and hood"], ["dual", "Two wheels"]]) +
       (s.view === "map" || s.view === "move" ? "" : K.num(ID, "rpm", "Wheel speed", { unit: "rpm", min: 500, max: 7000, step: 10, slider: true })) +
       (s.view === "map" && s.hood === "adj" ? "" : K.num(ID, "deg", "Launch angle", { unit: "°", min: 15, max: 88, step: 0.5, slider: true, tip: "Above level, as the ball leaves." })) +
@@ -242,7 +244,7 @@ K.tool({
       K.check(ID, "lift", "Spin lifts the ball") +
       K.num(ID, "cd", "Drag coefficient", { min: 0, max: 1.2, step: 0.01, tip: "About 0.47 for a smooth ball at these speeds; a fuzzy or dimpled ball differs." }) +
       K.num(ID, "vin", "Speed going in", { unit: "ft/s", min: 0, max: 30, step: 0.5, tip: "How fast the feeder pushes the ball into the wheel. It adds little speed but saves the wheel energy." });
-    return top + K.group(ID, "shooter", "Shooter", shooter) + K.group(ID, "target", "Target", target) + K.group(ID, "ball", "Ball", ball) +
+    return top + K.sameInViews("The same shooter in every view") + K.group(ID, "shooter", "Shooter", shooter) + K.group(ID, "target", "Target", target) + K.group(ID, "ball", "Ball", ball) +
       K.group(ID, "spin", "Spinning weight", spinning) + K.group(ID, "drive", "Motor", K.motorFields(ID, { ratioLabel: "Reduction to the wheel", ratioMax: 6 }), true) + K.group(ID, "fine", "Fine tuning", fine, true);
   },
 

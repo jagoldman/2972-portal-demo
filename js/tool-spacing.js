@@ -58,7 +58,7 @@ K.tool({
   },
 
   controls: function (s) {
-    var kind = K.seg(ID, "kind", "They are joined by", [["belt", "Belt"], ["chain", "Chain"], ["gear", "Gears"]]);
+    var kind = K.seg(ID, "kind", "They are joined by", [["belt", "Belt"], ["chain", "Chain"], ["gear", "Gears"]], { hint: "The tooth counts stay as you switch." });
     var size = s.kind === "belt" ? K.pick(ID, "belt", "Belt", F.BELTS.map(function (b) { return [b.id, b.name]; })) :
       s.kind === "chain" ? K.pick(ID, "chain", "Chain", F.CHAINS.map(function (c) { return [c.id, c.name]; })) :
       K.pick(ID, "gear", "Tooth size", GEARS.map(function (g) { return [g[0], g[1]]; }), { hint: "DP: teeth per inch of pitch diameter. Module: mm of pitch diameter per tooth.", tip: "DP is teeth per inch of pitch diameter. Module is millimetres of pitch diameter per tooth." });

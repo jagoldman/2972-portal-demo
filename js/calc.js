@@ -35,6 +35,8 @@ K.result = function (id) { return CACHE[id]; };
        reduced motion and for anyone who has not pressed Play; default: the last frame),
      speed: 0.25 (the playback speed it starts at: 1, 0.25 or 0.05),
      tabs: [[value, label], ...] (a row of views above the drawing; the choice is the state key "view"),
+     tabsNote: "..." (one line beside the views saying they share their numbers; the kit has a default. In the
+       inputs, mark a group that only one view uses with K.group's tag and put K.sameInViews() above the rest),
      playLabel: "Fire" (or a function of s), hints(s, r) -> { elementId: text } (small derived lines inside the controls),
      pointer(kind, x, y, s, r) -> true when it changed s (kind: "down" | "move" | "up"; x, y in canvas CSS pixels),
      onPick(key, value, s) (after a dropdown or segment changes; use it to apply a preset),
@@ -65,7 +67,7 @@ function page(def) {
   var stage = "";
   if (def.stage) {
     var dur = def.duration && !def.loop ? durOf(def, s, r) : 0, moves = def.duration || def.loop;
-    stage = '<div class="stagewrap" data-area="stage">' + (def.tabs ? '<div class="benchtabs"><span class="seg" role="group" aria-label="View">' + def.tabs.map(function (o) { return '<button data-act="calcseg"' + attr(id, "view") + ' data-v="' + esc(o[0]) + '" aria-pressed="' + (String(s.view) === String(o[0])) + '">' + esc(o[1]) + "</button>"; }).join("") + "</span></div>" : "") + '<div class="stage' + (def.stage.tall ? " tall" : "") + '" style="--ar:' + (def.stage.ratio || 16 / 9) + ";--arn:" + (def.stage.narrow || Math.min(def.stage.ratio || 16 / 9, 1.5)) + '"><canvas id="calc-cv" data-tool="' + id + '" role="img" aria-label="' + esc(def.stage.label || "Drawing") + '"></canvas></div>' +
+    stage = '<div class="stagewrap" data-area="stage">' + (def.tabs ? '<div class="benchtabs"><span class="seg" role="group" aria-label="View">' + def.tabs.map(function (o) { return '<button data-act="calcseg"' + attr(id, "view") + ' data-v="' + esc(o[0]) + '" aria-pressed="' + (String(s.view) === String(o[0])) + '">' + esc(o[1]) + "</button>"; }).join("") + '</span><p class="tabsnote">' + esc(def.tabsNote || "Each view uses the same numbers: change one and it changes in all of them.") + "</p></div>" : "") + '<div class="stage' + (def.stage.tall ? " tall" : "") + '" style="--ar:' + (def.stage.ratio || 16 / 9) + ";--arn:" + (def.stage.narrow || Math.min(def.stage.ratio || 16 / 9, 1.5)) + '"><canvas id="calc-cv" data-tool="' + id + '" role="img" aria-label="' + esc(def.stage.label || "Drawing") + '"></canvas></div>' +
       (moves ? '<div class="transport"><button class="btn sm' + (def.loop ? "" : " primary") + '" id="calc-play" data-act="calcplay" data-tool="' + id + '">' + playLabel(def, R) + "</button>" +
         (def.loop ? "" : '<input type="range" id="calc-scrub" class="scrub" min="0" max="' + dur.toFixed(3) + '" step="0.001" value="' + Math.min(R.t, dur).toFixed(3) + '" data-input="calcscrub" data-tool="' + id + '" aria-label="Move through the animation">' +
         '<output id="calc-time" class="num ttime">' + R.t.toFixed(2) + ' s</output>') +
@@ -149,12 +151,15 @@ K.seg = function (id, key, label, options, o) {
 K.check = function (id, key, label, o) {
   return '<label class="cf check"' + tipAttr(o) + '><input type="checkbox" data-change="calccheck"' + attr(id, key) + (S(id)[key] ? " checked" : "") + "> <span>" + esc(label) + "</span></label>";
 };
-// A titled group of fields. closed: true starts it folded (for the numbers most people leave alone).
-K.group = function (id, gkey, title, html, closed) {
-  var R = rt(id), open = R.open["g-" + gkey] == null ? !closed : R.open["g-" + gkey];
-  if (!closed) return '<section class="cg"><h2>' + esc(title) + "</h2>" + html + "</section>";
-  return '<details class="cg" data-open="g-' + esc(gkey) + '"' + (open ? " open" : "") + "><summary><h2>" + esc(title) + "</h2></summary>" + html + "</details>";
+// A titled group of fields. closed: true starts it folded (for the numbers most people leave alone). tag: a few
+// quiet words after the title, for a group that only the view on screen uses ("this view only").
+K.group = function (id, gkey, title, html, closed, tag) {
+  var R = rt(id), open = R.open["g-" + gkey] == null ? !closed : R.open["g-" + gkey], t = esc(title) + (tag ? ' <span class="cgtag">' + esc(tag) + "</span>" : "");
+  if (!closed) return '<section class="cg' + (tag ? " cgview" : "") + '"><h2>' + t + "</h2>" + html + "</section>";
+  return '<details class="cg" data-open="g-' + esc(gkey) + '"' + (open ? " open" : "") + "><summary><h2>" + t + "</h2></summary>" + html + "</details>";
 };
+// A line above the groups that every view of a tabbed calculator shares.
+K.sameInViews = function (text) { return '<p class="cgsame">' + esc(text || "Same in every view") + "</p>"; };
 // The motor block nearly every mechanism needs: which motor, how many, the reduction, the current limit.
 K.MOTOR_DEFAULTS = { motor: "kraken60", motors: 1, ratio: 10, eff: 90, statorA: 60 };
 K.motorFields = function (id, o) {

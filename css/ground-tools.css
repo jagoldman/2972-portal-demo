@@ -46,6 +46,9 @@
   /* The inputs are a column behind a rule, like Home's side column. */
   .benchside { border: 0; border-left: 1px solid var(--line); border-radius: 0; background: none; }
   .cg { padding: 14px 2px 16px 20px; }
+  .cgsame { padding: 12px 2px 0 20px; color: var(--mute); }
+  .cgsame:first-child { padding-top: 2px; }
+  .benchside .cgsame + .cg { padding-top: 8px; }
   .cg:first-child { padding-top: 2px; }
   .cg h2 { font-size: 1rem; }
   .cf > label, .cf > .cfl { font-weight: 600; }
@@ -53,6 +56,8 @@
   @media (max-width: 900px) {
     .benchside { border-left: 0; border-top: 1px solid var(--line); }
     .cg, .cg:first-child { padding: 14px 0 16px; }
+    .cgsame, .cgsame:first-child { padding: 12px 0 0; }
+    .benchside .cgsame + .cg { padding-top: 8px; }
   }
 
   /* The answer first: one sentence in a bar, its state as a dot and a word and as the bar's edge. */
