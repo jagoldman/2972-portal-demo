@@ -283,3 +283,12 @@ details.cg:not([open]) { padding-bottom: 12px; }
 .out dd .cmpv b { font-size: inherit; font-weight: 700; color: var(--text); letter-spacing: 0; white-space: nowrap; }
 .out .cmpv .ckey { display: inline-block; width: 14px; margin-right: 6px; vertical-align: middle; }
 @media (max-width: 640px) { .setuprow { grid-template-columns: minmax(0, 1fr) auto; } .setupacts { grid-column: 1 / -1; justify-content: flex-start; } }
+
+/* ---------- Views that share their numbers ---------- */
+.benchtabs { align-items: center; gap: 6px 14px; flex-wrap: wrap; }
+.tabsnote { margin: 0; font-size: .85rem; color: var(--text-2); line-height: 1.35; }
+.cgtag { margin-left: 6px; font-size: .78rem; font-weight: 600; color: var(--mute); white-space: nowrap; }
+/* The label takes the rule that would sit over the first shared group, so it reads as that part's heading. */
+.cgsame { margin: 0; padding: 12px 14px 0; border-top: 1px solid var(--line); font-size: .8rem; font-weight: 700; color: var(--text-2); }
+.cgsame:first-child { border-top: 0; padding-top: 2px; }
+.benchside .cgsame + .cg { border-top: 0; padding-top: 8px; }
