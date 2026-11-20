@@ -392,3 +392,23 @@ leaked or photographed code gives nobody access.
   favourites line reads "None yet. Press the star beside a tool to keep it here, under Apps and on Home. Until then,
   those show three tools picked for you." The data keeps `top: true` on six tools, because Live and Baseline still
   start everyone with those six and still say "All 17 tools".
+
+### 8.10 Account: open apps in a new tab or in this tab
+> "add a setting to the account settings that makes it so a new link can be switched between new tab and in the same
+> tab. default to new tab." … "per person for tab settings."
+
+- **What:** on the Account page, under Appearance, **"Open apps in"** with two choices, **"A new tab"** (chosen to
+  start with) and **"This tab"**, and one line: "Apps and tools you open from the Apps menu and Home. Links that leave
+  the site, such as Team Drive, GitHub and Onshape, always open in a new tab."
+- **What it changes:** every app link and tool link in the Apps menu and on Home, and "See all tools". With "This
+  tab" they open in the same tab, and lose "(opens in a new tab)" from their names and the ↗ after a link-out's name
+  (the Website editor). With "A new tab" they behave as before.
+- **Tools follow it too (my choice):** a tool picked from the Apps menu or Home is a link to another page, like an
+  app beside it in the same list, so one rule covers the whole list. With "A new tab" a tool opens in a new tab at its
+  own address (before, it opened in place); with "This tab" it opens in place, without reloading. Inside the Tools
+  page, its own links to tools always open in place: that is moving within one app.
+- **Always a new tab:** links that leave the site (Team Drive, GitHub, Onshape, the Team Handbook, and the other
+  outside links such as The Blue Alliance on an event day) whatever the choice.
+- **Saved per person:** the demo keeps it with the other saved choices in this browser (Reset clears it). **The real
+  app keeps it in Account, so it follows the person to every device.**
+- **Who sees it:** everyone with an Account page: students, mentors, admins and parents.

@@ -47,10 +47,14 @@ D.views.account = function () {
         }).join("") + "</div></details>";
     }).join("") + "</div></section>";
   var look = '<section class="card"><h2>Appearance</h2><span class="seg" role="group" aria-label="Theme">' + [["light", "Light"], ["dark", "Dark"], ["", "Match my device"]].map(function (t) { return '<button data-act="actheme" data-v="' + t[0] + '" aria-pressed="' + (theme === t[0]) + '">' + t[1] + "</button>"; }).join("") + "</span></section>";
+  /* Ground up (owner, 2026-11-19): where apps open. Saved per person (D.setPref "linktab"; the real app keeps it in
+     Account, so it follows the person across devices). See D.sameTab in js/core.js for what it covers. */
+  var tabs = D.ground() ? '<section class="card actabs"><h2 id="ac-tabs-h">Open apps in</h2><p class="small mute" id="ac-tabs-d">Apps and tools you open from the Apps menu and Home. Links that leave the site, such as Team Drive, GitHub and Onshape, always open in a new tab.</p><span class="seg" role="group" aria-labelledby="ac-tabs-h" aria-describedby="ac-tabs-d">' +
+    [["new", "A new tab"], ["same", "This tab"]].map(function (t) { return '<button data-act="aclinktab" data-v="' + t[0] + '" aria-pressed="' + (D.pref("linktab", "new") === t[0]) + '">' + t[1] + "</button>"; }).join("") + "</span></section>" : "";
   var mode = '<section class="card"><h2>Build or Competition mode</h2><p class="small mute">Changes which apps show on Home and in the Apps menu.</p><div class="choice"><button data-act="mode" data-v="build" aria-pressed="' + (D.S.mode === "build") + '">' + (D.ground() ? "Build" : "Build mode") + '</button><button data-act="mode" data-v="competition" aria-pressed="' + (D.S.mode === "competition") + '">' + (D.ground() ? "Competition" : "Competition mode") + "</button></div></section>";
   var guide = D.GUIDE && D.GUIDE[D.S.role] ? '<section class="card"><h2>Guided tour</h2><p class="mute">A few short steps on Home that show where to start.</p><div><button class="btn" data-act="guidereplay">Start the tour again</button></div></section>' : "";
   var signin = '<section class="card"><h2>' + (D.ground() ? "Password" : "Sign-in") + '</h2><p class="mute">' + (D.ground() ? "" : "You sign in with the team sign-in. ") + (D.ground() ? '<button class="linkbtn" data-act="demosay" data-msg="In the real site this opens the team sign-in page, where you change your password.">Change your password</button> on the team sign-in page.' : "Change your password there.") + "</p></section>";
-  return '<div class="content"><div class="acc"><h1>Account</h1>' + (D.ground() ? profile + notes + look + mode + guide + signin : profile + look + mode + guide + notes + signin) + "</div></div>";
+  return '<div class="content"><div class="acc"><h1>Account</h1>' + (D.ground() ? profile + notes + look + tabs + mode + guide + signin : profile + look + mode + guide + notes + signin) + "</div></div>";
 };
 var A = D.acts;
 A.acdiscord = function () { var a = Acc(); a.discord = !a.discord; D.toast(a.discord ? "Discord linked." : "Discord unlinked."); D.render(); };
@@ -58,5 +62,6 @@ A.acquiet = function () { Acc().quiet = !Acc().quiet; D.render(); };
 D.changes.acnote = function (el) { var c = CHOICES.filter(function (x) { return x[0] === el.value; })[0], p = Acc().prefs[el.dataset.app][el.dataset.k]; p.discord = c[2]; p.email = c[3]; D.render(); var n = document.getElementById(el.id); if (n) n.focus(); };
 /* Remember which app sections are open so a re-render keeps them open ("toggle" does not bubble, so listen in capture). */
 document.addEventListener("toggle", function (e) { var t = e.target; if (t.classList && t.classList.contains("napp") && D.S.account) D.S.account.open[t.dataset.app] = t.open; }, true);
+A.aclinktab = function (b) { D.setPref("linktab", b.dataset.v); D.render(); var el = document.querySelector('[data-act="aclinktab"][data-v="' + b.dataset.v + '"]'); if (el) el.focus(); };
 A.actheme = function (b) { if (b.dataset.v) document.documentElement.setAttribute("data-theme", b.dataset.v); else document.documentElement.removeAttribute("data-theme"); D.render(); };
 })();

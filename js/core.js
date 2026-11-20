@@ -226,6 +226,18 @@ D.appHref = function (route) {
   url.searchParams.set("mode", D.S.mode);
   return esc(url.href);
 };
+/* Ground up (owner, 2026-11-19): a person chooses on the Account page whether apps open in a new tab (the default)
+   or in this tab ("linktab": "new" or "same"). The demo keeps it with the other saved choices; the real site keeps it
+   in Account so it follows the person to every device. It covers the app and tool links in the Apps menu and on Home,
+   and "See all tools". Links that leave the site (svc "link": Team Drive, GitHub, Onshape, the Handbook) always open
+   in a new tab. Live and Baseline have no such setting: every app link opens in a new tab, as before. */
+D.sameTab = function () { return D.ground() && D.pref("linktab", "new") === "same"; };
+D.leavesSite = function (t) { return t.svc === "link"; };
+D.newTab = function (t) { return !t || D.leavesSite(t) || !D.sameTab(); };
+// The attributes that follow href on such a link: target and rel for a new tab, and (with name) the accessible name,
+// which says "(opens in a new tab)" only when it does. The ↗ after a link-out's name shows only with a new tab too.
+D.tabAttrs = function (t, name) { var nt = D.newTab(t); return (nt ? ' target="_blank" rel="noopener noreferrer"' : "") + (name != null ? ' aria-label="' + esc(name) + (nt ? " (opens in a new tab)" : "") + '"' : ""); };
+D.extMark = function (t) { return D.isExt(t) && D.newTab(t) ? " ↗" : ""; };
 D.tab = function (app, def) { return D.S.tabs[app] || def; };
 D.tabsFor = function (app, list, def) {
   var cur = D.tab(app, def || list[0][0]);
@@ -319,17 +331,20 @@ function groupRow(id, label, count, place, body, tip) {
     '<span class="grpname">' + esc(label) + '</span><span class="tcount">' + count + '</span><span class="grpchev" aria-hidden="true">' + D.ic("chevron", 16) + "</span></button>" +
     '<div class="grpbody" id="' + bid + '"' + (open ? "" : " hidden") + ">" + body + "</div></div>";
 }
-D.toolRow = function (t) { return '<a class="toolrow" href="#' + t.id + '" data-act="go" data-v="' + t.id + '" data-tip="' + esc(t.tip) + '"><span class="ic">' + D.ic(t.icon, 18) + "</span><span><b>" + esc(t.name) + (t.group === "photo" ? '<span class="tooltag">needs a photo</span>' : "") + "</b><small>" + esc(t.line) + "</small></span>" + (D.ground() ? '<span class="chev" aria-hidden="true">›</span>' : "") + "</a>"; };
+/* A tool link from the Apps menu or Home (Ground up) follows the "Open apps in" choice like an app: a new tab opens
+   the tool's own address there; "This tab" opens it in place, as the Tools page's own links always do. */
+D.toolHref = function (id, name) { return D.sameTab() ? 'href="#' + id + '" data-act="go" data-v="' + id + '"' : 'href="' + D.appHref(id) + '"' + D.tabAttrs(null, name); };
+D.toolRow = function (t, out) { return '<a class="toolrow" ' + (out ? D.toolHref(t.id, t.name) : 'href="#' + t.id + '" data-act="go" data-v="' + t.id + '"') + ' data-tip="' + esc(t.tip) + '"><span class="ic">' + D.ic(t.icon, 18) + "</span><span><b>" + esc(t.name) + (t.group === "photo" ? '<span class="tooltag">needs a photo</span>' : "") + "</b><small>" + esc(t.line) + "</small></span>" + (D.ground() ? '<span class="chev" aria-hidden="true">›</span>' : "") + "</a>"; };
 /* Ground up Apps menu: Tools opens in place. It lists the person's favourite tools by name, two to a row like the
    apps above (or, with no favourites, the three picked for them, D.toolPick), then "See all tools", the one door to
    the page that has every tool. Pressing Tools never leaves the page the person is on. */
 function menuTools() {
   var tools = D.visibleTools(); if (!tools.length) return "";
   var sh = D.toolShort(), favs = sh.list;
-  function item(t) { return '<a class="appitem toolitem" href="#' + t.id + '" data-act="go" data-v="' + t.id + '" data-tip="' + esc(t.tip) + '"' + (D.S.route === t.id ? ' aria-current="page"' : "") + '><span class="ic">' + D.ic(t.icon, 18) + "</span><b>" + esc(t.name) + "</b></a>"; }
+  function item(t) { return '<a class="appitem toolitem" ' + D.toolHref(t.id, t.name) + ' data-tip="' + esc(t.tip) + '"' + (D.S.route === t.id ? ' aria-current="page"' : "") + '><span class="ic">' + D.ic(t.icon, 18) + "</span><b>" + esc(t.name) + "</b></a>"; }
   return groupRow("menutools", "Tools", tools.length, "menu",
     '<div class="appgrid">' + favs.map(item).join("") + "</div>" + (sh.favs ? "" : '<p class="grpnote">Three to try. Star a tool on the Tools page to keep your own here.</p>') +
-    '<a class="toolrow all" href="#tools" data-act="go" data-v="tools"' + (D.S.route === "tools" ? ' aria-current="page"' : "") + '><span>See all tools</span><span class="chev" aria-hidden="true">›</span></a>',
+    '<a class="toolrow all" ' + D.toolHref("tools", "See all tools") + (D.S.route === "tools" ? ' aria-current="page"' : "") + '><span>See all tools</span><span class="chev" aria-hidden="true">›</span></a>',
     sh.favs ? "Your favourite tools, and a link to all of them." : "Three tools to try, and a link to all of them.");
 }
 function toolsGroup(place) {
@@ -337,7 +352,7 @@ function toolsGroup(place) {
   // The group is a short list of doors: the person's favourite tools, then one link to the page that has them all.
   // In Ground up, with no favourites, the three picked tools (D.toolPick) and a line that says so; the last link is "See all tools".
   var sh = D.toolShort(), top = sh.list, g = D.ground();
-  return groupRow("tools", "Tools", tools.length, place, top.map(D.toolRow).join("") + (g && !sh.favs ? '<p class="grpnote">Three to try. Star a tool on the Tools page to keep your own here.</p>' : "") + '<a class="toolrow all" href="#tools" data-act="go" data-v="tools"><span>' + (g ? "See all tools" : "All " + tools.length + " tools") + '</span><span class="chev" aria-hidden="true">›</span></a>');
+  return groupRow("tools", "Tools", tools.length, place, top.map(function (t) { return D.toolRow(t, g); }).join("") + (g && !sh.favs ? '<p class="grpnote">Three to try. Star a tool on the Tools page to keep your own here.</p>' : "") + '<a class="toolrow all" ' + (g ? D.toolHref("tools", "See all tools") : 'href="#tools" data-act="go" data-v="tools"') + '><span>' + (g ? "See all tools" : "All " + tools.length + " tools") + '</span><span class="chev" aria-hidden="true">›</span></a>');
 }
 /* Admin apps: the link-out apps for the people who run the site (Admin, Website editor). The group shows only when
    this person may open at least one of them, and lists only those. */
@@ -350,7 +365,7 @@ function adminGroup(place, tiles, draw) {
 function appsMenu() {
   var S = D.S, tiles = D.visibleTiles();
   // Name only, two columns at every width (as the real bar's kit 0.2.3): the description is the tile's tip.
-  function item(t) { return '<a class="appitem" href="' + D.appHref(t.id) + '" target="_blank" rel="noopener noreferrer" aria-label="' + esc(t.name) + ' (opens in a new tab)"' + D.tileTip(t.id) + (S.route === t.id ? ' aria-current="page"' : "") + '><span class="ic">' + D.ic(t.icon, 20) + "</span><b>" + esc(t.name) + (D.isExt(t) ? " ↗" : "") + "</b></a>"; }
+  function item(t) { return '<a class="appitem" href="' + D.appHref(t.id) + '"' + D.tabAttrs(t, t.name) + D.tileTip(t.id) + (S.route === t.id ? ' aria-current="page"' : "") + '><span class="ic">' + D.ic(t.icon, 20) + "</span><b>" + esc(t.name) + D.extMark(t) + "</b></a>"; }
   var more = tiles.filter(function (t) { return t.more; });
   return '<div class="appsmenu" role="dialog" aria-label="All apps" data-keepscroll="appsmenu"><div class="menuhead">' + (D.ground() ? '<h3>Apps</h3>' : '<div class="seg" role="group" aria-label="Mode"><button data-act="mode" data-v="build" aria-pressed="' + (S.mode === "build") + '" data-tip="Show the apps for build season.">Build</button><button data-act="mode" data-v="competition" aria-pressed="' + (S.mode === "competition") + '" data-tip="Show the event apps: schedule, pit and scouting.">Competition</button></div>') + '<button class="xbtn" data-act="apps" aria-label="Close" data-tip="Close the apps menu.">×</button></div>' +
     '<div class="appgrid">' + (D.ground() ? '<a class="appitem" href="#portal" data-act="go" data-v="portal"' + (S.route === "portal" ? ' aria-current="page"' : "") + '><span class="ic">' + D.ic("home", 20) + "</span><b>Home</b></a>" : "") + tiles.filter(isCore).map(item).join("") + "</div>" +
@@ -571,10 +586,10 @@ function weekRows() {
 function homeGround() {
   var S = D.S, tiles = D.visibleTiles(), staff = D.isStaff(), role = S.role;
   var main = tiles.filter(isCore), more = tiles.filter(function (t) { return t.more; });
-  function link(t) { return '<li><a href="' + D.appHref(t.id) + '" target="_blank" rel="noopener noreferrer"' + D.tileTip(t.id) + '>' + D.ic(t.icon, 16) + esc(t.name) + (D.isExt(t) ? " ↗" : "") + "</a></li>"; }
+  function link(t) { return '<li><a href="' + D.appHref(t.id) + '"' + D.tabAttrs(t) + D.tileTip(t.id) + '>' + D.ic(t.icon, 16) + esc(t.name) + D.extMark(t) + "</a></li>"; }
   var SHORTER = { calendar: "Practices, attendance, snacks" };
   if (role === "parent") { SHORTER.tasks = "What the team is building"; SHORTER.calendar = "Practices, events, snacks"; }
-  function approw(t) { return '<a class="approw" href="' + D.appHref(t.id) + '" target="_blank" rel="noopener noreferrer" aria-label="' + esc(t.name) + ' (opens in a new tab)"' + D.tileTip(t.id) + '><span class="ic">' + D.ic(t.icon, 18) + "</span><b>" + esc(t.name) + (D.isExt(t) ? " ↗" : "") + "</b><small>" + esc(SHORTER[t.id] || SHORT[t.id] || t.desc) + "</small></a>"; }
+  function approw(t) { return '<a class="approw" href="' + D.appHref(t.id) + '"' + D.tabAttrs(t, t.name) + D.tileTip(t.id) + '><span class="ic">' + D.ic(t.icon, 18) + "</span><b>" + esc(t.name) + D.extMark(t) + "</b><small>" + esc(SHORTER[t.id] || SHORT[t.id] || t.desc) + "</small></a>"; }
   var d = new Date(2026, 10, 10); try { if (D.calApi && D.calApi.TODAYS) { var q = D.calApi.TODAYS.split("-"); d = new Date(+q[0], +q[1] - 1, +q[2]); } } catch (e) {}
   var date = d.toLocaleDateString("en-US", { weekday: "long", month: "long", day: "numeric" });
   var now = nowRows(), others = role === "student" && !S.eventDay ? waitingOnOthers() : [];
