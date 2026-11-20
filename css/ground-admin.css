@@ -1,0 +1,121 @@
+/* Design 8.3, Ground up ("c"): the Admin screen the demo draws (js/admin.js; owner, 2026-11-19, D215).
+   Requests and Join links, the New join link form, the code sheet (shown or printed) and the join page preview.
+   Every rule sits under :root[data-design="c"]; Live and Baseline show Admin as a link-out. */
+
+:root[data-design="c"] {
+  .adm { max-width: 980px; }
+  .adsec { padding-top: 4px; }
+  .adh { margin: 4px 0 4px; font-size: 1.25rem; }
+  .adlede { max-width: 64ch; margin: 0 0 14px; color: var(--mute); font-size: .92rem; }
+  .adlist { border-top: 1px solid var(--line-2); }
+
+  /* A request: who, how they asked, then the decision on the row. */
+  .adreq { display: grid; grid-template-columns: minmax(0, 1fr) auto; gap: 8px 20px; align-items: center; padding: 14px 0; border-bottom: 1px solid var(--line); }
+  .adr-main { display: grid; gap: 2px; min-width: 0; }
+  .adr-main b { font-weight: 650; font-size: 1rem; }
+  .adr-line { color: var(--mute); font-size: .9rem; }
+  .adr-warn { color: var(--text-2); }
+  .adr-acts { display: flex; flex-wrap: wrap; justify-content: flex-end; gap: 8px; }
+
+  /* Change role / Choose a role: a short menu under its button. */
+  .admwrap { position: relative; display: inline-flex; }
+  .admwrap > .btn { display: inline-flex; align-items: center; gap: 6px; }
+  .admwrap > .btn svg { transform: rotate(90deg); color: var(--mute); }
+  .admwrap > .btn[aria-expanded="true"] svg { transform: rotate(-90deg); }
+  .admenu { position: absolute; z-index: 30; top: calc(100% + 4px); right: 0; min-width: 180px; display: grid; padding: 4px; border: 1px solid var(--line-2); border-radius: var(--r); background: var(--surface); box-shadow: 0 12px 28px rgba(0,0,0,.18); }
+  .admenu button { display: flex; align-items: center; gap: 8px; min-height: 40px; padding: 0 10px 0 6px; border: 0; border-radius: var(--r); background: none; color: var(--text); font: inherit; text-align: left; cursor: pointer; }
+  .admenu button:hover, .admenu button:focus-visible { background: var(--surface-2); }
+  .admenu button[aria-checked="true"] { font-weight: 650; }
+  .adchk { display: inline-grid; place-items: center; width: 18px; color: var(--accent); }
+
+  /* A join link: the role and its name, when it ends and how often it was used, whether it is on, and its actions. */
+  .adlink { display: grid; grid-template-columns: minmax(0, 1fr) 84px auto; gap: 8px 20px; align-items: center; padding: 14px 0; border-bottom: 1px solid var(--line); }
+  .adl-main { display: grid; gap: 3px; min-width: 0; }
+  .adl-top { display: flex; flex-wrap: wrap; align-items: baseline; gap: 4px 14px; }
+  .adl-name { font-weight: 650; }
+  .adl-meta { color: var(--mute); font-size: .9rem; }
+  .adlink.dim .adl-name { color: var(--text-2); }
+  .adl-acts { display: flex; flex-wrap: wrap; justify-content: flex-end; align-items: center; gap: 8px; }
+  .adrole { display: inline-flex; align-items: center; gap: 7px; color: var(--text-2); font-size: .9rem; font-weight: 600; white-space: nowrap; }
+  .addot { flex: none; display: inline-block; width: 9px; height: 9px; border-radius: 50%; background: var(--text); }
+  .addot.r-parent { background: none; box-shadow: inset 0 0 0 2px var(--text); }
+  .addot.r-mentor { border-radius: 2px; }
+  .adstate { display: inline-flex; align-items: center; gap: 7px; font-size: .9rem; white-space: nowrap; }
+  .adstate i { width: 9px; height: 9px; border-radius: 50%; background: var(--ok); }
+  .adstate.s-off { color: var(--mute); }
+  .adstate.s-off i { background: none; box-shadow: inset 0 0 0 2px var(--mute); }
+  .adstate.s-ended { color: var(--mute); }
+  .adstate.s-ended i { background: var(--line-2); }
+  .adsee { font-size: .9rem; }
+
+  @media (max-width: 720px) {
+    .adreq { grid-template-columns: minmax(0, 1fr); }
+    .adr-acts { justify-content: flex-start; }
+    .adlink { grid-template-columns: minmax(0, 1fr) auto; }
+    .adl-acts { grid-column: 1 / -1; justify-content: flex-start; }
+    .adstate { align-self: start; padding-top: 2px; }
+  }
+  @media (max-width: 640px) {
+    .adr-acts .btn, .adl-acts .btn { min-height: 44px; }
+    .adr-acts { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); }
+    .adr-acts > :first-child:not(.admwrap) { grid-column: 1 / -1; }
+    .admwrap, .admwrap > .btn { width: 100%; justify-content: center; }
+    .admenu { left: 0; right: auto; width: 100%; }
+    .admenu button { min-height: 44px; }
+    .adl-acts .btn { flex: 1 1 auto; }
+  }
+
+  /* New join link */
+  .adform { display: grid; gap: 16px; margin-top: 14px; }
+  .adfs { margin: 0; padding: 0; border: 0; min-width: 0; }
+  .adfs legend { padding: 0; margin-bottom: 8px; font-size: .85rem; font-weight: 600; color: var(--text-2); }
+  .adchoice { display: flex; flex-wrap: wrap; gap: 8px; }
+  .adopt { display: inline-flex; align-items: center; gap: 8px; min-height: 40px; padding: 0 14px 0 10px; border: 1px solid var(--line-2); border-radius: var(--r-ctl); background: var(--surface); font-weight: 600; cursor: pointer; }
+  .adopt input { margin: 0; width: 16px; height: 16px; accent-color: var(--accent); }
+  .adopt.on { border-color: var(--accent); box-shadow: inset 0 0 0 1px var(--accent); }
+  .adopt:has(input:focus-visible) { outline: 2px solid var(--accent); outline-offset: 2px; }
+  .adopt:has(input[aria-invalid="true"]) { border-color: var(--bad); }
+  .adwarn { margin: 10px 0 0; color: var(--text); font-weight: 600; font-size: .92rem; }
+  .adacts { margin-top: 18px; }
+  @media (max-width: 640px) {
+    .adopt { min-height: 44px; flex: 1 1 auto; }
+    .adacts .btn { flex: 1 1 0; min-height: 44px; }
+  }
+
+  /* The code sheet: made to be shown on a screen or printed. */
+  .adsheet { display: grid; justify-items: center; gap: 6px; padding: 8px 0 4px; text-align: center; }
+  .adqr { display: block; width: min(280px, 70vw); height: auto; margin-bottom: 8px; border-radius: var(--r); box-shadow: 0 0 0 1px var(--line); }
+  .adjtitle { margin: 4px 0 0; font-size: 1.35rem; }
+  .adaddr { margin: 0; font-weight: 600; font-variant-numeric: tabular-nums; letter-spacing: .01em; }
+  .adrule { max-width: 48ch; margin: 6px 0 0; color: var(--text-2); }
+  .adsheet .adwarn { max-width: 44ch; margin-top: 4px; }
+  .adfor { margin: 6px 0 0; }
+  .adsheetacts { justify-content: center; margin-top: 8px; }
+  @media (max-width: 640px) { .adsheetacts .btn { min-height: 44px; flex: 1 1 0; } .adsee { min-height: 44px; } }
+
+  /* Printing the sheet prints only the sheet: the code, the role and the address. */
+  @media print {
+    body:has(.adsheet) { background: #fff; }
+    #root:has(.adsheet) > :not(.modal) { display: none !important; }
+    .modal:has(.adsheet) { position: static; transform: none; width: auto; max-height: none; overflow: visible; border: 0; box-shadow: none; }
+    .modal:has(.adsheet) > .row.between, .adsheetacts, .adsheet .adsee, .adfor { display: none !important; }
+    .adqr { width: 9cm; box-shadow: none; }
+    .adjtitle { font-size: 22pt; color: #000; }
+    .adaddr { font-size: 14pt; color: #000; }
+    .adrule, .adsheet .adwarn { color: #000; }
+  }
+
+  /* The join page, as a visitor would see it: the whole window, the role in words and one button. */
+  .modal:has(.adjoinpg) { inset: 0; left: 0; top: 0; transform: none; width: 100%; height: 100%; max-height: none; padding: 0; border: 0; border-radius: 0; background: var(--bg); }
+  .adjbar { display: flex; align-items: center; justify-content: space-between; gap: 12px; padding: 8px 12px 8px 16px; background: var(--surface-3); color: var(--text-2); font-size: .86rem; }
+  .adjbar span { min-width: 0; overflow-wrap: anywhere; }
+  .adjbar .xbtn { flex: none; width: 44px; height: 44px; background: none; color: var(--text); }
+  .adjbody { display: grid; justify-items: start; gap: 10px; max-width: 420px; margin: 0 auto; padding: 56px 20px 32px; }
+  .adjbody .badge-2972 { display: inline-flex; align-items: center; }
+  .adjteam { margin: 0 0 12px; color: var(--mute); font-weight: 600; }
+  .adjbody h1 { margin: 0; font-size: 1.6rem; line-height: 1.2; }
+  .adjbody p { margin: 0; color: var(--text-2); }
+  .adgoogle { width: 100%; min-height: 48px; margin-top: 12px; }
+  @media (max-width: 640px) { .adjbody { padding-top: 32px; } }
+  .modal:focus { outline: none; }
+}

@@ -171,6 +171,9 @@ D.reset = function () {
 };
 D.me = function () { return D.ROLES[D.S.role]; };
 D.isStaff = function () { return D.S.role === "mentor" || D.S.role === "admin"; };
+/* Admin is a link-out in Live and Baseline. In Ground up the demo draws it (js/admin.js, owner 2026-11-19), so there
+   it is an app like the others: it opens in its own tab, without the ↗. */
+D.isExt = function (t) { return !!t.ext && !(t.id === "admin" && D.ground() && D.views.admin); };
 D.tile = function (id) { return D.TILES.filter(function (t) { return t.id === id; })[0]; };
 D.calTabs = function () { return D.CALTABS.filter(function (t) { return t.groups.some(function (g) { return D.me().groups.indexOf(g) >= 0; }) && t.modes.indexOf(D.S.mode) >= 0 && !(t.proposal && D.design() === "live"); }); };
 D.calTab = function (id) { return D.calTabs().some(function (t) { return t.id === id; }); };
@@ -221,7 +224,7 @@ D.denied = function (name) {
   return '<div class="content"><div class="card"><h2>You can\'t open ' + esc(name) + '</h2><p class="mute">Ask a team admin if you need it.</p><div><button class="btn" data-act="go" data-v="portal">Back to Home</button></div></div></div>';
 };
 /* Ground up (owner, 2026-11-19: "i want a task selection to open up the side detail panel"): a panel opened from a row
-   remembers that row. Opening it puts the focus on its close button; closing it (the button, the dimmed page, Escape)
+   remembers that row. Opening it puts the focus on the panel; closing it (the button, the dimmed page, Escape)
    puts the focus back on the row that opened it, without scrolling the page. Choosing another task inside the panel
    swaps its content and keeps the first row as the way back. `from` is the element pressed (optional). */
 D.drawerFrom = null;
@@ -236,7 +239,8 @@ D.openDrawer = function (type, data, from) {
   D.S.drawer = { type: type, data: data || {} }; D.render();
 };
 D.after.push(function () {
-  if (D.S.drawer) { if (D.drawerFocus) { D.drawerFocus = false; var x = document.querySelector(".drawer .xbtn"); if (x) x.focus({ preventScroll: true }); } return; }
+  // The panel itself takes the focus (not its close button, whose hover description would then take the first Escape).
+  if (D.S.drawer) { if (D.drawerFocus) { D.drawerFocus = false; var x = document.querySelector(".drawer"); if (x) { x.setAttribute("tabindex", "-1"); x.focus({ preventScroll: true }); } } return; }
   var k = D.drawerFrom; D.drawerFrom = null; D.drawerFocus = false; if (!k) return;
   var all = Array.prototype.filter.call(document.querySelectorAll(k.sel), function (e) { return e.getClientRects().length; }), el = all[k.i] || all[0];
   if (el) el.focus({ preventScroll: true });
@@ -326,7 +330,7 @@ function adminGroup(place, tiles, draw) {
 function appsMenu() {
   var S = D.S, tiles = D.visibleTiles();
   // Name only, two columns at every width (as the real bar's kit 0.2.3): the description is the tile's tip.
-  function item(t) { return '<a class="appitem" href="' + D.appHref(t.id) + '" target="_blank" rel="noopener noreferrer" aria-label="' + esc(t.name) + ' (opens in a new tab)"' + D.tileTip(t.id) + (S.route === t.id ? ' aria-current="page"' : "") + '><span class="ic">' + D.ic(t.icon, 20) + "</span><b>" + esc(t.name) + (t.ext ? " ↗" : "") + "</b></a>"; }
+  function item(t) { return '<a class="appitem" href="' + D.appHref(t.id) + '" target="_blank" rel="noopener noreferrer" aria-label="' + esc(t.name) + ' (opens in a new tab)"' + D.tileTip(t.id) + (S.route === t.id ? ' aria-current="page"' : "") + '><span class="ic">' + D.ic(t.icon, 20) + "</span><b>" + esc(t.name) + (D.isExt(t) ? " ↗" : "") + "</b></a>"; }
   var more = tiles.filter(function (t) { return t.more; });
   return '<div class="appsmenu" role="dialog" aria-label="All apps" data-keepscroll="appsmenu"><div class="menuhead">' + (D.ground() ? '<h3>Apps</h3>' : '<div class="seg" role="group" aria-label="Mode"><button data-act="mode" data-v="build" aria-pressed="' + (S.mode === "build") + '" data-tip="Show the apps for build season.">Build</button><button data-act="mode" data-v="competition" aria-pressed="' + (S.mode === "competition") + '" data-tip="Show the event apps: schedule, pit and scouting.">Competition</button></div>') + '<button class="xbtn" data-act="apps" aria-label="Close" data-tip="Close the apps menu.">×</button></div>' +
     '<div class="appgrid">' + (D.ground() ? '<a class="appitem" href="#portal" data-act="go" data-v="portal"' + (S.route === "portal" ? ' aria-current="page"' : "") + '><span class="ic">' + D.ic("home", 20) + "</span><b>Home</b></a>" : "") + tiles.filter(isCore).map(item).join("") + "</div>" +
@@ -545,10 +549,10 @@ function weekRows() {
 function homeGround() {
   var S = D.S, tiles = D.visibleTiles(), staff = D.isStaff(), role = S.role;
   var main = tiles.filter(isCore), more = tiles.filter(function (t) { return t.more; });
-  function link(t) { return '<li><a href="' + D.appHref(t.id) + '" target="_blank" rel="noopener noreferrer"' + D.tileTip(t.id) + '>' + D.ic(t.icon, 16) + esc(t.name) + (t.ext ? " ↗" : "") + "</a></li>"; }
+  function link(t) { return '<li><a href="' + D.appHref(t.id) + '" target="_blank" rel="noopener noreferrer"' + D.tileTip(t.id) + '>' + D.ic(t.icon, 16) + esc(t.name) + (D.isExt(t) ? " ↗" : "") + "</a></li>"; }
   var SHORTER = { calendar: "Practices, attendance, snacks" };
   if (role === "parent") { SHORTER.tasks = "What the team is building"; SHORTER.calendar = "Practices, events, snacks"; }
-  function approw(t) { return '<a class="approw" href="' + D.appHref(t.id) + '" target="_blank" rel="noopener noreferrer" aria-label="' + esc(t.name) + ' (opens in a new tab)"' + D.tileTip(t.id) + '><span class="ic">' + D.ic(t.icon, 18) + "</span><b>" + esc(t.name) + (t.ext ? " ↗" : "") + "</b><small>" + esc(SHORTER[t.id] || SHORT[t.id] || t.desc) + "</small></a>"; }
+  function approw(t) { return '<a class="approw" href="' + D.appHref(t.id) + '" target="_blank" rel="noopener noreferrer" aria-label="' + esc(t.name) + ' (opens in a new tab)"' + D.tileTip(t.id) + '><span class="ic">' + D.ic(t.icon, 18) + "</span><b>" + esc(t.name) + (D.isExt(t) ? " ↗" : "") + "</b><small>" + esc(SHORTER[t.id] || SHORT[t.id] || t.desc) + "</small></a>"; }
   var d = new Date(2026, 10, 10); try { if (D.calApi && D.calApi.TODAYS) { var q = D.calApi.TODAYS.split("-"); d = new Date(+q[0], +q[1] - 1, +q[2]); } } catch (e) {}
   var date = d.toLocaleDateString("en-US", { weekday: "long", month: "long", day: "numeric" });
   var now = nowRows(), others = role === "student" && !S.eventDay ? waitingOnOthers() : [];
@@ -650,7 +654,7 @@ D.render = function () {
   } else {
     var t = D.tile(S.route), content;
     if (t && !D.inGroup(t)) content = D.denied(t.name);
-    else if (t && t.ext) content = extTile(t);
+    else if (t && D.isExt(t)) content = extTile(t);
     else content = (D.views[S.route] || D.views.portal)();
     html += appbar() + '<div class="main">' + banner() + content + "</div>";
   }

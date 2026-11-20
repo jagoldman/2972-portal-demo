@@ -276,3 +276,32 @@ Four things the owner asked for, drawn in Ground up only. Live and Baseline keep
   the focus on the panel's close button; the close button, the dimmed page and Escape close it and put the focus back
   on the row that opened it. On a phone the panel is a full-height sheet with its close button at the top. The title
   stays a real button, so the keyboard reaches every task with Tab and opens it with Enter.
+
+### 8.4 Admin: join links and QR codes that carry a role
+> "I want QR codes and links that have premade permissions like for parents, mentors, students. and links"
+
+Decided by the owner: **a link fills in the role, and an admin still lets each person in with one press.** A
+leaked or photographed code gives nobody access.
+
+- **What:** the demo draws the Admin app in Ground up (`#admin`, `js/admin.js`, `css/ground-admin.css`), opened from
+  the Admin tile like the other apps. Live and Baseline keep Admin as a link-out. Two tabs:
+  - **Requests** (the one an admin opens most): the people waiting to be let in, oldest first. A request that came
+    through a join link says so ("Asked with the Parents link, Fall open house") and its button names the role ("Let
+    in as a parent"), with "Change role" (Student, Parent, Mentor) and "Turn down" beside it. A request without a link
+    has "Choose a role" first. Letting in and turning down act at once, with Undo in the toast.
+  - **Join links:** one row per link: the role (a mark and the word), the name the admin gave it, when it ends ("Ends
+    Dec 19, 11 practices left"), how many people have used it, and On, Off or Ended. Actions: Show code, and Switch
+    off or Switch on; an ended link offers "Make a new one like it". "New join link" (the tab's one filled button)
+    asks who it is for (required), a name, and how long it lasts (7 days, 30 days chosen, or until the season ends).
+  - **Show code** opens a sheet made to be shown or printed: a large QR code, "Join Team 2972 as a parent", the
+    short address, Copy link, Print, and "This fills in the role. An admin still lets each person in." Printing prints
+    only the code, the role, the address and that sentence. "See what a new person sees" opens the join page as a
+    visitor sees it: the role in words and "Continue with Google", then "Thanks. An admin will let you in, usually by
+    the next practice."
+- **Who sees it:** admins only (the Admin tile's group).
+- **Rules:** a mentor link looks no different, but its sheet (and the New join link form, and a mentor's request)
+  says "Mentors can see students' information: share this link only with people you know." A switched-off or ended
+  link's join page says the link no longer works and to ask for a new one. On the Requests tab only the first
+  request's "Let in" is a filled button, so the screen keeps one; the others are plain buttons with the same words.
+- **In the demo only:** the QR code is a drawn sample pattern (three corner squares and a field of modules), not a
+  code a phone can read. The people asking to join are made up, from the families of the demo's made-up students.

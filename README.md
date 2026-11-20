@@ -32,6 +32,8 @@ Everything is sample data. Nothing is saved, and a reload resets it. The only th
 - `js/tip.js`: the shared hover description (`data-tip`), the tab descriptions and the status-word glossary.
 - `js/tools.js` and `css/tools.css`: the Tools page and the two photo tools.
 - `js/frc.js`: the calculators' maths (motors, motion, flywheel, flight, belts). `js/calc.js` and `css/calc.css`: the page every calculator shares (`css/ground-tools.css`: its Ground up look). `js/tool-<name>.js`: one calculator each. `tests/`: Node checks for the maths.
+- `js/admin.js` and `css/ground-admin.css`: the Admin screen (Ground up only): requests, join links and their QR codes.
+- `css/ground-tasks.css`: the Ground up Tasks pieces of 2026-11-19 (the people picker, the New task form, rows that open the panel).
 - `js/guide.js` and `css/guide.css`: the Get started card, the stops for each role and the ring.
 
 ## Run it locally
@@ -72,6 +74,7 @@ the same, and the choice is kept in this browser. `?event=1` ticks Event day. No
 | Tasks | "+ Someone" on a task opens a picker: a search, then Students, Mentors and Parents as groups that open and close (2026-11-19) | GROUND_UP.md 8.1 |
 | Tasks | "New task" at the top of every Tasks view; the form asks for Division, then Project, then Subteam, and Create points at the first one missing (2026-11-19) | GROUND_UP.md 8.2 |
 | Tasks, Home | Pressing a task's row or card anywhere opens its side panel in place; closing it returns to the row (2026-11-19) | GROUND_UP.md 8.3 |
+| Admin | The demo draws Admin: Requests (let each person in, with the role a join link filled in) and Join links (QR codes and links for Students, Parents or Mentors) (2026-11-19) | GROUND_UP.md 8.4 |
 | Tools | Fifteen calculators (also in Baseline), each with a drawing to scale; in Ground up they wear its look (`css/ground-tools.css`) | See "FRC calculators" below |
 
 ### The look (Baseline and Ground up)
