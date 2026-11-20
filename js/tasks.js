@@ -744,7 +744,10 @@ function projectPage(pid) {
 // saved choice per viewer (D.setPref "tpview"); List and Board stay in step with a subteam page's own List/Board.
 var SUB_VIEWS = [["list", "List", "Tasks in rows, grouped."], ["board", "Board", "Tasks as cards in columns by status."]];
 var PROJ_VIEWS = [["grid", "Grid", "Milestones down, subteams across."], ["list", "List", "Every task in this project as rows, grouped."], ["board", "Board", "Every task in this project as cards in columns by status."]];
-function pview() { var v = D.pref("tpview", "grid"); return PROJ_VIEWS.some(function (o) { return o[0] === v; }) ? v : "grid"; }
+// Ground up (owner, 2026-11-19): a project opens on its List, on a phone and on a desktop; the grid was hard to use on a
+// phone. A person who has chosen a view keeps it. Live and Baseline still open on the grid.
+function pviewDefault() { return D.ground() ? "list" : "grid"; }
+function pview() { var d = pviewDefault(), v = D.pref("tpview", d); return PROJ_VIEWS.some(function (o) { return o[0] === v; }) ? v : d; }
 function viewSeg(opts, cur, act) { return '<span class="seg" role="group" aria-label="View">' + opts.map(function (o) { return '<button data-act="' + act + '" data-v="' + o[0] + '" aria-pressed="' + (cur === o[0]) + '" data-tip="' + esc(o[2]) + '">' + o[1] + "</button>"; }).join("") + "</span>"; }
 function subChip(x) { return '<span class="subchip">' + esc(x.sub) + "</span>"; }
 // Cards in status columns: a subteam's board, or (chip) a whole project's, where each card names its subteam.
