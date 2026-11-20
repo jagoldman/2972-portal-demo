@@ -341,3 +341,23 @@ leaked or photographed code gives nobody access.
   beside it, which still signs up in one press.
 - **Who sees it:** parents, mentors and admins, who have the Snacks tab. Students do not.
 
+### 8.7 Snacks in bulk: several practices in one go
+> "There should also be instructions that say if parents bring bulk snacks, they can mark multiple consecutive days."
+
+- **Before:** signing up for several practices took one "I'll bring snacks" press per day, with nothing saying it
+  could be done for more than one.
+- **What:** under "Coming practices" a plain line: "Bringing snacks in bulk? Sign up for one practice, then add the
+  practices after it in one go." The one-press "I'll bring snacks" for a single day is unchanged. After that press,
+  on this tab, the row offers "Bringing enough for more practices?": the next practices after it that still need
+  snacks (up to four, by date, each with its time and who is already bringing some), each a tick box, then "Sign up
+  for these" and "No thanks". The family ticks the ones they will cover and presses once.
+- **Rules:** while the choice is open its "Sign up for these" is the screen's one filled button. Pressing it with
+  nothing ticked does nothing but say "Tick the practices you will bring snacks to, or press No thanks." and put the
+  focus on the first box. After it, the toast names the whole run ("Signed up for Nov 12, Nov 14 and Nov 17.") and
+  its Undo takes off every day of the run, the first one included. The focus starts on the choice when it opens and
+  returns to the first day's row when it closes. The ticks survive a redraw; leaving the tab, "No thanks" or
+  cancelling the first day ends the offer. A sign-up from Home or the Calendar tab stays one press with no offer.
+- **Who sees it:** whoever signs up for snacks: parents, mentors and admins.
+- **Not decided:** whether a run should skip a practice that is already covered (the demo lists only the practices
+  that still need snacks, so a run can step over a covered one), and whether four is the right number to offer.
+

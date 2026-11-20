@@ -525,17 +525,55 @@ function snacks() {
     c.mark = mark;
   }
   var mine = days.filter(function (e) { return (c.snacks[e.date] || []).indexOf(nm) >= 0; });
+  var bk = D.ground() && c.bulk && days.some(function (e) { return e.date === c.bulk.from; }) ? c.bulk : null;
+  if (bk) flagged = true; // the bulk choice holds the screen's one filled button while it is open
   return (note ? '<p class="snnote" role="status" tabindex="-1">' + esc(note) + "</p>" : "") + (mine.length ? '<div class="card hero"><h2>You\'re bringing snacks on ' + mine.map(function (e) { return fmt(e.date); }).join(", ") + '</h2><p class="small mute">We\'ll remind you the day before.</p></div>' : "") +
-    '<div class="card"><div class="row between"><h2>Coming practices</h2><span class="who">' + c.slots + ' families per practice · nut-free please</span></div><div class="list">' +
+    '<div class="card"><div class="row between"><h2>Coming practices</h2><span class="who">' + c.slots + ' families per practice · nut-free please</span></div>' + (D.ground() ? '<p class="snhint">Bringing snacks in bulk? Sign up for one practice, then add the practices after it in one go.</p>' : "") + '<div class="list">' +
     days.map(function (e) {
       var s = c.snacks[e.date] || (c.snacks[e.date] = new Array(c.slots).fill(null));
       var names = s.filter(Boolean), open = s.indexOf(null), has = s.indexOf(nm), act;
       if (has >= 0) act = '<button class="btn ghost sm" data-act="snackfree" data-d="' + e.date + '" data-k="' + has + '">Cancel</button>';
-      else if (open >= 0) { act = '<button class="btn sm' + (flagged ? "" : " primary") + '" data-act="snack" data-d="' + e.date + '" data-k="' + open + '">I\'ll bring snacks</button>'; flagged = true; }
+      else if (open >= 0) { act = '<button class="btn sm' + (flagged ? "" : " primary") + '" data-act="snack" data-d="' + e.date + '" data-k="' + open + '"' + (D.ground() ? ' data-bulk="1"' : "") + '>I\'ll bring snacks</button>'; flagged = true; }
       else act = '<span class="pill ok">Covered</span>';
-      return '<div class="li snrow' + (D.ground() ? (mark === e.date ? " snmark" : "") : c.focus === e.date ? " focusrow" : "") + '"' + (D.ground() ? ' data-d="' + e.date + '"' : "") + '><span class="grow"><b>' + fmt(e.date) + '</b><span class="who agmore">' + span(e) + " · " + (names.length ? esc(names.join(", ")) + (open >= 0 ? " · needs " + (s.length - names.length) + " more" : "") : "Nobody yet") + "</span></span>" + act + "</div>";
+      return '<div class="li snrow' + (D.ground() ? (mark === e.date ? " snmark" : "") : c.focus === e.date ? " focusrow" : "") + '"' + (D.ground() ? ' data-d="' + e.date + '"' : "") + '><span class="grow"><b>' + fmt(e.date) + '</b><span class="who agmore">' + span(e) + " · " + (names.length ? esc(names.join(", ")) + (open >= 0 ? " · needs " + (s.length - names.length) + " more" : "") : "Nobody yet") + "</span></span>" + act + "</div>" + (bk && bk.from === e.date ? bulkBlock(bk, days) : "");
     }).join("") + "</div></div>";
 }
+/* Ground up (the owner, 2026-11-19): "if parents bring bulk snacks, they can mark multiple consecutive days". After a
+   family signs up for a practice on this tab, the row offers the practices after it that still need snacks (up to
+   four, by date), to tick and sign up for in one press. The one-press sign-up for a single day is unchanged. */
+function bulkNext(from, days) { var nm = snackName(); return (days || practiceDays(14)).filter(function (e) { return e.date > from && needsSnacks(e.date) && (C().snacks[e.date] || []).indexOf(nm) < 0; }).slice(0, 4); }
+function bulkBlock(bk, days) {
+  var c = C(), next = bulkNext(bk.from, days);
+  if (!next.length) return "";
+  return '<fieldset class="snbulk" tabindex="-1"><legend>Bringing enough for more practices?</legend><p class="snbsub">Tick the practices after ' + esc(fmt(bk.from)) + ' that you will bring snacks to as well.</p><div class="snbopts">' +
+    next.map(function (e) {
+      var names = (c.snacks[e.date] || []).filter(Boolean), id = "snb-" + e.date;
+      return '<label class="snbopt" for="' + id + '"><input type="checkbox" id="' + id + '" data-change="snbulkpick" data-d="' + e.date + '"' + (bk.picked[e.date] ? " checked" : "") + '><span class="grow"><b>' + fmt(e.date) + '</b><span class="who">' + esc(span(e)) + ", " + (names.length ? esc(names.join(" and ")) + " is bringing some" : "nobody yet") + "</span></span></label>";
+    }).join("") + "</div>" + (bk.err ? '<p class="snberr" role="alert">Tick the practices you will bring snacks to, or press No thanks.</p>' : "") +
+    '<div class="row snbacts"><button class="btn primary sm" data-act="snbulk">Sign up for these</button><button class="btn ghost sm" data-act="snbulkno">No thanks</button></div></fieldset>';
+}
+function shortDates(list) { var t = list.map(function (d) { return fmt(d, { month: "short", day: "numeric" }); }); return t.length > 1 ? t.slice(0, -1).join(", ") + " and " + t[t.length - 1] : t[0]; }
+D.changes.snbulkpick = function (el) { var bk = C().bulk; if (!bk) return; bk.picked[el.dataset.d] = el.checked; if (bk.err) { bk.err = false; D.render(); } };
+D.acts.snbulk = function () {
+  var c = C(), bk = c.bulk, nm = snackName(); if (!bk) return;
+  var dates = Object.keys(bk.picked).filter(function (d) { return bk.picked[d]; }).sort();
+  if (!dates.length) { bk.err = true; bk.focusPick = true; D.render(); return; }
+  var all = [bk.from].concat(dates), before = {};
+  all.forEach(function (d) { var s = c.snacks[d] || (c.snacks[d] = new Array(c.slots).fill(null)); before[d] = d === bk.from ? s.map(function (x) { return x === nm ? null : x; }) : s.slice(); });
+  c.bulk = null; c.bulkDone = bk.from;
+  D.withUndo("Signed up for " + shortDates(all) + ".", function () {
+    dates.forEach(function (d) { var s = c.snacks[d], k = s.indexOf(null); if (k >= 0 && s.indexOf(nm) < 0) s[k] = nm; });
+  }, function () { all.forEach(function (d) { c.snacks[d] = before[d]; }); c.bulkDone = null; });
+};
+D.acts.snbulkno = function () { var c = C(), from = c.bulk && c.bulk.from; c.bulk = null; c.bulkDone = from; D.render(); };
+D.after.push(function () {
+  var c = D.S && D.S.cal; if (!c || !D.ground()) return;
+  var blk = document.querySelector(".snbulk");
+  if (c.bulk && !blk) { c.bulk = null; return; } // left the tab, or nothing left to add: the offer is over
+  if (c.bulk && c.bulk.focusPick) { c.bulk.focusPick = false; var x = blk.querySelector("input"); if (x) { x.focus({ preventScroll: true }); scrollBelowBars(blk); } return; }
+  if (c.bulk && c.bulk.focusBlock) { c.bulk.focusBlock = false; blk.focus({ preventScroll: true }); return; }
+  if (c.bulkDone) { var r = document.querySelector('.snrow[data-d="' + c.bulkDone + '"]'); c.bulkDone = null; if (r) { r.setAttribute("tabindex", "-1"); r.focus({ preventScroll: true }); } }
+});
 
 /* ---------- Volunteer tab ---------- */
 /* Like Snacks, but the days are events an admin adds, each with its own number of spots. Parents and mentors sign up
@@ -587,9 +625,12 @@ function belowBars() {
   document.querySelectorAll(".appbar, .topbar").forEach(function (b) { var cs = getComputedStyle(b); if (cs.position === "sticky" || cs.position === "fixed") h = Math.max(h, (parseFloat(cs.top) || 0) + b.getBoundingClientRect().height); });
   return h;
 }
-function showRow(el) {
+function scrollBelowBars(el) {
   var top = belowBars(), r = el.getBoundingClientRect(), room = window.innerHeight - top;
   window.scrollTo(0, Math.max(0, r.top + window.scrollY - top - Math.max(16, (room - r.height) / 3)));
+}
+function showRow(el) {
+  scrollBelowBars(el);
   var b = el.querySelector('[data-act="snack"]');
   if (!b) { el.setAttribute("tabindex", "-1"); b = el; }
   b.focus({ preventScroll: true });
@@ -649,9 +690,9 @@ D.changes.hereedit = function (el) { var c = C(); c.medit = el.value; c.pop = nu
 A.hereeditm = function (b) { var c = C(); c.medit = b.dataset.v; c.pop = null; c.udraft = null; D.render(); };
 A.herefix = function (b) { var c = C(); c.att[b.dataset.n][b.dataset.d] = 2.5; c.adjust.push({ who: b.dataset.n, hours: 0, why: "Fixed missed sign-out on " + fmt(b.dataset.d) + " (2.5 h)", by: D.me().name, when: "Just now" }); D.toast("Fixed. " + b.dataset.n + " gets 2.5 hours."); D.render(); };
 A.hereadd = function () { var c = C(); c.adjust.unshift({ who: D.val("ha-who"), hours: parseFloat(D.val("ha-h")) || 0, why: D.val("ha-why"), by: D.me().name, when: "Just now" }); D.toast("Saved. It shows in their history."); D.render(); };
-A.snack = function (b) { var c = C(), nm = snackName(); c.snacks[b.dataset.d][+b.dataset.k] = nm; D.toast("Thanks. You'll get a reminder the day before."); D.render(); };
+A.snack = function (b) { var c = C(), nm = snackName(); c.snacks[b.dataset.d][+b.dataset.k] = nm; if (b.dataset.bulk) c.bulk = bulkNext(b.dataset.d).length ? { from: b.dataset.d, picked: {}, err: false, focusBlock: true } : null; D.toast("Thanks. You'll get a reminder the day before."); D.render(); };
 A.snackday = function (b) { openSnacks(b.dataset.d || b.dataset.v); };
-A.snackfree = function (b) { C().snacks[b.dataset.d][+b.dataset.k] = null; D.render(); };
+A.snackfree = function (b) { if (C().bulk && C().bulk.from === b.dataset.d) C().bulk = null; C().snacks[b.dataset.d][+b.dataset.k] = null; D.render(); };
 function volBy(id) { return C().vol.filter(function (v) { return v.id === +id; })[0]; }
 A.volyes = function (b) {
   var v = volBy(b.dataset.v), me = volName(); if (!v || v.who.indexOf(me) >= 0 || v.who.length >= v.need) return;
