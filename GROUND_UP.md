@@ -361,3 +361,17 @@ leaked or photographed code gives nobody access.
 - **Not decided:** whether a run should skip a practice that is already covered (the demo lists only the practices
   that still need snacks, so a run can step over a covered one), and whether four is the right number to offer.
 
+
+### 8.8 "+ Task" in every milestone group
+> "for students under milestones, in a list (like Intake→cad) there should be a +task button to add a new task in a
+> milestone or in the unassigned milestone area"
+
+- **What:** in a list grouped by milestone (a subteam's list, such as Engineering, Intake, CAD, and a project's List),
+  each milestone's heading row and the "No milestone" group have a quiet "+ Task" button at the right (a thin
+  outline, not filled). It opens the New task form (8.2) with the division, the project, the subteam (on a subteam's
+  list) and that milestone, or "No milestone", already chosen; every one can still be changed. On a project's list
+  the subteam is left to choose, since the group holds every subteam's tasks.
+- **Who sees it:** everyone who may add a task: students, mentors and admins. Parents only read Tasks and do not get
+  it. Grouped by status, priority, due date or subteam, the groups have no "+ Task".
+- **Rules:** it is a plain button the keyboard reaches with Tab; its name says where the task goes ("Add a task to
+  CAD, Prototype intaking"). On a phone it is 44 px tall. The title field has the focus when the form opens.

@@ -89,4 +89,14 @@
     .drawer { top: 0; bottom: 0; height: 100%; height: 100dvh; }
   }
   .drawer:focus { outline: none; }
+
+  /* ============================================================
+     "+ Task" on each milestone group of a list (js/tasks.js, grpHeadRow)
+     ============================================================ */
+  .tgrphead { display: flex; align-items: center; justify-content: space-between; gap: 12px; margin-top: 6px; }
+  .tgrphead .tgrp { margin: 0; }
+  .tgadd { flex: none; gap: 4px; min-height: 32px; padding: 0 10px 0 8px; border-color: var(--line); background: none; color: var(--text-2); font-weight: 600; }
+  .tgadd:hover { background: var(--surface-2); color: var(--text); }
+  .tgadd svg { color: var(--mute); }
+  @media (max-width: 640px) { .tgadd { min-height: 44px; padding: 0 14px 0 12px; } }
 }

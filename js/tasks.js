@@ -772,7 +772,17 @@ function listBody(p, xs, o) {
   var add = o.sub ? '<div class="row nowrap taddin"><input id="t-add" class="inp" placeholder="Add a task to ' + esc(o.sub) + '" data-input="taddtxt" aria-label="New task title"><button class="btn" data-act="tquick" data-p="' + p.id + '" data-s="' + esc(o.sub) + '">Add</button></div>' : '<button class="btn sm" data-act="tnewin" data-p="' + p.id + '" data-s="">+ Add a task</button>';
   return '<div class="card' + (selIds(xs).length ? " tselon" : "") + '"><div class="row between taddrow">' + add + '<label class="row nowrap small mute tgroupby">Group by <select class="chipsel" data-change="' + o.act + '">' + o.opts.map(function (g) { return '<option value="' + g[0] + '"' + (key === g[0] ? " selected" : "") + ">" + g[1] + "</option>"; }).join("") + "</select></label></div>" +
     bulk(p, xs) +
-    (xs.length || drop ? groups.map(function (g) { var gs = xs.filter(g[1]); if (!gs.length && !drop) return ""; return '<section class="tgsec"' + (drop ? g[2] : mv && key !== "due" ? ' data-ord=""' : "") + '><h3 class="tgrp">' + esc(g[0]) + ' <span class="who">' + gs.length + "</span></h3><div>" + (gs.length ? gs.map(function (x) { var sc = subsOf(x), open = tt.openSubs[x.id]; return listRow(x, sc, open, false, mv, chip) + (open ? sc.map(function (s) { return listRow(s, [], false, true, mv); }).join("") : ""); }).join("") : '<p class="small mute tgempty">' + empty + "</p>") + "</div></section>"; }).join("") : '<p class="mute">No tasks here yet.</p>') + "</div>";
+    (xs.length || drop ? groups.map(function (g) { var gs = xs.filter(g[1]); if (!gs.length && !drop) return ""; return '<section class="tgsec"' + (drop ? g[2] : mv && key !== "due" ? ' data-ord=""' : "") + '>' + grpHeadRow(p, o, key, g, gs) + "<div>" + (gs.length ? gs.map(function (x) { var sc = subsOf(x), open = tt.openSubs[x.id]; return listRow(x, sc, open, false, mv, chip) + (open ? sc.map(function (s) { return listRow(s, [], false, true, mv); }).join("") : ""); }).join("") : '<p class="small mute tgempty">' + empty + "</p>") + "</div></section>"; }).join("") : '<p class="mute">No tasks here yet.</p>') + "</div>";
+}
+/* Ground up (owner, 2026-11-19): in a list grouped by milestone, each milestone's heading row and the "No milestone"
+   group carry a quiet "+ Task" that opens the New task form with the division, project, subteam (on a subteam's list)
+   and that milestone already chosen, all still changeable. Everyone who may add a task gets it (canMove: students,
+   mentors, admins); parents only read. Live and Baseline keep the plain heading. */
+function grpHeadRow(p, o, key, g, gs) {
+  var h = '<h3 class="tgrp">' + esc(g[0]) + ' <span class="who">' + gs.length + "</span></h3>";
+  if (!D.ground() || key !== "milestone" || !canMove()) return h;
+  var m = g[2].match(/data-dm="([^"]*)"/)[1], where = o.sub ? o.sub + ", " : "", msn = m ? msName(p.id, m) : "No milestone";
+  return '<div class="tgrphead">' + h + '<button class="btn sm tgadd" data-act="tnewin" data-p="' + p.id + '" data-s="' + esc(o.sub || "") + '" data-m="' + m + '" aria-label="Add a task to ' + esc(where + msn) + '" data-tip="Add a task to ' + esc(msn === "No milestone" ? "this list with no milestone" : msn) + '. You can change where it goes.">' + D.ic("plus", 14) + "<span>Task</span></button></div>";
 }
 function listPage(pid, sub) {
   var p = proj(pid), tt = T(), xs = tt.list.filter(function (x) { return x.p === pid && x.sub === sub && !x.parent && pass(x); }).sort(byPos);
