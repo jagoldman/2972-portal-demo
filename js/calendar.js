@@ -63,7 +63,11 @@ D.inits.push(function (S) {
   att["Jordan Lee"][days[days.length - 2]] = -1;
   S.cal = {
     events: genEvents(), month: [2026, 10], view: "month",
-    here: [ { name: "Mr. Chen", at: "3:22 pm" }, { name: "Leo Brooks", at: "3:31 pm" }, { name: "Priya Shah", at: "3:33 pm" }, { name: "Ava Kim", at: "3:40 pm" }, { name: "Nina Park", at: "3:41 pm" } ],
+    // how: "door" (scanned the door code), "self" (pressed I'm here, Ground up) or "mentor" (a mentor marked them).
+    here: [ { name: "Mr. Chen", at: "3:22 pm", how: "door" }, { name: "Leo Brooks", at: "3:31 pm", how: "self" }, { name: "Priya Shah", at: "3:33 pm", how: "door" }, { name: "Ava Kim", at: "3:40 pm", how: "door" }, { name: "Nina Park", at: "3:41 pm", how: "self" } ],
+    /* Ground up: the demo's clock (the demo strip's Time, "before", "at" or "after" practice), today's people who signed
+       out (left), and the last correction a mentor made to each person's day (fixes). */
+    clock: "15:45", left: [], fixes: {}, fix: null,
     days: days, att: att, studentsOnly: true, sort: "hours",
     avail: {
       "Ms. Rivera": { usual: [2, 4], ut: {}, one: { "2026-11-14": "coming", "2026-11-17": "cant" }, t: { "2026-11-14": { start: "10:00", end: "13:00" } } },
@@ -181,6 +185,35 @@ function planAsk(name, date, sav) {
 }
 // A student's own plan for a date, for Home and for their parent (read-only): "coming", "cant" or "none".
 function planFor(name, date) { if (!C().savail[name]) return "none"; var a = availOf(name, date); return a === "usual" ? "coming" : a; }
+/* ---------- Ground up: signing yourself in (the owner, 2026-11-20) ----------
+   On a practice day, from 15 minutes before it starts until it ends, a person presses "I'm here" and later "I'm
+   leaving"; no door code. The door code still works. A mentor sees how each person signed in and can correct it.
+   The demo cannot check that the person is really at the shop; GROUND_UP.md 8.13 says what the real app checks. */
+function mins(hm) { var p = hm.split(":"); return +p[0] * 60 + +p[1]; }
+function hm(m) { return ("0" + Math.floor(m / 60)).slice(-2) + ":" + ("0" + m % 60).slice(-2); }
+function nowText() { return t12(C().clock); }
+// "before", "open" or "after" today's practice; null on a day without one.
+function phase() {
+  var p = practiceOn(TODAYS); if (!p) return null;
+  var n = mins(C().clock);
+  return n < mins(p.start) - 15 ? "before" : n <= mins(p.end) ? "open" : "after";
+}
+function opensAt() { var p = practiceOn(TODAYS); return p ? t12(hm(mins(p.start) - 15)) : ""; }
+function hereRec(n) { return C().here.filter(function (h) { return h.name === n; })[0] || null; }
+function leftRec(n) { return C().left.filter(function (h) { return h.name === n; })[0] || null; }
+// What a person's own day says, for Home and the Today view: { state, title, line, btn }.
+function selfState(n) {
+  var ph = phase(), p = practiceOn(TODAYS), h = hereRec(n), l = leftRec(n), plan = planFor(n, TODAYS), when = p ? span(p) : "";
+  if (!ph) return null;
+  if (h) return { state: "in", title: "Here since " + h.at, line: (h.how === "door" ? "Signed in at the door." : h.how === "mentor" ? "Marked here by " + h.by + "." : "Signed in on your phone.") + (ph === "after" ? " Practice is over: press I'm leaving." : " Press I'm leaving when you go."), btn: '<button class="btn" data-act="hereleave">I\'m leaving</button>' };
+  if (l) return { state: "left", title: "You left at " + l.out, line: "Here " + l.at + "–" + l.out + ". Wrong? Ask a mentor to fix it.", btn: "" };
+  if (ph === "before") return { state: "before", title: "Practice today, " + when, line: (plan === "coming" ? "You said you're coming. " : plan === "cant" ? "You said you can't come. " : "") + "I'm here opens at " + opensAt() + ".", btn: "" };
+  if (ph === "after") return { state: "after", title: "Practice is over", line: "You weren't signed in today. If you were here, ask a mentor to fix it.", btn: "" };
+  return { state: "open", title: "You are not signed in", line: "Practice today, " + when + ". Press I'm here when you get to the shop.", btn: '<button class="btn primary" data-act="hereself">I\'m here</button>' };
+}
+// Keep the state before a change, so Undo puts all of it back.
+function snapDay() { var c = C(); return JSON.stringify({ here: c.here, left: c.left, fixes: c.fixes }); }
+function restoreDay(s) { var c = C(), o = JSON.parse(s); c.here = o.here; c.left = o.left; c.fixes = o.fixes; }
 // Open a student's own days with one date's editor open (the notice above).
 function openPlan(date) { var c = C(); D.S.tabs.here = "mentors"; c.mview = "list"; c.pop = null; c.focus = date || null; D.go("here");
   // After the press that opened it, or the click-outside rule below would close the day's answer at once.
@@ -208,7 +241,7 @@ function volEvents() { return D.calTab("volunteer") ? C().vol.map(function (v) {
 function calUpcoming(n) { return upcoming(400).concat(volEvents().filter(function (e) { return e.date >= TODAYS; })).sort(function (a, b) { return a.date < b.date ? -1 : a.date > b.date ? 1 : 0; }).slice(0, n); }
 function evAct(e) { return e.vol ? 'data-act="caldoor" data-v="volunteer" data-d="' + e.date + '"' : 'data-act="calev" data-v="' + e.id + '"'; }
 function volOpen() { var me = volName(); return volList().filter(function (v) { return v.who.length < v.need && v.who.indexOf(me) < 0; }).map(function (v) { return { id: v.id, name: v.name, date: v.date, when: span(v), open: v.need - v.who.length }; }); }
-D.calApi = { studentsOn: studentsOn, comingText: comingText, planFor: planFor, openPlan: openPlan, needsSnacks: needsSnacks, openSnacks: openSnacks, volOpen: volOpen, kickoff: kickoff, practiceOn: practiceOn, mentorsOn: mentorsOn, mentors: function () { return MENTORS.slice(); }, snacksFor: snacksFor, practiceDays: practiceDays, upcoming: upcoming, fmt: fmt, span: span, TODAYS: TODAYS, meetDays: meetDays, eventsIn: eventsIn, daysOff: daysOff, currentEvent: function () { return C().events.filter(function (e) { return e.kind === "comp" && e.tba; })[0]; } };
+D.calApi = { selfState: selfState, studentsOn: studentsOn, comingText: comingText, planFor: planFor, openPlan: openPlan, needsSnacks: needsSnacks, openSnacks: openSnacks, volOpen: volOpen, kickoff: kickoff, practiceOn: practiceOn, mentorsOn: mentorsOn, mentors: function () { return MENTORS.slice(); }, snacksFor: snacksFor, practiceDays: practiceDays, upcoming: upcoming, fmt: fmt, span: span, TODAYS: TODAYS, meetDays: meetDays, eventsIn: eventsIn, daysOff: daysOff, currentEvent: function () { return C().events.filter(function (e) { return e.kind === "comp" && e.tba; })[0]; } };
 
 /* ---------- The app: four tabs; the first two have their own small switch ---------- */
 function snackName() { return D.S.role === "parent" ? "Ortiz family" : D.me().name; }
@@ -363,6 +396,7 @@ function attendance() {
   return subnav("here", list, def) + body;
 }
 function today() {
+  if (D.ground()) return todayGround();
   var c = C(), me = D.me().name, mine = c.here.filter(function (h) { return h.name === me; })[0], staff = D.isStaff();
   var ms = MENTORS.map(function (m) { var here = c.here.some(function (h) { return h.name === m; }), a = availOf(m, TODAYS); return '<div class="li"><b class="grow">' + esc(m) + "</b>" + (here ? '<span class="pill ok">Here</span>' : a === "coming" || a === "usual" ? '<span class="pill info">Planned</span>' : a === "cant" ? '<span class="pill bad">Can\'t come</span>' : '<span class="pill">No answer</span>') + "</div>"; }).join("");
   return '<div class="card hero statuscard"><div class="grow"><h2>' + (mine ? "Signed in since " + esc(mine.at) : "You are not signed in") + '</h2><p class="small mute">Practice today, ' + span({ start: "15:30", end: "18:00" }) + (D.ground() && !mine ? ". Tap Sign in to scan the code at the door." : "") + "</p></div>" +
@@ -371,6 +405,42 @@ function today() {
     (c.here.length ? c.here.map(function (h, i) { return '<div class="li"><span class="ring"></span><b class="grow">' + esc(h.name) + '</b><span class="who">' + (D.ground() ? "Here since " : "since ") + esc(h.at) + "</span>" + (staff ? '<button class="btn ghost sm" data-act="hereone" data-i="' + i + '">Sign out</button>' : "") + "</div>"; }).join("") : '<div class="empty">Nobody is signed in yet.</div>') + '</div></div>' +
     '<div class="card"><h2>Mentors</h2><div class="list">' + ms + "</div></div></div>";
 }
+/* Ground up Today: your own day first ("I'm here", then "I'm leaving"); then, for a student, who is here; for a mentor
+   or admin, every student's day with the corrections on each row (mark here, mark not here, fix the times). */
+function todayGround() {
+  var c = C(), me = D.me().name, staff = D.isStaff(), st = D.S.role === "admin" ? null : selfState(me), p = practiceOn(TODAYS);
+  var head = st ? '<div class="card hero statuscard"><div class="grow"><h2>' + esc(st.title) + '</h2><p class="small mute">' + esc(st.line) + "</p></div>" +
+    (st.btn || st.state === "open" ? '<div class="row selfacts">' + st.btn + (st.state === "open" ? '<button class="btn ghost" data-act="herescan">' + D.ic("qr", 16) + " Scan the door code</button>" : "") + "</div>" : "") + "</div>"
+    : p ? '<div class="card hero statuscard"><div class="grow"><h2>Practice today, ' + esc(span(p)) + '</h2><p class="small mute">Students sign themselves in. You can fix any day below.</p></div></div>' : "";
+  var ms = MENTORS.map(function (m) { var here = c.here.some(function (h) { return h.name === m; }), a = availOf(m, TODAYS); return '<div class="li"><b class="grow">' + esc(m) + "</b>" + (here ? '<span class="pill ok">Here</span>' : a === "coming" || a === "usual" ? '<span class="pill info">Planned</span>' : a === "cant" ? '<span class="pill bad">Can\'t come</span>' : '<span class="pill">No answer</span>') + "</div>"; }).join("");
+  var mid = staff ? studentsToday() : '<div class="card"><h2>Here now <span class="tcount">' + c.here.length + '</span></h2><div class="list">' +
+    (c.here.length ? c.here.map(function (h) { return '<div class="li"><span class="ring"></span><b class="grow">' + esc(h.name) + '</b><span class="who">Here since ' + esc(h.at) + "</span></div>"; }).join("") : '<div class="empty">Nobody is signed in yet.</div>') + "</div></div>";
+  return head + '<div class="grid2 todaygrid">' + mid + '<div class="card"><h2>Mentors</h2><div class="list">' + ms + "</div></div></div>";
+}
+// How a person's day was recorded, in words a mentor reads at a glance.
+function howText(h) { return h.how === "door" ? "at the door" : h.how === "mentor" ? "marked by " + h.by : "on their phone"; }
+function studentsToday() {
+  var c = C(), n = PEOPLE.filter(function (x) { return hereRec(x); }).length;
+  var rows = PEOPLE.map(function (x) {
+    var h = hereRec(x), l = leftRec(x), r = h || l, plan = planFor(x, TODAYS), fx = c.fixes[x], line, acts;
+    if (h) line = '<span class="pill ok">Here</span> since ' + esc(h.at) + ", " + esc(howText(h));
+    else if (l) line = '<span class="pill">Left</span> ' + esc(l.at + "–" + l.out) + ", " + esc(howText(l));
+    else line = '<span class="pill noreply">Not here</span> ' + (plan === "coming" ? "Said coming" : plan === "cant" ? "Said they can't come" : "Hasn't said");
+    acts = r ? '<button class="btn sm" data-act="herefixopen" data-n="' + esc(x) + '" aria-expanded="' + (c.fix === x) + '" aria-label="Fix the times for ' + esc(x) + '">Fix time</button><button class="btn ghost sm" data-act="hereabsent" data-n="' + esc(x) + '" aria-label="Mark ' + esc(x) + ' not here">Not here</button>'
+      : '<button class="btn sm" data-act="heremark" data-n="' + esc(x) + '" aria-label="Mark ' + esc(x) + ' here">Mark here</button>';
+    return '<div class="li strow' + (c.fix === x ? " open" : "") + '"><span class="grow"><b>' + esc(x) + '</b><span class="who stline">' + line + "</span>" + (fx ? '<span class="who stfix">' + esc(fx) + "</span>" : "") + '</span><span class="stacts">' + acts + "</span></div>" + (c.fix === x && r ? fixBox(x, r, !!h) : "");
+  }).join("");
+  return '<div class="card stucard2"><div class="row between"><h2>Students today <span class="tcount">' + n + " of " + PEOPLE.length + ' here</span></h2><button class="btn sm" data-act="hereall">Sign everyone out</button></div>' +
+    '<p class="small mute">Students sign themselves in. Check the list, and fix anything that is wrong; each change shows your name.</p><div class="list">' + rows + "</div></div>";
+}
+function fixBox(x, r, still) {
+  var a = r.at24 || toHM(r.at), o = still ? "" : r.out24 || toHM(r.out);
+  return '<div class="stfixbox" role="group" aria-label="Fix the times for ' + esc(x) + '"><label class="field"><span>Arrived</span><select class="inp" id="fx-in">' + timeOpts(a) + '</select></label>' +
+    '<label class="field"><span>Left</span><select class="inp" id="fx-out"><option value=""' + (o ? "" : " selected") + ">Still here</option>" + timeOpts(o) + "</select></label>" +
+    '<div class="row stfixacts"><button class="btn sm" data-act="herefixsave" data-n="' + esc(x) + '">Save</button><button class="btn ghost sm" data-act="herefixopen" data-n="' + esc(x) + '">Cancel</button></div></div>';
+}
+// "3:31 pm" to "15:31".
+function toHM(s) { var m = /^(\d+):(\d+) (am|pm)$/.exec(s || ""); if (!m) return ""; var h = +m[1] % 12 + (m[3] === "pm" ? 12 : 0); return ("0" + h).slice(-2) + ":" + m[2]; }
 function hoursOf(n) { var a = C().att[n], s = 0; Object.keys(a).forEach(function (d) { if (a[d] > 0) s += a[d]; }); C().adjust.forEach(function (x) { if (x.who === n) s += x.hours; }); return s + 24 + (n.charCodeAt(0) * 7 + n.length * 3) % 23 * .75; }
 function meetingsOf(n) { var a = C().att[n]; return Object.keys(a).filter(function (d) { return a[d] > 0; }).length + 14; }
 function streakOf(n) { var a = C().att[n], days = C().days, s = 0; for (var i = days.length - 1; i >= 0; i--) { if (days[i] === TODAYS) continue; if (a[days[i]] > 0) s++; else break; } return s; }
@@ -738,10 +808,46 @@ A.calsave = function () {
 A.calcancel = function (b) { var c = C(), e = c.events.filter(function (x) { return x.id === +b.dataset.v; })[0]; c.events.push({ id: 9500 + c.events.length, date: e.date, kind: "off", name: "No practice", start: "", end: "" }); c.events.splice(c.events.indexOf(e), 1); D.S.drawer = null; D.notify(["student", "mentor", "parent"], "calendar", "Practice on " + fmt(e.date) + " is cancelled."); D.toast("Cancelled. Everyone was told."); D.render(); };
 A.caldelete = function (b) { var c = C(); c.events = c.events.filter(function (x) { return x.id !== +b.dataset.v; }); D.S.drawer = null; D.render(); };
 A.calical = function () { D.toast("Subscribe link copied. Paste it into your phone's calendar app."); D.render(); };
-A.herescan = function () { var c = C(), me = D.me().name; D.withUndo("Signed in at 3:44 pm", function () { c.here.push({ name: me, at: "3:44 pm" }); D.log("signed in at the door", "calendar"); }, function () { c.here.pop(); D.S.activity.shift(); }); };
+/* Ground up: the person signs in or out themselves; a mentor corrects. Each change has Undo, and a mentor's change
+   is written on the row with their name. */
+A.hereself = function () {
+  var c = C(), me = D.me().name, s = snapDay(), at = nowText();
+  if (phase() !== "open" || hereRec(me)) return;
+  D.withUndo("Signed in at " + at + ". Have a good practice.", function () { c.left = c.left.filter(function (h) { return h.name !== me; }); c.here.push({ name: me, at: at, how: "self" }); D.log("signed in on their phone", "calendar"); }, function () { restoreDay(s); D.S.activity.shift(); });
+};
+A.hereleave = function () {
+  var c = C(), me = D.me().name, h = hereRec(me), s = snapDay(), out = phase() === "after" ? t12(practiceOn(TODAYS).end) : nowText();
+  if (!h) return;
+  D.withUndo("Signed out at " + out + ". See you next time.", function () { c.here = c.here.filter(function (x) { return x !== h; }); c.left.push({ name: me, at: h.at, out: out, how: h.how, by: h.by }); }, function () { restoreDay(s); });
+};
+A.heremark = function (b) {
+  var c = C(), n = b.dataset.n, s = snapDay(), me = D.me().name, p = practiceOn(TODAYS), at = phase() === "open" ? nowText() : t12(p ? p.start : "15:30");
+  D.withUndo("Marked " + n + " here.", function () { c.here.push({ name: n, at: at, how: "mentor", by: me }); delete c.fixes[n]; D.log("marked " + n + " here", "calendar"); }, function () { restoreDay(s); D.S.activity.shift(); });
+};
+A.hereabsent = function (b) {
+  var c = C(), n = b.dataset.n, s = snapDay(), me = D.me().name;
+  D.withUndo("Marked " + n + " not here.", function () { c.here = c.here.filter(function (h) { return h.name !== n; }); c.left = c.left.filter(function (h) { return h.name !== n; }); c.fixes[n] = "Marked not here by " + me + "."; c.fix = null; D.log("marked " + n + " not here", "calendar"); }, function () { restoreDay(s); D.S.activity.shift(); });
+};
+A.herefixopen = function (b) { var c = C(), n = b.dataset.n; c.fix = c.fix === n ? null : n; D.render(); var t = c.fix ? document.getElementById("fx-in") : document.querySelector('[data-act="herefixopen"][data-n="' + n + '"]'); if (!t) return;
+  // Keep the person's row in view, under the bars, so the mentor sees whose times they are fixing.
+  t.focus({ preventScroll: true }); var row = t.closest(".strow") || (t.closest(".stfixbox") || t).previousElementSibling; if (row) { var rt = row.getBoundingClientRect(); if (rt.top < belowBars() || rt.top > window.innerHeight - 200) scrollBelowBars(row); } };
+A.herefixsave = function (b) {
+  var c = C(), n = b.dataset.n, s = snapDay(), me = D.me().name, a = D.val("fx-in"), o = D.val("fx-out");
+  if (o && o <= a) { D.toast("Left must be after Arrived."); D.render(); return; }
+  var r = hereRec(n) || leftRec(n), how = r.how, by = r.by;
+  c.fix = null;
+  D.withUndo("Fixed the times for " + n + ".", function () {
+    c.here = c.here.filter(function (h) { return h.name !== n; }); c.left = c.left.filter(function (h) { return h.name !== n; });
+    if (o) c.left.push({ name: n, at: t12(a), out: t12(o), how: how, by: by }); else c.here.push({ name: n, at: t12(a), how: how, by: by });
+    c.fixes[n] = "Time fixed by " + me + "."; D.log("fixed the times for " + n, "calendar");
+  }, function () { restoreDay(s); D.S.activity.shift(); });
+  var f = document.querySelector('[data-act="herefixopen"][data-n="' + n + '"]'); if (f) f.focus();
+};
+D.changes.democlock = function (el) { C().clock = el.value; D.render(); };
+A.herescan = function () { var c = C(), me = D.me().name; D.withUndo("Signed in at 3:44 pm", function () { c.here.push({ name: me, at: "3:44 pm", how: "door" }); D.log("signed in at the door", "calendar"); }, function () { c.here.pop(); D.S.activity.shift(); }); };
 A.hereout = function () { var c = C(), me = D.me().name; c.here = c.here.filter(function (h) { return h.name !== me; }); D.toast("Signed out. 2.3 hours added."); D.render(); };
 A.hereone = function (b) { var c = C(), h = c.here.splice(+b.dataset.i, 1)[0]; D.toast("Signed out " + h.name + "."); D.render(); };
-A.hereall = function () { var c = C(), n = c.here.length; c.here = []; D.log("signed everyone out at the end of practice", "calendar"); D.toast("Signed out " + n + " people. Each got their time so far."); D.render(); };
+A.hereall = function () { var c = C(), n = c.here.length; if (D.ground()) { var out = phase() === "after" ? t12(practiceOn(TODAYS).end) : nowText(); c.here.forEach(function (h) { c.left.push({ name: h.name, at: h.at, out: out, how: h.how, by: h.by }); }); } c.here = []; D.log("signed everyone out at the end of practice", "calendar"); D.toast("Signed out " + n + " people. Each got their time so far."); D.render(); };
 A.herestud = function () { C().studentsOnly = !C().studentsOnly; D.render(); };
 D.changes.heresort = function (el) { C().sort = el.value; D.render(); };
 A.herecsv = function () { D.toast("Downloaded attendance-2026-27.csv (mentors only)."); D.render(); };

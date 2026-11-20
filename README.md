@@ -84,6 +84,7 @@ the same, and the choice is kept in this browser. `?event=1` ticks Event day. No
 | Account | "Open apps in": a new tab (the default) or this tab, per person, for the app and tool links in the Apps menu and on Home; links that leave the site always open a new tab (2026-11-19) | GROUND_UP.md 8.10 |
 | Calendar | Snacks: after a sign-up that offers more practices, the thanks heads that choice instead of a toast that covered it on a phone (2026-11-19) | GROUND_UP.md 8.11 |
 | Calendar | Attendance: students plan their days like mentors (usual week, "Coming" or "Can't" for one date) under My days; practice days count "2 mentors, 5 students coming"; mentors and admins see who is coming, who can't and who hasn't said; a parent sees their own student's plan on Home; the "Are you coming …?" notice (2026-11-20) | GROUND_UP.md 8.12 |
+| Calendar | Attendance: students (and mentors) sign themselves in with "I'm here" during practice hours, on Home and in Today, and later "I'm leaving"; the door code still works; mentors see every student's day in Today and mark here, mark not here or fix the times, with their name on the change. The demo strip's **Time** (Ground up) shows before, during and after practice (2026-11-20) | GROUND_UP.md 8.13 |
 | Tools | Fifteen calculators (also in Baseline), each with a drawing to scale; in Ground up they wear its look (`css/ground-tools.css`) | See "FRC calculators" below |
 
 ### The look (Baseline and Ground up)

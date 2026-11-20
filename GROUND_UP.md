@@ -454,3 +454,40 @@ leaked or photographed code gives nobody access.
   agenda carries it); whether an admin may set a student's usual week for them (the demo lets an admin edit mentors
   only, as before).
 
+### 8.13 Students sign themselves in
+> "… so we don't have to track." The second half of the owner's "yes" (8.12 is the first).
+
+- **What a student sees:** on a practice day, from 15 minutes before it starts until it ends, Home's Now and the
+  Attendance tab's Today say "You are not signed in" with **"I'm here"**, the screen's one filled button at that
+  moment (the next task's "Mark step done" is a plain button while it waits). One press signs them in at the time of
+  the press, with Undo in the toast. Then the same places say "Here since 3:45 pm", "Signed in on your phone", and
+  offer **"I'm leaving"** (a plain button), which records the time they left. Before practice the line says what they
+  planned and when it opens ("You said you're coming. I'm here opens at 3:15 pm."); after practice, if they never
+  signed in, "You weren't signed in today. If you were here, ask a mentor to fix it." No door code is needed.
+- **The door QR stays:** Today keeps "Scan the door code" beside "I'm here" (a quiet button), and the Door QR screen is
+  unchanged. Each record says how it was made: on their phone, at the door, or marked by a mentor.
+- **What a mentor sees:** Today, under their own "I'm here", has **Students today** ("5 of 8 here"): every student with
+  their state, a dot and a word ("Here since 3:33 pm, at the door", "Left 3:15 pm–5:30 pm", "Not here, said coming",
+  "Hasn't said") and the corrections on the row: **Fix time** (opens Arrived and Left under the row, Left may be "Still
+  here"; Save or Cancel), **Not here** (takes the record off), **Mark here** (for one who is not signed in). Each
+  correction has Undo, and the row then says who made it ("Time fixed by Ms. Rivera.", "Marked not here by Ms.
+  Rivera.", "marked by Ms. Rivera"). "Sign everyone out" stays and records each person's leaving time. An admin sees
+  the list but has no "I'm here" of their own (an admin-only account is not an attendee, D166).
+- **The demo's clock:** the demo strip has a **Time** choice in Ground up only (2:30 pm before practice, 3:45 pm at
+  practice, 6:30 pm after practice), because the demo's day is fixed at Tue Nov 10. The time does not move, so a
+  person who signs in and leaves in the demo is "here 3:45 pm–3:45 pm".
+- **What the real app must check, which the demo cannot.** The owner chose trust over a location check (unless the
+  lead is told otherwise), so:
+  1. The server, not the phone, decides the time and whether "I'm here" is allowed: only on a day the Calendar has a
+     practice or build day, from 15 minutes before its start until its end; at any other time the press is refused.
+  2. A person can only sign themselves in or out; a mentor or admin can change anyone's record. Every record keeps
+     how it was made (phone, door, mentor) and every change keeps who made it and when, and the old value.
+  3. Every self sign-in is listed for the mentors that day (Students today), so a mentor sees it and can undo it with
+     one press. Nobody else can hide or edit that trail.
+  4. Someone still signed in when practice ends is signed out at the end time by the server (as "Sign everyone out"
+     does today), and shows as such so a mentor can fix it.
+  5. No location, network or camera check is made. If the lead decides otherwise, the cheapest next step is to allow
+     "I'm here" only on the school's network, not GPS.
+- **Not decided:** whether a student may press "I'm here" again after "I'm leaving" on the same day (the demo does not
+  offer it; a mentor fixes it); whether 15 minutes before the start is the right opening.
+

@@ -300,6 +300,8 @@ function demobar() {
   return '<div class="demobar"><b>Demo</b><span>sample data</span>' +
     '<span class="seg" role="group" aria-label="View as">' + roles + "</span>" +
     '<label><input type="checkbox" id="evday" data-change="eventday"' + (S.eventDay ? " checked" : "") + "> Event day</label>" +
+    // Ground up: the demo's clock, so self sign-in can be seen before, during and after practice (2026-11-20).
+    (D.ground() && S.cal ? '<label>Time <select data-change="democlock" aria-label="Demo time">' + [["14:30", "2:30 pm, before practice"], ["15:45", "3:45 pm, at practice"], ["18:30", "6:30 pm, after practice"]].map(function (t) { return '<option value="' + t[0] + '"' + (S.cal.clock === t[0] ? " selected" : "") + ">" + t[1] + "</option>"; }).join("") + "</select></label>" : "") +
     '<span class="seg" role="group" aria-label="Design">' + [["live", "Live"], ["b", "Baseline"], ["c", "Ground up"]].map(function (v) { return '<button data-act="design" data-v="' + v[0] + '" aria-pressed="' + (D.design() === v[0]) + '">' + v[1] + "</button>"; }).join("") + "</span>" +
     '<span class="spacer"></span><button class="linkbtn" data-act="reset">Reset</button></div>';
 }
@@ -441,6 +443,11 @@ function practiceRows() {
   var pd = api.practiceDays(1)[0]; if (!pd) return rows;
   var today = pd.date === api.TODAYS, here = c.here || [], me = D.me().name, signed = here.some(function (h) { return h.name === me; });
   if (D.isStaff()) rows.push({ app: "here", tab: "today", title: (today ? "Practice today, " : "Next practice " + api.fmt(pd.date) + ", ") + api.span(pd), line: today ? plural(here.length, "person is", "people are") + " signed in" : "" });
+  else if (D.ground() && today && api.selfState && api.selfState(me)) {
+    // Ground up: the person signs in themselves, "I'm here" during practice hours and "I'm leaving" after (2026-11-20).
+    var ss = api.selfState(me);
+    rows.push({ app: "here", tab: "today", title: ss.state === "open" || ss.state === "before" ? "Practice today, " + api.span(pd) : ss.title, line: ss.state === "open" ? "Not signed in" : ss.state === "before" ? ss.line : ss.state === "in" ? "Practice today, " + api.span(pd) : ss.line, btn: ss.btn, self: ss.state === "open" });
+  }
   else rows.push({ app: "here", tab: "today", title: (today ? "Practice today, " : "Next practice " + api.fmt(pd.date) + ", ") + api.span(pd), line: today ? (signed ? "You are signed in" : "You are not signed in") : "", btn: today && !signed ? '<button class="btn" data-act="herescan">Sign in</button>' : "" });
   return rows;
 }
@@ -500,7 +507,7 @@ function nowRows() {
     if (S.role === "parent" && /^Next (event|practice): /.test(r.title)) return;
     if (S.role === "parent" && api && /^Next practice: /.test(r.title) && api.practiceDays(1)[0] && api.practiceDays(1)[0].date === api.TODAYS) r.title = "Practice today";
     // Signing in is the first job at practice, so until it is done it is the page's one main button (hill climb r2).
-    var signin = /data-act="herescan"/.test(r.btn || ""), pm = /^(Practice today), (.+)$/.exec(r.title);
+    var signin = /data-act="herescan"/.test(r.btn || "") || !!r.self, pm = /^(Practice today), (.+)$/.exec(r.title);
     var lineHtml = r.line ? esc(r.line) : "";
     if (pm) { r.title = pm[1]; lineHtml = esc(pm[2]) + (r.line ? "<br>" + esc(r.line.replace(/^You are not signed in$/, "Not signed in")) : ""); }
     rows.push({ app: r.app, tab: r.tab, title: r.title, line: lineHtml, first: signin, btn: (r.btn || "").replace('class="btn" data-act="herescan"', 'class="btn primary" data-act="herescan"') }); });
@@ -615,7 +622,8 @@ function homeGround() {
     return (g && (!i || (now[i - 1].group || "") !== (r.group || "")) ? '<h3 class="nowgroup">' + esc(g) + "</h3>" : "") + nowRow(r);
   }).join("") + "</div>" : '<p class="mute">Nothing needs you right now.</p>') + "</section>";
   // At an event the shop task waits: a student in the pit is not sent back to the shop (hill climb r3).
-  if (role === "student" && D.nextUpCard && !S.eventDay) mainCol += D.nextUpCard();
+  // While "I'm here" waits, it is the page's one filled button, so the task card's button is a plain one then.
+  if (role === "student" && D.nextUpCard && !S.eventDay) mainCol += now.some(function (r) { return r.first; }) ? D.nextUpCard().replace(/class="btn primary" (data-act="(?:tcheck|tdone)")/, 'class="btn" $1') : D.nextUpCard();
   if (S.eventDay && role !== "parent" && D.eventNext) { var nm = D.eventNext(4).filter(function (m) { return !m.now; }).slice(0, 3); if (nm.length) mainCol += '<section class="card nextcard"><h2>Next for us</h2><div class="list week">' + nm.map(function (m) {
     return '<button class="li wkrow" data-act="goapp" data-app="pit" data-tab="check"><span class="wkd"><b>Qual ' + m.q + '</b><span class="num">' + esc(m.now ? "Now" : m.time) + '</span></span><span class="grow"><b><i class="alsq ' + (m.colour === "Red" ? "red" : "blue") + '" aria-hidden="true"></i>' + esc(m.colour + " alliance" + (m.now ? ", on the field" : "")) + '</b><span class="wkfacts"><span>With ' + esc(m.withTeams.join(" and ")) + "</span><span>Against " + esc(m.against.join(", ")) + "</span></span></span></button>"; }).join("") + "</div></section>"; }
   // A parent's two questions are the next practice and the next event. The events get their own short list, so the

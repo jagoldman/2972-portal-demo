@@ -19,3 +19,30 @@
     .stupick .chipsel { flex: 1 1 auto; min-height: 44px; }
   }
 }
+
+:root[data-design="c"] {
+  /* ---------- Signing yourself in (Today, and the mentor's corrections) ---------- */
+  .statuscard .selfacts { gap: 8px; flex-wrap: wrap; }
+  .todaygrid { align-items: start; }
+  .strow { flex-wrap: wrap; gap: 6px 12px; align-items: center; }
+  .strow .grow { display: grid; gap: 2px; min-width: 12rem; }
+  .strow .stline { display: flex; flex-wrap: wrap; align-items: center; gap: 6px; }
+  .strow .stfix { font-size: .84rem; font-style: normal; color: var(--text-2); }
+  .strow.open { background: var(--surface-2); border-radius: 8px; }
+  .stacts { display: flex; gap: 6px; flex-wrap: wrap; }
+  .stfixbox { display: flex; flex-wrap: wrap; align-items: end; gap: 10px 14px; padding: 8px 12px 14px; margin: 0 0 6px; border-left: 2px solid var(--line-2); }
+  .stfixbox .field { display: grid; gap: 4px; margin: 0; }
+  .stfixbox .field span { font-size: .86rem; color: var(--text-2); }
+  .stfixbox select { min-width: 9rem; }
+  .stfixacts { gap: 6px; }
+  @media (max-width: 640px) {
+    .strow .grow { flex: 1 1 100%; min-width: 0; }
+    .stacts { flex: 1 1 100%; }
+    .stacts .btn, .stfixacts .btn, .statuscard .selfacts .btn { min-height: 44px; flex: 1 1 auto; }
+    .statuscard .selfacts { width: 100%; flex-direction: column; }
+    .stfixbox { padding-inline: 8px; }
+    .stfixbox .field { flex: 1 1 8rem; }
+    .stfixbox select { min-width: 0; width: 100%; min-height: 44px; }
+    .stfixacts { flex: 1 1 100%; }
+  }
+}
