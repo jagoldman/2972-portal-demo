@@ -33,6 +33,7 @@ Everything is sample data. Nothing is saved, and a reload resets it. The only th
 - `js/tools.js` and `css/tools.css`: the Tools page and the two photo tools.
 - `js/frc.js`: the calculators' maths (motors, motion, flywheel, flight, belts). `js/calc.js` and `css/calc.css`: the page every calculator shares (`css/ground-tools.css`: its Ground up look). `js/tool-<name>.js`: one calculator each. `tests/`: Node checks for the maths.
 - `js/admin.js` and `css/ground-admin.css`: the Admin screen (Ground up only): requests, join links and their QR codes.
+- `css/ground-attend.css`: the Ground up student attendance pieces of 2026-11-20 (who is coming, self sign-in).
 - `css/ground-tasks.css`: the Ground up Tasks pieces of 2026-11-19 (the people picker, the New task form, rows that open the panel).
 - `js/guide.js` and `css/guide.css`: the Get started card, the stops for each role and the ring.
 
@@ -82,6 +83,7 @@ the same, and the choice is kept in this browser. `?event=1` ticks Event day. No
 | Apps menu, Home | Tools lists a person's favourites, or three tools picked at random once (a calculator, a photo tool, one more) until they star one; the last link is "See all tools" (2026-11-19) | GROUND_UP.md 8.9 |
 | Account | "Open apps in": a new tab (the default) or this tab, per person, for the app and tool links in the Apps menu and on Home; links that leave the site always open a new tab (2026-11-19) | GROUND_UP.md 8.10 |
 | Calendar | Snacks: after a sign-up that offers more practices, the thanks heads that choice instead of a toast that covered it on a phone (2026-11-19) | GROUND_UP.md 8.11 |
+| Calendar | Attendance: students plan their days like mentors (usual week, "Coming" or "Can't" for one date) under My days; practice days count "2 mentors, 5 students coming"; mentors and admins see who is coming, who can't and who hasn't said; a parent sees their own student's plan on Home; the "Are you coming …?" notice (2026-11-20) | GROUND_UP.md 8.12 |
 | Tools | Fifteen calculators (also in Baseline), each with a drawing to scale; in Ground up they wear its look (`css/ground-tools.css`) | See "FRC calculators" below |
 
 ### The look (Baseline and Ground up)

@@ -423,3 +423,34 @@ leaked or photographed code gives nobody access.
   bringing snacks" line that appears at the top pushes it down on a short phone), the page brings the day's row to
   the top, under the bars. A sign-up that opens no choice (nothing after it needs snacks, or from Home or the
   Calendar) still says thanks in a toast, as before; "Sign up for these" closes the choice before its toast shows.
+
+### 8.12 Students plan their days, like mentors
+> "I want a student attendance thing too, like for the mentors, so we don't have to track." Asked whether that meant
+> students saying ahead of time that they are coming, students signing themselves in, or both: "yes" (both; the
+> sign-in is 8.13).
+
+- **What:** a student's Attendance tab has **My days**, right after Today. It is the mentors' screen, the same controls
+  and words: "My usual week" (the weekday chips, the arrive and leave times, "Save usual week"), then "Who's coming"
+  with a "You" column where a press on a day opens the same small editor ("Coming" or "Can't", the times, "Use usual").
+  The mentors' columns stay as students saw them before ("Mentors coming" was this tab's old name for a student).
+- **The counts:** every practice day says how many are coming, mentors and students, in one way:
+  "2 mentors, 5 students coming" ("1 mentor, no students yet"; "No mentors yet, 3 students coming"). It is on Home's
+  This week, the Calendar's agenda (the Attendance line of each practice day, and a day's panel) and under each day in
+  "Who's coming". A student counts as coming on their usual weekday unless they said Can't for that date, and on any
+  date they said Coming.
+- **Who sees names:** mentors and admins get a **Students** part under "Who's coming": a practice day to pick (the
+  first one, or the day they came from on the Calendar), then three lists: **Coming** (a usual day is marked "Usual
+  day"), **Can't come**, **Haven't said**, each with its count. A student sees their own plan and the counts, never
+  other students' names in this view (the Leaderboard and Here now, which already showed names, are unchanged).
+- **The notice:** the day before a practice, a student who has not pressed Coming or Can't for it gets "Are you coming
+  Tue Nov 10? You usually come Tuesdays." (or "You haven't said yet." when it is not one of their usual days).
+  Pressing it opens My days with that date's editor open and the focus on "Coming". A yes from the usual week needs no
+  press; the notice is the reminder the owner asked for.
+- **Parents:** the demo has one parent-student link (Pat Ortiz is Sam Ortiz's parent, the Ortiz family, as My
+  attendance already assumed), so a parent's This week on Home says, read-only, "Sam is coming", "Sam can't come" or
+  "Sam hasn't said" under each practice. A parent has no Attendance tab and cannot change it. **The real app** reads the
+  link from Admin (a parent account linked to one or more students) and shows one line per child.
+- **Not decided:** whether the month view (Calendar tab) should carry the count too (a phone cell has no room; the
+  agenda carries it); whether an admin may set a student's usual week for them (the demo lets an admin edit mentors
+  only, as before).
+

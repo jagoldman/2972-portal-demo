@@ -186,7 +186,10 @@ D.reset = function () {
     notices: [], activity: []
   };
   D.inits.forEach(function (f) { f(S); });
+  // Seeds that must come after every app's (a Ground up notice goes last, so the others keep their place in the list).
+  D.lateInits.forEach(function (f) { f(S); });
 };
+D.lateInits = [];
 D.me = function () { return D.ROLES[D.S.role]; };
 D.isStaff = function () { return D.S.role === "mentor" || D.S.role === "admin"; };
 /* Admin is a link-out in Live and Baseline. In Ground up the demo draws it (js/admin.js, owner 2026-11-19), so there
@@ -203,7 +206,8 @@ D.landing = function (route) {
 };
 D.inGroup = function (t) { if (typeof t === "string") t = D.tile(t); return t.groups.some(function (g) { return D.me().groups.indexOf(g) >= 0; }); };
 D.visibleTiles = function () { return D.TILES.filter(function (t) { return D.inGroup(t) && t.modes.indexOf(D.S.mode) >= 0; }); };
-D.myNotices = function () { return D.S.notices.filter(function (n) { return n.to === D.S.role; }); };
+// A notice marked ground belongs to a Ground up feature, so Live and Baseline never list it.
+D.myNotices = function () { return D.S.notices.filter(function (n) { return n.to === D.S.role && (!n.ground || D.ground()); }); };
 D.notify = function (to, app, text) { (Array.isArray(to) ? to : [to]).forEach(function (r) { D.S.notices.unshift({ to: r, app: app, text: text, when: "Just now", read: false }); }); };
 D.log = function (what, app) { D.S.activity.unshift({ who: D.me().name, what: what, app: app, when: "Just now" }); };
 var toastTimer, undoFn = null, linkFn = null;
@@ -558,6 +562,8 @@ function waitingOnOthers() {
 }
 /* This week: the next seven days on which the team meets or has an event. Each row is a door to the Calendar. The
    facts under a day are the two things people ask about a practice (which adults, which food) and what is due. */
+// The demo's one parent-student link: Pat Ortiz is Sam Ortiz's parent (the Ortiz family). The real app reads it from Admin.
+var KID = "Sam Ortiz", KID_SHORT = "Sam";
 function weekRows() {
   var api = D.calApi; if (!api || !api.meetDays) return "";
   var S = D.S, today = api.TODAYS, end = isoAdd(today, 6), role = S.role, days = {}, order = [];
@@ -568,7 +574,11 @@ function weekRows() {
     o.what.push((m.kind === "build" ? "Build day" : m.kind === "comp" ? m.name : "Practice") + (p ? ", " + api.span(p) : ""));
     if (ev) o.facts.push("<span>" + esc(ev.where) + "</span>");
     if (m.kind === "comp") return;
-    if (role !== "parent") { var mn = api.mentorsOn(m.date).length; o.facts.push(mn ? '<span>' + plural(mn, "mentor", "mentors") + " coming</span>" : '<span class="pill warn">No mentors yet</span>'); }
+    // Ground up: students plan their days too, so the count is both ("2 mentors, 5 students coming").
+    if (role !== "parent" && D.ground() && api.comingText) { var mg = api.mentorsOn(m.date).length; o.facts.push(mg ? "<span>" + esc(api.comingText(m.date)) + "</span>" : '<span class="pill warn">No mentors yet</span><span>' + esc(api.comingText(m.date).replace(/^No mentors yet, (.)/, function (x, c) { return c.toUpperCase(); })) + "</span>"); }
+    else if (role !== "parent") { var mn = api.mentorsOn(m.date).length; o.facts.push(mn ? '<span>' + plural(mn, "mentor", "mentors") + " coming</span>" : '<span class="pill warn">No mentors yet</span>'); }
+    // A parent sees their own student's plan for the day, read-only (the demo's family: Sam Ortiz and Pat Ortiz).
+    if (role === "parent" && D.ground() && api.planFor) { var kp = api.planFor(KID, m.date); o.facts.push(kp === "coming" ? "<span>" + KID_SHORT + " is coming</span>" : kp === "cant" ? "<span>" + KID_SHORT + " can't come</span>" : '<span class="mute">' + KID_SHORT + " hasn't said</span>"); }
     var sn = api.snacksFor(m.date);
     if (sn && D.calTab("snacks")) o.facts.push(sn.filled ? "<span>Snacks: " + esc(sn.names.join(" and ")) + "</span>" : api.openSnacks ? '<button class="pill warn wksn" data-act="snackday" data-d="' + m.date + '" aria-label="' + esc(api.fmt(m.date)) + ' needs snacks. Open Snacks for this day">Needs snacks</button>' : '<span class="pill warn">Needs snacks</span>');
   });
@@ -784,7 +794,9 @@ A.notice = function (b) {
   var n = D.S.notices[+b.dataset.i]; if (!n) return; n.read = true;
   var t = D.tile(n.app);
   // Ground up: a notice about a date that needs snacks opens the Snacks tab on that date (calendar.js openSnacks).
-  if (D.ground() && n.date && n.app === "calendar" && D.calTab("snacks") && D.calApi && D.calApi.openSnacks) D.calApi.openSnacks(n.date);
+  if (D.ground() && n.plan && D.calTab("here") && D.calApi && D.calApi.openPlan) D.calApi.openPlan(n.date);
+  // Ground up: a student's "Are you coming …?" opens their days with that date's answer open (calendar.js openPlan).
+  else if (D.ground() && n.date && n.app === "calendar" && D.calTab("snacks") && D.calApi && D.calApi.openSnacks) D.calApi.openSnacks(n.date);
   else if (t && D.inGroup(t)) D.go(n.app); else { D.render(); focusNotice(b.dataset.i); }
 };
 function focusNotice(i) { var el = document.querySelector('.nli[data-i="' + i + '"]'); if (el) el.focus(); }

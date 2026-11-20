@@ -1,0 +1,21 @@
+/* Design 8.3, Ground up ("c"): student attendance (the owner, 2026-11-20). Students plan their days like mentors, and
+   sign themselves in at practice. Every rule sits under :root[data-design="c"]. GROUND_UP.md §8.12 and §8.13. */
+
+:root[data-design="c"] {
+  /* ---------- Students coming to a practice (mentors and admins) ---------- */
+  .stucard { margin-top: 18px; }
+  .stuhead { gap: 8px 16px; flex-wrap: wrap; }
+  .stupick { gap: 8px; }
+  .stupick .chipsel { min-height: 36px; }
+  .stugrps { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 8px 24px; margin-top: 8px; }
+  .stugrp h3 { margin: 0 0 4px; font-size: .95rem; font-weight: 650; display: flex; align-items: baseline; gap: 8px; }
+  .stulist { list-style: none; margin: 0; padding: 0; }
+  .stulist li { display: flex; justify-content: space-between; gap: 12px; padding: 6px 0; border-top: 1px solid var(--line); }
+  .stulist .who { font-size: .86rem; }
+  .stulist li:first-child { border-top: 0; }
+  @media (max-width: 640px) {
+    .stugrps { grid-template-columns: minmax(0, 1fr); gap: 14px; }
+    .stupick { width: 100%; }
+    .stupick .chipsel { flex: 1 1 auto; min-height: 44px; }
+  }
+}
