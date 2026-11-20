@@ -188,7 +188,7 @@ D.views.tasks = function () {
 // One task row: check, title with one muted line, status, date. Used in My tasks and the Dashboard.
 function compactRow(x) {
   var st = rowSt(x);
-  return '<div class="trowx' + (st ? "" : " nost") + '">' + rowCheck(x) + '<div class="tt"><button class="ttitle" data-act="topen" data-v="' + x.id + '">' + esc(x.title) + '</button><div class="tsub">' + esc(proj(x.p).name) + (D.ground() && x.who.length && x.who.indexOf(me()) < 0 ? ", " + esc(x.who.join(", ")) : "") + "</div></div>" +
+  return '<div class="trowx' + (st ? "" : " nost") + '"' + rowOpen(x.id) + ">" + rowCheck(x) + '<div class="tt"><button class="ttitle" data-act="topen" data-v="' + x.id + '">' + esc(x.title) + '</button><div class="tsub">' + esc(proj(x.p).name) + (D.ground() && x.who.length && x.who.indexOf(me()) < 0 ? ", " + esc(x.who.join(", ")) : "") + "</div></div>" +
     st + dueTxt(x) + "</div>";
 }
 // The task to do next: the first one you can actually work on (not blocked and not waiting on anything).
@@ -216,7 +216,8 @@ D.tasksApi = {
   openProject: function (pid) { T().at = { v: "project", p: pid }; D.go("tasks"); },
   // Tasks marked blocked (someone pressed "I'm stuck", or a lead set it), with who has them and what they wait on.
   stuck: function () { return T().list.filter(function (x) { return x.st === "blocked"; }).map(function (x) { return { id: x.id, title: x.title, who: x.who.slice(), project: proj(x.p).name, waitsOn: waitsOn(x) }; }); },
-  openTask: function (id) { D.go("tasks"); D.openDrawer("task", { id: id }); }
+  // Ground up opens the task's panel where the person is (Home stays behind it); Live and Baseline go to Tasks first.
+  openTask: function (id, from) { if (!D.ground()) D.go("tasks"); D.openDrawer("task", { id: id }, from); }
 };
 function my() {
   var mine = T().list.filter(function (x) { return x.who.indexOf(me()) >= 0 && x.st !== "done"; }).sort(function (a, b) { return (a.due || "9") < (b.due || "9") ? -1 : 1; });
@@ -227,7 +228,7 @@ function my() {
   if (ideal) { var nx = nextOf(mine); mine = mine.filter(function (x) { return x !== nx; }); }
   var groups = buckets.map(function (b) { var xs = mine.filter(b[1]); return xs.length ? '<h3 class="tgrp">' + b[0] + ' <span class="who">' + xs.length + "</span></h3><div>" + xs.map(compactRow).join("") + "</div>" : ""; }).join("");
   return nextUp() + (ideal ? (groups ? '<div class="card"><h2>After that</h2>' + groups + "</div>" : all ? "" : "") : '<div class="card"><h2>Assigned to me</h2>' + (groups || '<p class="mute">Nothing assigned to you.</p>') + "</div>") +
-    (open.length ? '<div class="card"><h2>Nobody has these yet</h2><div class="list">' + open.map(function (x) { return '<div class="li tkr"><span class="grow"><b>' + esc(x.title) + '</b><br><span class="who">' + esc(proj(x.p).name) + " › " + esc(x.sub) + "</span></span>" + dueTxt(x) + '<button class="btn sm" data-act="ttake" data-v="' + x.id + '">I\'ll take it</button></div>'; }).join("") + "</div></div>" : "");
+    (open.length ? '<div class="card"><h2>Nobody has these yet</h2><div class="list">' + open.map(function (x) { return '<div class="li tkr"' + rowOpen(x.id) + '><span class="grow">' + (D.ground() ? '<button class="ttitle" data-act="topen" data-v="' + x.id + '">' + esc(x.title) + "</button>" : "<b>" + esc(x.title) + "</b>") + '<br><span class="who">' + esc(proj(x.p).name) + " › " + esc(x.sub) + "</span></span>" + dueTxt(x) + '<button class="btn sm" data-act="ttake" data-v="' + x.id + '">I\'ll take it</button></div>'; }).join("") + "</div></div>" : "");
 }
 function weekEvent(x) {
   return '<span class="wkev"><span class="wkename">' + esc(x.name) + '</span><span class="wketime">' + esc(D.calApi.span(x)) + "</span></span>";
@@ -749,7 +750,7 @@ function subChip(x) { return '<span class="subchip">' + esc(x.sub) + "</span>"; 
 // Cards in status columns: a subteam's board, or (chip) a whole project's, where each card names its subteam.
 function boardHtml(xs, pid, sub, chip) {
   var tt = T();
-  return '<div class="board" data-keepscroll="tboard">' + tt.cols.map(function (c) { var cs = xs.filter(function (x) { return x.st === c; }); return '<div class="bcol" data-col="' + c + '"><div class="row between"><span class="pill ' + ST[c][1] + '"><b>' + ST[c][0] + '</b></span><span class="who">' + cs.length + "</span></div>" + cs.map(function (x) { var sc = subsOf(x); return '<div class="bcard"' + (canMove() ? ' data-mtask="' + x.id + '"' : "") + '><button class="ttitle" data-act="topen" data-v="' + x.id + '">' + esc(x.title) + "</button>" + (chip ? '<div class="row">' + subChip(x) + "</div>" : "") + (labs(x) ? '<div class="who">' + labs(x) + "</div>" : "") + '<div class="row between">' + avs(x.who) + dueTxt(x) + "</div>" + (sc.length ? '<span class="who">' + sc.filter(function (s) { return s.st === "done"; }).length + " of " + sc.length + " subtasks</span>" : "") + (x.ms ? '<span class="who">◆ ' + esc(msName(x.p, x.ms)) + "</span>" : "") + '<select class="chipsel" data-change="tcol" data-v="' + x.id + '" aria-label="Move ' + esc(x.title) + '"><option value="">Move to…</option>' + tt.cols.map(function (k) { return '<option value="' + k + '">' + ST[k][0] + "</option>"; }).join("") + "</select></div>"; }).join("") + '<button class="btn ghost sm" data-act="tnewin" data-p="' + pid + '" data-s="' + esc(sub || "") + '" data-st="' + c + '">+ Add a task</button></div>'; }).join("") + "</div>";
+  return '<div class="board" data-keepscroll="tboard">' + tt.cols.map(function (c) { var cs = xs.filter(function (x) { return x.st === c; }); return '<div class="bcol" data-col="' + c + '"><div class="row between"><span class="pill ' + ST[c][1] + '"><b>' + ST[c][0] + '</b></span><span class="who">' + cs.length + "</span></div>" + cs.map(function (x) { var sc = subsOf(x); return '<div class="bcard"' + (canMove() ? ' data-mtask="' + x.id + '"' : "") + rowOpen(x.id) + '><button class="ttitle" data-act="topen" data-v="' + x.id + '">' + esc(x.title) + "</button>" + (chip ? '<div class="row">' + subChip(x) + "</div>" : "") + (labs(x) ? '<div class="who">' + labs(x) + "</div>" : "") + '<div class="row between">' + avs(x.who) + dueTxt(x) + "</div>" + (sc.length ? '<span class="who">' + sc.filter(function (s) { return s.st === "done"; }).length + " of " + sc.length + " subtasks</span>" : "") + (x.ms ? '<span class="who">◆ ' + esc(msName(x.p, x.ms)) + "</span>" : "") + '<select class="chipsel" data-change="tcol" data-v="' + x.id + '" aria-label="Move ' + esc(x.title) + '"><option value="">Move to…</option>' + tt.cols.map(function (k) { return '<option value="' + k + '">' + ST[k][0] + "</option>"; }).join("") + "</select></div>"; }).join("") + '<button class="btn ghost sm" data-act="tnewin" data-p="' + pid + '" data-s="' + esc(sub || "") + '" data-st="' + c + '">+ Add a task</button></div>'; }).join("") + "</div>";
 }
 var GROUP_OPTS = [["milestone", "Milestone"], ["status", "Status"], ["pri", "Priority"], ["due", "Due date"]];
 // Rows in groups: a subteam's list (o.sub), or a whole project's (rows name their subteam unless grouped by it).
@@ -789,7 +790,7 @@ function listRow(x, sc, open, isSub, selable, chip) {
   var st = rowSt(x);
   // A subtask row drags too (no checkbox): onto a milestone group it becomes its own task, onto a task it changes parent.
   var picked = selable && !isSub && !!(T().sel || {})[x.id];
-  return '<div class="trowx' + (isSub ? " sub" : "") + (st ? "" : " nost") + (selable && !isSub ? " selable" + (picked ? " picked" : "") : "") + '"' + (selable ? ' data-mtask="' + x.id + '"' : "") + ">" +
+  return '<div class="trowx' + (isSub ? " sub" : "") + (st ? "" : " nost") + (selable && !isSub ? " selable" + (picked ? " picked" : "") : "") + '"' + (selable ? ' data-mtask="' + x.id + '"' : "") + rowOpen(x.id) + ">" +
     (selable && !isSub ? '<input type="checkbox" class="tsel" id="tsel-' + x.id + '" data-change="tsel" data-v="' + x.id + '"' + (picked ? " checked" : "") + ' aria-label="Pick: ' + esc(x.title) + '">' : "") + rowCheck(x) + '<div class="tt"><div class="tline">' + (sc.length ? '<button class="tex" data-act="tsubs" data-v="' + x.id + '" aria-label="' + (open ? "Hide" : "Show") + ' subtasks" aria-expanded="' + !!open + '" data-tip="' + (open ? "Hide" : "Show") + ' the steps inside this task.">' + (open ? "▾" : "▸") + "</button>" : "") + '<button class="ttitle' + (x.st === "done" ? " isdone" : "") + '" data-act="topen" data-v="' + x.id + '">' + esc(x.title) + '</button></div><div class="tsub">' + (chip ? subChip(x) + " " : "") + sub.join(" · ") + (lb ? " · " + lb : "") + "</div></div>" +
     st + dueTxt(x) + "</div>";
 }
@@ -1294,7 +1295,7 @@ D.acts.mtgnotesave = function () { noteDone(true); };
 D.acts.mtgnotecancel = function () { noteDone(false); };
 document.addEventListener("keydown", function (e) { if (e.target && e.target.id === "mtg-note") { if (e.key === "Enter") { e.preventDefault(); noteDone(true); } else if (e.key === "Escape") { e.preventDefault(); e.stopPropagation(); noteDone(false); } } }, true);
 D.acts.mtgproj = function (b) { var tt = T(); tt.expanded[b.dataset.v] = true; tt.at = { v: "project", p: b.dataset.v }; tt.mopen = false; D.go("tasks"); };
-D.acts.mtgopen = function (b) { PJ.focus = b.dataset.v; D.openDrawer("task", { id: b.dataset.v }); };
+D.acts.mtgopen = function (b) { PJ.focus = b.dataset.v; D.openDrawer("task", { id: b.dataset.v }, b); };
 D.acts.pjview = function (b) { var v = b.dataset.v; PJ.rotAt = Date.now(); if (pjShown() === v) return; D.setPref("projview", v); PJ.rot = null; PJ.page = 0; D.render(); };
 // Left and Right arrows turn the page (not while typing, or while a panel or dialog is open).
 document.addEventListener("keydown", function (e) {
@@ -1412,7 +1413,17 @@ document.addEventListener("keydown", function (e) {
 }, true);
 D.after.push(function () { var tt = D.S && D.S.tasks; if (!tt || !tt.cqFocus) return; tt.cqFocus = false; var el = document.getElementById("tq-title"); if (el) el.focus(); });
 A.tsubs = function (b) { var o = T().openSubs; o[b.dataset.v] = !o[b.dataset.v]; D.render(); };
-A.topen = function (b) { D.openDrawer("task", { id: b.dataset.v }); };
+A.topen = function (b) { D.openDrawer("task", { id: b.dataset.v }, b); };
+/* Ground up: the whole row (or card) of a task opens its panel, not only the title. The controls inside the row (the
+   done check, the pick box, the status menu, "I'll take it") keep their own job; the title stays the keyboard's way
+   in. A drag that ends on the row opens nothing (that click is eaten above), nor does selecting the row's text. */
+function rowOpen(id) { return D.ground() ? ' data-rowopen="' + id + '"' : ""; }
+document.addEventListener("click", function (e) {
+  if (!D.ground() || e.defaultPrevented) return;
+  var row = e.target.closest && e.target.closest("[data-rowopen]"); if (!row || e.target.closest("button, a, input, select, textarea, label, [data-act]")) return;
+  try { if (String(window.getSelection())) return; } catch (err) {}
+  var t = row.querySelector('[data-act="topen"]'); if (t) A.topen(t);
+});
 A.tlead = function () { var tt = T(); tt.lead = !tt.lead; if (tt.lead) { D.log("turned on lead mode", "tasks"); D.toast("Lead mode on until 6 pm. Your changes are marked, and mentors can undo them."); } else D.toast("Lead mode off."); D.render(); };
 A.tsimple = function () { T().simple = !simple(); D.render(); };
 A.tdone = function (b) { var x = task(b.dataset.v), prev = x.st, prevOn = x.doneOn; if (x.st === "done") { setSt(x, "todo"); h(x, "reopened it"); D.render(); return; } D.withUndo("Done: " + x.title, function () { setSt(x, "done"); h(x, "marked it done"); D.log("finished “" + x.title + "”", "tasks"); }, function () { x.st = prev; x.doneOn = prevOn; x.hist.pop(); D.S.activity.shift(); }); };

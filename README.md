@@ -71,6 +71,7 @@ the same, and the choice is kept in this browser. `?event=1` ticks Event day. No
 | Schedule, Pit, Scouting | One line across all three: you now, next match, robot | Doors between apps |
 | Tasks | "+ Someone" on a task opens a picker: a search, then Students, Mentors and Parents as groups that open and close (2026-11-19) | GROUND_UP.md 8.1 |
 | Tasks | "New task" at the top of every Tasks view; the form asks for Division, then Project, then Subteam, and Create points at the first one missing (2026-11-19) | GROUND_UP.md 8.2 |
+| Tasks, Home | Pressing a task's row or card anywhere opens its side panel in place; closing it returns to the row (2026-11-19) | GROUND_UP.md 8.3 |
 | Tools | Fifteen calculators (also in Baseline), each with a drawing to scale; in Ground up they wear its look (`css/ground-tools.css`) | See "FRC calculators" below |
 
 ### The look (Baseline and Ground up)

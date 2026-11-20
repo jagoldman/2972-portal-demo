@@ -220,7 +220,27 @@ D.topbar = function (title, host, tabs, right) {
 D.denied = function (name) {
   return '<div class="content"><div class="card"><h2>You can\'t open ' + esc(name) + '</h2><p class="mute">Ask a team admin if you need it.</p><div><button class="btn" data-act="go" data-v="portal">Back to Home</button></div></div></div>';
 };
-D.openDrawer = function (type, data) { D.S.drawer = { type: type, data: data || {} }; D.render(); };
+/* Ground up (owner, 2026-11-19: "i want a task selection to open up the side detail panel"): a panel opened from a row
+   remembers that row. Opening it puts the focus on its close button; closing it (the button, the dimmed page, Escape)
+   puts the focus back on the row that opened it, without scrolling the page. Choosing another task inside the panel
+   swaps its content and keeps the first row as the way back. `from` is the element pressed (optional). */
+D.drawerFrom = null;
+function focusKey(el) {
+  var act = el.getAttribute("data-act"), v = el.getAttribute("data-v"), sel = el.id ? "#" + el.id : act ? '[data-act="' + act + '"]' + (v != null ? '[data-v="' + v + '"]' : "") : null;
+  if (!sel) return null;
+  var all = Array.prototype.filter.call(document.querySelectorAll(sel), function (e) { return e.getClientRects().length; });
+  return { sel: sel, i: Math.max(0, all.indexOf(el)) };
+}
+D.openDrawer = function (type, data, from) {
+  if (D.ground()) { if (!D.S.drawer) D.drawerFrom = from && from.getAttribute ? focusKey(from) : null; D.drawerFocus = true; }
+  D.S.drawer = { type: type, data: data || {} }; D.render();
+};
+D.after.push(function () {
+  if (D.S.drawer) { if (D.drawerFocus) { D.drawerFocus = false; var x = document.querySelector(".drawer .xbtn"); if (x) x.focus({ preventScroll: true }); } return; }
+  var k = D.drawerFrom; D.drawerFrom = null; D.drawerFocus = false; if (!k) return;
+  var all = Array.prototype.filter.call(document.querySelectorAll(k.sel), function (e) { return e.getClientRects().length; }), el = all[k.i] || all[0];
+  if (el) el.focus({ preventScroll: true });
+});
 D.openModal = function (type, data) { D.S.modal = { type: type, data: data || {} }; D.render(); };
 D.val = function (id) { var el = document.getElementById(id); return el ? el.value : ""; };
 D.drawerHead = function (eyebrow, title) {
@@ -787,7 +807,7 @@ A.grp = function (b) { var id = b.dataset.v, place = b.dataset.place; D.setPref(
 A.homeapprove = function (b) { if (apiWith(D.partsApi, ["approve"])) D.partsApi.approve(+b.dataset.v); };
 A.homereq = function (b) { if (apiWith(D.partsApi, ["open"])) D.partsApi.open(+b.dataset.v); };
 A.homesignoff = function (b) { if (apiWith(D.skillsApi, ["signOff"])) D.skillsApi.signOff(b.dataset.v); };
-A.hometask = function (b) { if (apiWith(D.tasksApi, ["openTask"])) D.tasksApi.openTask(+b.dataset.v); };
+A.hometask = function (b) { if (apiWith(D.tasksApi, ["openTask"])) D.tasksApi.openTask(+b.dataset.v, b); };
 A.homeproject = function (b) { if (D.tasksApi) D.tasksApi.openProject(b.dataset.v); };
 A.goapp = function (b) { if (b.dataset.tab) D.S.tabs[b.dataset.app] = b.dataset.tab; D.go(b.dataset.app); };
 A.closedrawer = function () { D.S.drawer = null; D.render(); };

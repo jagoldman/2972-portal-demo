@@ -262,3 +262,17 @@ Four things the owner asked for, drawn in Ground up only. Live and Baseline keep
   went; a task the view does not show gets a toast that names the place, with a link ("Open CAD").
 - **One filled button:** the button is the view's filled button, except on My tasks when the next-task card already
   has one (its "Mark step done"): there it is a plain button.
+
+### 8.3 Choosing a task opens its side panel, in place
+> "i want a task selection to open up the side detail panel."
+
+- **What:** in every view, pressing a task opens its panel at the side **in place**: the view behind stays where it
+  was, scrolled where it was, and nothing goes to another page. The whole row (or card) is the target, not only the
+  title; the controls inside a row (the done check, the pick box, "Move to…", "I'll take it") keep their own job.
+- **Where:** My tasks (its rows and "Nobody has these yet"), the Dashboard, a subteam's or project's list, a board
+  card, a grid card, a Due dates entry, This week, the Timeline, the Projector's rows, and Home (the next-task card
+  and a mentor's "Stuck" rows, which used to go to Tasks first).
+- **Rules:** one task open at a time; choosing another inside the panel (a subtask) swaps its content. Opening puts
+  the focus on the panel's close button; the close button, the dimmed page and Escape close it and put the focus back
+  on the row that opened it. On a phone the panel is a full-height sheet with its close button at the top. The title
+  stays a real button, so the keyboard reaches every task with Tab and opens it with Enter.
