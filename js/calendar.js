@@ -89,7 +89,7 @@ D.inits.push(function (S) {
   S.cal.snacks["2026-11-17"] = ["Brooks family", null];
   S.notices.push({ to: "admin", app: "calendar", text: "Dr. Patel hasn't answered for this week's practices.", when: "Sun", read: false });
   S.notices.push({ to: "mentor", app: "calendar", text: "Are you coming Tue Nov 17? Your usual week says yes, but you marked Can't.", when: "Sun", read: true });
-  S.notices.push({ to: "parent", app: "calendar", text: "Thu Nov 12 still needs snacks for 2.", when: "Today", read: false });
+  S.notices.push({ to: "parent", app: "calendar", text: "Thu Nov 12 still needs snacks for 2.", when: "Today", read: false, date: "2026-11-12" });
   S.activity.push({ who: "Ava Kim", what: "signed in at the door", app: "calendar", when: "3:40 pm" });
 });
 function C() { return D.S.cal; }
@@ -142,6 +142,16 @@ function mentorsOn(date) { return MENTORS.filter(function (m) { var a = availOf(
 /* Snacks on a date, from Snacks: the families bringing them (empty spots left out) and how many spots are open. The
    Projector shows the families on the shop screen (the owner, 2026-11-14). null when the day has no snack sign-up. */
 function snacksFor(date) { var s = C().snacks[date]; if (!s || !s.length) return null; var names = s.filter(Boolean); return { names: names, filled: names.length, open: s.length - names.length }; }
+/* Ground up (the owner, 2026-11-19): a practice or build day from today on that still has an open snack spot. A day
+   with no sign-up list yet has every spot open. */
+function needsSnacks(date) {
+  if (date < TODAYS) return false;
+  var p = practiceOn(date); if (!p) return false;
+  var s = C().snacks[date]; return !s || s.indexOf(null) >= 0;
+}
+/* Every "needs snacks" line in Ground up (Home, the bell, the Calendar tab) opens the Snacks tab on that date: the
+   tab scrolls to the day's row, marks it for a moment and puts the focus on it (see snacks() and the hook below). */
+function openSnacks(date) { C().focus = date || null; D.go("snacks"); }
 /* Volunteer events that still need people and that this person has not joined, soonest first (Home's "Can you help?"). */
 function volName() { return D.me().name; }
 function volList() { return C().vol.filter(function (v) { return v.date >= TODAYS; }).sort(function (a, b) { return a.date < b.date ? -1 : a.date > b.date ? 1 : 0; }); }
@@ -151,7 +161,7 @@ function volEvents() { return D.calTab("volunteer") ? C().vol.map(function (v) {
 function calUpcoming(n) { return upcoming(400).concat(volEvents().filter(function (e) { return e.date >= TODAYS; })).sort(function (a, b) { return a.date < b.date ? -1 : a.date > b.date ? 1 : 0; }).slice(0, n); }
 function evAct(e) { return e.vol ? 'data-act="caldoor" data-v="volunteer" data-d="' + e.date + '"' : 'data-act="calev" data-v="' + e.id + '"'; }
 function volOpen() { var me = volName(); return volList().filter(function (v) { return v.who.length < v.need && v.who.indexOf(me) < 0; }).map(function (v) { return { id: v.id, name: v.name, date: v.date, when: span(v), open: v.need - v.who.length }; }); }
-D.calApi = { volOpen: volOpen, kickoff: kickoff, practiceOn: practiceOn, mentorsOn: mentorsOn, mentors: function () { return MENTORS.slice(); }, snacksFor: snacksFor, practiceDays: practiceDays, upcoming: upcoming, fmt: fmt, span: span, TODAYS: TODAYS, meetDays: meetDays, eventsIn: eventsIn, daysOff: daysOff, currentEvent: function () { return C().events.filter(function (e) { return e.kind === "comp" && e.tba; })[0]; } };
+D.calApi = { needsSnacks: needsSnacks, openSnacks: openSnacks, volOpen: volOpen, kickoff: kickoff, practiceOn: practiceOn, mentorsOn: mentorsOn, mentors: function () { return MENTORS.slice(); }, snacksFor: snacksFor, practiceDays: practiceDays, upcoming: upcoming, fmt: fmt, span: span, TODAYS: TODAYS, meetDays: meetDays, eventsIn: eventsIn, daysOff: daysOff, currentEvent: function () { return C().events.filter(function (e) { return e.kind === "comp" && e.tba; })[0]; } };
 
 /* ---------- The app: four tabs; the first two have their own small switch ---------- */
 function snackName() { return D.S.role === "parent" ? "Ortiz family" : D.me().name; }
@@ -488,11 +498,25 @@ D.after.push(function () {
 });
 
 /* ---------- Snacks tab ---------- */
+/* Every coming practice or build day up to a date, listed as practiceDays lists them (for a date further off than
+   the tab's usual fourteen). */
+function practicesTo(date) { return upcoming(1000, ["practice", "build"]).filter(function (e) { return (e.auto || e.kind === "build") && e.date <= date; }).filter(function (e, i, arr) { return !arr.slice(0, i).some(function (x) { return x.date === e.date; }); }); }
 function snacks() {
   var c = C(), nm = snackName();
   var days = practiceDays(14), flagged = false;
+  /* Ground up: opened on a date (openSnacks, or a door on the Calendar tab). That day's row is marked; a day further
+     off than the list reaches makes the list longer; a past or settled day opens the tab at the top with a line. */
+  var f = D.ground() ? c.focus : null, mark = D.ground() ? f || c.mark : null, note = "";
+  if (f) {
+    if (days.length && f > days[days.length - 1].date && practiceOn(f)) days = practicesTo(f);
+    if (f < TODAYS) note = fmt(f) + " is past. These are the practices coming up.";
+    else if (!days.some(function (e) { return e.date === f; })) note = "There is no practice on " + fmt(f) + " any more.";
+    else if (!needsSnacks(f)) note = fmt(f) + " has all its snacks now.";
+    if (note) mark = null;
+    c.mark = mark;
+  }
   var mine = days.filter(function (e) { return (c.snacks[e.date] || []).indexOf(nm) >= 0; });
-  return (mine.length ? '<div class="card hero"><h2>You\'re bringing snacks on ' + mine.map(function (e) { return fmt(e.date); }).join(", ") + '</h2><p class="small mute">We\'ll remind you the day before.</p></div>' : "") +
+  return (note ? '<p class="snnote" role="status" tabindex="-1">' + esc(note) + "</p>" : "") + (mine.length ? '<div class="card hero"><h2>You\'re bringing snacks on ' + mine.map(function (e) { return fmt(e.date); }).join(", ") + '</h2><p class="small mute">We\'ll remind you the day before.</p></div>' : "") +
     '<div class="card"><div class="row between"><h2>Coming practices</h2><span class="who">' + c.slots + ' families per practice · nut-free please</span></div><div class="list">' +
     days.map(function (e) {
       var s = c.snacks[e.date] || (c.snacks[e.date] = new Array(c.slots).fill(null));
@@ -500,7 +524,7 @@ function snacks() {
       if (has >= 0) act = '<button class="btn ghost sm" data-act="snackfree" data-d="' + e.date + '" data-k="' + has + '">Cancel</button>';
       else if (open >= 0) { act = '<button class="btn sm' + (flagged ? "" : " primary") + '" data-act="snack" data-d="' + e.date + '" data-k="' + open + '">I\'ll bring snacks</button>'; flagged = true; }
       else act = '<span class="pill ok">Covered</span>';
-      return '<div class="li snrow' + (c.focus === e.date ? " focusrow" : "") + '"><span class="grow"><b>' + fmt(e.date) + '</b><span class="who agmore">' + span(e) + " · " + (names.length ? esc(names.join(", ")) + (open >= 0 ? " · needs " + (s.length - names.length) + " more" : "") : "Nobody yet") + "</span></span>" + act + "</div>";
+      return '<div class="li snrow' + (D.ground() ? (mark === e.date ? " snmark" : "") : c.focus === e.date ? " focusrow" : "") + '"' + (D.ground() ? ' data-d="' + e.date + '"' : "") + '><span class="grow"><b>' + fmt(e.date) + '</b><span class="who agmore">' + span(e) + " · " + (names.length ? esc(names.join(", ")) + (open >= 0 ? " · needs " + (s.length - names.length) + " more" : "") : "Nobody yet") + "</span></span>" + act + "</div>";
     }).join("") + "</div></div>";
 }
 
@@ -546,6 +570,34 @@ A.caltoday = function () { C().month = [2026, 10]; D.render(); };
 A.calev = function (b) { D.openDrawer("calev", { id: b.dataset.v }); };
 // A door on a practice day: open that tab (and its view) and show the day.
 A.caldoor = function (b) { if (b.dataset.tab) D.S.tabs[b.dataset.v] = b.dataset.tab; C().focus = b.dataset.d || null; D.go(b.dataset.v); };
+/* Ground up, the Snacks tab opened on a date: scroll its row into view below the app bar and the tab row, put the
+   focus on its sign-up button (or the row), and mark it. With motion the mark fades by itself; with reduced motion it
+   stays until the next press. A past or settled date: the focus goes to the line that says so. */
+function belowBars() {
+  var h = 0;
+  document.querySelectorAll(".appbar, .topbar").forEach(function (b) { var cs = getComputedStyle(b); if (cs.position === "sticky" || cs.position === "fixed") h = Math.max(h, (parseFloat(cs.top) || 0) + b.getBoundingClientRect().height); });
+  return h;
+}
+function showRow(el) {
+  var top = belowBars(), r = el.getBoundingClientRect(), room = window.innerHeight - top;
+  window.scrollTo(0, Math.max(0, r.top + window.scrollY - top - Math.max(16, (room - r.height) / 3)));
+  var b = el.querySelector('[data-act="snack"]');
+  if (!b) { el.setAttribute("tabindex", "-1"); b = el; }
+  b.focus({ preventScroll: true });
+}
+function reduced() { return !!(window.matchMedia && window.matchMedia("(prefers-reduced-motion: reduce)").matches); }
+D.after.push(function () {
+  var c = D.S && D.S.cal; if (!c || !c.focus || !D.ground() || D.S.route !== "calendar" || D.tab("calapp", "calendar") !== "snacks") return;
+  c.focus = null;
+  if (!reduced()) c.mark = null; // the class stays on the row until the next redraw, long enough for the fade
+  var n = document.querySelector(".snnote"), m = document.querySelector(".snrow.snmark");
+  setTimeout(function () { if (n) n.focus({ preventScroll: true }); else if (m) showRow(m); }, 0);
+});
+// The next press anywhere clears a steady mark (reduced motion).
+document.addEventListener("click", function () {
+  var c = D.S && D.S.cal; if (!c || !c.mark) return;
+  c.mark = null; document.querySelectorAll(".snmark").forEach(function (el) { el.classList.remove("snmark"); });
+}, true);
 D.after.push(function () {
   var c = D.S && D.S.cal; if (!c || !c.focus) return;
   var el = document.querySelector(".focusrow"); c.focus = null;
@@ -589,6 +641,7 @@ A.hereeditm = function (b) { var c = C(); c.medit = b.dataset.v; c.pop = null; c
 A.herefix = function (b) { var c = C(); c.att[b.dataset.n][b.dataset.d] = 2.5; c.adjust.push({ who: b.dataset.n, hours: 0, why: "Fixed missed sign-out on " + fmt(b.dataset.d) + " (2.5 h)", by: D.me().name, when: "Just now" }); D.toast("Fixed. " + b.dataset.n + " gets 2.5 hours."); D.render(); };
 A.hereadd = function () { var c = C(); c.adjust.unshift({ who: D.val("ha-who"), hours: parseFloat(D.val("ha-h")) || 0, why: D.val("ha-why"), by: D.me().name, when: "Just now" }); D.toast("Saved. It shows in their history."); D.render(); };
 A.snack = function (b) { var c = C(), nm = snackName(); c.snacks[b.dataset.d][+b.dataset.k] = nm; D.toast("Thanks. You'll get a reminder the day before."); D.render(); };
+A.snackday = function (b) { openSnacks(b.dataset.d || b.dataset.v); };
 A.snackfree = function (b) { C().snacks[b.dataset.d][+b.dataset.k] = null; D.render(); };
 function volBy(id) { return C().vol.filter(function (v) { return v.id === +id; })[0]; }
 A.volyes = function (b) {

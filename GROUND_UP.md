@@ -305,3 +305,25 @@ leaked or photographed code gives nobody access.
   request's "Let in" is a filled button, so the screen keeps one; the others are plain buttons with the same words.
 - **In the demo only:** the QR code is a drawn sample pattern (three corner squares and a field of modules), not a
   code a phone can read. The people asking to join are made up, from the families of the demo's made-up students.
+
+### 8.5 "Needs snacks" opens the Snacks tab on that day
+> "If i click on "needs snacks" on the homepage as a parent, i want the link to bring me to the snacks page and
+> highlight + scroll to the snack date i had selected."
+
+- **What:** every place that says a practice needs snacks is a door to the Snacks tab **on that date**: Home's
+  "Snacks needed Thu, Nov 12" rows (the title; the Sign up button beside it still signs up in one press), the
+  "Needs snacks" mark in Home's This week (its own small door inside the day's row; the rest of the row still opens
+  the Calendar), a notice in the bell about a date that needs snacks, and the Calendar tab's "Needs snacks" (8.6).
+- **On arrival:** the tab scrolls so that day's row sits in the upper third of the room below the app bar and the tab
+  row, the row is marked (a blue tint and a bar at its left edge) that fades after about two seconds, and the focus
+  is on its "I'll bring snacks" button (or on the row, when this family is already on it), so a screen reader lands
+  there. With reduced motion there is no fade: the mark stays until the next press. A date further off than the
+  tab's fourteen practices makes the list run to that date.
+- **When the date no longer needs snacks:** the tab opens at the top with one line that takes the focus: "Thu, Nov 5
+  is past. These are the practices coming up.", "Tue, Nov 10 has all its snacks now." or "There is no practice on …
+  any more." (a cancelled practice).
+- **Who sees it:** the people who have the Snacks tab: parents, mentors and admins. Students have no Snacks tab, so
+  nothing of theirs leads there.
+- **In the demo:** the bell's notice carries its date as data (`date`), so the real app's notices about a day need
+  the same field.
+

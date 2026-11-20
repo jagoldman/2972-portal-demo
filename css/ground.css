@@ -751,3 +751,26 @@
   .appsmenu .grpnote { margin: 0; padding: 4px 8px; color: var(--mute); font-size: .86rem; }
   .appsmenu .toolrow.all[aria-current="page"] { background: var(--tint); }
 }
+
+/* ---- Snacks, 2026-11-19 (GROUND_UP.md §8.5–8.7) ---- */
+:root[data-design="c"] {
+  /* Home, This week: the row is a box; the Calendar button lies over it and "Needs snacks" sits on top of that. */
+  .wkrow { position: relative; cursor: pointer; border-radius: var(--r); }
+  .wkrow:has(.wkopen:hover) { background: var(--surface-2); }
+  .wkopen { position: absolute; inset: 0; width: 100%; padding: 0; border: 0; border-radius: inherit; background: none; cursor: pointer; }
+  .wksn { position: relative; z-index: 1; padding: 6px 8px; margin: -6px -8px; border-radius: 8px; font: inherit; font-size: .86rem; color: var(--warn); cursor: pointer; text-decoration: underline; text-decoration-color: transparent; text-underline-offset: 3px; }
+  .wksn:hover { text-decoration-color: currentColor; }
+  @media (max-width: 640px) { .wksn { min-height: 44px; padding: 12px 8px; margin: -12px -8px; } }
+  /* Snacks tab: the day it was opened on. A short tint and a bar at the left that fade; steady with reduced motion. */
+  .snrow.snmark { animation: snmark 2.6s ease-out forwards; }
+  /* It takes the focus only so a screen reader reads it; it is not a control, so it draws no ring. */
+  .snnote { margin: 8px 0 16px; color: var(--text-2); }
+  .snnote:focus { outline: none; }
+}
+@keyframes snmark {
+  0%, 45% { background: var(--tint-2); box-shadow: inset 4px 0 0 var(--bumper); }
+  100% { background: transparent; box-shadow: inset 4px 0 0 transparent; }
+}
+@media (prefers-reduced-motion: reduce) {
+  :root[data-design="c"] .snrow.snmark { animation: none; background: var(--tint-2); box-shadow: inset 4px 0 0 var(--bumper); }
+}

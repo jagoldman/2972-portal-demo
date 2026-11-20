@@ -474,7 +474,7 @@ function nowRows() {
       var sn = c.snacks[e.date] || (c.snacks[e.date] = new Array(c.slots).fill(null)), k = sn.indexOf(null);
       if (k < 0 || sn.indexOf(mine) >= 0) return;
       var open = sn.filter(function (x) { return !x; }).length;
-      rows.push({ app: "snacks", title: "Snacks needed " + api.fmt(e.date), line: (api.practiceOn(e.date) ? esc(api.span(api.practiceOn(e.date))) + "<br>" : "") + esc(plural(open, "family", "families") + " needed"), btn: '<button class="btn primary" data-act="snack" data-d="' + e.date + '" data-k="' + k + '">Sign up</button>' });
+      rows.push({ app: "snacks", act: api.openSnacks ? "snackday" : null, v: api.openSnacks ? e.date : null, title: "Snacks needed " + api.fmt(e.date), line: (api.practiceOn(e.date) ? esc(api.span(api.practiceOn(e.date))) + "<br>" : "") + esc(plural(open, "family", "families") + " needed"), btn: '<button class="btn primary" data-act="snack" data-d="' + e.date + '" data-k="' + k + '">Sign up</button>' });
     });
   }
   // Volunteer events come after this week's snacks: they are further off, so their button is the quiet one.
@@ -535,7 +535,7 @@ function weekRows() {
     if (m.kind === "comp") return;
     if (role !== "parent") { var mn = api.mentorsOn(m.date).length; o.facts.push(mn ? '<span>' + plural(mn, "mentor", "mentors") + " coming</span>" : '<span class="pill warn">No mentors yet</span>'); }
     var sn = api.snacksFor(m.date);
-    if (sn && D.calTab("snacks")) o.facts.push(sn.filled ? "<span>Snacks: " + esc(sn.names.join(" and ")) + "</span>" : '<span class="pill warn">Needs snacks</span>');
+    if (sn && D.calTab("snacks")) o.facts.push(sn.filled ? "<span>Snacks: " + esc(sn.names.join(" and ")) + "</span>" : api.openSnacks ? '<button class="pill warn wksn" data-act="snackday" data-d="' + m.date + '" aria-label="' + esc(api.fmt(m.date)) + ' needs snacks. Open Snacks for this day">Needs snacks</button>' : '<span class="pill warn">Needs snacks</span>');
   });
   api.eventsIn(today, end, ["outreach", "meeting"]).forEach(function (e) { day(e.date).what.push(e.name); });
   if (role !== "parent" && D.tasksApi) D.tasksApi.milestones(12).forEach(function (m) { if (m.date >= today && m.date <= end) day(m.date).facts.push('<span class="wkdue"><i class="snd" style="background:' + esc(m.color) + '"></i>Due: ' + esc(m.name) + "</span>"); });
@@ -543,7 +543,9 @@ function weekRows() {
   if (!order.length) return '<p class="mute">Nothing in the next seven days.</p>';
   return '<div class="list week">' + order.map(function (d) {
     var q = d.split("-"), dt = new Date(+q[0], +q[1] - 1, +q[2]), o = days[d];
-    return '<button class="li wkrow' + (d === today ? " today" : "") + '" data-act="goapp" data-app="calendar" aria-label="' + esc(api.fmt(d) + ": " + o.what.join(", ") + ". Open the Calendar") + '"><span class="wkd"><b>' + (d === today ? "Today" : dt.toLocaleDateString("en-US", { weekday: "short" })) + '</b><span class="num">' + dt.toLocaleDateString("en-US", { month: "short", day: "numeric" }) + '</span></span><span class="grow"><b>' + esc(o.what.join(", ")) + "</b>" + (o.facts.length ? '<span class="wkfacts">' + o.facts.join("") + "</span>" : "") + "</span></button>";
+    /* The row is a door to the Calendar, and a "Needs snacks" mark in it is its own door to the Snacks tab on that
+       date (2026-11-19), so the row is a box with the Calendar button laid over it, not one button. */
+    return '<div class="li wkrow' + (d === today ? " today" : "") + '"><button class="wkopen" data-act="goapp" data-app="calendar" aria-label="' + esc(api.fmt(d) + ": " + o.what.join(", ") + ". Open the Calendar") + '"></button><span class="wkd"><b>' + (d === today ? "Today" : dt.toLocaleDateString("en-US", { weekday: "short" })) + '</b><span class="num">' + dt.toLocaleDateString("en-US", { month: "short", day: "numeric" }) + '</span></span><span class="grow"><b>' + esc(o.what.join(", ")) + "</b>" + (o.facts.length ? '<span class="wkfacts">' + o.facts.join("") + "</span>" : "") + "</span></div>";
   }).join("") + "</div>";
 }
 function homeGround() {
@@ -746,7 +748,9 @@ A.notice = function (b) {
   if (D.noticeMenuJustOpened) { D.noticeMenuJustOpened = false; return; }
   var n = D.S.notices[+b.dataset.i]; if (!n) return; n.read = true;
   var t = D.tile(n.app);
-  if (t && D.inGroup(t)) D.go(n.app); else { D.render(); focusNotice(b.dataset.i); }
+  // Ground up: a notice about a date that needs snacks opens the Snacks tab on that date (calendar.js openSnacks).
+  if (D.ground() && n.date && n.app === "calendar" && D.calTab("snacks") && D.calApi && D.calApi.openSnacks) D.calApi.openSnacks(n.date);
+  else if (t && D.inGroup(t)) D.go(n.app); else { D.render(); focusNotice(b.dataset.i); }
 };
 function focusNotice(i) { var el = document.querySelector('.nli[data-i="' + i + '"]'); if (el) el.focus(); }
 /* The notice menu: built straight into <body> (not part of render) at the pointer, or under the row from the keyboard. */
