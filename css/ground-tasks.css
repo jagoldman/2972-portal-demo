@@ -53,7 +53,7 @@
   .tmain .topbar > .tnewtop { flex: none; white-space: nowrap; }
   .tmain .topbar > .right + .tnewtop { margin-left: -2px; }
   .tmain .topbar > .right:empty + .tnewtop { margin-left: auto; }
-  .modal:has(.tnform) { width: min(680px, calc(100vw - 32px)); }
+  @media (min-width: 641px) { .modal:has(.tnform) { width: min(680px, calc(100vw - 32px)); } }
   .tnform { display: grid; gap: 14px; margin-top: 14px; }
   .tnwhere { margin: 0; padding: 0; border: 0; min-width: 0; }
   .tnwhere legend { padding: 0; margin-bottom: 6px; font-weight: 650; }
