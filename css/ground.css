@@ -749,6 +749,7 @@
   .appsmenu .toolitem .ic { width: 28px; height: 28px; border-radius: 8px; background: var(--surface-2); color: var(--text-2); }
   .appsmenu .toolitem b { font-weight: 550; line-height: 1.25; }
   .appsmenu .grpnote { margin: 0; padding: 4px 8px; color: var(--mute); font-size: .86rem; }
+  .homegroups .grpnote { margin: 0; padding: 6px 12px 2px; color: var(--mute); font-size: .86rem; }
   .appsmenu .toolrow.all[aria-current="page"] { background: var(--tint); }
 }
 

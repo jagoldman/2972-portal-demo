@@ -89,7 +89,8 @@ D.TILES = [
 /* Tools: small helpers that open inside the site, in the same tab. They are not apps and not link-outs, so they get
    their own closed group under Apps. Adding a tool adds one row here and one page in js/tools.js, never a new tile. */
 D.TOOL_GROUPS = [["mech", "Mechanisms"], ["drive", "Power transmission"], ["power", "Motors and power"], ["struct", "Structure"], ["ref", "Reference"], ["photo", "From a photo"]];
-/* top: true makes the tool one of the favourites a person starts with (D.toolFavs); every tool is on the Tools page. */
+/* top: true makes the tool one of the favourites a person starts with in Live and Baseline (D.toolFavs); every tool is
+   on the Tools page. Ground up does not use it: a person with no favourites gets three tools picked at random (D.toolPick). */
 D.TOOLS = [
   { id: "tool-shooter", group: "mech", top: true, name: "Shooter", icon: "shooter", line: "Wheel, hood and the shot's flight, played out.", tip: "See what a wheel speed and a hood angle do to a shot, and how fast the wheel recovers." },
   { id: "tool-elevator", group: "mech", top: true, name: "Elevator", icon: "elevator", line: "Stages, rigging, speed and holding power.", tip: "Size the motor and reduction for a lift, and watch the stages move." },
@@ -156,7 +157,24 @@ D.pref = function (k, def) { var r = D.saved[D.S.role] || {}; return Object.prot
 D.setPref = function (k, v) { (D.saved[D.S.role] = D.saved[D.S.role] || {})[k] = v; try { localStorage.setItem(SAVE_KEY, JSON.stringify(D.saved)); } catch (e) {} };
 /* A person's favourite tools: the ones they starred, in the order they starred them. Everyone starts with the tools
    marked top. They head the Tools page and are the short list under Apps and on Home. */
-D.toolFavs = function () { var f = D.pref("toolfavs", null) || D.TOOLS.filter(function (t) { return t.top; }).map(function (t) { return t.id; }); return f.filter(function (id) { return D.tool(id); }); };
+D.toolFavs = function () { var f = D.pref("toolfavs", null) || (D.ground() ? [] : D.TOOLS.filter(function (t) { return t.top; }).map(function (t) { return t.id; })); return f.filter(function (id) { return D.tool(id); }); };
+/* Ground up (owner, 2026-11-19: "random once. unless favorite."): a person with no favourites sees three tools picked
+   at random: one calculator, one photo tool and one more calculator. They are picked once for that person and kept
+   (a saved choice, "toolpick"), so the menu does not change from one visit to the next. Starring a tool replaces them
+   with the favourites; taking every star off brings the same three back. */
+D.toolPick = function () {
+  var vis = D.visibleTools(), saved = D.pref("toolpick", null);
+  if (!saved || !saved.every(function (id) { return D.tool(id); })) {
+    var calcs = vis.filter(function (t) { return t.calc; }), photo = vis.filter(function (t) { return !t.calc; });
+    var take = function (xs) { return xs.length ? xs.splice(Math.floor(Math.random() * xs.length), 1)[0] : null; };
+    var got = [take(calcs), take(photo), take(calcs)].filter(Boolean);
+    while (got.length < 3 && (calcs.length || photo.length)) got.push(take(calcs.length ? calcs : photo));
+    saved = got.map(function (t) { return t.id; }); D.setPref("toolpick", saved);
+  }
+  return saved.map(D.tool).filter(function (t) { return vis.indexOf(t) >= 0; });
+};
+// The tools a short list shows: the favourites, or in Ground up the three picked tools when there are none.
+D.toolShort = function () { var vis = D.visibleTools(), f = D.toolFavs().map(D.tool).filter(function (t) { return vis.indexOf(t) >= 0; }); return { favs: f.length > 0, list: f.length || !D.ground() ? f : D.toolPick() }; };
 D.isToolFav = function (id) { return D.toolFavs().indexOf(id) >= 0; };
 // The star that adds a tool to the favourites or takes it out. It sits beside a tool's row and in a tool's page head.
 D.toolStar = function (id) { var t = D.tool(id), on = D.isToolFav(id); if (!t) return ""; return '<button class="toolstar" data-act="toolfav" data-v="' + id + '" aria-pressed="' + on + '" aria-label="' + esc(t.name) + ': favourite" data-tip="' + (on ? "Take out of your favourites" : "Add to your favourites") + '">' + D.ic("star", 18) + "</button>"; };
@@ -303,21 +321,23 @@ function groupRow(id, label, count, place, body, tip) {
 }
 D.toolRow = function (t) { return '<a class="toolrow" href="#' + t.id + '" data-act="go" data-v="' + t.id + '" data-tip="' + esc(t.tip) + '"><span class="ic">' + D.ic(t.icon, 18) + "</span><span><b>" + esc(t.name) + (t.group === "photo" ? '<span class="tooltag">needs a photo</span>' : "") + "</b><small>" + esc(t.line) + "</small></span>" + (D.ground() ? '<span class="chev" aria-hidden="true">›</span>' : "") + "</a>"; };
 /* Ground up Apps menu: Tools opens in place. It lists the person's favourite tools by name, two to a row like the
-   apps above, then one door to the page that has every tool. Pressing Tools never leaves the page the person is on. */
+   apps above (or, with no favourites, the three picked for them, D.toolPick), then "See all tools", the one door to
+   the page that has every tool. Pressing Tools never leaves the page the person is on. */
 function menuTools() {
   var tools = D.visibleTools(); if (!tools.length) return "";
-  var favs = D.toolFavs().map(D.tool).filter(function (t) { return tools.indexOf(t) >= 0; });
+  var sh = D.toolShort(), favs = sh.list;
   function item(t) { return '<a class="appitem toolitem" href="#' + t.id + '" data-act="go" data-v="' + t.id + '" data-tip="' + esc(t.tip) + '"' + (D.S.route === t.id ? ' aria-current="page"' : "") + '><span class="ic">' + D.ic(t.icon, 18) + "</span><b>" + esc(t.name) + "</b></a>"; }
   return groupRow("menutools", "Tools", tools.length, "menu",
-    (favs.length ? '<div class="appgrid">' + favs.map(item).join("") + "</div>" : '<p class="grpnote">Star a tool on the Tools page to keep it here.</p>') +
-    '<a class="toolrow all" href="#tools" data-act="go" data-v="tools"' + (D.S.route === "tools" ? ' aria-current="page"' : "") + "><span>All " + tools.length + ' tools</span><span class="chev" aria-hidden="true">›</span></a>',
-    "Your favourite tools, and a link to all of them.");
+    '<div class="appgrid">' + favs.map(item).join("") + "</div>" + (sh.favs ? "" : '<p class="grpnote">Three to try. Star a tool on the Tools page to keep your own here.</p>') +
+    '<a class="toolrow all" href="#tools" data-act="go" data-v="tools"' + (D.S.route === "tools" ? ' aria-current="page"' : "") + '><span>See all tools</span><span class="chev" aria-hidden="true">›</span></a>',
+    sh.favs ? "Your favourite tools, and a link to all of them." : "Three tools to try, and a link to all of them.");
 }
 function toolsGroup(place) {
   var tools = D.visibleTools(); if (!tools.length) return "";
   // The group is a short list of doors: the person's favourite tools, then one link to the page that has them all.
-  var top = D.toolFavs().map(D.tool).filter(function (t) { return tools.indexOf(t) >= 0; });
-  return groupRow("tools", "Tools", tools.length, place, top.map(D.toolRow).join("") + '<a class="toolrow all" href="#tools" data-act="go" data-v="tools"><span>All ' + tools.length + ' tools</span><span class="chev" aria-hidden="true">›</span></a>');
+  // In Ground up, with no favourites, the three picked tools (D.toolPick) and a line that says so; the last link is "See all tools".
+  var sh = D.toolShort(), top = sh.list, g = D.ground();
+  return groupRow("tools", "Tools", tools.length, place, top.map(D.toolRow).join("") + (g && !sh.favs ? '<p class="grpnote">Three to try. Star a tool on the Tools page to keep your own here.</p>' : "") + '<a class="toolrow all" href="#tools" data-act="go" data-v="tools"><span>' + (g ? "See all tools" : "All " + tools.length + " tools") + '</span><span class="chev" aria-hidden="true">›</span></a>');
 }
 /* Admin apps: the link-out apps for the people who run the site (Admin, Website editor). The group shows only when
    this person may open at least one of them, and lists only those. */

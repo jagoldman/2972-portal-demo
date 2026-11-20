@@ -79,6 +79,7 @@ the same, and the choice is kept in this browser. `?event=1` ticks Event day. No
 | Calendar | Practice and build days with an open snack spot say "Needs snacks" on the month, the agenda and the day's panel (parents, mentors, admins); on a phone's month, a snacks mark and a key (2026-11-19) | GROUND_UP.md 8.6 |
 | Calendar | Snacks: a line for families who bring snacks in bulk, and after a sign-up a choice of the next practices that need snacks, signed up for in one press, with Undo for the whole run (2026-11-19) | GROUND_UP.md 8.7 |
 | Tasks | "+ Task" on each milestone group (and "No milestone") of a list grouped by milestone opens New task with that place and milestone chosen; not for parents (2026-11-19) | GROUND_UP.md 8.8 |
+| Apps menu, Home | Tools lists a person's favourites, or three tools picked at random once (a calculator, a photo tool, one more) until they star one; the last link is "See all tools" (2026-11-19) | GROUND_UP.md 8.9 |
 | Tools | Fifteen calculators (also in Baseline), each with a drawing to scale; in Ground up they wear its look (`css/ground-tools.css`) | See "FRC calculators" below |
 
 ### The look (Baseline and Ground up)
@@ -200,7 +201,7 @@ Typing never redraws the page, only the answers, charts and drawing.
   it. **Pneumatics** draws each stroke slowed and keeps its figures up. **Tube strength** keeps one bend scale at
   every load. **Motors** says what holds the torque level.
 
-The Tools group under Apps and on Home lists a person's favourites and a link to all seventeen.
+The Tools group under Apps and on Home lists a person's favourites and a link to all seventeen. In Ground up (2026-11-19) a person with no favourites sees three tools picked once at random instead of the six starters, and the link reads "See all tools" (GROUND_UP.md 8.9).
 
 Run the maths checks: `for f in tests/*.test.js; do node "$f"; done`.
 

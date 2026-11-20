@@ -375,3 +375,20 @@ leaked or photographed code gives nobody access.
   it. Grouped by status, priority, due date or subteam, the groups have no "+ Task".
 - **Rules:** it is a plain button the keyboard reaches with Tab; its name says where the task goes ("Add a task to
   CAD, Prototype intaking"). On a phone it is 44 px tall. The title field has the focus when the form opens.
+
+### 8.9 Tools under Apps: favourites, or three picked once
+> "make sure that tools when selected from the menu doesnt enter a page. it should dopdown and show favorites or 3
+> randomly selected tools. and show "see all tools" that can then open to a new page." … "random once. unless favorite."
+
+- **What:** pressing Tools in the Apps menu opens it in place (it already did): the person's favourite tools, or,
+  when they have starred none, **three tools picked at random**, with the line "Three to try. Star a tool on the Tools
+  page to keep your own here." The last link is **"See all tools"**, which opens the Tools page. Home's Tools group
+  shows the same list and the same last link.
+- **Picked once:** the three are picked the first time they are needed and kept for that person (a saved choice;
+  the real app keeps it with the account), so the menu is the same on every visit. Starring a tool replaces them with
+  the favourites; taking every star off brings the same three back. The three are always at least one calculator
+  and one photo tool (Drawing to vector or Gear and sprocket finder): one of each, then one more calculator.
+- **The six starters are gone in Ground up:** nobody starts with favourites any more, so the Tools page's
+  favourites line reads "None yet. Press the star beside a tool to keep it here, under Apps and on Home. Until then,
+  those show three tools picked for you." The data keeps `top: true` on six tools, because Live and Baseline still
+  start everyone with those six and still say "All 17 tools".
