@@ -81,6 +81,7 @@ the same, and the choice is kept in this browser. `?event=1` ticks Event day. No
 | Tasks | "+ Task" on each milestone group (and "No milestone") of a list grouped by milestone opens New task with that place and milestone chosen; not for parents (2026-11-19) | GROUND_UP.md 8.8 |
 | Apps menu, Home | Tools lists a person's favourites, or three tools picked at random once (a calculator, a photo tool, one more) until they star one; the last link is "See all tools" (2026-11-19) | GROUND_UP.md 8.9 |
 | Account | "Open apps in": a new tab (the default) or this tab, per person, for the app and tool links in the Apps menu and on Home; links that leave the site always open a new tab (2026-11-19) | GROUND_UP.md 8.10 |
+| Calendar | Snacks: after a sign-up that offers more practices, the thanks heads that choice instead of a toast that covered it on a phone (2026-11-19) | GROUND_UP.md 8.11 |
 | Tools | Fifteen calculators (also in Baseline), each with a drawing to scale; in Ground up they wear its look (`css/ground-tools.css`) | See "FRC calculators" below |
 
 ### The look (Baseline and Ground up)

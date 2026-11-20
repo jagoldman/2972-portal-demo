@@ -412,3 +412,14 @@ leaked or photographed code gives nobody access.
 - **Saved per person:** the demo keeps it with the other saved choices in this browser (Reset clears it). **The real
   app keeps it in Account, so it follows the person to every device.**
 - **Who sees it:** everyone with an Account page: students, mentors, admins and parents.
+
+### 8.11 Snacks in bulk: the thanks no longer covers the choice
+- **The fault:** on a phone, the "Thanks. You'll get a reminder the day before." toast after a sign-up on the Snacks
+  tab covered part of "Bringing enough for more practices?" for its seven seconds, tick boxes and "Sign up for these"
+  included.
+- **The fix:** when the sign-up opens that choice, the thanks is the choice's first line (above "Bringing enough for
+  more practices?", under the same rule at the left), and no toast shows. The choice has the focus and the line
+  describes it, so a screen reader hears the thanks. When the choice is not on the screen after the press (the "You're
+  bringing snacks" line that appears at the top pushes it down on a short phone), the page brings the day's row to
+  the top, under the bars. A sign-up that opens no choice (nothing after it needs snacks, or from Home or the
+  Calendar) still says thanks in a toast, as before; "Sign up for these" closes the choice before its toast shows.

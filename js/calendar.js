@@ -545,12 +545,15 @@ function bulkNext(from, days) { var nm = snackName(); return (days || practiceDa
 function bulkBlock(bk, days) {
   var c = C(), next = bulkNext(bk.from, days);
   if (!next.length) return "";
-  return '<fieldset class="snbulk" tabindex="-1"><legend>Bringing enough for more practices?</legend><p class="snbsub">Tick the practices after ' + esc(fmt(bk.from)) + ' that you will bring snacks to as well.</p><div class="snbopts">' +
+  /* The first sign-up's thanks shows here, at the top of the choice, instead of as a toast: on a phone the toast
+     covered the tick boxes and "Sign up for these" for its seven seconds (fault found 2026-11-19). The choice has the
+     focus when it opens, and the line describes it, so a screen reader hears it too. */
+  return '<div class="snbwrap"><p class="snbthanks" id="snb-thanks">Thanks. You\'ll get a reminder the day before.</p><fieldset class="snbulk" tabindex="-1" aria-describedby="snb-thanks"><legend>Bringing enough for more practices?</legend><p class="snbsub">Tick the practices after ' + esc(fmt(bk.from)) + ' that you will bring snacks to as well.</p><div class="snbopts">' +
     next.map(function (e) {
       var names = (c.snacks[e.date] || []).filter(Boolean), id = "snb-" + e.date;
       return '<label class="snbopt" for="' + id + '"><input type="checkbox" id="' + id + '" data-change="snbulkpick" data-d="' + e.date + '"' + (bk.picked[e.date] ? " checked" : "") + '><span class="grow"><b>' + fmt(e.date) + '</b><span class="who">' + esc(span(e)) + ", " + (names.length ? esc(names.join(" and ")) + " is bringing some" : "nobody yet") + "</span></span></label>";
     }).join("") + "</div>" + (bk.err ? '<p class="snberr" role="alert">Tick the practices you will bring snacks to, or press No thanks.</p>' : "") +
-    '<div class="row snbacts"><button class="btn primary sm" data-act="snbulk">Sign up for these</button><button class="btn ghost sm" data-act="snbulkno">No thanks</button></div></fieldset>';
+    '<div class="row snbacts"><button class="btn primary sm" data-act="snbulk">Sign up for these</button><button class="btn ghost sm" data-act="snbulkno">No thanks</button></div></fieldset></div>';
 }
 function shortDates(list) { var t = list.map(function (d) { return fmt(d, { month: "short", day: "numeric" }); }); return t.length > 1 ? t.slice(0, -1).join(", ") + " and " + t[t.length - 1] : t[0]; }
 D.changes.snbulkpick = function (el) { var bk = C().bulk; if (!bk) return; bk.picked[el.dataset.d] = el.checked; if (bk.err) { bk.err = false; D.render(); } };
@@ -571,7 +574,14 @@ D.after.push(function () {
   var blk = document.querySelector(".snbulk");
   if (c.bulk && !blk) { c.bulk = null; return; } // left the tab, or nothing left to add: the offer is over
   if (c.bulk && c.bulk.focusPick) { c.bulk.focusPick = false; var x = blk.querySelector("input"); if (x) { x.focus({ preventScroll: true }); scrollBelowBars(blk); } return; }
-  if (c.bulk && c.bulk.focusBlock) { c.bulk.focusBlock = false; blk.focus({ preventScroll: true }); return; }
+  if (c.bulk && c.bulk.focusBlock) {
+    c.bulk.focusBlock = false; blk.focus({ preventScroll: true });
+    // The "You're bringing snacks" line that appears at the top pushes the choice down; on a short phone it fell below
+    // the screen. When the thanks and the choice are not all in view, the day's row goes to the top, under the bars.
+    var w = blk.closest(".snbwrap") || blk, row = w.previousElementSibling || w, wr = w.getBoundingClientRect(), top = belowBars();
+    if (wr.top < top || wr.top > window.innerHeight - 160) window.scrollTo(0, Math.max(0, row.getBoundingClientRect().top + window.scrollY - top - 8));
+    return;
+  }
   if (c.bulkDone) { var r = document.querySelector('.snrow[data-d="' + c.bulkDone + '"]'); c.bulkDone = null; if (r) { r.setAttribute("tabindex", "-1"); r.focus({ preventScroll: true }); } }
 });
 
@@ -690,7 +700,7 @@ D.changes.hereedit = function (el) { var c = C(); c.medit = el.value; c.pop = nu
 A.hereeditm = function (b) { var c = C(); c.medit = b.dataset.v; c.pop = null; c.udraft = null; D.render(); };
 A.herefix = function (b) { var c = C(); c.att[b.dataset.n][b.dataset.d] = 2.5; c.adjust.push({ who: b.dataset.n, hours: 0, why: "Fixed missed sign-out on " + fmt(b.dataset.d) + " (2.5 h)", by: D.me().name, when: "Just now" }); D.toast("Fixed. " + b.dataset.n + " gets 2.5 hours."); D.render(); };
 A.hereadd = function () { var c = C(); c.adjust.unshift({ who: D.val("ha-who"), hours: parseFloat(D.val("ha-h")) || 0, why: D.val("ha-why"), by: D.me().name, when: "Just now" }); D.toast("Saved. It shows in their history."); D.render(); };
-A.snack = function (b) { var c = C(), nm = snackName(); c.snacks[b.dataset.d][+b.dataset.k] = nm; if (b.dataset.bulk) c.bulk = bulkNext(b.dataset.d).length ? { from: b.dataset.d, picked: {}, err: false, focusBlock: true } : null; D.toast("Thanks. You'll get a reminder the day before."); D.render(); };
+A.snack = function (b) { var c = C(), nm = snackName(); c.snacks[b.dataset.d][+b.dataset.k] = nm; if (b.dataset.bulk) c.bulk = bulkNext(b.dataset.d).length ? { from: b.dataset.d, picked: {}, err: false, focusBlock: true } : null; if (c.bulk) D.S.toast = null; else D.toast("Thanks. You'll get a reminder the day before."); D.render(); };
 A.snackday = function (b) { openSnacks(b.dataset.d || b.dataset.v); };
 A.snackfree = function (b) { if (C().bulk && C().bulk.from === b.dataset.d) C().bulk = null; C().snacks[b.dataset.d][+b.dataset.k] = null; D.render(); };
 function volBy(id) { return C().vol.filter(function (v) { return v.id === +id; })[0]; }
