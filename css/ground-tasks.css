@@ -46,4 +46,35 @@
   /* The Assignee filter lists people under the same three headings. */
   .tfvh { margin: 6px 6px 2px; color: var(--mute); font-size: .8rem; font-weight: 650; }
   .tfvlist > .tfopt.pin + div[role="group"] { border-top: 1px solid var(--line); margin-top: 2px; }
+
+  /* ============================================================
+     New task: the button at the top of every view, and the form (js/tasks.js, newTop / tnGround)
+     ============================================================ */
+  .tmain .topbar > .tnewtop { flex: none; white-space: nowrap; }
+  .tmain .topbar > .right + .tnewtop { margin-left: -2px; }
+  .tmain .topbar > .right:empty + .tnewtop { margin-left: auto; }
+  .modal:has(.tnform) { width: min(680px, calc(100vw - 32px)); }
+  .tnform { display: grid; gap: 14px; margin-top: 14px; }
+  .tnwhere { margin: 0; padding: 0; border: 0; min-width: 0; }
+  .tnwhere legend { padding: 0; margin-bottom: 6px; font-weight: 650; }
+  .tnlevels { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 12px; }
+  .tnmore { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 12px; }
+  .tnform .field { min-width: 0; }
+  .tnform select:disabled { background-color: var(--surface-2); border-color: var(--line); color: var(--mute); cursor: not-allowed; opacity: 1; }
+  .tnlevel.off label { color: var(--mute); }
+  .tnform [aria-invalid="true"] { border-color: var(--bad); }
+  .ferr { margin: 4px 0 0; color: var(--bad); font-size: .86rem; font-weight: 600; }
+  .tnwho { gap: 8px; align-items: center; }
+  .tnacts { margin-top: 18px; }
+  /* On a phone the button sits on the title row as its icon alone (its name is still read out), and the view's other
+     tools wrap under it. */
+  @media (max-width: 640px) {
+    .tmain .topbar > .tnewtop { order: 1; position: relative; width: 44px; min-height: 44px; padding: 0; margin-left: auto; }
+    .tmain .topbar > .tnewtop > span { position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0); white-space: nowrap; }
+    .tmain .topbar > .right { order: 2; }
+  }
+  @media (max-width: 640px) {
+    .tnlevels, .tnmore { grid-template-columns: minmax(0, 1fr); gap: 10px; }
+    .tnacts .btn { flex: 1 1 0; min-height: 44px; }
+  }
 }

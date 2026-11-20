@@ -185,9 +185,10 @@ D.visibleTiles = function () { return D.TILES.filter(function (t) { return D.inG
 D.myNotices = function () { return D.S.notices.filter(function (n) { return n.to === D.S.role; }); };
 D.notify = function (to, app, text) { (Array.isArray(to) ? to : [to]).forEach(function (r) { D.S.notices.unshift({ to: r, app: app, text: text, when: "Just now", read: false }); }); };
 D.log = function (what, app) { D.S.activity.unshift({ who: D.me().name, what: what, app: app, when: "Just now" }); };
-var toastTimer, undoFn = null;
-D.toast = function (text, undo) {
-  D.S.toast = { text: text, undo: !!undo }; undoFn = undo || null;
+var toastTimer, undoFn = null, linkFn = null;
+// link (optional): { label, go } adds a second button that goes somewhere, such as "Open Mechanical" after a new task.
+D.toast = function (text, undo, link) {
+  D.S.toast = { text: text, undo: !!undo, link: link ? link.label : "" }; undoFn = undo || null; linkFn = link ? link.go : null;
   clearTimeout(toastTimer);
   toastTimer = setTimeout(function () { D.S.toast = null; undoFn = null; D.render(); }, 7000);
 };
@@ -635,7 +636,7 @@ D.render = function () {
   }
   if (S.drawer && D.drawers[S.drawer.type]) html += '<button class="drawer-scrim" data-act="closedrawer" aria-label="Close panel"></button><aside class="drawer" role="dialog" aria-modal="true" data-keepscroll="' + esc("drawer-" + S.drawer.type + "-" + (S.drawer.data.id != null ? S.drawer.data.id : "")) + '">' + D.drawers[S.drawer.type](S.drawer.data) + "</aside>";
   if (S.modal && D.modals[S.modal.type]) html += '<button class="modal-scrim" data-act="closemodal" aria-label="Close dialog"></button><div class="modal" role="dialog" aria-modal="true" data-keepscroll="' + esc("modal-" + S.modal.type) + '">' + D.modals[S.modal.type](S.modal.data) + "</div>";
-  if (S.toast) html += '<div class="toast" role="status"><span>' + esc(S.toast.text) + "</span>" + (S.toast.undo ? '<button data-act="undo">Undo</button>' : "") + "</div>";
+  if (S.toast) html += '<div class="toast" role="status"><span>' + esc(S.toast.text) + "</span>" + (S.toast.undo ? '<button data-act="undo">Undo</button>' : "") + (S.toast.link ? '<button data-act="toastlink">' + esc(S.toast.link) + "</button>" : "") + "</div>";
   root.innerHTML = html;
   Object.keys(scrollers).forEach(function (k) { var el = document.querySelector('[data-keepscroll="' + k + '"]'); if (el) { el.scrollLeft = scrollers[k][0]; el.scrollTop = scrollers[k][1]; } });
   D.after.forEach(function (f) { try { f(); } catch (e) { if (window.console) console.error(e); } });
@@ -791,6 +792,7 @@ A.homeproject = function (b) { if (D.tasksApi) D.tasksApi.openProject(b.dataset.
 A.goapp = function (b) { if (b.dataset.tab) D.S.tabs[b.dataset.app] = b.dataset.tab; D.go(b.dataset.app); };
 A.closedrawer = function () { D.S.drawer = null; D.render(); };
 A.closemodal = function () { D.S.modal = null; D.render(); };
+A.toastlink = function () { var f = linkFn; linkFn = null; undoFn = null; D.S.toast = null; if (f) f(); else D.render(); };
 A.undo = function () { if (undoFn) undoFn(); undoFn = null; D.S.toast = null; D.render(); };
 
 document.addEventListener("click", function (e) {

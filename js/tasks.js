@@ -152,12 +152,22 @@ function sidebar() {
     '<button class="tnav" data-act="tchat">' + D.ic("more", 17) + '<span class="lbl">Ask the assistant</span></button>' +
     '<button class="tnav" data-act="thelp">' + D.ic("more", 17) + '<span class="lbl">Help</span></button></nav>';
 }
+/* Ground up (owner, 2026-11-19): "New task" at the top of every Tasks view, in the view's bar, for everyone who may
+   add a task (parents only read). It is the screen's one filled button, except on My tasks when the next-task card
+   already has one (its Mark done): there it is a plain button. Where the person is fixes the levels it can: inside a
+   subteam the form arrives with the division, project and subteam chosen; inside a project, the division and project. */
+function myHasPrimary() { var mine = T().list.filter(function (x) { return x.who.indexOf(me()) >= 0 && x.st !== "done"; }).sort(function (a, b) { return (a.due || "9") < (b.due || "9") ? -1 : 1; }), n = nextOf(mine); return !!n && !blockedBy(n).length; }
+function newTop() {
+  if (!D.ground() || !canMove()) return "";
+  var at = T().at, plain = at.v === "my" && myHasPrimary();
+  return '<button class="btn' + (plain ? "" : " primary") + ' tnewtop" data-act="tnew" data-tip="Add a task. You choose its division, project and subteam.">' + D.ic("plus", 16) + "<span>New task</span></button>";
+}
 // The page frame: left menu, then a bar with the menu button, the page title and its tools. Parents have no menu, just two tabs.
 function frame(title, crumbs, tools, body) {
   var tt = T(), parent = D.S.role === "parent";
   var head = parent ?
     '<header class="topbar"><div class="tabs" role="group"><button class="tab" data-act="tgo" data-v="week" aria-pressed="' + (tt.at.v === "week") + '"' + D.tabTip("tasks", "week") + '>This week</button><button class="tab" data-act="tgo" data-v="calendar" aria-pressed="' + (tt.at.v === "calendar") + '"' + D.tabTip("tasks", "calendar") + '>Due dates</button></div><div class="right">' + (tt.at.v === "calendar" ? tools : "") + "</div></header>" :
-    '<header class="topbar"><button class="btn sm tmenu" data-act="tside" aria-label="Show or hide the task menu" data-tip="Your views, projects and subteams.">' + D.ic("menu", 18) + '</button><div class="ttl">' + (crumbs ? '<p class="who">' + crumbs + "</p>" : "") + "<h1>" + esc(title) + '</h1></div><div class="right">' + (tools || "") + (tt.lead ? '<span class="leadchip">Lead mode</span>' : "") + "</div></header>";
+    '<header class="topbar"><button class="btn sm tmenu" data-act="tside" aria-label="Show or hide the task menu" data-tip="Your views, projects and subteams.">' + D.ic("menu", 18) + '</button><div class="ttl">' + (crumbs ? '<p class="who">' + crumbs + "</p>" : "") + "<h1>" + esc(title) + '</h1></div><div class="right">' + (tools || "") + (tt.lead ? '<span class="leadchip">Lead mode</span>' : "") + "</div>" + newTop() + "</header>";
   return '<div class="tsk' + (parent || !tt.side ? " collapsed" : "") + (tt.mopen ? " mopen" : "") + '">' + sidebar() + (tt.mopen && !parent ? '<button class="drawer-scrim tscrim" data-act="tside" aria-label="Close menu"></button>' : "") +
     '<div class="tmain">' + head + '<div class="content">' + body + "</div></div></div>";
 }
@@ -825,7 +835,35 @@ D.drawers.tchat = function (d) {
 D.drawers.thelp = function () {
   return D.drawerHead("Help", "How this app is organized") + '<div class="list"><div class="li"><b style="min-width:90px">Division</b><span class="grow">A big area of the team: Engineering, Competition, Outreach and Fundraising, Team Operations, Leadership.</span></div><div class="li"><b style="min-width:90px">Project</b><span class="grow">One thing we\'re building or doing: Intake, Library robot demo. It has milestones.</span></div><div class="li"><b style="min-width:90px">Subteam</b><span class="grow">Who does the work inside a project: CAD, Mechanical, Programming. Each has a list and a board.</span></div><div class="li"><b style="min-width:90px">Milestone</b><span class="grow">A checkpoint with a date, like “Prototype intaking”. The project page lines tasks up by milestone.</span></div><div class="li"><b style="min-width:90px">Task</b><span class="grow">One job with a due date. It can have subtasks, steps and things it waits on.</span></div></div><p class="small mute">Simple mode hides labels, estimates and what a task waits on.</p>';
 };
+/* Ground up New task form: Division, then Project, then Subteam, each a labelled choice filled only from the one
+   before and unusable until that one is chosen; then Milestone (optional, "No milestone"), Due and Who (the people
+   picker). Create checks the title and the three levels in that order and points at the first one missing, with a
+   plain line under it, instead of being a disabled button with no reason. */
+function tnGround(d) {
+  if (!d.init) { d.init = true; if (d.p && !proj(d.p)) d.p = null; if (d.p) d.div = divOf(d.p).id; if (d.s && (!d.p || proj(d.p).subs.indexOf(d.s) < 0)) d.s = null; if (!d.s) d.s = null; if (d.title == null) d.title = ""; if (!d.who) d.who = [me()]; if (!d.due) d.due = ""; d.err = {}; d.focus = true; }
+  var err = d.err || {}, dv = d.div ? T().divs.filter(function (x) { return x.id === d.div; })[0] : null, p = d.p ? proj(d.p) : null;
+  function msg(k) { return err[k] ? '<p class="ferr" id="tn-err-' + k + '">' + esc(err[k]) + "</p>" : ""; }
+  function inv(k) { return err[k] ? ' aria-invalid="true" aria-describedby="tn-err-' + k + '"' : ""; }
+  function sel(id, k, label, ok, first, opts, cur) {
+    return '<div class="field tnlevel' + (ok ? "" : " off") + '"><label for="' + id + '">' + label + '</label><select id="' + id + '" data-change="tn' + k + '"' + (ok ? "" : " disabled") + inv(k) + '><option value=""' + (cur ? "" : " selected") + ">" + esc(first) + "</option>" +
+      opts.map(function (o) { return '<option value="' + esc(o[0]) + '"' + (o[0] === cur ? " selected" : "") + ">" + esc(o[1]) + "</option>"; }).join("") + "</select>" + msg(k) + "</div>";
+  }
+  return D.modalHead("New task") + '<div class="tnform">' +
+    '<div class="field"><label for="tn-title">What needs doing</label><input id="tn-title" data-input="tntitle" placeholder="Drill the bolt pattern on the side plates" value="' + esc(d.title) + '"' + inv("title") + ">" + msg("title") + "</div>" +
+    '<fieldset class="tnwhere"><legend>Where it goes</legend><div class="tnlevels">' +
+    sel("tn-div", "div", "Division", true, "Choose a division", T().divs.map(function (x) { return [x.id, x.name]; }), d.div) +
+    sel("tn-p", "p", "Project", !!dv, dv ? "Choose a project" : "Choose a division first", dv ? dv.projects.map(function (x) { return [x.id, x.name]; }) : [], d.p) +
+    sel("tn-sub", "sub", "Subteam", !!p, p ? "Choose a subteam" : "Choose a project first", p ? p.subs.map(function (x) { return [x, x]; }) : [], d.s) +
+    "</div></fieldset>" +
+    '<div class="tnmore"><div class="field"><label for="tn-ms">Milestone</label><select id="tn-ms" data-change="tnms"' + (p ? "" : " disabled") + '><option value="">No milestone</option>' + (p ? p.ms.map(function (m) { return '<option value="' + m[0] + '"' + (m[0] === d.m ? " selected" : "") + ">" + esc(m[1]) + "</option>"; }).join("") : "") + "</select></div>" +
+    '<div class="field"><label for="tn-due">Due</label><input id="tn-due" type="date" data-change="tndue" value="' + esc(d.due) + '"></div></div>' +
+    '<div class="field"><span class="flabel" id="tn-who-l">Who</span><div class="row tnwho" role="group" aria-labelledby="tn-who-l">' + d.who.map(function (w) { return '<span class="whochip">' + esc(w) + ' <button data-act="tnunwho" data-w="' + esc(w) + '" aria-label="Remove ' + esc(w) + '" data-tip="Take ' + esc(w) + ' off this task.">×</button></span>'; }).join("") + (d.who.length ? "" : '<span class="who">Nobody yet</span>') + pickBtn("new") + "</div></div>" +
+    '</div><div class="row tnacts"><button class="btn primary" data-act="tncreate" data-st="' + (d.st || "todo") + '">Create</button><button class="btn" data-act="closemodal">Cancel</button></div>';
+}
+// The title has the focus when the form opens.
+D.after.push(function () { var m = D.S.modal; if (!m || m.type !== "tnew" || !m.data.focus) return; m.data.focus = false; var el = document.getElementById("tn-title"); if (el) el.focus(); });
 D.modals.tnew = function (d) {
+  if (D.ground()) return tnGround(d);
   var at = T().at, pid = d.p || at.p || "intake", p = proj(pid);
   return D.modalHead("New task") + '<div class="formgrid"><div class="field" style="grid-column:1/-1"><label for="tn-title">What needs doing</label><input id="tn-title" data-input="tntitle" value="' + esc(d.title != null && d.title !== "" ? d.title : "Drill bolt pattern on side plates") + '"></div><div class="field"><label for="tn-p">Project</label><select id="tn-p" data-change="tnewp">' + T().divs.map(function (dv) { return '<optgroup label="' + esc(dv.name) + '">' + dv.projects.map(function (q) { return '<option value="' + q.id + '"' + (q.id === pid ? " selected" : "") + ">" + esc(q.name) + "</option>"; }).join("") + "</optgroup>"; }).join("") + '</select></div><div class="field"><label for="tn-sub">Subteam</label><select id="tn-sub">' + p.subs.map(function (s) { return "<option" + (s === (d.s || at.l) ? " selected" : "") + ">" + esc(s) + "</option>"; }).join("") + '</select></div><div class="field"><label for="tn-ms">Milestone</label><select id="tn-ms"><option value="">None</option>' + p.ms.map(function (m) { return '<option value="' + m[0] + '"' + (m[0] === d.m ? " selected" : "") + ">" + esc(m[1]) + "</option>"; }).join("") + '</select></div><div class="field"><label for="tn-due">Due</label><input id="tn-due" type="date" value="' + (d.due || "2026-11-14") + '"></div><div class="field"><label for="tn-who">Who</label><select id="tn-who"><option>Me</option><option>Nobody yet</option></select></div></div><div class="row"><button class="btn primary" data-act="tnewgo" data-st="' + (d.st || "todo") + '">Add task</button><button class="btn" data-act="closemodal">Cancel</button></div>';
 };
@@ -1411,10 +1449,34 @@ A.tundep = function (b) { var x = task(b.dataset.v); x.by = x.by.filter(function
 A.tcomment = function (b) { var x = task(b.dataset.v), v = D.val("td-c").trim(); if (!v) return; x.comments.push([D.me().name, v, "Just now"]); if (/@sam/i.test(v)) D.notify("student", "tasks", D.me().name + " mentioned you on “" + x.title + "”."); D.render(); };
 A.tback = function (b) { var x = task(b.dataset.v), snap = x.hist[+b.dataset.i][3], prev = { st: x.st, due: x.due }; setSt(x, snap.st); x.due = snap.due; x.hist.push([D.me().name, "went back to " + x.hist[+b.dataset.i][2], "Just now", prev]); D.toast("Put back to how it was then. That's in the history too."); D.render(); };
 A.tarchive = function (b) { var x = task(b.dataset.v), tt = T(), i = tt.list.indexOf(x); D.S.drawer = null; D.withUndo("Archived “" + x.title + "”", function () { tt.list.splice(i, 1); }, function () { tt.list.splice(i, 0, x); }); };
-A.tnew = function () { D.openModal("tnew", {}); };
+A.tnew = function () { var at = T().at; D.openModal("tnew", D.ground() ? { p: at.v === "list" || at.v === "project" ? at.p : null, s: at.v === "list" ? at.l : null } : {}); };
 A.tnewin = function (b) { D.openModal("tnew", { p: b.dataset.p, s: b.dataset.s, m: b.dataset.m || null, st: b.dataset.st }); };
 D.changes.tnewp = function (el) { var m = D.S.modal.data, due = document.getElementById("tn-due"); m.p = el.value; m.s = null; if (due) m.due = due.value; D.render(); };
-D.inputs.tntitle = function (el) { D.S.modal.data.title = el.value; };
+D.inputs.tntitle = function (el) { var d = D.S.modal.data; d.title = el.value; if (d.err && d.err.title && el.value.trim()) { delete d.err.title; D.render(); } };
+// Ground up form: choosing a level clears the ones under it that no longer fit, and the focus stays on the choice.
+function tnSet(id, fn) { var d = D.S.modal.data; d.err = d.err || {}; fn(d); D.render(); var el = document.getElementById(id); if (el) el.focus(); }
+D.changes.tndiv = function (el) { tnSet("tn-div", function (d) { if (d.div !== el.value) { d.p = null; d.s = null; d.m = null; } d.div = el.value || null; delete d.err.div; }); };
+D.changes.tnp = function (el) { tnSet("tn-p", function (d) { if (d.p !== el.value) { d.s = null; d.m = null; } d.p = el.value || null; delete d.err.p; }); };
+D.changes.tnsub = function (el) { tnSet("tn-sub", function (d) { d.s = el.value || null; delete d.err.sub; }); };
+D.changes.tnms = function (el) { D.S.modal.data.m = el.value || null; };
+D.changes.tndue = function (el) { D.S.modal.data.due = el.value; };
+A.tnunwho = function (b) { var d = D.S.modal.data; d.who = d.who.filter(function (w) { return w !== b.dataset.w; }); D.render(); var el = document.querySelector(".tnwho .whochip button") || document.getElementById("pk-btn"); if (el) el.focus(); };
+A.tncreate = function (b) {
+  var tt = T(), d = D.S.modal.data, title = (d.title || "").trim(), miss = !title ? ["title", "tn-title", "Type what needs doing."] : !d.div ? ["div", "tn-div", "Choose a division."] : !d.p ? ["p", "tn-p", "Choose a project."] : !d.s ? ["sub", "tn-sub", "Choose a subteam."] : null;
+  if (miss) { d.err = {}; d.err[miss[0]] = miss[2]; D.render(); var el = document.getElementById(miss[1]); if (el) el.focus(); return; }
+  var st = b.dataset.st || "todo", x = { id: tt.nextId++, title: title, p: d.p, sub: d.s, ms: d.m || null, who: d.who.slice(), due: d.due || "", st: st, pri: "med", doneOn: st === "done" ? TODAYS : null, parent: null, labels: [], est: null, by: [], rel: [], links: [], desc: "", check: [], comments: [], hist: [[D.me().name, "created it", "Just now", { st: "todo", due: d.due || "" }]] };
+  tt.list.push(x); tt.pick = null; D.S.modal = null; D.log("added “" + x.title + "”", "tasks");
+  if (x.who.indexOf(ME_STUDENT) >= 0 && me() !== ME_STUDENT) D.notify("student", "tasks", D.me().name + " assigned you “" + x.title + "”.");
+  var where = proj(x.p).name + " › " + x.sub;
+  // Shown in this view: the toast says where it went and the focus goes to its row. Not shown here: the toast names
+  // the place, with a link to it.
+  function shown() { return Array.prototype.filter.call(document.querySelectorAll('.tmain [data-act="topen"][data-v="' + x.id + '"]'), function (e) { return e.getClientRects().length; })[0]; }
+  D.render();
+  if (shown()) D.toast("Added to " + where + ".");
+  else D.toast("Added to " + where + ". It isn't in this view.", null, { label: "Open " + x.sub, go: function () { at({ v: "list", p: x.p, l: x.sub }); } });
+  D.render();
+  var row = shown(); if (row) { row.scrollIntoView({ block: "nearest" }); row.focus({ preventScroll: true }); }
+};
 A.tnewgo = function (b) { var tt = T(), p = D.val("tn-p"), x = { id: tt.nextId++, title: D.val("tn-title"), p: p, sub: D.val("tn-sub"), ms: D.val("tn-ms") || null, who: D.val("tn-who") === "Me" ? [me()] : [], due: D.val("tn-due"), st: b.dataset.st || "todo", doneOn: b.dataset.st === "done" ? TODAYS : null, parent: null, labels: [], est: null, by: [], rel: [], links: [], desc: "", check: [], comments: [], hist: [[D.me().name, "created it", "Just now", { st: "todo", due: D.val("tn-due") }]] }; tt.list.push(x); D.S.modal = null; D.log("added “" + x.title + "”", "tasks"); D.toast("Added to " + proj(p).name + " › " + x.sub + "."); D.render(); };
 D.inputs.taddtxt = function () {};
 A.tquick = function (b) { var v = D.val("t-add").trim(); if (!v) return; var tt = T(); tt.list.push({ id: tt.nextId++, title: v, p: b.dataset.p, sub: b.dataset.s, ms: null, who: [], due: "", st: "todo", parent: null, labels: [], est: null, by: [], rel: [], links: [], desc: "", check: [], comments: [], hist: [[D.me().name, "created it", "Just now", { st: "todo", due: "" }]] }); D.render(); };

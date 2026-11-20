@@ -240,3 +240,25 @@ Four things the owner asked for, drawn in Ground up only. Live and Baseline keep
   Escape, the close button or a click outside closes the picker (not the panel under it) and puts the focus back on
   "+ Someone". The same three groups, in the same order, are the New task form's "Who" (8.2) and the Assignee list
   under More filters, which keeps "Assigned to me" and "Unassigned" pinned on top.
+
+### 8.2 New task: a button at the top of every list, and every level chosen
+> "I also want a make new task button at the top of task list somewhere such, when they do that they should select
+> each of the required higher levels."
+
+- **What:** a "New task" button in the bar of every Tasks view that shows tasks (My tasks, This week, the Dashboard,
+  Due dates, the Timeline, a project's grid, list and board, a subteam's list and board). On a phone it sits on the
+  title row as a "+" (its name is still read out), so it is never behind the menu button. The side menu's "New task"
+  stays and opens the same form.
+- **Who sees it:** students, mentors and admins. Parents only read Tasks, so they do not get it.
+- **The form:** what needs doing; then **Division, Project, Subteam**, in that order, each a labelled choice that is
+  filled only from the one before and cannot be used until the one before is chosen ("Choose a division first");
+  then Milestone (optional, "No milestone"), Due, and Who (the picker of 8.1, starting with the person themself).
+  Where the person started fixes what it can: inside a subteam the form arrives with the division, project and
+  subteam chosen, inside a project with the division and project; a "+ Add" in a grid cell or board column also
+  brings its milestone or status. Every chosen level can still be changed, and changing one clears the ones under it.
+- **Rules:** "Create" is never disabled. Until there is a title and all three levels are chosen, it does nothing but
+  point at the first thing missing, in the order of the form: the focus goes there and a plain line under it says
+  what to do ("Choose a project."). After Create, a task the view shows gets the focus and the toast says where it
+  went; a task the view does not show gets a toast that names the place, with a link ("Open CAD").
+- **One filled button:** the button is the view's filled button, except on My tasks when the next-task card already
+  has one (its "Mark step done"): there it is a plain button.
