@@ -76,6 +76,7 @@ the same, and the choice is kept in this browser. `?event=1` ticks Event day. No
 | Tasks, Home | Pressing a task's row or card anywhere opens its side panel in place; closing it returns to the row (2026-11-19) | GROUND_UP.md 8.3 |
 | Admin | The demo draws Admin: Requests (let each person in, with the role a join link filled in) and Join links (QR codes and links for Students, Parents or Mentors) (2026-11-19) | GROUND_UP.md 8.4 |
 | Home, Calendar | "Needs snacks" on Home, in the bell and on the Calendar opens the Snacks tab on that day, scrolled to its row, marked for a moment and focused (2026-11-19) | GROUND_UP.md 8.5 |
+| Calendar | Practice and build days with an open snack spot say "Needs snacks" on the month, the agenda and the day's panel (parents, mentors, admins); on a phone's month, a snacks mark and a key (2026-11-19) | GROUND_UP.md 8.6 |
 | Tools | Fifteen calculators (also in Baseline), each with a drawing to scale; in Ground up they wear its look (`css/ground-tools.css`) | See "FRC calculators" below |
 
 ### The look (Baseline and Ground up)

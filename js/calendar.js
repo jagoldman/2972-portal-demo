@@ -199,6 +199,14 @@ function calendarTab() {
   return subnav("calendar", list, def) + (t === "agenda" ? agenda() : t === "setup" ? setup() : month());
 }
 function evBtn(e) { return '<button class="ev ' + kindOf(e)[1] + '" ' + evAct(e) + ' data-tip="' + esc(e.name + " · " + span(e)) + '" aria-label="' + esc(e.name) + '"><span class="et">' + (e.start && !D.ground() ? t12(e.start).replace(" pm", "p").replace(" am", "a") + " " : "") + esc(D.ground() ? e.name.split(":")[0] : e.name) + "</span></button>"; }
+/* Ground up (the owner, 2026-11-19): a practice or build day with an open snack spot says so on the month, for the
+   people who have the Snacks tab. A dot and the words on a wide screen; on a phone the words do not fit a cell, so it
+   is the snacks mark under the day's events, named for a screen reader and explained in the key. A door to the Snacks
+   tab on that date. */
+function snackMark(s) {
+  if (!D.ground() || !D.calTab("snacks") || !needsSnacks(s)) return "";
+  return '<button class="evsn" data-act="snackday" data-d="' + s + '" aria-label="' + esc(fmt(s) + " needs snacks. Open Snacks for this day") + '"><span class="snico" aria-hidden="true">' + D.ic("snacks", 14) + '</span><span class="sntx">Needs snacks</span></button>';
+}
 function month() {
   var c = C(), y = c.month[0], m = c.month[1], first = new Date(y, m, 1), start = new Date(y, m, 1 - first.getDay());
   var cells = "";
@@ -208,7 +216,7 @@ function month() {
     var evs = c.events.filter(function (e) { return e.date === s || (e.end2 && s >= e.date && s <= e.end2); }).concat(volEvents().filter(function (e) { return e.date === s; }));
     var hideAuto = evs.some(function (e) { return !e.auto && (e.kind === "build" || e.kind === "off" || e.kind === "comp"); });
     evs = evs.filter(function (e) { return !(hideAuto && e.auto); });
-    cells += '<div class="day' + (d.getMonth() !== m ? " other" : "") + (s === TODAYS ? " today" : "") + '"><span class="d">' + (D.ground() && d.getDate() === 1 && d.getMonth() !== m ? d.toLocaleDateString("en-US", { month: "short" }) + " " : "") + d.getDate() + "</span>" + evs.slice(0, 3).map(evBtn).join("") + (evs.length > 3 ? '<span class="who">+' + (evs.length - 3) + " more</span>" : "") + "</div>";
+    cells += '<div class="day' + (d.getMonth() !== m ? " other" : "") + (s === TODAYS ? " today" : "") + '"><span class="d">' + (D.ground() && d.getDate() === 1 && d.getMonth() !== m ? d.toLocaleDateString("en-US", { month: "short" }) + " " : "") + d.getDate() + "</span>" + evs.slice(0, 3).map(evBtn).join("") + (evs.length > 3 ? '<span class="who">+' + (evs.length - 3) + " more</span>" : "") + snackMark(s) + "</div>";
   }
   var title = first.toLocaleDateString("en-US", { month: "long", year: "numeric" });
   /* Version B: on a wide screen the next events are listed beside the month, so the two views do not need a switch. */
@@ -217,7 +225,7 @@ function month() {
   }).join("") + "</div></div>" : "";
   return (next ? '<div class="calsplit">' : "") + '<div class="card"><div class="row mnav"><button class="btn sm" data-act="calmonth" data-v="-1" aria-label="Previous month" data-tip="Go back one month.">←</button><h2>' + title + '</h2><button class="btn sm" data-act="calmonth" data-v="1" aria-label="Next month" data-tip="Go forward one month.">→</button><button class="btn ghost sm" data-act="caltoday">Today</button></div>' +
     '<div class="month">' + WD.map(function (x) { return '<div class="dh">' + x + "</div>"; }).join("") + cells + "</div>" +
-    '<div class="legend">' + Object.keys(KIND).map(function (k) { return KIND[k]; }).concat(D.calTab("volunteer") ? [VOLKIND] : []).map(function (k) { return '<span class="' + k[1] + '"><i class="kd"></i>' + k[0] + "</span>"; }).join("") + "</div></div>" + (next ? next + "</div>" : "");
+    '<div class="legend">' + Object.keys(KIND).map(function (k) { return KIND[k]; }).concat(D.calTab("volunteer") ? [VOLKIND] : []).map(function (k) { return '<span class="' + k[1] + '"><i class="kd"></i>' + k[0] + "</span>"; }).join("") + (D.ground() && D.calTab("snacks") ? '<span class="snkey">' + D.ic("snacks", 14) + "Needs snacks</span>" : "") + "</div></div>" + (next ? next + "</div>" : "");
 }
 function isPractice(e) { return e.kind === "practice" || e.kind === "build"; }
 /* A practice day's two short lines. They are doors to the Attendance and Snacks tabs, not controls. */
@@ -241,7 +249,8 @@ function dayDoors(e, brief) {
   if (D.calTab("here")) out += door("here", e.date === TODAYS ? "today" : "mentors", e.date, "user", hereLine(e, brief), "Attendance");
   // Ground up: where a family can settle it in one tap, the row has the same Sign up button Home has (hill climb r2).
   var sn = C().snacks[e.date] || (D.ground() && isPractice(e) ? (C().snacks[e.date] = new Array(C().slots).fill(null)) : null), k = sn ? sn.indexOf(null) : -1;
-  if (D.calTab("snacks") && D.ground() && D.S.role === "parent" && sn && k >= 0 && sn.indexOf(snackName()) < 0) out += '<div class="doorln doorask"><span class="dtxt"><span class="pill warn">' + esc(snackLine(e.date).replace(" · ", ", ")) + '</span></span><button class="btn sm primary" data-act="snack" data-d="' + e.date + '" data-k="' + k + '">Sign up</button></div>';
+  if (D.calTab("snacks") && D.ground() && D.S.role === "parent" && sn && k >= 0 && sn.indexOf(snackName()) < 0) out += '<div class="doorln doorask"><span class="dtxt"><button class="pill warn snpill" data-act="snackday" data-d="' + e.date + '" aria-label="' + esc(snackLine(e.date).replace(" · ", ", ") + ". Open Snacks for " + fmt(e.date)) + '">' + esc(snackLine(e.date).replace(" · ", ", ")) + '</button></span><button class="btn sm primary" data-act="snack" data-d="' + e.date + '" data-k="' + k + '">Sign up</button></div>';
+  else if (D.calTab("snacks") && D.ground() && needsSnacks(e.date)) out += door("snacks", "", e.date, "snacks", snackLine(e.date).replace(" · ", ", "), "Snacks").replace('<span class="dtxt">', '<span class="dtxt"><span class="pill warn">').replace("</span><span class=\"chev\"", "</span></span><span class=\"chev\"");
   else if (D.calTab("snacks")) out += door("snacks", "", e.date, "snacks", snackLine(e.date), "Snacks");
   return out ? '<div class="agdoors">' + out + "</div>" : "";
 }

@@ -327,3 +327,17 @@ leaked or photographed code gives nobody access.
 - **In the demo:** the bell's notice carries its date as data (`date`), so the real app's notices about a day need
   the same field.
 
+### 8.6 The Calendar says "Needs snacks"
+> "I also would like the calendar to show the "needs snacks" text for practice days without snacks."
+
+- **What:** on the Calendar tab (Events), a practice or build day from today on that still has an open snack spot
+  says so: on the month, "Needs snacks" (a dot and the words, in the warning colour) under the day's events; on the
+  agenda and in a day's panel, the day's snack line becomes that state: "Needs snacks", or "Brooks family is bringing
+  snacks, 1 more needed" when only some spots are taken. Days that are filled show what they showed before.
+- **On a phone's month** the words do not fit a cell, so the day gets the snacks mark in a small warm circle, the
+  cell's full width and 44 px tall, read out as "Thu, Nov 12 needs snacks. Open Snacks for this day", and the key
+  under the month says what the mark means.
+- **Pressing it** opens the Snacks tab on that day (8.5). On the agenda a parent's line keeps its Sign up button
+  beside it, which still signs up in one press.
+- **Who sees it:** parents, mentors and admins, who have the Snacks tab. Students do not.
+

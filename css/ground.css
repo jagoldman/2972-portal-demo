@@ -766,6 +766,25 @@
   /* It takes the focus only so a screen reader reads it; it is not a control, so it draws no ring. */
   .snnote { margin: 8px 0 16px; color: var(--text-2); }
   .snnote:focus { outline: none; }
+  /* Calendar, month: "Needs snacks" under a day's events, a dot and the words, in the state's colour. */
+  .evsn { display: flex; align-items: flex-start; gap: 5px; width: 100%; min-width: 0; padding: 2px 4px; border: 0; border-radius: 6px; background: none; color: var(--warn); font: inherit; font-size: .8rem; font-weight: 500; text-align: left; cursor: pointer; line-height: 1.25; }
+  .evsn::before { content: ""; flex: none; width: 7px; height: 7px; margin-top: 5px; border-radius: 50%; background: var(--warn); }
+  .evsn:hover { background: var(--surface-2); }
+  .evsn .snico { display: none; }
+  .legend .snkey { display: none; }
+  /* Calendar, agenda and a day's panel: a parent's snack line is a door too, beside its Sign up button. */
+  .snpill { border: 0; background: none; padding: 4px 0; font: inherit; font-size: .85rem; color: var(--warn); cursor: pointer; text-decoration: underline; text-decoration-color: transparent; text-underline-offset: 3px; }
+  .snpill:hover { text-decoration-color: currentColor; }
+  .doorln .dtxt > .pill.warn { white-space: normal; align-items: baseline; }
+  @media (max-width: 640px) {
+    /* A phone's month cell is too narrow for the words: the snacks mark, a full-width 44 px target, and a key. */
+    .month:not(.wide) .evsn { flex: 0 0 100%; justify-content: center; align-items: center; min-height: 44px; padding: 0; }
+    .month:not(.wide) .evsn::before, .month:not(.wide) .evsn .sntx { display: none; }
+    .month:not(.wide) .evsn .snico { display: inline-grid; place-items: center; width: 24px; height: 24px; border-radius: 50%; background: var(--warn-bg); color: var(--warn); }
+    .legend .snkey { display: inline-flex; color: var(--warn); }
+    .legend .snkey svg { padding: 3px; width: 20px; height: 20px; border-radius: 50%; background: var(--warn-bg); }
+    .snpill { min-height: 44px; text-align: left; }
+  }
 }
 @keyframes snmark {
   0%, 45% { background: var(--tint-2); box-shadow: inset 4px 0 0 var(--bumper); }
