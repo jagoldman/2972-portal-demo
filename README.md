@@ -69,6 +69,7 @@ the same, and the choice is kept in this browser. `?event=1` ticks Event day. No
 | Parts | The flow (Needs OK, To order, Ordered, Arrived) is the filter; every request says whose move it is | Whose move |
 | Skills | A student's Overview opens with the machines they may use; "Finish what you started" comes first | The moment first |
 | Schedule, Pit, Scouting | One line across all three: you now, next match, robot | Doors between apps |
+| Tasks | "+ Someone" on a task opens a picker: a search, then Students, Mentors and Parents as groups that open and close (2026-11-19) | GROUND_UP.md 8.1 |
 | Tools | Fifteen calculators (also in Baseline), each with a drawing to scale; in Ground up they wear its look (`css/ground-tools.css`) | See "FRC calculators" below |
 
 ### The look (Baseline and Ground up)

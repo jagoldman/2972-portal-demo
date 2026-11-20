@@ -220,3 +220,23 @@ Home keep one door, "Tools", and do not list calculators one by one.
   service is a separate decision.
 - Home's inline Approve and Sign off would need two new calls between services in the real build (Home is served
   by `landing`, which today only reads). That cost is real and is the main thing to decide before adopting Home.
+
+## 8. The owner's requests of 2026-11-19 (D215, brief `new-apps/briefs/r84/DEMO_84.md`)
+
+Four things the owner asked for, drawn in Ground up only. Live and Baseline keep what they had.
+
+### 8.1 Assigning people: three groups that open and close
+> "have dropdown groups for task assignment with students the mentors then parents" … "I want the list to be dropdowns"
+
+- **What:** "+ Someone" on a task's panel opens a small picker anchored to it (on a phone, a sheet from the bottom):
+  a search ("Search people"), then **Students, Mentors, Parents**, in that order, each a row with its count and a
+  chevron. Open, a row lists its people; a check marks the ones already on the task. Pressing a name puts the person
+  on the task or takes them off, and the picker stays open so several can be picked.
+- **Who sees it:** everyone who can open a task's panel (students, mentors, admins). A parent can be assigned: the
+  real app allows any approved person.
+- **Rules:** all three groups start closed, and the picker remembers which ones a person left open (a saved choice,
+  like the Home groups). Typing opens every group with a match and hides the others; "No one matches …" when nothing
+  does. Every group row is a real button with `aria-expanded`. Tab reaches the search, each row and each name;
+  Escape, the close button or a click outside closes the picker (not the panel under it) and puts the focus back on
+  "+ Someone". The same three groups, in the same order, are the New task form's "Who" (8.2) and the Assignee list
+  under More filters, which keeps "Assigned to me" and "Unassigned" pinned on top.

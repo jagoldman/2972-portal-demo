@@ -546,12 +546,65 @@ var PEOPLE = ["Sam Ortiz", "Leo Brooks", "Priya Shah", "Ava Kim", "Jordan Lee", 
 /* Who a task can go to, in the order people look for them (students asked for this, 2026-11-19): students first,
    then mentors, then parents. The "+ Someone" list on a task shows these as three named groups. */
 var PEOPLE_GROUPS = [["Students", ["Sam Ortiz", "Leo Brooks", "Priya Shah", "Ava Kim", "Jordan Lee", "Maya Gold", "Omar Haddad", "Nina Park"]], ["Mentors", ["Ms. Rivera", "Mr. Chen"]], ["Parents", ["Pat Ortiz", "Dana Brooks"]]];
+/* ---------- The people picker (Ground up, owner 2026-11-19: "I want the list to be dropdowns") ----------
+   "+ Someone" opens a panel anchored to it (a sheet from the bottom on a phone): a search, then Students, Mentors and
+   Parents as rows that open and close (real buttons with aria-expanded). Open, a row lists its people; a check marks
+   the ones already picked, and a press adds or takes off without closing the panel, so several can be picked. All
+   three start closed; which ones a person leaves open is a saved choice (D.pref "pickopen"). Typing opens every group
+   with a match and hides the rest. Escape, the close button or a click outside closes it, and the focus goes back to
+   "+ Someone". The same picker is the task panel's Who and the New task form's Who (T().pick.t: "task" or "new"). */
+function pkSel() { var p = T().pick; if (!p) return []; if (p.t === "new") return (D.S.modal && D.S.modal.data.who) || []; var x = task(p.id); return x ? x.who : []; }
+function pkId(n) { return "pk-n-" + n.replace(/[^a-z0-9]/gi, "_"); }
+function pkOpen(g) { var o = D.pref("pickopen", {}); return !!o[g]; }
+function pickBtn(t, id) {
+  var on = !!T().pick && T().pick.t === t;
+  return '<span class="pkwrap"><button type="button" class="pkbtn" id="pk-btn" data-act="pkopen" data-t="' + t + '"' + (id != null ? ' data-v="' + id + '"' : "") + ' aria-haspopup="dialog" aria-expanded="' + on + '"' + (on ? ' aria-controls="pk-pop"' : "") + ">+ Someone" + D.ic("chevron", 14) + "</button>" + (on ? pickPanel() : "") + "</span>";
+}
+function pickPanel() {
+  var pk = T().pick, q = (pk.q || "").trim().toLowerCase(), sel = pkSel(), any = false;
+  var groups = PEOPLE_GROUPS.map(function (g) {
+    var ppl = g[1].filter(function (n) { return !q || n.toLowerCase().indexOf(q) >= 0; });
+    if (q && !ppl.length) return "";
+    any = true;
+    var open = q ? true : pkOpen(g[0]), lid = "pk-l-" + g[0];
+    return '<div class="pkg"><button type="button" class="pkgh" id="pk-g-' + g[0] + '" data-act="pkgrp" data-v="' + g[0] + '" aria-expanded="' + open + '" aria-controls="' + lid + '"><span class="grow">' + g[0] + '</span><span class="tcount">' + ppl.length + '</span><span class="grpchev" aria-hidden="true">' + D.ic("chevron", 16) + "</span></button>" +
+      '<div class="pklist" id="' + lid + '" role="group" aria-label="' + g[0] + '"' + (open ? "" : " hidden") + ">" + ppl.map(function (n) {
+        var on = sel.indexOf(n) >= 0;
+        return '<button type="button" class="pkname" id="' + pkId(n) + '" data-act="pkname" data-w="' + esc(n) + '" aria-pressed="' + on + '"><span class="pkchk" aria-hidden="true">' + (on ? D.ic("check", 16) : "") + "</span>" + esc(n) + (n === me() ? ' <span class="who">(you)</span>' : "") + "</button>";
+      }).join("") + "</div></div>";
+  }).join("");
+  return '<button type="button" class="pkscrim" data-act="pkclose" aria-label="Close" tabindex="-1"></button><div class="pkpop" id="pk-pop" role="dialog" aria-label="Assign people"><div class="pkhead"><b>Assign people</b><button type="button" class="xbtn sm" data-act="pkclose" aria-label="Close" data-tip="Close the list.">×</button></div>' +
+    '<span class="pkq">' + D.ic("search", 16) + '<input id="pk-q" class="inp" type="search" data-input="pkq" placeholder="Search people" aria-label="Search people" autocomplete="off" value="' + esc(pk.q || "") + '"></span>' +
+    '<div class="pkgroups" data-keepscroll="pkgroups">' + groups + (any ? "" : '<p class="pknone">No one matches “' + esc((pk.q || "").trim()) + "”.</p>") + "</div></div>";
+}
+function pkClose(back) { T().pick = null; D.render(); if (back) { var b = document.getElementById("pk-btn"); if (b) b.focus(); } }
+D.acts.pkopen = function (b) { var tt = T(); if (tt.pick) { pkClose(true); return; } tt.pick = { t: b.dataset.t, id: b.dataset.v != null ? +b.dataset.v : null, q: "" }; D.render(); var q = document.getElementById("pk-q"); if (q) q.focus(); };
+D.acts.pkclose = function () { pkClose(true); };
+D.acts.pkgrp = function (b) { var o = Object.assign({}, D.pref("pickopen", {})), g = b.dataset.v; if (!(T().pick.q || "").trim()) { o[g] = !o[g]; D.setPref("pickopen", o); } D.render(); var el = document.getElementById("pk-g-" + g); if (el) el.focus(); };
+D.inputs.pkq = function (el) { T().pick.q = el.value; D.render(); };
+D.acts.pkname = function (b) {
+  var pk = T().pick, n = b.dataset.w; if (!pk) return;
+  if (pk.t === "new") { var m = D.S.modal.data, w = m.who || (m.who = []), i = w.indexOf(n); if (i >= 0) w.splice(i, 1); else w.push(n); }
+  else { var x = task(pk.id); if (!x) return; if (x.who.indexOf(n) >= 0) { x.who = x.who.filter(function (y) { return y !== n; }); h(x, "removed " + n); } else { x.who.push(n); h(x, "assigned " + n); if (n === ME_STUDENT && me() !== n) D.notify("student", "tasks", D.me().name + " assigned you “" + x.title + "”."); } }
+  D.render(); var el = document.getElementById(pkId(n)); if (el) el.focus();
+};
+// Escape closes the picker only (not the panel or the form under it); so does a click anywhere outside it.
+document.addEventListener("keydown", function (e) { var tt = D.S && D.S.tasks; if (e.key !== "Escape" || !tt || !tt.pick) return; e.preventDefault(); e.stopImmediatePropagation(); pkClose(true); }, true);
+document.addEventListener("click", function (e) { var tt = D.S && D.S.tasks; if (!tt || !tt.pick || !e.target.isConnected || e.target.closest(".pkpop, #pk-btn")) return; tt.pick = null; D.render(); });
+// The panel never runs past the right edge of the window, or of the task panel it sits in.
+// A picker belongs to the panel or form it was opened from: closing that (or opening another task) closes it too.
+D.after.unshift(function () { var tt = D.S && D.S.tasks, pk = tt && tt.pick; if (!pk) return; var m = D.S.modal, d = D.S.drawer; if (pk.t === "new" ? !(m && m.type === "tnew") : !(d && d.type === "task" && +d.data.id === pk.id) || (m && pk.t === "task")) tt.pick = null; });
+D.after.push(function () {
+  var p = document.querySelector(".pkpop"); if (!p || getComputedStyle(p).position === "fixed") return;
+  var box = p.closest(".drawer, .modal"), r = p.getBoundingClientRect(), edge = Math.min(window.innerWidth, box ? box.getBoundingClientRect().right : 1e9) - 12;
+  if (r.right > edge) p.style.left = Math.round(edge - r.right) + "px";
+});
 function fstate() { var tt = T(), k = tt.at.p || "_"; tt.fp = tt.fp || {}; return tt.fp[k] || (tt.fp[k] = { st: [], who: [], sub: [], ms: [], lab: [], due: [], est: [] }); }
 function isWaiting(x) { return x.st !== "done" && x.st !== "blocked" && blockedBy(x).length > 0; }
 // Each field: key, heading, options [value, label], and the test for one value.
 function fFields(p, onSub) {
   var f = [["st", "Stage", [["todo", "To do"], ["doing", "In progress"], ["waiting", "Waiting on a task"], ["blocked", "Blocked"], ["done", "Done"]], function (x, v) { return v === "waiting" ? isWaiting(x) : x.st === v; }]];
-  f.push(["who", "Assignee", [["@me", "Assigned to me"], ["@none", "Unassigned"]].concat(PEOPLE.filter(function (n) { return n !== me(); }).map(function (n) { return [n, n]; })), function (x, v) { return v === "@me" ? x.who.indexOf(me()) >= 0 : v === "@none" ? !x.who.length : x.who.indexOf(v) >= 0; }]);
+  f.push(["who", "Assignee", [["@me", "Assigned to me"], ["@none", "Unassigned"]].concat((D.ground() ? PEOPLE_GROUPS.reduce(function (a, g) { return a.concat(g[1]); }, []) : PEOPLE).filter(function (n) { return n !== me(); }).map(function (n) { return [n, n]; })), function (x, v) { return v === "@me" ? x.who.indexOf(me()) >= 0 : v === "@none" ? !x.who.length : x.who.indexOf(v) >= 0; }]);
   if (!onSub) f.push(["sub", "Subteam", p.subs.map(function (s) { return [s, s]; }), function (x, v) { return x.sub === v; }]);
   f.push(["ms", "Milestone", p.ms.map(function (m) { return [m[0], m[1]]; }).concat([["@none", "No milestone"]]), function (x, v) { return v === "@none" ? !x.ms : x.ms === v; }]);
   if (!simple()) f.push(["lab", "Labels", Object.keys(LABELS).map(function (l) { return [l, LABELS[l][0]]; }), function (x, v) { return x.labels.indexOf(v) >= 0; }]);
@@ -576,6 +629,15 @@ function fGroup(fd, f) {
 // "Unassigned", "No milestone") pinned on top.
 function fLong(fd) { return fd[0] === "who" || ((fd[0] === "ms" || fd[0] === "lab") && fd[2].length > 6); }
 function fOptHtml(fd, f, o) { var id = "tf-" + fd[0] + "-" + o[0].replace(/[^a-z0-9]/gi, "_"); return '<label class="tfopt' + (o[0].charAt(0) === "@" ? " pin" : "") + '" for="' + id + '"><input type="checkbox" id="' + id + '" data-change="tf" data-k="' + fd[0] + '" data-v="' + esc(o[0]) + '"' + (f[fd[0]].indexOf(o[0]) >= 0 ? " checked" : "") + "> " + esc(o[1]) + "</label>"; }
+// Ground up: the Assignee list keeps "Assigned to me" and "Unassigned" pinned on top, then the same three groups as the
+// people picker (Students, Mentors, Parents), each under its own heading. A heading with no match is left out.
+function fWhoGrouped(fd, f, shown) {
+  var pins = shown.filter(function (o) { return o[0].charAt(0) === "@"; });
+  return pins.map(function (o) { return fOptHtml(fd, f, o); }).join("") + PEOPLE_GROUPS.map(function (g) {
+    var os = shown.filter(function (o) { return g[1].indexOf(o[0]) >= 0; });
+    return os.length ? '<div role="group" aria-labelledby="tfvh-' + g[0] + '"><p class="tfvh" id="tfvh-' + g[0] + '">' + g[0] + "</p>" + os.map(function (o) { return fOptHtml(fd, f, o); }).join("") + "</div>" : "";
+  }).join("");
+}
 function fSec(fd, f) {
   var tt = T(), k = fd[0], open = !!(tt.fsec || {})[k], n = f[k].length, body = "";
   if (open && fLong(fd)) {
@@ -584,7 +646,7 @@ function fSec(fd, f) {
     var noun = k === "who" ? "people" : k === "ms" ? "milestones" : "labels";
     body = '<div class="tfvals"><span class="tfvq">' + D.ic("search", 14) + '<input id="tf-q-' + k + '" class="inp" type="search" data-input="tfq" data-k="' + k + '" placeholder="Search ' + noun + '" value="' + esc((tt.fq || {})[k] || "") + '" aria-label="Search ' + noun + '"></span>' +
       '<div class="tfvlinks"><button class="linkbtn" data-act="tfall" data-k="' + k + '">Select all</button><button class="linkbtn" data-act="tfnone" data-k="' + k + '">Clear</button>' + (q ? '<span class="who">' + shown.length + " of " + fd[2].length + "</span>" : "") + "</div>" +
-      '<div class="tfvlist" role="group" aria-label="' + esc(fd[1]) + '" data-keepscroll="tfv-' + k + '">' + (shown.length ? shown.map(function (o) { return fOptHtml(fd, f, o); }).join("") : '<p class="small mute tfvnone">No ' + noun + " match.</p>") + "</div></div>";
+      '<div class="tfvlist" role="group" aria-label="' + esc(fd[1]) + '" data-keepscroll="tfv-' + k + '">' + (shown.length ? (k === "who" && D.ground() ? fWhoGrouped(fd, f, shown) : shown.map(function (o) { return fOptHtml(fd, f, o); }).join("")) : '<p class="small mute tfvnone">No ' + noun + " match.</p>") + "</div></div>";
   } else if (open) body = '<div class="tfsecbody" role="group" aria-label="' + esc(fd[1]) + '">' + fd[2].map(function (o) { return fOptHtml(fd, f, o); }).join("") + "</div>";
   return '<div class="tfsec' + (open ? " open" : "") + '"><button class="tfsechd" id="tf-sec-' + k + '" data-act="tfsec" data-k="' + k + '" aria-expanded="' + open + '"><span class="grow">' + esc(fd[1]) + (n ? ' <span class="tfn">· ' + n + "</span>" : "") + '</span><svg class="tfchev" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M6 9l6 6 6-6"/></svg></button>' + body + "</div>";
 }
@@ -738,7 +800,7 @@ D.drawers.task = function (d) {
     (simple() ? "" : '<div class="field"><label for="td-est">Estimate (hours)</label><input id="td-est" type="number" min="0" value="' + (x.est || "") + '" data-change="test" data-v="' + x.id + '"></div>') + "</div>" +
     '<div class="field"><label for="td-desc">Notes</label><textarea id="td-desc" class="inp" rows="2" data-input="tdesc" data-v="' + x.id + '" placeholder="What done looks like, links, tips">' + esc(x.desc) + "</textarea></div>" +
     (x.check.length ? '<div class="psec"><p class="flabel">Steps</p>' + x.check.map(function (c, i) { return '<div class="trs"><button class="tcheck" data-act="tcheck" data-v="' + x.id + '" data-i="' + i + '" aria-pressed="' + c[1] + '" aria-label="' + esc(c[0]) + '">' + D.ic("check", 14) + "</button><span>" + esc(c[0]) + "</span></div>"; }).join("") + "</div>" : "") +
-    '<div class="psec"><p class="flabel">Who</p><div class="row">' + x.who.map(function (w) { return '<span class="whochip">' + esc(w) + ' <button data-act="tunassign" data-v="' + x.id + '" data-w="' + esc(w) + '" aria-label="Remove ' + esc(w) + '" data-tip="Take ' + esc(w) + ' off this task.">×</button></span>'; }).join("") + (x.who.indexOf(me()) < 0 ? '<button class="btn sm" data-act="ttake" data-v="' + x.id + '">+ Me</button>' : "") + '<select class="chipsel" data-change="tassign" data-v="' + x.id + '" aria-label="Assign someone"><option value="">+ Someone</option>' + PEOPLE_GROUPS.map(function (g) { var l = g[1].filter(function (n) { return x.who.indexOf(n) < 0; }); return l.length ? '<optgroup label="' + g[0] + '">' + l.map(function (n) { return "<option>" + esc(n) + "</option>"; }).join("") + "</optgroup>" : ""; }).join("") + "</select></div></div>" +
+    '<div class="psec"><p class="flabel">Who</p><div class="row">' + x.who.map(function (w) { return '<span class="whochip">' + esc(w) + ' <button data-act="tunassign" data-v="' + x.id + '" data-w="' + esc(w) + '" aria-label="Remove ' + esc(w) + '" data-tip="Take ' + esc(w) + ' off this task.">×</button></span>'; }).join("") + (x.who.indexOf(me()) < 0 ? '<button class="btn sm" data-act="ttake" data-v="' + x.id + '">+ Me</button>' : "") + (D.ground() ? pickBtn("task", x.id) + "</div></div>" : '<select class="chipsel" data-change="tassign" data-v="' + x.id + '" aria-label="Assign someone"><option value="">+ Someone</option>' + PEOPLE_GROUPS.map(function (g) { var l = g[1].filter(function (n) { return x.who.indexOf(n) < 0; }); return l.length ? '<optgroup label="' + g[0] + '">' + l.map(function (n) { return "<option>" + esc(n) + "</option>"; }).join("") + "</optgroup>" : ""; }).join("") + "</select></div></div>") +
     (simple() ? "" : '<div class="psec"><p class="flabel">Labels</p><div class="row">' + Object.keys(LABELS).map(function (l) { var on = x.labels.indexOf(l) >= 0; return '<button class="chip" data-act="tlab" data-v="' + x.id + '" data-l="' + l + '" aria-pressed="' + on + '"><i class="dotc" style="background:' + LABELS[l][1] + '"></i>' + LABELS[l][0] + "</button>"; }).join("") + "</div></div>") +
     (!parent ? '<div class="psec"><p class="flabel">Subtasks</p>' + sc.map(function (s) { return '<div class="trs">' + check(s) + '<button class="ttitle" data-act="topen" data-v="' + s.id + '">' + esc(s.title) + "</button>" + avs(s.who) + "</div>"; }).join("") + '<div class="row nowrap"><input id="td-sub-new" class="inp" placeholder="Add a subtask" aria-label="New subtask"><button class="btn sm" data-act="taddsub" data-v="' + x.id + '">Add</button></div></div>' : "") +
     (simple() ? "" : '<div class="psec"><p class="flabel">Waits on</p><div class="list">' + x.by.map(function (b) { var bt = task(b); return '<div class="li"><span class="grow">' + esc(bt.title) + ' <span class="who">' + esc(bt.sub) + "</span></span>" + stPill(bt.st) + '<button class="btn ghost sm" data-act="tundep" data-v="' + x.id + '" data-b="' + b + '">Remove</button></div>'; }).join("") + '</div><select class="chipsel" data-change="tdep" data-v="' + x.id + '" aria-label="Add something this waits on"><option value="">+ Waits on…</option>' + allOther.filter(function (y) { return x.by.indexOf(y.id) < 0; }).map(function (y) { return '<option value="' + y.id + '">' + esc(y.title) + "</option>"; }).join("") + "</select>" +
